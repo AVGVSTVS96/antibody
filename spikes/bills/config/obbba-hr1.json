@@ -1,0 +1,52 @@
+{
+ "bill": "119-hr-1",
+ "title": "One Big Beautiful Bill Act",
+ "sources": {
+  "billstatus": "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/hr/BILLSTATUS-119hr1.xml",
+  "congress_gov": "https://www.congress.gov/bill/119th-congress/house-bill/1"
+ },
+ "versions": [
+  {
+   "code": "rh",
+   "name": "Reported in House",
+   "date": "2025-05-20",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119hr1rh/xml/BILLS-119hr1rh.xml",
+   "file": "BILLS-119hr1rh.xml"
+  },
+  {
+   "code": "eh",
+   "name": "Engrossed in House",
+   "date": "2025-05-22",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119hr1eh/xml/BILLS-119hr1eh.xml",
+   "file": "BILLS-119hr1eh.xml"
+  },
+  {
+   "code": "pcs",
+   "name": "Placed on Calendar Senate",
+   "date": "2025-06-28",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119hr1pcs/xml/BILLS-119hr1pcs.xml",
+   "file": "BILLS-119hr1pcs.xml"
+  },
+  {
+   "code": "eas",
+   "name": "Engrossed Amendment Senate",
+   "date": "2025-07-01",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119hr1eas/xml/BILLS-119hr1eas.xml",
+   "file": "BILLS-119hr1eas.xml"
+  },
+  {
+   "code": "enr",
+   "name": "Enrolled Bill",
+   "date": "2025-07-03",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml",
+   "file": "BILLS-119hr1enr.xml"
+  },
+  {
+   "code": "plaw",
+   "name": "Public Law 119-21 (USLM)",
+   "date": "2025-07-04",
+   "url": "https://www.govinfo.gov/content/pkg/PLAW-119publ21/uslm/PLAW-119publ21.xml",
+   "file": "PLAW-119publ21.xml"
+  }
+ ]
+}

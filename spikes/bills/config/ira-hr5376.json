@@ -1,0 +1,52 @@
+{
+ "bill": "117-hr-5376",
+ "title": "Inflation Reduction Act of 2022",
+ "sources": {
+  "billstatus": "https://www.govinfo.gov/bulkdata/BILLSTATUS/117/hr/BILLSTATUS-117hr5376.xml",
+  "congress_gov": "https://www.congress.gov/bill/117th-congress/house-bill/5376"
+ },
+ "versions": [
+  {
+   "code": "rh",
+   "name": "Reported in House",
+   "date": "2021-09-27",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376rh/xml/BILLS-117hr5376rh.xml",
+   "file": "BILLS-117hr5376rh.xml"
+  },
+  {
+   "code": "eh",
+   "name": "Engrossed in House",
+   "date": "2021-11-19",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376eh/xml/BILLS-117hr5376eh.xml",
+   "file": "BILLS-117hr5376eh.xml"
+  },
+  {
+   "code": "pcs",
+   "name": "Placed on Calendar Senate",
+   "date": "2022-08-03",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376pcs/xml/BILLS-117hr5376pcs.xml",
+   "file": "BILLS-117hr5376pcs.xml"
+  },
+  {
+   "code": "eas",
+   "name": "Engrossed Amendment Senate",
+   "date": "2022-08-07",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376eas/xml/BILLS-117hr5376eas.xml",
+   "file": "BILLS-117hr5376eas.xml"
+  },
+  {
+   "code": "enr",
+   "name": "Enrolled Bill",
+   "date": "2022-08-12",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml",
+   "file": "BILLS-117hr5376enr.xml"
+  },
+  {
+   "code": "plaw",
+   "name": "Public Law 117-169 (USLM)",
+   "date": "2022-08-16",
+   "url": "https://www.govinfo.gov/content/pkg/PLAW-117publ169/uslm/PLAW-117publ169.xml",
+   "file": "PLAW-117publ169.xml"
+  }
+ ]
+}
