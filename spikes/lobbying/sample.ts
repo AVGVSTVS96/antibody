@@ -11,7 +11,7 @@ for (const idx of picked) {
   const m = pool[idx];
   const a = m.activities[0];
   const r = a.refs[0];
-  const at = a.description.indexOf(r.text);
+  const at = a.description.search(new RegExp(r.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?![\\d-])"));
   const snip = a.description.slice(Math.max(0, at - 160), at + r.text.length + 160).replace(/\s+/g, " ");
   console.log(`#${++i} ${m.confidence} ${m.filing_year} ${m.filing_period} ${m.client.name} | ref="${r.text}" (${r.how}; ${r.why})\n   ${m.filing_url}\n   …${snip}…\n`);
 }

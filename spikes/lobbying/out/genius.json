@@ -19,6 +19,7 @@
  "lobbyists": 711,
  "lobbyists_with_covered_position": 147,
  "amount_on_reports_usd": 248994448,
+ "amount_share_estimate_usd": 82088329,
  "issue_codes": {
   "FIN": 455,
   "BAN": 340,
@@ -53,7 +54,8 @@
    "phases": [
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/ccb8f0b2-7803-4e16-b48a-399d4429f7a1/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/ccb8f0b2-7803-4e16-b48a-399d4429f7a1/print/",
+   "amount_share_estimate": 1223333.3333333335
   },
   {
    "id": 149631,
@@ -68,7 +70,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/fecb88c3-91a6-46c1-a44b-2ad3f10fa370/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/fecb88c3-91a6-46c1-a44b-2ad3f10fa370/print/",
+   "amount_share_estimate": 1942281.7460317463
   },
   {
    "id": 102650,
@@ -83,7 +86,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/b147a9b7-8fc4-47e4-837f-6e262e7807b6/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/b147a9b7-8fc4-47e4-837f-6e262e7807b6/print/",
+   "amount_share_estimate": 856656.862745098
   },
   {
    "id": 186169,
@@ -98,7 +102,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/e926b820-bcce-4d04-a7a6-c85e2ffd2b59/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/e926b820-bcce-4d04-a7a6-c85e2ffd2b59/print/",
+   "amount_share_estimate": 5148000
   },
   {
    "id": 104895,
@@ -113,7 +118,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/ea511d3e-8c73-41ae-8a9d-158c926f3799/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/ea511d3e-8c73-41ae-8a9d-158c926f3799/print/",
+   "amount_share_estimate": 629025.641025641
   },
   {
    "id": 200381,
@@ -128,7 +134,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/3a7abc53-8035-4d37-8971-7b9756f1862f/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/3a7abc53-8035-4d37-8971-7b9756f1862f/print/",
+   "amount_share_estimate": 1458333.3333333333
   },
   {
    "id": 199695,
@@ -143,7 +150,8 @@
     "bill",
     "enactment-quarter"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/312adc5d-ff85-4ae8-a640-722a003c29d6/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/312adc5d-ff85-4ae8-a640-722a003c29d6/print/",
+   "amount_share_estimate": 3407500
   },
   {
    "id": 201038,
@@ -158,7 +166,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/12300457-0a95-4746-88ce-06217dd5daef/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/12300457-0a95-4746-88ce-06217dd5daef/print/",
+   "amount_share_estimate": 642678.5714285715
   },
   {
    "id": 106185,
@@ -173,7 +182,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/a254538a-2fda-4dde-8ab3-91f2ecd2f593/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/a254538a-2fda-4dde-8ab3-91f2ecd2f593/print/",
+   "amount_share_estimate": 1546666.6666666667
   },
   {
    "id": 114369,
@@ -188,7 +198,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/afb4e456-8ae1-41e6-867a-60c9859d9daf/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/afb4e456-8ae1-41e6-867a-60c9859d9daf/print/",
+   "amount_share_estimate": 4630000
   },
   {
    "id": 134187,
@@ -203,7 +214,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/548ed6b1-79a9-4d70-889a-b5f61c1c0751/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/548ed6b1-79a9-4d70-889a-b5f61c1c0751/print/",
+   "amount_share_estimate": 1132500
   },
   {
    "id": 126309,
@@ -217,7 +229,8 @@
     "bill",
     "enactment-quarter"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/99edf491-0fb0-4ad1-b39a-2719a7c68b81/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/99edf491-0fb0-4ad1-b39a-2719a7c68b81/print/",
+   "amount_share_estimate": 926658.25
   },
   {
    "id": 67344,
@@ -232,7 +245,8 @@
     "bill",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/51c749a7-d607-4992-b992-15f405eea6b2/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/51c749a7-d607-4992-b992-15f405eea6b2/print/",
+   "amount_share_estimate": 1348333.3333333333
   },
   {
    "id": 134745,
@@ -247,7 +261,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/b57f13a9-b1fe-4eee-a194-8d981e9ef70f/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/b57f13a9-b1fe-4eee-a194-8d981e9ef70f/print/",
+   "amount_share_estimate": 762857.1428571428
   },
   {
    "id": 103080,
@@ -260,7 +275,8 @@
    "phases": [
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/7ee50a60-de53-4de9-b50f-c70e65ded141/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/7ee50a60-de53-4de9-b50f-c70e65ded141/print/",
+   "amount_share_estimate": 684723.8333333333
   },
   {
    "id": 128604,
@@ -275,7 +291,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/f8a60b16-3a80-4bb6-ac60-e35aea249c3e/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/f8a60b16-3a80-4bb6-ac60-e35aea249c3e/print/",
+   "amount_share_estimate": 648641.3333333334
   },
   {
    "id": 115381,
@@ -289,7 +306,8 @@
     "bill",
     "enactment-quarter"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/579f0209-4eac-4933-b277-3978e56896a8/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/579f0209-4eac-4933-b277-3978e56896a8/print/",
+   "amount_share_estimate": 1140000
   },
   {
    "id": 126471,
@@ -302,7 +320,8 @@
    "phases": [
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/d0f345f1-923d-425d-966c-23731bf39cca/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/d0f345f1-923d-425d-966c-23731bf39cca/print/",
+   "amount_share_estimate": 925503.3333333333
   },
   {
    "id": 160225,
@@ -317,7 +336,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/5ccebb5b-61d1-4983-be76-5c728b1bd901/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/5ccebb5b-61d1-4983-be76-5c728b1bd901/print/",
+   "amount_share_estimate": 599238.0952380951
   },
   {
    "id": 131182,
@@ -331,7 +351,8 @@
     "bill",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/c6485b21-b95e-4a6c-9ebc-0a051adfc224/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/c6485b21-b95e-4a6c-9ebc-0a051adfc224/print/",
+   "amount_share_estimate": 3120000
   },
   {
    "id": 134461,
@@ -344,7 +365,8 @@
    "phases": [
     "bill"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/313e80dd-9b41-4fe4-b426-411c49058246/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/313e80dd-9b41-4fe4-b426-411c49058246/print/",
+   "amount_share_estimate": 305000
   },
   {
    "id": 201112,
@@ -357,7 +379,8 @@
    "phases": [
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/aefc3142-a5b8-43a0-930f-08d7671244db/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/aefc3142-a5b8-43a0-930f-08d7671244db/print/",
+   "amount_share_estimate": 610000
   },
   {
    "id": 172043,
@@ -372,7 +395,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/ba8dff00-285a-4909-9ae0-01768d46cc56/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/ba8dff00-285a-4909-9ae0-01768d46cc56/print/",
+   "amount_share_estimate": 3018000
   },
   {
    "id": 120846,
@@ -387,7 +411,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/18138d98-3320-4c2f-a406-f5436aa925cf/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/18138d98-3320-4c2f-a406-f5436aa925cf/print/",
+   "amount_share_estimate": 227650.34965034964
   },
   {
    "id": 184039,
@@ -401,7 +426,8 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/6a146a3b-3d38-47e6-881a-5f47e8ff56c2/print/"
+   "sample_filing": "https://lda.gov/filings/public/filing/6a146a3b-3d38-47e6-881a-5f47e8ff56c2/print/",
+   "amount_share_estimate": 612500
   }
  ],
  "top_registrants": [

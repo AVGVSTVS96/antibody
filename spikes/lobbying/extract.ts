@@ -78,7 +78,9 @@ export function findRefs(text: string, filingYear: number, period: string, billK
     const existed = periodEnd >= hit.introduced;
     let confidence: Ref["confidence"];
     let why: string;
-    if (!sameCongress) { confidence = "low"; why = `filing is from the ${congress}th Congress, bill is ${targetCongress(billKey)}th`; }
+    const split = /^\s\d{1,4}\b/.test(text.slice(m.index! + m[0].length)) && !named;
+    if (split) { confidence = "low"; why = "digits right after the number look like a split bill number"; }
+    else if (!sameCongress) { confidence = "low"; why = explicitCongress ? `text says ${explicitCongress[0]}, bill is ${targetCongress(billKey)}th` : `filing is from the ${congress}th Congress, bill is ${targetCongress(billKey)}th`; }
     else if (rival && !named) { confidence = "low"; why = `nearby text names another bill: "${rival[0]}"`; }
     else if (!existed) { confidence = "low"; why = `filing period ends ${periodEnd}, before the bill was introduced ${hit.introduced}`; }
     else if (named) { confidence = "high"; why = "number sits next to the bill's name or public law"; }

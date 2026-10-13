@@ -45,7 +45,7 @@ export async function count(params: Record<string, string | number>) {
   return (await get(filingsUrl(params))).count as number;
 }
 
-export async function* allFilings(params: Record<string, string | number>, concurrency = 5) {
+export async function* allFilings(params: Record<string, string | number>, concurrency = 8) {
   const first = await get(filingsUrl(params));
   yield* first.results;
   const pages = Math.ceil(first.count / 25);

@@ -36,6 +36,7 @@ export type Match = {
   amount: number | null;
   amount_kind: "income" | "expenses" | null;
   confidence: Ref["confidence"];
+  activities_total: number;
   activities: { issue_code: string; description: string; refs: Ref[]; lobbyists: { id: number; name: string; covered_position: string | null }[] }[];
   superseded?: boolean;
 };
@@ -69,6 +70,7 @@ export async function matchesFor(billKey: string): Promise<{ candidates: number;
       amount: f.income != null ? Number(f.income) : f.expenses != null ? Number(f.expenses) : null,
       amount_kind: f.income != null ? "income" : f.expenses != null ? "expenses" : null,
       confidence,
+      activities_total: (f.lobbying_activities ?? []).length,
       activities,
     });
   }
@@ -84,6 +86,8 @@ export async function matchesFor(billKey: string): Promise<{ candidates: number;
   return { candidates: lines.length, matches };
 }
 
+const share = (m: Match) => ((m.amount ?? 0) * m.activities.length) / Math.max(1, m.activities_total);
+
 function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence"][]) {
   const reports = all.filter((m) => !m.superseded && !m.filing_type.startsWith("R") && minConfidence.includes(m.confidence));
   const registrations = all.filter((m) => m.filing_type.startsWith("R") && minConfidence.includes(m.confidence));
@@ -93,7 +97,7 @@ function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence
   const codes = new Map<string, number>();
   for (const m of reports) {
     const c = clients.get(m.client.id) ?? { id: m.client.id, name: m.client.name, reports: 0, amount_on_reports: 0, registrants: new Set(), phases: new Set(), sample_filing: m.filing_url };
-    c.reports++; c.amount_on_reports += m.amount ?? 0; c.registrants.add(m.registrant.name); c.phases.add(m.phase);
+    c.reports++; c.amount_on_reports += m.amount ?? 0; c.amount_share_estimate = (c.amount_share_estimate ?? 0) + share(m); c.registrants.add(m.registrant.name); c.phases.add(m.phase);
     clients.set(m.client.id, c);
     const r = registrants.get(m.registrant.id) ?? { id: m.registrant.id, name: m.registrant.name, reports: 0, clients: new Set(), amount_on_reports: 0 };
     r.reports++; r.clients.add(m.client.name); r.amount_on_reports += m.amount ?? 0;
@@ -120,6 +124,7 @@ function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence
     lobbyists: lob.length,
     lobbyists_with_covered_position: lob.filter((l) => l.covered_positions.size).length,
     amount_on_reports_usd: reports.reduce((s, m) => s + (m.amount ?? 0), 0),
+    amount_share_estimate_usd: Math.round(reports.reduce((s, m) => s + share(m), 0)),
     issue_codes: Object.fromEntries([...codes].sort((a, b) => b[1] - a[1])),
     top_clients: plain([...clients.values()].sort((a, b) => b.amount_on_reports - a.amount_on_reports).slice(0, 25)),
     top_registrants: plain([...registrants.values()].sort((a, b) => b.reports - a.reports).slice(0, 15).map((r) => ({ ...r, clients: r.clients.size }))),
@@ -137,6 +142,6 @@ if (import.meta.main) {
     for (const m of matches) conf[m.confidence]!++;
     const summary = { candidates_from_api: candidates, matched_filings: matches.length, by_confidence: conf, ...summarize(bill.key, matches, ["high", "medium"]) };
     await Bun.write(`${out}${bill.key}.json`, JSON.stringify(summary, null, 1));
-    console.log(bill.key, JSON.stringify({ candidates, matched: matches.length, conf, reports: summary.reports, clients: summary.clients, lobbyists: summary.lobbyists, covered: summary.lobbyists_with_covered_position, usd: summary.amount_on_reports_usd, phases: summary.by_phase }));
+    console.log(bill.key, JSON.stringify({ candidates, matched: matches.length, conf, reports: summary.reports, clients: summary.clients, registrants: summary.registrants, lobbyists: summary.lobbyists, covered: summary.lobbyists_with_covered_position, usd: summary.amount_on_reports_usd, usd_share: summary.amount_share_estimate_usd, phases: summary.by_phase }));
   }
 }
