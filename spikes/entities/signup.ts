@@ -1,0 +1,15 @@
+import { chromium } from "playwright";
+const exe = `${process.env.HOME}/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell`;
+const browser = await chromium.launch({ executablePath: exe });
+const page = await browser.newPage();
+page.on("response", async r => { if (r.url().includes("users.json")) console.log(r.status(), (await r.text()).slice(0, 400)); });
+await page.goto("https://api.data.gov/signup/", { waitUntil: "networkidle" });
+await page.fill("#user_first_name", "hex");
+await page.fill("#user_last_name", "antibody");
+await page.fill("#user_email", "hex-ai@agentmail.to");
+await page.check("#user_terms_and_conditions").catch(() => {});
+await page.click("button[type=submit], input[type=submit]");
+await page.waitForTimeout(8000);
+console.log((await page.innerText("body")).slice(0, 800));
+await page.screenshot({ path: process.argv[2] });
+await browser.close();
