@@ -7,14 +7,14 @@ MEASURES = {"budget_authority", "outlays", "revenues", "off_budget_revenues"}
 
 doc = json.load(open(sys.argv[1]))
 report = []
-for sheet in doc["sheets"]:
+for sheet in doc.get("sheets") or doc["tables"]:
     sums = collections.defaultdict(lambda: collections.Counter())
     totals = {}
     for r in sheet["rows"]:
         key = (r["block"], r["measure_kind"])
         if r["measure_kind"] not in MEASURES:
             continue
-        if r["line_kind"] in ADDITIVE:
+        if r["line_kind"] in ADDITIVE and not r.get("breakdown_of_total"):
             for y, v in r["values"].items():
                 sums[key][y] += v or 0
         elif r["line_kind"] == "total":

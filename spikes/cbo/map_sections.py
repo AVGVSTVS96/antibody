@@ -42,7 +42,7 @@ def main(rows_path, xml_path, govinfo_url):
     doc = json.load(open(rows_path))
     sections = bill_sections(xml_path)
     seen, missing, weak = set(), [], []
-    for sheet in doc["sheets"]:
+    for sheet in doc.get("sheets") or doc["tables"]:
         for r in sheet["rows"]:
             r["bill_sections"] = []
             for s in r["sections"]:
@@ -73,7 +73,7 @@ def main(rows_path, xml_path, govinfo_url):
         "found_by_heading_only": sum(1 for m in missing if m[2]),
         "missing": missing,
         "low_title_similarity": weak,
-        "bill_sections_without_cbo_row": len(set(sections) - {b["section"] for sh in doc["sheets"] for r in sh["rows"] for b in r["bill_sections"]}),
+        "bill_sections_without_cbo_row": len(set(sections) - {b["section"] for sh in (doc.get("sheets") or doc["tables"]) for r in sh["rows"] for b in r["bill_sections"]}),
     }
     print(json.dumps(stats, indent=1))
 
