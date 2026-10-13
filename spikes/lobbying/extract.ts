@@ -24,6 +24,7 @@ type Target = {
   names: RegExp[];
   laws: string[];
   rivals: RegExp;
+  support?: RegExp;
 };
 
 const targets: Record<string, Target> = {
@@ -41,7 +42,8 @@ const targets: Record<string, Target> = {
   obbba: {
     bill: "obbba",
     numbers: [{ chamber: "hr", num: 1, introduced: "2025-05-20" }],
-    names: [/\bOne,? Big,? Beautiful Bill\b/i, /\bOBBBA?\b/, /\bBig Beautiful Bill\b/i],
+    support: /\breconciliation\b|H\.\s?Con\.\s?Res\.\s?14\b|\bSec(?:tion)?s?\.?\s*7\d{4}\b/i,
+    names: [/\bOne,?\.? Big,?\.? Beautiful Bill\b/i, /\bOBBBA?\b/, /\bBig Beautiful Bill\b/i],
     laws: ["119-21"],
     rivals: /\b(Tax Cuts and Jobs Act|TCJA|115-97|115th|For the People Act|Lower Energy Costs Act|118th|117th)\b/i,
   },
@@ -84,6 +86,7 @@ export function findRefs(text: string, filingYear: number, period: string, billK
     else if (rival && !named) { confidence = "low"; why = `nearby text names another bill: "${rival[0]}"`; }
     else if (!existed) { confidence = "low"; why = `filing period ends ${periodEnd}, before the bill was introduced ${hit.introduced}`; }
     else if (named) { confidence = "high"; why = "number sits next to the bill's name or public law"; }
+    else if (t.support?.test(window)) { confidence = "high"; why = `number matches, same Congress, and the clause says "${window.match(t.support)![0]}"`; }
     else { confidence = chamber === "hr" && num === 1 ? "medium" : "high"; why = "number matches, same Congress, after introduction"; }
     refs.push({ bill: billKey, how: "number", text: m[0], confidence, why });
   }

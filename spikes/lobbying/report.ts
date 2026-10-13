@@ -86,19 +86,51 @@ export async function matchesFor(billKey: string): Promise<{ candidates: number;
   return { candidates: lines.length, matches };
 }
 
+export function clientKey(name: string) {
+  return name
+    .toUpperCase()
+    .replace(/^.*\b(?:OBO|ON BEHALF OF|O\/B\/O)\b/, "")
+    .replace(/\(.*?\)/g, " ")
+    .replace(/&/g, " AND ")
+    .replace(/[^A-Z0-9 ]+/g, " ")
+    .replace(/\b(THE|INC|INCORPORATED|LLC|L L C|LP|LLP|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HOLDINGS?|GROUP|N A|NA|USA|U S A|US|U S|AND AFFILIATES|AFFILIATES|AND ITS SUBSIDIARIES|AND VARIOUS SUBSIDIARIES|SUBSIDIARIES)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const share = (m: Match) => ((m.amount ?? 0) * m.activities.length) / Math.max(1, m.activities_total);
+
+function clientSpend(reports: Match[]) {
+  const quarters = new Map<string, Match[]>();
+  for (const m of reports) {
+    const k = `${clientKey(m.client.name)}|${m.filing_year}|${m.filing_period}`;
+    quarters.set(k, [...(quarters.get(k) ?? []), m]);
+  }
+  const spend = new Map<string, { usd: number; share_usd: number }>();
+  for (const ms of quarters.values()) {
+    const inHouse = ms.filter((m) => m.amount_kind === "expenses");
+    const counted = inHouse.length ? inHouse : ms.filter((m) => m.amount_kind === "income");
+    const key = clientKey(ms[0]!.client.name);
+    const s = spend.get(key) ?? { usd: 0, share_usd: 0 };
+    for (const m of counted) { s.usd += m.amount ?? 0; s.share_usd += share(m); }
+    spend.set(key, s);
+  }
+  return spend;
+}
 
 function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence"][]) {
   const reports = all.filter((m) => !m.superseded && !m.filing_type.startsWith("R") && minConfidence.includes(m.confidence));
   const registrations = all.filter((m) => m.filing_type.startsWith("R") && minConfidence.includes(m.confidence));
-  const clients = new Map<number, any>();
+  const clients = new Map<string, any>();
   const registrants = new Map<number, any>();
   const lobbyists = new Map<number, any>();
   const codes = new Map<string, number>();
   for (const m of reports) {
-    const c = clients.get(m.client.id) ?? { id: m.client.id, name: m.client.name, reports: 0, amount_on_reports: 0, registrants: new Set(), phases: new Set(), sample_filing: m.filing_url };
-    c.reports++; c.amount_on_reports += m.amount ?? 0; c.amount_share_estimate = (c.amount_share_estimate ?? 0) + share(m); c.registrants.add(m.registrant.name); c.phases.add(m.phase);
-    clients.set(m.client.id, c);
+    const ck = clientKey(m.client.name);
+    const c = clients.get(ck) ?? { key: ck, names: new Set(), client_ids: new Set(), reports: 0, quarters: new Set(), registrants: new Set(), phases: new Set(), sample_filing: m.filing_url };
+    c.names.add(m.client.name); c.client_ids.add(m.client.id);
+    c.reports++; c.quarters.add(`${m.filing_year} ${m.filing_period}`); c.registrants.add(m.registrant.name); c.phases.add(m.phase);
+    clients.set(ck, c);
     const r = registrants.get(m.registrant.id) ?? { id: m.registrant.id, name: m.registrant.name, reports: 0, clients: new Set(), amount_on_reports: 0 };
     r.reports++; r.clients.add(m.client.name); r.amount_on_reports += m.amount ?? 0;
     registrants.set(m.registrant.id, r);
@@ -114,6 +146,13 @@ function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence
   }
   const plain = (o: any) => JSON.parse(JSON.stringify(o, (_k, v) => (v instanceof Set ? [...v] : v)));
   const lob = [...lobbyists.values()].map((l) => ({ ...l, reports: l.reports.size }));
+  const spend = clientSpend(reports);
+  for (const c of clients.values()) {
+    c.total_spend_on_quarters_usd = spend.get(c.key)?.usd ?? 0;
+    c.bill_share_estimate_usd = Math.round(spend.get(c.key)?.share_usd ?? 0);
+    c.quarters = c.quarters.size;
+    c.firms = c.registrants.size;
+  }
   return {
     bill: bills.find((b) => b.key === billKey)!.name,
     reports: reports.length,
@@ -123,11 +162,12 @@ function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence
     registrants: registrants.size,
     lobbyists: lob.length,
     lobbyists_with_covered_position: lob.filter((l) => l.covered_positions.size).length,
-    amount_on_reports_usd: reports.reduce((s, m) => s + (m.amount ?? 0), 0),
-    amount_share_estimate_usd: Math.round(reports.reduce((s, m) => s + share(m), 0)),
+    total_spend_on_quarters_usd: [...spend.values()].reduce((s, x) => s + x.usd, 0),
+    bill_share_estimate_usd: Math.round([...spend.values()].reduce((s, x) => s + x.share_usd, 0)),
     issue_codes: Object.fromEntries([...codes].sort((a, b) => b[1] - a[1])),
-    top_clients: plain([...clients.values()].sort((a, b) => b.amount_on_reports - a.amount_on_reports).slice(0, 25)),
-    top_registrants: plain([...registrants.values()].sort((a, b) => b.reports - a.reports).slice(0, 15).map((r) => ({ ...r, clients: r.clients.size }))),
+    top_clients: plain([...clients.values()].sort((a, b) => b.firms - a.firms || b.quarters - a.quarters || b.bill_share_estimate_usd - a.bill_share_estimate_usd).slice(0, 25)),
+    top_clients_by_share_estimate: plain([...clients.values()].sort((a, b) => b.bill_share_estimate_usd - a.bill_share_estimate_usd).slice(0, 15)),
+    top_registrants: plain([...registrants.values()].sort((a, b) => b.clients.size - a.clients.size).slice(0, 15).map((r) => ({ ...r, clients: r.clients.size }))),
     covered_lobbyists_sample: plain(lob.filter((l) => l.covered_positions.size).sort((a, b) => b.reports - a.reports).slice(0, 25)),
   };
 }
@@ -142,6 +182,6 @@ if (import.meta.main) {
     for (const m of matches) conf[m.confidence]!++;
     const summary = { candidates_from_api: candidates, matched_filings: matches.length, by_confidence: conf, ...summarize(bill.key, matches, ["high", "medium"]) };
     await Bun.write(`${out}${bill.key}.json`, JSON.stringify(summary, null, 1));
-    console.log(bill.key, JSON.stringify({ candidates, matched: matches.length, conf, reports: summary.reports, clients: summary.clients, registrants: summary.registrants, lobbyists: summary.lobbyists, covered: summary.lobbyists_with_covered_position, usd: summary.amount_on_reports_usd, usd_share: summary.amount_share_estimate_usd, phases: summary.by_phase }));
+    console.log(bill.key, JSON.stringify({ candidates, matched: matches.length, conf, reports: summary.reports, clients: summary.clients, registrants: summary.registrants, lobbyists: summary.lobbyists, covered: summary.lobbyists_with_covered_position, usd: summary.total_spend_on_quarters_usd, usd_share: summary.bill_share_estimate_usd, phases: summary.by_phase }));
   }
 }

@@ -1,0 +1,48 @@
+#1 low 2025 second_quarter BOOKING HOLDINGS | ref="H.R. 1" (number; nearby text names another bill: "Tax Cuts and Jobs Act")
+   https://lda.gov/filings/public/filing/974478b8-1f2f-4640-8034-b6f6427e297c/print/
+   …International tax and trades reforms / Digital service tax Issues relating to the Tax Cuts and Jobs Act, Issues related to Tax Cuts and Jobs Act / H.R. 1 Reconciliation…
+
+#2 low 2025 first_quarter PEABODY INVESTMENTS CORP | ref="H.R. 1" (number; nearby text names another bill: "Lower Energy Costs Act")
+   https://lda.gov/filings/public/filing/d080ae3e-0f04-4a44-a070-e307839e86ba/print/
+   …. 5.1956 - Manufacturing Clean Energy and Energy Efficiency Act of 2021 5.1447 - Abandoned Mine Land Reclamation Fee Extension Act Inflation Reduction Act 2022 H.R. 1 - Lower Energy Costs Act S.1456 - Spur Act H.R. 3982 - Methane Reduction and Economic Growth Act S.912 & H.R. 2685 Mining Schools Act of 2023…
+
+#3 low 2026 first_quarter GEOSYNTHETIC MATERIALS ASSOCIATION - ATA (FORMERLY KNOWN AS GMA - IFAI) | ref="H.R. 1" (number; nearby text names another bill: "Lower Energy Costs Act")
+   https://lda.gov/filings/public/filing/7f42b01b-026b-4e59-a510-471ce4fefe9c/print/
+   …ns for the energy industry. Issues related to energy and environmental permitting reform. Issues related to Buy America. Issues related to permitting reform in H.R. 1, the Lower Energy Costs Act. Issues related to the creation of the Geosynthetics Caucus.…
+
+#4 low 2025 first_quarter ABBVIE INC. | ref="H.R. 1" (number; nearby text names another bill: "115-97")
+   https://lda.gov/filings/public/filing/dfe0964f-e3fe-4fd1-8024-f3122cb1639a/print/
+   …H.R. 1328, Supply Chain Security and Growth Act of 2025 H.R. 1990, American Innovation and R&D Competitiveness Act of 2025 Public Law 115-97 (formerly known as H.R. 1, Tax Cuts and Jobs Act) Implementation Policy proposals relating to economic activity in Puerto Rico International tax issues, including OECD digital taxation …
+
+#5 low 2025 fourth_quarter GEOSYNTHETIC MATERIALS ASSOCIATION - ATA (FORMERLY KNOWN AS GMA - IFAI) | ref="H.R. 1" (number; nearby text names another bill: "Lower Energy Costs Act")
+   https://lda.gov/filings/public/filing/7f9a4bec-19ec-4289-ac0e-3589dd22ff78/print/
+   …ns for the energy industry. Issues related to energy and environmental permitting reform. Issues related to Buy America. Issues related to permitting reform in H.R. 1, the Lower Energy Costs Act. Issues related to the creation of the Geosynthetics Caucus.…
+
+#6 low 2025 first_quarter HITACHI, LTD | ref="H.R.1" (number; text says 115th Congress, bill is 119th)
+   https://lda.gov/filings/public/filing/ae600853-3ec7-44fe-8d80-c18278f83d78/print/
+   …Extension of the Tax Cuts and Jobs Act (TCJA) (H.R.1 - 115th Congress)…
+
+#7 low 2025 second_quarter STRATA PRODUCTION COMPANY | ref="H.R.1" (number; nearby text names another bill: "Lower Energy Costs Act")
+   https://lda.gov/filings/public/filing/51a6882f-e76d-4fca-84ba-d244d8ab7903/print/
+   …Permian Basin oil and gas operations. Issues related to designated potash area. H.R.1 - Lower Energy Costs Act. BLM bonding rules. FY26 Appropriations.…
+
+#8 low 2025 first_quarter CAREER EDUCATION COLLEGES & UNIVERSITIES (FKA ASS'N OF PRIVATE SECTOR COLLEGES A | ref="H. R. 1" (number; digits right after the number look like a split bill number)
+   https://lda.gov/filings/public/filing/3a1b5468-db9e-4ca9-91bd-640cd899fc7b/print/
+   …H. R. 1 477/S. 722 Freedom To Invest in Tomorrow's Workforce Act.…
+
+#9 low 2025 first_quarter NATIONAL FISHERIES INSTITUTE | ref="HR. 1" (number; filing period ends 2025-03-31, before the bill was introduced 2025-05-20)
+   https://lda.gov/filings/public/filing/da120740-8900-4480-b5e5-833a7e8f834d/print/
+   …ation; FY24 Appropriations Bills implementation; FY2025 Budget and Appropriation; American Rescue Plan implementation; 2022 NDAA Act implementation; Farm Bill, HR. 1 Low Energy Cost Act…
+
+#10 low 2025 first_quarter NATIONAL VENTURE CAPITAL ASSOCIATION | ref="H.R.1" (number; nearby text names another bill: "Tax Cuts and Jobs Act")
+   https://lda.gov/filings/public/filing/361f1010-bc6c-4163-b7d5-04074b14b422/print/
+   …ll Business Stock; Stock options; Partnership tax policy; R&D credit expensing; American Innovation and R&D Competitiveness Act H.R.1990; Tax Cuts and Jobs Act H.R.1; Climate and energy tax issues, including production and investment tax credits and Section 45Q; Implementation of the Inflation Reduction Act (H.R.5376) Publi…
+
+#11 low 2025 first_quarter EDISON ELECTRIC INSTITUTE | ref="H.R. 1" (number; nearby text names another bill: "Lower Energy Costs Act")
+   https://lda.gov/filings/public/filing/331923d6-0685-40a3-9038-b062e640a047/print/
+   …H.R. 1, the Lower Energy Costs Act; H.R. 7023, the Creating Confidence in Clean Water Permitting Act S. 1449, the RESTART Act; H.R. 1577, the Builder Act; H.R. 3746, …
+
+#12 low 2025 third_quarter NATIONAL CONFECTIONERS ASSOCIATION | ref="H.R.1" (number; nearby text names another bill: "TCJA")
+   https://lda.gov/filings/public/filing/05d7238a-43da-4fbb-8523-180d7764f3b3/print/
+   …TCJA Extension and general business tax issues H.R.1 Implementation…
+

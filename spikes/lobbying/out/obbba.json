@@ -1,573 +1,1739 @@
 {
- "candidates_from_api": 5497,
- "matched_filings": 5476,
+ "candidates_from_api": 12407,
+ "matched_filings": 12357,
  "by_confidence": {
-  "high": 4408,
-  "medium": 1029,
-  "low": 39
+  "high": 11110,
+  "medium": 1184,
+  "low": 63
  },
  "bill": "One Big Beautiful Bill Act (H.R.1, 119th, P.L. 119-21)",
- "reports": 5238,
- "registrations": 79,
+ "reports": 11806,
+ "registrations": 100,
  "by_phase": {
-  "bill": 3501,
-  "enactment-quarter": 1737,
-  "law": 0
+  "bill": 3510,
+  "enactment-quarter": 3091,
+  "law": 5205
  },
- "clients": 3652,
- "registrants": 1599,
- "lobbyists": 5472,
- "lobbyists_with_covered_position": 961,
- "amount_on_reports_usd": 883893013.3299999,
- "amount_share_estimate_usd": 383615328,
+ "clients": 3003,
+ "registrants": 1740,
+ "lobbyists": 6256,
+ "lobbyists_with_covered_position": 1279,
+ "total_spend_on_quarters_usd": 2364828473.8600006,
+ "bill_share_estimate_usd": 894584157,
  "issue_codes": {
-  "TAX": 2480,
-  "BUD": 1019,
-  "MMM": 649,
-  "HCR": 579,
-  "ENG": 346,
-  "EDU": 268,
-  "AGR": 218,
-  "DEF": 198,
-  "ENV": 101,
-  "NAT": 98,
-  "TEC": 85,
-  "TRD": 81,
-  "TRA": 76,
-  "AVI": 75,
-  "FIN": 66,
-  "HOM": 59,
-  "INS": 57,
-  "LBR": 54,
-  "SCI": 53,
-  "GOV": 52,
-  "IMM": 50,
-  "MAN": 48,
-  "AUT": 44,
-  "PHA": 40,
-  "HOU": 36,
-  "IND": 35,
-  "BAN": 33,
-  "URB": 33,
-  "AER": 32,
-  "RET": 27,
-  "CAW": 27,
-  "FUE": 24,
-  "CSP": 22,
-  "MAR": 19,
-  "CPI": 19,
-  "ECN": 18,
-  "TOU": 18,
-  "COM": 18,
-  "CIV": 17,
-  "LAW": 17,
-  "CPT": 17,
-  "RES": 16,
-  "TOR": 15,
-  "FIR": 15,
-  "SMB": 14,
-  "UTI": 14,
-  "FAM": 13,
-  "MED": 13,
-  "FOO": 10,
-  "RRR": 9,
-  "TOB": 9,
-  "VET": 9,
-  "WEL": 9,
-  "TRU": 8,
-  "SPO": 7,
-  "GAM": 6,
-  "INT": 6,
-  "DIS": 6,
-  "REL": 5,
-  "ART": 5,
-  "FOR": 4,
-  "CHM": 4,
-  "TAR": 4,
-  "CON": 3,
-  "ACC": 3,
-  "MIA": 3,
+  "TAX": 5754,
+  "BUD": 2203,
+  "MMM": 1591,
+  "HCR": 1308,
+  "ENG": 794,
+  "EDU": 702,
+  "AGR": 487,
+  "DEF": 391,
+  "ENV": 234,
+  "NAT": 217,
+  "TRA": 215,
+  "TRD": 207,
+  "AVI": 180,
+  "TEC": 175,
+  "FIN": 164,
+  "INS": 160,
+  "HOM": 147,
+  "GOV": 118,
+  "LBR": 115,
+  "SCI": 111,
+  "IMM": 110,
+  "MAN": 100,
+  "PHA": 100,
+  "AUT": 96,
+  "HOU": 75,
+  "URB": 65,
+  "RET": 64,
+  "BAN": 64,
+  "AER": 63,
+  "IND": 62,
+  "COM": 62,
+  "FUE": 62,
+  "CAW": 56,
+  "SMB": 55,
+  "TOU": 46,
+  "ECN": 44,
+  "CSP": 43,
+  "MED": 42,
+  "RES": 40,
+  "MAR": 39,
+  "WEL": 39,
+  "FIR": 36,
+  "UTI": 36,
+  "CIV": 35,
+  "CPI": 35,
+  "LAW": 34,
+  "FAM": 34,
+  "FOO": 29,
+  "CPT": 28,
+  "TOR": 26,
+  "TOB": 20,
+  "VET": 20,
+  "TRU": 20,
+  "GAM": 19,
+  "RRR": 17,
+  "TAR": 17,
+  "SPO": 11,
+  "CHM": 11,
+  "ALC": 10,
+  "INT": 10,
+  "DIS": 9,
+  "FOR": 9,
+  "WAS": 8,
+  "REL": 7,
+  "POS": 7,
+  "MIA": 6,
+  "ART": 6,
+  "ANI": 5,
+  "CON": 4,
+  "ACC": 4,
+  "BNK": 4,
+  "DOC": 3,
   "ROD": 2,
-  "ALC": 2,
-  "ANI": 2,
-  "POS": 2,
-  "DOC": 2,
-  "BNK": 2,
-  "APP": 1,
-  "WAS": 1,
+  "APP": 2,
   "UNM": 1,
-  "BEV": 1
+  "BEV": 1,
+  "ADV": 1
  },
  "top_clients": [
   {
-   "id": 146969,
-   "name": "CHAMBER OF COMMERCE OF THE U.S.A.",
-   "reports": 1,
-   "amount_on_reports": 19340000,
+   "key": "ALTRIA CLIENT SERVICES",
+   "names": [
+    "ALTRIA CLIENT SERVICES LLC",
+    "ALTRIA CLIENT SERVICES, LLC",
+    "ALTRIA CLIENT SERVICES"
+   ],
+   "client_ids": [
+    196595,
+    188942,
+    194239,
+    192144,
+    52601,
+    203229,
+    101193,
+    64208,
+    162974,
+    129487,
+    138239
+   ],
+   "reports": 29,
+   "quarters": 5,
+   "registrants": [
+    "FORBES-TATE",
+    "RAFFANIELLO & ASSOCIATES",
+    "NORTH SOUTH GOVERNMENT STRATEGIES F/K/A JDM PUBLIC STRATEGIES, LLC",
+    "CROSSROADS STRATEGIES, LLC",
+    "VENTURE GOVERNMENT STRATEGIES, LLC (FKA HOBART HALLAWAY & QUAYLE VENTURES, LLC)",
+    "MARSHALL & POPP, LLC",
+    "AKIN GUMP STRAUSS HAUER & FELD",
+    "CAPITOL 6 ADVISORS",
+    "CAPITOL TAX PARTNERS, LLP",
+    "THE RUSSELL GROUP, INC.",
+    "ALTRIA CLIENT SERVICES LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/032555ce-b11e-4277-8ec7-a0347c9392cb/print/",
+   "total_spend_on_quarters_usd": 9480000,
+   "bill_share_estimate_usd": 3210000,
+   "firms": 11
+  },
+  {
+   "key": "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
+   "names": [
+    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA (PHRMA)",
+    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
+    "PHARMACEUTICAL RESEARCH & MANUFACTURERS OF AMERICA INC"
+   ],
+   "client_ids": [
+    199376,
+    196261,
+    192228,
+    203230,
+    115000,
+    138226,
+    193494,
+    64895,
+    184407,
+    58100
+   ],
+   "reports": 26,
+   "quarters": 5,
+   "registrants": [
+    "ADVANCED POLICY CONSULTING, LLC",
+    "DESIMONE CONSULTING, LLC",
+    "CROSSROADS STRATEGIES, LLC",
+    "MARSHALL & POPP, LLC",
+    "COVINGTON & BURLING LLP",
+    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
+    "W STRATEGIES, LLC",
+    "DLA PIPER LLP (US)",
+    "CAPITOL COUNSEL LLC",
+    "YC CONSULTING, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/bcfa80da-0011-4cb1-8fd9-4447618b0124/print/",
+   "total_spend_on_quarters_usd": 44590000,
+   "bill_share_estimate_usd": 26754000,
+   "firms": 10
+  },
+  {
+   "key": "GENERAL MOTORS",
+   "names": [
+    "GENERAL MOTORS COMPANY",
+    "TOWER 19 ON BEHALF OF GENERAL MOTORS COMPANY",
+    "GENERAL MOTORS LLC"
+   ],
+   "client_ids": [
+    208778,
+    190575,
+    178976,
+    201631,
+    203557,
+    66612,
+    208777,
+    191517,
+    208786,
+    68232
+   ],
+   "reports": 31,
+   "quarters": 5,
+   "registrants": [
+    "MISSY EDWARDS STRATEGIES, LLC",
+    "POLARIS-HUTTON GROUP, LLC",
+    "THE WASHINGTON TAX & PUBLIC POLICY GROUP",
+    "LINCOLN PARK GROUP L.L.C.",
+    "BL PARTNERS GROUP, LLC",
+    "VENTURE GOVERNMENT STRATEGIES, LLC (FKA HOBART HALLAWAY & QUAYLE VENTURES, LLC)",
+    "FIERCE GOVERNMENT RELATIONS",
+    "GENERAL MOTORS COMPANY",
+    "ELEVATE GOVERNMENT AFFAIRS, LLC",
+    "SIGHTLINE ADVOCACY, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/ea72dca6-5107-4fb2-89b8-183460b91a36/print/",
+   "total_spend_on_quarters_usd": 26290000,
+   "bill_share_estimate_usd": 16912000,
+   "firms": 10
+  },
+  {
+   "key": "BUSINESS ROUNDTABLE",
+   "names": [
+    "THE BUSINESS ROUNDTABLE, INC.",
+    "THE BUSINESS ROUNDTABLE",
+    "BUSINESS ROUNDTABLE",
+    "BUSINESS ROUNDTABLE INC"
+   ],
+   "client_ids": [
+    54970,
+    204735,
+    151251,
+    199136,
+    60789,
+    110753,
+    184957,
+    60419,
+    100490,
+    210297
+   ],
+   "reports": 33,
+   "quarters": 5,
+   "registrants": [
+    "S-3 GROUP",
+    "MEHLMAN CONSULTING, INC.",
+    "WILLIAMS AND JENSEN, PLLC",
+    "FIERCE GOVERNMENT RELATIONS",
+    "PHRONESISDC, LLC",
+    "THE BUSINESS ROUNDTABLE, INC.",
+    "INVARIANT LLC",
+    "CGCN GROUP, LLC",
+    "AKIN GUMP STRAUSS HAUER & FELD",
+    "RESOLUTION PUBLIC AFFAIRS, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/d27740a8-1bb3-44e7-a53a-16e59aed0deb/print/",
+   "total_spend_on_quarters_usd": 41180000,
+   "bill_share_estimate_usd": 5529890,
+   "firms": 10
+  },
+  {
+   "key": "COMCAST",
+   "names": [
+    "COMCAST CORPORATION"
+   ],
+   "client_ids": [
+    196147,
+    178513,
+    151438,
+    59029,
+    169266,
+    59453,
+    56106,
+    114100,
+    199325
+   ],
+   "reports": 26,
+   "quarters": 5,
+   "registrants": [
+    "PENN AVENUE PARTNERS",
+    "THE NICKLES GROUP, LLC",
+    "WILLIAMS AND JENSEN, PLLC",
+    "SMART POLICY GROUP LLC",
+    "DLA PIPER LLP (US)",
+    "FIERCE GOVERNMENT RELATIONS",
+    "AXADVOCACY GOVERNMENT RELATIONS",
+    "COMCAST CORPORATION",
+    "HARBINGER STRATEGIES, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/b62d7a8e-9aa0-4223-b9ca-44bfc9abcbcd/print/",
+   "total_spend_on_quarters_usd": 15470000,
+   "bill_share_estimate_usd": 3768571,
+   "firms": 9
+  },
+  {
+   "key": "FORD MOTOR",
+   "names": [
+    "FORD MOTOR COMPANY",
+    "FORD MOTOR COMPANY, INC."
+   ],
+   "client_ids": [
+    202850,
+    162954,
+    57655,
+    184105,
+    65167,
+    120880,
+    73266
+   ],
+   "reports": 19,
+   "quarters": 6,
+   "registrants": [
+    "O'KEEFFE SHAHMORADI STRATEGIES, LLC",
+    "CAPITOL TAX PARTNERS, LLP",
+    "WILLIAMS AND JENSEN, PLLC",
+    "AVOQ, LLC",
+    "RYAN COSTELLO STRATEGIES",
+    "FORD MOTOR COMPANY",
+    "RESONANT TAX STRATEGIES, LLP"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/48dbc6e2-4b60-4598-9fb2-4d20ede246df/print/",
+   "total_spend_on_quarters_usd": 3704714,
+   "bill_share_estimate_usd": 829187,
+   "firms": 7
+  },
+  {
+   "key": "MERCK AND",
+   "names": [
+    "MERCK & CO. INC.",
+    "MERCK & CO., INC.",
+    "MERCK & CO INC",
+    "TIBER CREEK GROUP ON BEHALF OF MERCK & CO., INC."
+   ],
+   "client_ids": [
+    178554,
+    193511,
+    151341,
+    165804,
+    192168,
+    67758,
+    132602
+   ],
+   "reports": 26,
+   "quarters": 5,
+   "registrants": [
+    "THE NICKLES GROUP, LLC",
+    "W STRATEGIES, LLC",
+    "WILLIAMS AND JENSEN, PLLC",
+    "AVENUE SOLUTIONS",
+    "CROSSROADS STRATEGIES, LLC",
+    "B HALL STRATEGIES, LLC",
+    "MERCK & CO, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/59d8304b-130c-4607-aff2-98e91c27cc07/print/",
+   "total_spend_on_quarters_usd": 14860000,
+   "bill_share_estimate_usd": 7430000,
+   "firms": 7
+  },
+  {
+   "key": "T MOBILE",
+   "names": [
+    "T-MOBILE",
+    "T-MOBILE USA, INC."
+   ],
+   "client_ids": [
+    204688,
+    186717,
+    200965,
+    160754,
+    199326,
+    52862,
+    110087
+   ],
+   "reports": 21,
+   "quarters": 5,
+   "registrants": [
+    "OWEN EVANS INGOLS",
+    "KOUNTOUPES DENHAM CARR & REID, LLC",
+    "GOLDSTEIN POLICY SOLUTIONS LLC",
+    "T-MOBILE USA, INC.",
+    "HARBINGER STRATEGIES, LLC",
+    "RYAN COSTELLO STRATEGIES",
+    "BROWNSTEIN HYATT FARBER SCHRECK, LLP"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/ed0584e5-eb20-4ca7-9a5b-cbaae570e495/print/",
+   "total_spend_on_quarters_usd": 8714000,
+   "bill_share_estimate_usd": 4357000,
+   "firms": 7
+  },
+  {
+   "key": "GENERAL DYNAMICS",
+   "names": [
+    "GENERAL DYNAMICS CORPORATION",
+    "GENERAL DYNAMICS",
+    "GENERAL DYNAMICS CORP"
+   ],
+   "client_ids": [
+    197731,
+    54921,
+    139106,
+    121529,
+    193177,
+    199310,
+    158076
+   ],
+   "reports": 15,
+   "quarters": 5,
+   "registrants": [
+    "MELTSNER STRATEGIES, LLC",
+    "THE NICKLES GROUP, LLC",
+    "PRASAM",
+    "GENERAL DYNAMICS CORP",
+    "FIFESTRATEGIES, LLC",
+    "HARBINGER STRATEGIES, LLC",
+    "C. BAKER CONSULTING, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/597e979b-a4d1-4749-86e6-6eaae7489190/print/",
+   "total_spend_on_quarters_usd": 10374357,
+   "bill_share_estimate_usd": 1758060,
+   "firms": 7
+  },
+  {
+   "key": "EDISON ELECTRIC INSTITUTE",
+   "names": [
+    "EDISON ELECTRIC INSTITUTE"
+   ],
+   "client_ids": [
+    205045,
+    175518,
+    198272,
+    118842,
+    184432,
+    203313,
+    102147
+   ],
+   "reports": 21,
+   "quarters": 5,
+   "registrants": [
+    "MISSY EDWARDS STRATEGIES, LLC",
+    "MEHLMAN CONSULTING, INC.",
+    "THE SIMMONS & RUSSELL GROUP, LLC",
+    "EDISON ELECTRIC INSTITUTE",
+    "CAPITOL COUNSEL LLC",
+    "TOWER 19",
+    "ALPINE GROUP PARTNERS, LLC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/30ed925f-fff4-42fb-af2b-d1e4e71952cd/print/",
+   "total_spend_on_quarters_usd": 10574057,
+   "bill_share_estimate_usd": 1321757,
+   "firms": 7
+  },
+  {
+   "key": "INTUIT",
+   "names": [
+    "INTUIT, INC. AND AFFILIATES",
+    "INTUIT, INC. AND AFFILIATES (FORMERLY INTUIT, INC.)",
+    "STANTON PARK GROUP LLC ON BEHALF OF INTUIT, INC. AND AFFILIATES"
+   ],
+   "client_ids": [
+    184390,
+    204966,
+    57769,
+    172131,
+    161571,
+    211856,
+    172720
+   ],
+   "reports": 29,
+   "quarters": 5,
+   "registrants": [
+    "CAPITOL COUNSEL LLC",
+    "RAFFANIELLO & ASSOCIATES",
+    "DGSR LLC",
+    "STANTON PARK GROUP",
+    "INTUIT, INC. AND AFFILIATES (FORMERLY INTUIT, INC.)",
+    "FEROX STRATEGIES",
+    "NAVIGATORS GLOBAL LLC (FORMERLY DC NAVIGATORS, LLC)"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/6e5332a7-aa96-426b-872c-5268b43a9148/print/",
+   "total_spend_on_quarters_usd": 3910000,
+   "bill_share_estimate_usd": 785000,
+   "firms": 7
+  },
+  {
+   "key": "NEXTERA ENERGY",
+   "names": [
+    "NEXTERA ENERGY, INC.",
+    "NEXTERA ENERGY INC"
+   ],
+   "client_ids": [
+    196210,
+    184894,
+    204786,
+    163107,
+    160343,
+    199323,
+    100814
+   ],
+   "reports": 24,
+   "quarters": 5,
+   "registrants": [
+    "PENN AVENUE PARTNERS",
+    "INVARIANT LLC",
+    "THE NICKLES GROUP, LLC",
+    "CAPITOL TAX PARTNERS, LLP",
+    "ERNST & YOUNG LLP (WASHINGTON COUNCIL ERNST & YOUNG)",
+    "HARBINGER STRATEGIES, LLC",
+    "AKIN GUMP STRAUSS HAUER & FELD"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/95436405-a011-49df-bc97-a3339f05a007/print/",
+   "total_spend_on_quarters_usd": 1100000,
+   "bill_share_estimate_usd": 725833,
+   "firms": 7
+  },
+  {
+   "key": "VERIZON COMMUNICATIONS",
+   "names": [
+    "VERIZON COMMUNICATIONS INC.",
+    "VERIZON COMMUNICATIONS, INC.",
+    "VERIZON COMMUNICATIONS INC AND VARIOUS SUBSIDIARIES",
+    "VERIZON COMMUNICATIONS",
+    "VERIZON COMMUNICATIONS INC AND ITS SUBSIDIARIES"
+   ],
+   "client_ids": [
+    110066,
+    65739,
+    155729,
+    45040,
+    107489,
+    60474,
+    164472
+   ],
+   "reports": 22,
+   "quarters": 4,
+   "registrants": [
+    "BROWNSTEIN HYATT FARBER SCHRECK, LLP",
+    "ALPINE ADVISORS",
+    "OGR",
+    "MARSHALL & POPP, LLC",
+    "VERIZON COMMUNICATIONS INC. AND VARIOUS SUBSIDIARIES",
+    "PHRONESISDC, LLC",
+    "MERCURY STRATEGIES, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/c3764446-9188-4515-8563-5b0ed13e64a6/print/",
+   "total_spend_on_quarters_usd": 6520000,
+   "bill_share_estimate_usd": 4238333,
+   "firms": 7
+  },
+  {
+   "key": "CHARTER COMMUNICATIONS",
+   "names": [
+    "CHARTER COMMUNICATIONS, INC.",
+    "CHARTER COMMUNICATIONS",
+    "CHARTER COMMUNICATIONS INC"
+   ],
+   "client_ids": [
+    196206,
+    163120,
+    56105,
+    198956,
+    199175,
+    160744
+   ],
+   "reports": 19,
+   "quarters": 5,
+   "registrants": [
+    "PENN AVENUE PARTNERS",
+    "CAPITOL TAX PARTNERS, LLP",
+    "AXADVOCACY GOVERNMENT RELATIONS",
+    "VENTURE GOVERNMENT STRATEGIES, LLC (FKA HOBART HALLAWAY & QUAYLE VENTURES, LLC)",
+    "FIERCE GOVERNMENT RELATIONS",
+    "CHARTER COMMUNICATIONS, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/eb3b2499-dbcb-4098-81dd-0b0129df45a8/print/",
+   "total_spend_on_quarters_usd": 12740000,
+   "bill_share_estimate_usd": 12740000,
+   "firms": 6
+  },
+  {
+   "key": "AMGEN",
+   "names": [
+    "AMGEN",
+    "AMGEN, INC.",
+    "AMGEN USA INC.",
+    "TIBER CREEK HEALTH STRATEGIES, INC. ON BEHALF OF AMGEN, INC.",
+    "AMGEN INC"
+   ],
+   "client_ids": [
+    213700,
+    151339,
+    203228,
+    163017,
+    67777,
+    103709
+   ],
+   "reports": 20,
+   "quarters": 5,
+   "registrants": [
+    "THE NICKLES GROUP, LLC",
+    "WILLIAMS AND JENSEN, PLLC",
+    "MARSHALL & POPP, LLC",
+    "CAPITOL TAX PARTNERS, LLP",
+    "B HALL STRATEGIES, LLC",
+    "AMGEN, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/e8d73ea0-1e13-4009-9b8e-70f5db34f0bf/print/",
+   "total_spend_on_quarters_usd": 14700000,
+   "bill_share_estimate_usd": 8332000,
+   "firms": 6
+  },
+  {
+   "key": "FEDEX",
+   "names": [
+    "FEDEX CORPORATION"
+   ],
+   "client_ids": [
+    179029,
+    55043,
+    152847,
+    155988,
+    163076,
+    199300
+   ],
+   "reports": 21,
+   "quarters": 5,
+   "registrants": [
+    "THE WASHINGTON TAX & PUBLIC POLICY GROUP",
+    "INVARIANT LLC",
+    "FEDEX CORPORATION",
+    "OGR",
+    "CAPITOL TAX PARTNERS, LLP",
+    "HARBINGER STRATEGIES, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/a069fcda-ae2f-4560-8d66-6f464cf4d4c4/print/",
+   "total_spend_on_quarters_usd": 15851000,
+   "bill_share_estimate_usd": 2936382,
+   "firms": 6
+  },
+  {
+   "key": "HUMANA",
+   "names": [
+    "HUMANA, INC.",
+    "HUMANA",
+    "HUMANA INC"
+   ],
+   "client_ids": [
+    51742,
+    51692,
+    175519,
+    64552,
+    125923,
+    205550
+   ],
+   "reports": 21,
+   "quarters": 5,
+   "registrants": [
+    "ALB SOLUTIONS",
+    "S-3 GROUP",
+    "MEHLMAN CONSULTING, INC.",
+    "TIBER CREEK GROUP",
+    "HUMANA, INC.",
+    "RESOLUTION PUBLIC AFFAIRS, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/67273976-bc0a-418c-bc21-0f3508802803/print/",
+   "total_spend_on_quarters_usd": 5010000,
+   "bill_share_estimate_usd": 2505000,
+   "firms": 6
+  },
+  {
+   "key": "EXXON MOBIL",
+   "names": [
+    "EXXON MOBIL CORPORATION",
+    "EXXON MOBIL CORP"
+   ],
+   "client_ids": [
+    196200,
+    53633,
+    210823,
+    119494,
+    132844,
+    69247
+   ],
+   "reports": 22,
+   "quarters": 5,
+   "registrants": [
+    "PENN AVENUE PARTNERS",
+    "CROSSROADS STRATEGIES, LLC",
+    "VENTURE GOVERNMENT STRATEGIES, LLC (FKA HOBART HALLAWAY & QUAYLE VENTURES, LLC)",
+    "EXXON MOBIL CORP",
+    "MILLER & CHEVALIER, CHTD",
+    "CM STRATEGIC, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/8059671d-96de-4f43-9ff7-cd73f0ae8ab3/print/",
+   "total_spend_on_quarters_usd": 10970000,
+   "bill_share_estimate_usd": 1318889,
+   "firms": 6
+  },
+  {
+   "key": "JOHNSON AND JOHNSON SERVICES",
+   "names": [
+    "JOHNSON & JOHNSON SERVICES, INC.",
+    "JOHNSON & JOHNSON SERVICES, INC",
+    "JOHNSON & JOHNSON SERVICES INC"
+   ],
+   "client_ids": [
+    178572,
+    109885,
+    172738,
+    178943,
+    211559,
+    126906
+   ],
+   "reports": 25,
+   "quarters": 5,
+   "registrants": [
+    "THE NICKLES GROUP, LLC",
+    "BROWNSTEIN HYATT FARBER SCHRECK, LLP",
+    "NAVIGATORS GLOBAL LLC (FORMERLY DC NAVIGATORS, LLC)",
+    "THE WASHINGTON TAX & PUBLIC POLICY GROUP",
+    "SPLITOAK STRATEGIES LLC",
+    "JOHNSON & JOHNSON SERVICES, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/0d1b298e-7d58-4338-9605-e873871261cb/print/",
+   "total_spend_on_quarters_usd": 9210000,
+   "bill_share_estimate_usd": 1137333,
+   "firms": 6
+  },
+  {
+   "key": "RAI SERVICES",
+   "names": [
+    "RAI SERVICES COMPANY",
+    "PETER DAMON GROUP ON BEHALF OF RAI SERVICES COMPANY"
+   ],
+   "client_ids": [
+    201738,
+    64046,
+    123391,
+    141518,
+    54337,
+    68227
+   ],
+   "reports": 18,
+   "quarters": 5,
+   "registrants": [
+    "HR STRATEGIES LLC",
+    "OLD NORTH STRATEGIES, LLC",
+    "HECHT LATHAM SPENCER & ASSOCIATES, INC., FORMERLY KNOWN AS HECHT SPENCER & ASSOC",
+    "RAI SERVICES COMPANY",
+    "CGCN GROUP, LLC",
+    "ONMESSAGE PUBLIC STRATEGIES"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/b66d6b17-c73a-4f50-a866-a68f1c0e72c3/print/",
+   "total_spend_on_quarters_usd": 5560000,
+   "bill_share_estimate_usd": 973333,
+   "firms": 6
+  },
+  {
+   "key": "AMERICAN AIRLINES",
+   "names": [
+    "AMERICAN AIRLINES, INC.",
+    "AMERICAN AIRLINES INC"
+   ],
+   "client_ids": [
+    196141,
+    204675,
+    102619,
+    198269,
+    148737,
+    189397
+   ],
+   "reports": 16,
+   "quarters": 5,
+   "registrants": [
+    "PENN AVENUE PARTNERS",
+    "CGCN GROUP, LLC",
+    "AMERICAN AIRLINES, INC.",
+    "THE SIMMONS & RUSSELL GROUP, LLC",
+    "VENABLE LLP",
+    "THE DOERRER GROUP LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/e647c88f-bb51-427a-8bf6-e94962f8a32f/print/",
+   "total_spend_on_quarters_usd": 1940000,
+   "bill_share_estimate_usd": 904500,
+   "firms": 6
+  },
+  {
+   "key": "AMERICAN BANKERS ASSOCIATION",
+   "names": [
+    "AMERICAN BANKERS ASSOCIATION"
+   ],
+   "client_ids": [
+    202503,
+    177287,
+    55822,
+    102650,
+    63966,
+    199352
+   ],
+   "reports": 21,
+   "quarters": 5,
+   "registrants": [
+    "SPANGLER STRATEGIES LLC",
+    "TASSEY & ASSOCIATES",
+    "MONUMENT ADVOCACY",
+    "AMERICAN BANKERS ASSOCIATION",
+    "PHRONESISDC, LLC",
+    "HARBINGER STRATEGIES, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/417f5a5f-65b5-4d2f-8e16-5311b6645195/print/",
+   "total_spend_on_quarters_usd": 4430000,
+   "bill_share_estimate_usd": 466814,
+   "firms": 6
+  },
+  {
+   "key": "GOOGLE CLIENT SERVICES",
+   "names": [
+    "GOOGLE CLIENT SERVICES",
+    "GOOGLE CLIENT SERVICES LLC",
+    "GOOGLE CLIENT SERVICES, LLC"
+   ],
+   "client_ids": [
+    175069,
+    211745,
+    198265,
+    186593,
+    52687,
+    54828
+   ],
+   "reports": 14,
+   "quarters": 4,
+   "registrants": [
+    "THE MADISON GROUP",
+    "MARSHALL & POPP, LLC",
+    "THE SIMMONS & RUSSELL GROUP, LLC",
+    "GOOGLE CLIENT SERVICES LLC",
+    "JEFFRIES STRATEGIES LLC",
+    "RYAN COSTELLO STRATEGIES"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/94fe9a7b-831a-4084-a7d0-bf757a011424/print/",
+   "total_spend_on_quarters_usd": 12950000,
+   "bill_share_estimate_usd": 701287,
+   "firms": 6
+  },
+  {
+   "key": "AMERICAN HOSPITAL ASSOCIATION",
+   "names": [
+    "AMERICAN HOSPITAL ASSOCIATION"
+   ],
+   "client_ids": [
+    63509,
+    178485,
+    55824,
+    103572,
+    152608
+   ],
+   "reports": 19,
+   "quarters": 5,
+   "registrants": [
+    "RED+BLUE STRATEGIES",
+    "THE NICKLES GROUP, LLC",
+    "THE SMITH-FREE GROUP, LLC",
+    "AMERICAN HOSPITAL ASSOCIATION",
+    "O'NEILL, ATHY & CASEY, P.C."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/54bd2174-ecd4-41b7-98c8-33286c620ce7/print/",
+   "total_spend_on_quarters_usd": 28990000,
+   "bill_share_estimate_usd": 10101000,
+   "firms": 5
+  },
+  {
+   "key": "AARP",
+   "names": [
+    "AARP",
+    "AARP, INC."
+   ],
+   "client_ids": [
+    102643,
+    175682,
+    209595,
+    64147,
+    192560
+   ],
+   "reports": 11,
+   "quarters": 5,
+   "registrants": [
+    "AARP",
+    "MEHLMAN CONSULTING, INC.",
+    "ARTICLE ONE GROUP, LLC",
+    "THEGROUP DC, LLC",
+    "THORN RUN PARTNERS"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/a116fa97-8cdf-4dfd-8d04-dda85d35d830/print/",
+   "total_spend_on_quarters_usd": 18100000,
+   "bill_share_estimate_usd": 6312549,
+   "firms": 5
+  }
+ ],
+ "top_clients_by_share_estimate": [
+  {
+   "key": "CHAMBER OF COMMERCE OF",
+   "names": [
+    "CHAMBER OF COMMERCE OF THE U.S.A."
+   ],
+   "client_ids": [
+    146969
+   ],
+   "reports": 5,
+   "quarters": 5,
    "registrants": [
     "CHAMBER OF COMMERCE OF THE U.S.A."
    ],
    "phases": [
-    "bill"
+    "bill",
+    "enactment-quarter",
+    "law"
    ],
    "sample_filing": "https://lda.gov/filings/public/filing/9540c35a-5726-45ad-aa09-89283b86b0c0/print/",
-   "amount_share_estimate": 13337931.034482758
+   "total_spend_on_quarters_usd": 87650000,
+   "bill_share_estimate_usd": 50981916,
+   "firms": 1
   },
   {
-   "id": 138226,
-   "name": "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
-   "reports": 2,
-   "amount_on_reports": 16610000,
+   "key": "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
+   "names": [
+    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA (PHRMA)",
+    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
+    "PHARMACEUTICAL RESEARCH & MANUFACTURERS OF AMERICA INC"
+   ],
+   "client_ids": [
+    199376,
+    196261,
+    192228,
+    203230,
+    115000,
+    138226,
+    193494,
+    64895,
+    184407,
+    58100
+   ],
+   "reports": 26,
+   "quarters": 5,
    "registrants": [
-    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA"
+    "ADVANCED POLICY CONSULTING, LLC",
+    "DESIMONE CONSULTING, LLC",
+    "CROSSROADS STRATEGIES, LLC",
+    "MARSHALL & POPP, LLC",
+    "COVINGTON & BURLING LLP",
+    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
+    "W STRATEGIES, LLC",
+    "DLA PIPER LLP (US)",
+    "CAPITOL COUNSEL LLC",
+    "YC CONSULTING, LLC"
    ],
    "phases": [
     "bill",
-    "enactment-quarter"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/05706bbb-39a8-4a45-91d5-151396fd20a1/print/",
-   "amount_share_estimate": 9966000
-  },
-  {
-   "id": 134255,
-   "name": "NATIONAL ASSOCIATION OF REALTORS",
-   "reports": 1,
-   "amount_on_reports": 16080000,
-   "registrants": [
-    "NATIONAL ASSOCIATION OF REALTORS"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/761926db-6a74-4b64-8a91-fe688569eed8/print/",
-   "amount_share_estimate": 1608000
-  },
-  {
-   "id": 110753,
-   "name": "BUSINESS ROUNDTABLE INC",
-   "reports": 1,
-   "amount_on_reports": 9180000,
-   "registrants": [
-    "THE BUSINESS ROUNDTABLE, INC."
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/53b18917-5f32-4648-9e0b-7e2af4e1a725/print/",
-   "amount_share_estimate": 2118461.5384615385
-  },
-  {
-   "id": 102643,
-   "name": "AARP",
-   "reports": 2,
-   "amount_on_reports": 8930000,
-   "registrants": [
-    "AARP"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/a116fa97-8cdf-4dfd-8d04-dda85d35d830/print/",
-   "amount_share_estimate": 3275490.196078432
-  },
-  {
-   "id": 121529,
-   "name": "GENERAL DYNAMICS CORP",
-   "reports": 2,
-   "amount_on_reports": 6470458,
-   "registrants": [
-    "GENERAL DYNAMICS CORP"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/4afe0e35-b26d-46bf-8e60-30b5cbadd5ff/print/",
-   "amount_share_estimate": 1078409.6666666665
-  },
-  {
-   "id": 103572,
-   "name": "AMERICAN HOSPITAL ASSOCIATION",
-   "reports": 1,
-   "amount_on_reports": 6150000,
-   "registrants": [
-    "AMERICAN HOSPITAL ASSOCIATION"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/c56694f1-2658-4255-9c5b-42df25f3c8c0/print/",
-   "amount_share_estimate": 3075000
-  },
-  {
-   "id": 191116,
-   "name": "META PLATFORMS, INC. AND VARIOUS SUBSIDIARIES",
-   "reports": 1,
-   "amount_on_reports": 5770000,
-   "registrants": [
-    "META PLATFORMS, INC. AND VARIOUS SUBSIDIARIES"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/7dc3d0ce-1b23-4021-83b2-588f8f6eb068/print/",
-   "amount_share_estimate": 577000
-  },
-  {
-   "id": 134533,
-   "name": "NATIONAL RETAIL FEDERATION",
-   "reports": 2,
-   "amount_on_reports": 5754000,
-   "registrants": [
-    "NATIONAL RETAIL FEDERATION"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/6cfc86dc-f5dc-4727-9ec4-a54e24a50ccd/print/",
-   "amount_share_estimate": 400190.4761904762
-  },
-  {
-   "id": 134461,
-   "name": "NFIB (NATIONAL FEDERATION OF INDEPENDENT BUSINESS)",
-   "reports": 2,
-   "amount_on_reports": 5300000,
-   "registrants": [
-    "NFIB (NATIONAL FEDERATION OF INDEPENDENT BUSINESS)"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/313e80dd-9b41-4fe4-b426-411c49058246/print/",
-   "amount_share_estimate": 555000
-  },
-  {
-   "id": 118931,
-   "name": "ELI LILLY AND COMPANY",
-   "reports": 2,
-   "amount_on_reports": 5045000,
-   "registrants": [
-    "ELI LILLY AND COMPANY"
-   ],
-   "phases": [
     "enactment-quarter",
-    "bill"
+    "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/805baeef-57e9-4b18-a5a4-4cf2a2023a82/print/",
-   "amount_share_estimate": 2162142.8571428573
+   "sample_filing": "https://lda.gov/filings/public/filing/bcfa80da-0011-4cb1-8fd9-4447618b0124/print/",
+   "total_spend_on_quarters_usd": 44590000,
+   "bill_share_estimate_usd": 26754000,
+   "firms": 10
   },
   {
-   "id": 103604,
-   "name": "AMERICAN MEDICAL ASSOCIATION",
-   "reports": 1,
-   "amount_on_reports": 5030000,
+   "key": "GENERAL MOTORS",
+   "names": [
+    "GENERAL MOTORS COMPANY",
+    "TOWER 19 ON BEHALF OF GENERAL MOTORS COMPANY",
+    "GENERAL MOTORS LLC"
+   ],
+   "client_ids": [
+    208778,
+    190575,
+    178976,
+    201631,
+    203557,
+    66612,
+    208777,
+    191517,
+    208786,
+    68232
+   ],
+   "reports": 31,
+   "quarters": 5,
    "registrants": [
-    "AMERICAN MEDICAL ASSOCIATION"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/eaa1a0c1-f163-4c7b-9e52-afe45ef1db90/print/",
-   "amount_share_estimate": 3592857.1428571427
-  },
-  {
-   "id": 132602,
-   "name": "MERCK & CO INC",
-   "reports": 1,
-   "amount_on_reports": 4980000,
-   "registrants": [
-    "MERCK & CO, INC."
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/0ea74f95-9196-4c86-a90d-2aace7cd9b70/print/",
-   "amount_share_estimate": 2490000
-  },
-  {
-   "id": 109642,
-   "name": "BRISTOL-MYERS SQUIBB COMPANY",
-   "reports": 1,
-   "amount_on_reports": 4780000,
-   "registrants": [
-    "BRISTOL-MYERS SQUIBB COMPANY"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/cfdbd4a8-2adf-4ec0-b8c8-9ffa818f988b/print/",
-   "amount_share_estimate": 796666.6666666666
-  },
-  {
-   "id": 158902,
-   "name": "AMAZON.COM SERVICES LLC",
-   "reports": 1,
-   "amount_on_reports": 4460000,
-   "registrants": [
-    "AMAZON.COM SERVICES LLC"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/78a08b9a-d7a0-4cfc-9638-0a9338bf0c4f/print/",
-   "amount_share_estimate": 202727.27272727274
-  },
-  {
-   "id": 113107,
-   "name": "AMERICAN CHEMISTRY COUNCIL",
-   "reports": 1,
-   "amount_on_reports": 4440123,
-   "registrants": [
-    "AMERICAN CHEMISTRY COUNCIL"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/3a16185e-2fd4-4461-99f6-6f869b54ba4e/print/",
-   "amount_share_estimate": 1902909.857142857
-  },
-  {
-   "id": 121522,
-   "name": "GENERAL ATOMICS",
-   "reports": 2,
-   "amount_on_reports": 4180000,
-   "registrants": [
-    "GENERAL ATOMICS"
+    "MISSY EDWARDS STRATEGIES, LLC",
+    "POLARIS-HUTTON GROUP, LLC",
+    "THE WASHINGTON TAX & PUBLIC POLICY GROUP",
+    "LINCOLN PARK GROUP L.L.C.",
+    "BL PARTNERS GROUP, LLC",
+    "VENTURE GOVERNMENT STRATEGIES, LLC (FKA HOBART HALLAWAY & QUAYLE VENTURES, LLC)",
+    "FIERCE GOVERNMENT RELATIONS",
+    "GENERAL MOTORS COMPANY",
+    "ELEVATE GOVERNMENT AFFAIRS, LLC",
+    "SIGHTLINE ADVOCACY, LLC"
    ],
    "phases": [
     "bill",
-    "enactment-quarter"
+    "enactment-quarter",
+    "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/17b2fbd1-5d3e-4a68-a767-7424039fa58e/print/",
-   "amount_share_estimate": 4180000
+   "sample_filing": "https://lda.gov/filings/public/filing/ea72dca6-5107-4fb2-89b8-183460b91a36/print/",
+   "total_spend_on_quarters_usd": 26290000,
+   "bill_share_estimate_usd": 16912000,
+   "firms": 10
   },
   {
-   "id": 147139,
-   "name": "RTX CORPORATION AND AFFILIATES",
-   "reports": 1,
-   "amount_on_reports": 4180000,
-   "registrants": [
-    "RTX CORPORATION AND AFFILIATES"
+   "key": "AMERICA S HEALTH INSURANCE PLANS",
+   "names": [
+    "AMERICA'S HEALTH INSURANCE PLANS",
+    "AMERICA'S HEALTH INSURANCE PLANS INC (AHIP)"
    ],
-   "phases": [
-    "bill"
+   "client_ids": [
+    175475,
+    102632
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/65f8b4f6-a0fc-4081-84c4-5c28261575a3/print/",
-   "amount_share_estimate": 1393333.3333333333
-  },
-  {
-   "id": 102632,
-   "name": "AMERICA'S HEALTH INSURANCE PLANS INC (AHIP)",
-   "reports": 1,
-   "amount_on_reports": 4050000,
+   "reports": 8,
+   "quarters": 5,
    "registrants": [
+    "MEHLMAN CONSULTING, INC.",
     "AMERICA'S HEALTH INSURANCE PLANS, INC. (AHIP)"
    ],
    "phases": [
-    "bill"
+    "bill",
+    "enactment-quarter",
+    "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/9a192528-753d-45f7-b75f-4a3492edfd0d/print/",
-   "amount_share_estimate": 3240000
+   "sample_filing": "https://lda.gov/filings/public/filing/3b106cfd-c6ea-481d-a17e-6561db43e047/print/",
+   "total_spend_on_quarters_usd": 20730000,
+   "bill_share_estimate_usd": 16584000,
+   "firms": 2
   },
   {
-   "id": 186169,
-   "name": "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
-   "reports": 2,
-   "amount_on_reports": 3980000,
+   "key": "CHARTER COMMUNICATIONS",
+   "names": [
+    "CHARTER COMMUNICATIONS, INC.",
+    "CHARTER COMMUNICATIONS",
+    "CHARTER COMMUNICATIONS INC"
+   ],
+   "client_ids": [
+    196206,
+    163120,
+    56105,
+    198956,
+    199175,
+    160744
+   ],
+   "reports": 19,
+   "quarters": 5,
    "registrants": [
-    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION"
+    "PENN AVENUE PARTNERS",
+    "CAPITOL TAX PARTNERS, LLP",
+    "AXADVOCACY GOVERNMENT RELATIONS",
+    "VENTURE GOVERNMENT STRATEGIES, LLC (FKA HOBART HALLAWAY & QUAYLE VENTURES, LLC)",
+    "FIERCE GOVERNMENT RELATIONS",
+    "CHARTER COMMUNICATIONS, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/eb3b2499-dbcb-4098-81dd-0b0129df45a8/print/",
+   "total_spend_on_quarters_usd": 12740000,
+   "bill_share_estimate_usd": 12740000,
+   "firms": 6
+  },
+  {
+   "key": "AMERICAN MEDICAL ASSOCIATION",
+   "names": [
+    "AMERICAN MEDICAL ASSOCIATION"
+   ],
+   "client_ids": [
+    103604,
+    175651,
+    165814,
+    192740
+   ],
+   "reports": 11,
+   "quarters": 5,
+   "registrants": [
+    "AMERICAN MEDICAL ASSOCIATION",
+    "MEHLMAN CONSULTING, INC.",
+    "AVENUE SOLUTIONS",
+    "LOPER CONSULTING LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/eaa1a0c1-f163-4c7b-9e52-afe45ef1db90/print/",
+   "total_spend_on_quarters_usd": 28230000,
+   "bill_share_estimate_usd": 11462270,
+   "firms": 4
+  },
+  {
+   "key": "AMERICAN HOSPITAL ASSOCIATION",
+   "names": [
+    "AMERICAN HOSPITAL ASSOCIATION"
+   ],
+   "client_ids": [
+    63509,
+    178485,
+    55824,
+    103572,
+    152608
+   ],
+   "reports": 19,
+   "quarters": 5,
+   "registrants": [
+    "RED+BLUE STRATEGIES",
+    "THE NICKLES GROUP, LLC",
+    "THE SMITH-FREE GROUP, LLC",
+    "AMERICAN HOSPITAL ASSOCIATION",
+    "O'NEILL, ATHY & CASEY, P.C."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/54bd2174-ecd4-41b7-98c8-33286c620ce7/print/",
+   "total_spend_on_quarters_usd": 28990000,
+   "bill_share_estimate_usd": 10101000,
+   "firms": 5
+  },
+  {
+   "key": "ELEVANCE HEALTH",
+   "names": [
+    "ELEVANCE HEALTH, INC."
+   ],
+   "client_ids": [
+    60038,
+    108773
+   ],
+   "reports": 8,
+   "quarters": 5,
+   "registrants": [
+    "MEHLMAN CONSULTING, INC.",
+    "ELEVANCE HEALTH, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/74b35d57-aeee-48e1-a362-007bb5e92f32/print/",
+   "total_spend_on_quarters_usd": 8960000,
+   "bill_share_estimate_usd": 8960000,
+   "firms": 2
+  },
+  {
+   "key": "AMGEN",
+   "names": [
+    "AMGEN",
+    "AMGEN, INC.",
+    "AMGEN USA INC.",
+    "TIBER CREEK HEALTH STRATEGIES, INC. ON BEHALF OF AMGEN, INC.",
+    "AMGEN INC"
+   ],
+   "client_ids": [
+    213700,
+    151339,
+    203228,
+    163017,
+    67777,
+    103709
+   ],
+   "reports": 20,
+   "quarters": 5,
+   "registrants": [
+    "THE NICKLES GROUP, LLC",
+    "WILLIAMS AND JENSEN, PLLC",
+    "MARSHALL & POPP, LLC",
+    "CAPITOL TAX PARTNERS, LLP",
+    "B HALL STRATEGIES, LLC",
+    "AMGEN, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/e8d73ea0-1e13-4009-9b8e-70f5db34f0bf/print/",
+   "total_spend_on_quarters_usd": 14700000,
+   "bill_share_estimate_usd": 8332000,
+   "firms": 6
+  },
+  {
+   "key": "MERCK AND",
+   "names": [
+    "MERCK & CO. INC.",
+    "MERCK & CO., INC.",
+    "MERCK & CO INC",
+    "TIBER CREEK GROUP ON BEHALF OF MERCK & CO., INC."
+   ],
+   "client_ids": [
+    178554,
+    193511,
+    151341,
+    165804,
+    192168,
+    67758,
+    132602
+   ],
+   "reports": 26,
+   "quarters": 5,
+   "registrants": [
+    "THE NICKLES GROUP, LLC",
+    "W STRATEGIES, LLC",
+    "WILLIAMS AND JENSEN, PLLC",
+    "AVENUE SOLUTIONS",
+    "CROSSROADS STRATEGIES, LLC",
+    "B HALL STRATEGIES, LLC",
+    "MERCK & CO, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/59d8304b-130c-4607-aff2-98e91c27cc07/print/",
+   "total_spend_on_quarters_usd": 14860000,
+   "bill_share_estimate_usd": 7430000,
+   "firms": 7
+  },
+  {
+   "key": "NATIONAL ASSOCIATION OF REALTORS",
+   "names": [
+    "NATIONAL ASSOCIATION OF REALTORS"
+   ],
+   "client_ids": [
+    184937,
+    192266,
+    134255,
+    60473
+   ],
+   "reports": 17,
+   "quarters": 5,
+   "registrants": [
+    "INVARIANT LLC",
+    "CROSSROADS STRATEGIES, LLC",
+    "NATIONAL ASSOCIATION OF REALTORS",
+    "PHRONESISDC, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/c2b70756-5f53-42d5-8956-613a33904444/print/",
+   "total_spend_on_quarters_usd": 72950000,
+   "bill_share_estimate_usd": 6778000,
+   "firms": 4
+  },
+  {
+   "key": "PHARMACEUTICAL CARE MANAGEMENT ASSOCIATION",
+   "names": [
+    "PHARMACEUTICAL CARE MANAGEMENT ASSOCIATION (PCMA)",
+    "PHARMACEUTICAL CARE MANAGEMENT ASSOCIATION"
+   ],
+   "client_ids": [
+    194273,
+    138221,
+    61652,
+    56881
+   ],
+   "reports": 7,
+   "quarters": 2,
+   "registrants": [
+    "RED+BLUE STRATEGIES",
+    "PHARMACEUTICAL CARE MANAGEMENT ASSOCIATION",
+    "FIERCE GOVERNMENT RELATIONS",
+    "RYAN COSTELLO STRATEGIES"
    ],
    "phases": [
     "bill",
     "enactment-quarter"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/a17a6626-c8c6-4c3a-a586-c6cd5fbc22e4/print/",
-   "amount_share_estimate": 1592000
+   "sample_filing": "https://lda.gov/filings/public/filing/fbfcaa61-9dcd-4bea-86dd-eabbce50a75c/print/",
+   "total_spend_on_quarters_usd": 6377022,
+   "bill_share_estimate_usd": 6377022,
+   "firms": 4
   },
   {
-   "id": 112866,
-   "name": "CTIA-THE WIRELESS ASSOCIATION",
-   "reports": 1,
-   "amount_on_reports": 3980000,
+   "key": "AARP",
+   "names": [
+    "AARP",
+    "AARP, INC."
+   ],
+   "client_ids": [
+    102643,
+    175682,
+    209595,
+    64147,
+    192560
+   ],
+   "reports": 11,
+   "quarters": 5,
    "registrants": [
-    "CTIA-THE WIRELESS ASSOCIATION"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/545f8ed5-60c8-48af-a106-003cb1e18f75/print/",
-   "amount_share_estimate": 663333.3333333334
-  },
-  {
-   "id": 129850,
-   "name": "LOCKHEED MARTIN CORPORATION",
-   "reports": 1,
-   "amount_on_reports": 3890000,
-   "registrants": [
-    "LOCKHEED MARTIN CORPORATION"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/784b1f0a-c904-4d6e-8467-d747f7190303/print/",
-   "amount_share_estimate": 2222857.1428571427
-  },
-  {
-   "id": 134239,
-   "name": "NATIONAL ASSOCIATION OF MANUFACTURERS",
-   "reports": 2,
-   "amount_on_reports": 3822000,
-   "registrants": [
-    "NATIONAL ASSOCIATION OF MANUFACTURERS"
+    "AARP",
+    "MEHLMAN CONSULTING, INC.",
+    "ARTICLE ONE GROUP, LLC",
+    "THEGROUP DC, LLC",
+    "THORN RUN PARTNERS"
    ],
    "phases": [
     "bill",
-    "enactment-quarter"
+    "enactment-quarter",
+    "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/3d951d04-69ed-4632-9b8c-c1102e91fd05/print/",
-   "amount_share_estimate": 156050
+   "sample_filing": "https://lda.gov/filings/public/filing/a116fa97-8cdf-4dfd-8d04-dda85d35d830/print/",
+   "total_spend_on_quarters_usd": 18100000,
+   "bill_share_estimate_usd": 6312549,
+   "firms": 5
   },
   {
-   "id": 103688,
-   "name": "AMERICAN CLEAN POWER ASSOCIATION",
-   "reports": 1,
-   "amount_on_reports": 3800000,
-   "registrants": [
-    "AMERICAN CLEAN POWER ASSOCIATION"
+   "key": "RTX",
+   "names": [
+    "RTX CORPORATION AND AFFILIATES",
+    "RTX CORPORATION (FKA RAYTHEON TECHNOLOGIES CORPORATION AND AFFILIATES)"
    ],
-   "phases": [
-    "bill"
+   "client_ids": [
+    147139,
+    100947
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/7177a496-c6a3-4f93-b72c-1764280e9230/print/",
-   "amount_share_estimate": 633333.3333333334
-  },
-  {
-   "id": 134219,
-   "name": "NATIONAL ASSOCIATION OF CHILDREN'S HOSPITALS (N.A.C.H.)",
-   "reports": 2,
-   "amount_on_reports": 3770000,
+   "reports": 8,
+   "quarters": 5,
    "registrants": [
-    "NATIONAL ASSOCIATION OF CHILDRENS HOSPITALS AND AFFILIATES"
+    "RTX CORPORATION AND AFFILIATES",
+    "AKIN GUMP STRAUSS HAUER & FELD"
    ],
    "phases": [
     "bill",
-    "enactment-quarter"
+    "enactment-quarter",
+    "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/700f5c94-9f45-48c3-9818-1a11b26beaaa/print/",
-   "amount_share_estimate": 1688000
+   "sample_filing": "https://lda.gov/filings/public/filing/65f8b4f6-a0fc-4081-84c4-5c28261575a3/print/",
+   "total_spend_on_quarters_usd": 18580000,
+   "bill_share_estimate_usd": 6193333,
+   "firms": 2
+  },
+  {
+   "key": "BUSINESS ROUNDTABLE",
+   "names": [
+    "THE BUSINESS ROUNDTABLE, INC.",
+    "THE BUSINESS ROUNDTABLE",
+    "BUSINESS ROUNDTABLE",
+    "BUSINESS ROUNDTABLE INC"
+   ],
+   "client_ids": [
+    54970,
+    204735,
+    151251,
+    199136,
+    60789,
+    110753,
+    184957,
+    60419,
+    100490,
+    210297
+   ],
+   "reports": 33,
+   "quarters": 5,
+   "registrants": [
+    "S-3 GROUP",
+    "MEHLMAN CONSULTING, INC.",
+    "WILLIAMS AND JENSEN, PLLC",
+    "FIERCE GOVERNMENT RELATIONS",
+    "PHRONESISDC, LLC",
+    "THE BUSINESS ROUNDTABLE, INC.",
+    "INVARIANT LLC",
+    "CGCN GROUP, LLC",
+    "AKIN GUMP STRAUSS HAUER & FELD",
+    "RESOLUTION PUBLIC AFFAIRS, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/d27740a8-1bb3-44e7-a53a-16e59aed0deb/print/",
+   "total_spend_on_quarters_usd": 41180000,
+   "bill_share_estimate_usd": 5529890,
+   "firms": 10
   }
  ],
  "top_registrants": [
   {
-   "id": 400531586,
-   "name": "CROSSROADS STRATEGIES, LLC",
-   "reports": 129,
-   "clients": 67,
-   "amount_on_reports": 6840000
-  },
-  {
    "id": 7257,
    "name": "BROWNSTEIN HYATT FARBER SCHRECK, LLP",
-   "reports": 122,
-   "clients": 71,
-   "amount_on_reports": 8020000
+   "reports": 303,
+   "clients": 78,
+   "amount_on_reports": 19980000
   },
   {
    "id": 284950,
    "name": "MEHLMAN CONSULTING, INC.",
-   "reports": 113,
+   "reports": 190,
    "clients": 71,
-   "amount_on_reports": 6440000
+   "amount_on_reports": 10880000
+  },
+  {
+   "id": 400531586,
+   "name": "CROSSROADS STRATEGIES, LLC",
+   "reports": 245,
+   "clients": 69,
+   "amount_on_reports": 13050000
   },
   {
    "id": 65976,
    "name": "CAPITOL TAX PARTNERS, LLP",
-   "reports": 108,
+   "reports": 140,
    "clients": 67,
-   "amount_on_reports": 5590000
-  },
-  {
-   "id": 39837,
-   "name": "VAN SCOYOC ASSOCIATES",
-   "reports": 97,
-   "clients": 52,
-   "amount_on_reports": 3560000
-  },
-  {
-   "id": 20744,
-   "name": "TIBER CREEK GROUP",
-   "reports": 78,
-   "clients": 47,
-   "amount_on_reports": 4410000
+   "amount_on_reports": 7580000
   },
   {
    "id": 314237,
    "name": "INVARIANT LLC",
-   "reports": 73,
+   "reports": 200,
+   "clients": 57,
+   "amount_on_reports": 14390000
+  },
+  {
+   "id": 39837,
+   "name": "VAN SCOYOC ASSOCIATES",
+   "reports": 215,
+   "clients": 55,
+   "amount_on_reports": 7730000
+  },
+  {
+   "id": 20744,
+   "name": "TIBER CREEK GROUP",
+   "reports": 172,
    "clients": 49,
-   "amount_on_reports": 4970000
+   "amount_on_reports": 10210000
   },
   {
    "id": 41454,
    "name": "WILLIAMS AND JENSEN, PLLC",
+   "reports": 204,
+   "clients": 45,
+   "amount_on_reports": 9990000
+  },
+  {
+   "id": 682,
+   "name": "AKIN GUMP STRAUSS HAUER & FELD",
+   "reports": 92,
+   "clients": 38,
+   "amount_on_reports": 5630000
+  },
+  {
+   "id": 401103500,
+   "name": "FIERCE GOVERNMENT RELATIONS",
    "reports": 64,
-   "clients": 44,
-   "amount_on_reports": 2890000
+   "clients": 37,
+   "amount_on_reports": 3690000
+  },
+  {
+   "id": 400275281,
+   "name": "LIBERTY PARTNERS GROUP, LLC",
+   "reports": 78,
+   "clients": 37,
+   "amount_on_reports": 440000
+  },
+  {
+   "id": 32098,
+   "name": "K&L GATES, LLP",
+   "reports": 90,
+   "clients": 36,
+   "amount_on_reports": 5680000
   },
   {
    "id": 48827,
    "name": "OGR",
-   "reports": 63,
+   "reports": 141,
+   "clients": 35,
+   "amount_on_reports": 7350000
+  },
+  {
+   "id": 401103523,
+   "name": "HARBINGER STRATEGIES, LLC",
+   "reports": 124,
    "clients": 34,
-   "amount_on_reports": 3300000
-  },
-  {
-   "id": 50796,
-   "name": "WINNING STRATEGIES WASHINGTON",
-   "reports": 58,
-   "clients": 30,
-   "amount_on_reports": 930000
-  },
-  {
-   "id": 294930,
-   "name": "THE WASHINGTON TAX & PUBLIC POLICY GROUP",
-   "reports": 54,
-   "clients": 28,
-   "amount_on_reports": 3090000
-  },
-  {
-   "id": 8453,
-   "name": "CASSIDY & ASSOCIATES, INC.",
-   "reports": 54,
-   "clients": 30,
-   "amount_on_reports": 2870000
-  },
-  {
-   "id": 401103475,
-   "name": "VENTURE GOVERNMENT STRATEGIES, LLC (FKA HOBART HALLAWAY & QUAYLE VENTURES, LLC)",
-   "reports": 53,
-   "clients": 31,
-   "amount_on_reports": 2740000
-  },
-  {
-   "id": 293335,
-   "name": "THE NICKLES GROUP, LLC",
-   "reports": 49,
-   "clients": 28,
-   "amount_on_reports": 3030000
+   "amount_on_reports": 7050000
   },
   {
    "id": 18466,
    "name": "HOLLAND & KNIGHT LLP",
-   "reports": 46,
-   "clients": 29,
-   "amount_on_reports": 3000000
+   "reports": 89,
+   "clients": 33,
+   "amount_on_reports": 6060000
   }
  ],
  "covered_lobbyists_sample": [
+  {
+   "id": 101239,
+   "name": "MARK WARREN",
+   "covered_positions": [
+    "ChfTaxCounsel, Sen Fin Comm; SrTaxCounsel, Sen Thune; TaxCounsel, Hs W&M Comm; DepAsstSec, Dept of Treas, Leg Affairs; ChfCounsel, Sen Repub Policy Comm; StaffDir and ChfCounsel, Sen Small Bus Comm; TaxAndFinanceCounsel, Sen Small Bus Comm",
+    "Chf TaxCounsel, Sen Fin Comm; Sr Tax Counsel, Sen Thune; TaxCounsel, Hs W&M Comm; Dep Asst Sec, Dept of Treas, Leg Affairs; Chf Counsel, Sen Repub Policy Comm; Staff Dir and Chf Counsel, Sen Small Bus Comm; Tax And Finance Counsel, Sen Small Bus Comm"
+   ],
+   "clients": [
+    "AMERICAN ELECTRIC POWER SERVICE CORPORATION",
+    "WOLTERS KLUWER",
+    "AMERICAN PETROLEUM INSTITUTE",
+    "AMERICAN PUBLIC POWER ASSOCIATION",
+    "AXA XL GLOBAL SERVICES, INC.",
+    "THE AMERICAN COALITION FOR TAXPAYER RIGHTS",
+    "AZBRT INC.",
+    "SUNRUN INC.",
+    "CHSPSC, LLC",
+    "CLEAN FUELS ALLIANCE AMERICA",
+    "CONOCOPHILLIPS",
+    "CORNING INCORPORATED",
+    "FAMILY ENTERPRISE USA ACTION",
+    "DELL TECHNOLOGIES, INC.",
+    "PROLOGIS LP",
+    "NATIONAL MULTIFAMILY HOUSING COUNCIL",
+    "NATIONAL CONFECTIONERS ASSOCIATION",
+    "NATIONAL AUTOMOBILE DEALERS ASSOCIATION",
+    "WYNN RESORTS, LIMITED",
+    "VERIZON COMMUNICATIONS INC.",
+    "GBX ASSOCIATES LLC",
+    "HIGHLY INNOVATIVE FUELS",
+    "MARRIOTT INTERNATIONAL, INC.",
+    "INSPERITY SERVICES, L.P.",
+    "MILESTONE ENVIRONMENTAL SERVICES, LLC",
+    "MGM PUBLIC POLICY, LLC",
+    "JOHNSON & JOHNSON SERVICES, INC.",
+    "BAYLOR COLLEGE OF MEDICINE",
+    "TIAA",
+    "INVEST IN EDUCATION COALITION",
+    "REINSURANCE ASSOCIATION OF AMERICA",
+    "PERNOD RICARD USA",
+    "MONOLITH MATERIALS, INC.",
+    "APOLLO GLOBAL MANAGEMENT",
+    "NAREIT",
+    "ARA PARTNERS",
+    "ATHENE HOLDING",
+    "SYNOPSYS, INC.",
+    "HONEYWELL INTERNATIONAL INC.",
+    "REAL ESTATE ROUNDTABLE",
+    "THE NUCLEAR COMPANY",
+    "RED ROCK RESORTS, INC.",
+    "T-MOBILE",
+    "DRAFTKINGS INC.",
+    "BLOOM ENERGY",
+    "HYDROGEN JOBS NOW COALITION",
+    "WOODSIDE ENERGY",
+    "AMPACT"
+   ],
+   "reports": 188,
+   "sample_filing": "https://lda.gov/filings/public/filing/69f27d32-40ce-4c28-a35f-aab13bb416ae/print/"
+  },
+  {
+   "id": 69972,
+   "name": "RUSSELL W. SULLIVAN",
+   "covered_positions": [
+    "Staff Director, Senate Finance Committee; Chief Counsel, Senate Finance Committee; Leg. Director, Sen. Bob Graham"
+   ],
+   "clients": [
+    "AMERICAN ELECTRIC POWER SERVICE CORPORATION",
+    "WOLTERS KLUWER",
+    "VITAL CHEMICALS USA, LLC",
+    "AMERICAN TOWER CORPORATION",
+    "THE AMERICAN COALITION FOR TAXPAYER RIGHTS",
+    "AZBRT INC.",
+    "SUNRUN INC.",
+    "CLEAN FUELS ALLIANCE AMERICA",
+    "SL GREEN REALTY CORP.",
+    "CONOCOPHILLIPS",
+    "CONSTELLATION ENERGY GENERATION, LLC",
+    "CORNING INCORPORATED",
+    "FAMILY ENTERPRISE USA ACTION",
+    "DELL TECHNOLOGIES, INC.",
+    "PROLOGIS LP",
+    "NATIONAL AUTOMOBILE DEALERS ASSOCIATION",
+    "WYNN RESORTS, LIMITED",
+    "GBX ASSOCIATES LLC",
+    "HIGHLY INNOVATIVE FUELS",
+    "MARRIOTT INTERNATIONAL, INC.",
+    "INSPERITY SERVICES, L.P.",
+    "MILESTONE ENVIRONMENTAL SERVICES, LLC",
+    "MGM PUBLIC POLICY, LLC",
+    "JOHNSON & JOHNSON SERVICES, INC.",
+    "COOK GROUP, INC.",
+    "BAYLOR COLLEGE OF MEDICINE",
+    "HUNT CONSOLIDATED INC.",
+    "TIAA",
+    "REINSURANCE ASSOCIATION OF AMERICA",
+    "PROTECT COALITION",
+    "MONOLITH MATERIALS, INC.",
+    "APOLLO GLOBAL MANAGEMENT",
+    "NAREIT",
+    "ARA PARTNERS",
+    "ATHENE HOLDING",
+    "DUKE ENERGY CORPORATION",
+    "REAL ESTATE ROUNDTABLE",
+    "RED ROCK RESORTS, INC.",
+    "T-MOBILE",
+    "AMERICAN ACADEMY OF ADOPTION ATTORNEYS",
+    "ECONOMIC INNOVATION GROUP",
+    "CENTENE CORPORATION",
+    "DRAFTKINGS INC.",
+    "BLOOM ENERGY",
+    "HYDROGEN JOBS NOW COALITION",
+    "HONEYWELL INTERNATIONAL INC."
+   ],
+   "reports": 187,
+   "sample_filing": "https://lda.gov/filings/public/filing/69f27d32-40ce-4c28-a35f-aab13bb416ae/print/"
+  },
   {
    "id": 61179,
    "name": "SAGE EASTMAN",
@@ -645,8 +1811,67 @@
     "XYLEM, INC.",
     "THE RESEARCH FOUNDATION FOR THE STATE OF NEW YORK"
    ],
-   "reports": 109,
+   "reports": 185,
    "sample_filing": "https://lda.gov/filings/public/filing/b773a014-9a5d-4c70-ae37-2790968ae842/print/"
+  },
+  {
+   "id": 69159,
+   "name": "HAROLD HANCOCK",
+   "covered_positions": [
+    "Tax Counsel, House Ways and Means Committee",
+    "Legislative Correspondent, Sen. David Perdue; Counsel to the Chief of Staff, Sen. David Perdue; Counsel, Sen. David Perdue."
+   ],
+   "clients": [
+    "VITAL CHEMICALS USA, LLC",
+    "AMERICAN TOWER CORPORATION",
+    "THE AMERICAN COALITION FOR TAXPAYER RIGHTS",
+    "SUNRUN INC.",
+    "CLEAN FUELS ALLIANCE AMERICA",
+    "SL GREEN REALTY CORP.",
+    "CONOCOPHILLIPS",
+    "CONSTELLATION ENERGY GENERATION, LLC",
+    "DELL TECHNOLOGIES, INC.",
+    "DESRI",
+    "ROYAL CARIBBEAN CRUISES LTD.",
+    "PROLOGIS LP",
+    "EXHIBITIONS & CONFERENCES ALLIANCE",
+    "NATIONAL MULTIFAMILY HOUSING COUNCIL",
+    "NATIONAL AUTOMOBILE DEALERS ASSOCIATION",
+    "WYNN RESORTS, LIMITED",
+    "GBX ASSOCIATES LLC",
+    "INSPERITY SERVICES, L.P.",
+    "MILESTONE ENVIRONMENTAL SERVICES, LLC",
+    "MGM PUBLIC POLICY, LLC",
+    "JOHNSON & JOHNSON SERVICES, INC.",
+    "TRAJECTORY ENERGY PARTNERS, LLC",
+    "DANIELS FUND",
+    "BAYLOR COLLEGE OF MEDICINE",
+    "HUNT CONSOLIDATED INC.",
+    "TIAA",
+    "INVEST IN EDUCATION COALITION",
+    "JACKSON FAMILY ENTERPRISES",
+    "PROTECT COALITION",
+    "APOLLO GLOBAL MANAGEMENT",
+    "ONDA HOUSING GROUP LLC",
+    "NAREIT",
+    "ARA PARTNERS",
+    "ATHENE HOLDING",
+    "DUKE ENERGY CORPORATION",
+    "REAL ESTATE ROUNDTABLE",
+    "MARVELL TECHNOLOGY INC.",
+    "RED ROCK RESORTS, INC.",
+    "T-MOBILE",
+    "ECONOMIC INNOVATION GROUP",
+    "DRAFTKINGS INC.",
+    "DIMENSION ENERGY",
+    "CAESARS ENTERPRISE SERVICES, LLC",
+    "HYDROGEN JOBS NOW COALITION",
+    "ENGELSTAD FOUNDATION",
+    "CENTENE CORPORATION",
+    "AMPACT"
+   ],
+   "reports": 176,
+   "sample_filing": "https://lda.gov/filings/public/filing/08867c40-e0b3-422e-bbc5-4bbff64a4f51/print/"
   },
   {
    "id": 149379,
@@ -718,173 +1943,8 @@
     "XYLEM, INC.",
     "THE RESEARCH FOUNDATION FOR THE STATE OF NEW YORK"
    ],
-   "reports": 97,
+   "reports": 167,
    "sample_filing": "https://lda.gov/filings/public/filing/b773a014-9a5d-4c70-ae37-2790968ae842/print/"
-  },
-  {
-   "id": 101239,
-   "name": "MARK WARREN",
-   "covered_positions": [
-    "ChfTaxCounsel, Sen Fin Comm; SrTaxCounsel, Sen Thune; TaxCounsel, Hs W&M Comm; DepAsstSec, Dept of Treas, Leg Affairs; ChfCounsel, Sen Repub Policy Comm; StaffDir and ChfCounsel, Sen Small Bus Comm; TaxAndFinanceCounsel, Sen Small Bus Comm"
-   ],
-   "clients": [
-    "AMERICAN ELECTRIC POWER SERVICE CORPORATION",
-    "WOLTERS KLUWER",
-    "AMERICAN PETROLEUM INSTITUTE",
-    "AMERICAN PUBLIC POWER ASSOCIATION",
-    "AXA XL GLOBAL SERVICES, INC.",
-    "THE AMERICAN COALITION FOR TAXPAYER RIGHTS",
-    "AZBRT INC.",
-    "SUNRUN INC.",
-    "CHSPSC, LLC",
-    "CLEAN FUELS ALLIANCE AMERICA",
-    "CONOCOPHILLIPS",
-    "CORNING INCORPORATED",
-    "FAMILY ENTERPRISE USA ACTION",
-    "DELL TECHNOLOGIES, INC.",
-    "PROLOGIS LP",
-    "NATIONAL MULTIFAMILY HOUSING COUNCIL",
-    "NATIONAL CONFECTIONERS ASSOCIATION",
-    "NATIONAL AUTOMOBILE DEALERS ASSOCIATION",
-    "WYNN RESORTS, LIMITED",
-    "VERIZON COMMUNICATIONS INC.",
-    "GBX ASSOCIATES LLC",
-    "HIGHLY INNOVATIVE FUELS",
-    "MARRIOTT INTERNATIONAL, INC.",
-    "INSPERITY SERVICES, L.P.",
-    "MILESTONE ENVIRONMENTAL SERVICES, LLC",
-    "MGM PUBLIC POLICY, LLC",
-    "JOHNSON & JOHNSON SERVICES, INC.",
-    "BAYLOR COLLEGE OF MEDICINE",
-    "BLOOM ENERGY",
-    "TIAA",
-    "INVEST IN EDUCATION COALITION",
-    "REINSURANCE ASSOCIATION OF AMERICA",
-    "PERNOD RICARD USA",
-    "MONOLITH MATERIALS, INC.",
-    "APOLLO GLOBAL MANAGEMENT",
-    "NAREIT",
-    "ARA PARTNERS",
-    "ATHENE HOLDING",
-    "SYNOPSYS, INC.",
-    "HONEYWELL INTERNATIONAL INC.",
-    "REAL ESTATE ROUNDTABLE",
-    "THE NUCLEAR COMPANY",
-    "RED ROCK RESORTS, INC.",
-    "T-MOBILE",
-    "DRAFTKINGS INC."
-   ],
-   "reports": 78,
-   "sample_filing": "https://lda.gov/filings/public/filing/69f27d32-40ce-4c28-a35f-aab13bb416ae/print/"
-  },
-  {
-   "id": 69972,
-   "name": "RUSSELL W. SULLIVAN",
-   "covered_positions": [
-    "Staff Director, Senate Finance Committee; Chief Counsel, Senate Finance Committee; Leg. Director, Sen. Bob Graham"
-   ],
-   "clients": [
-    "AMERICAN ELECTRIC POWER SERVICE CORPORATION",
-    "WOLTERS KLUWER",
-    "VITAL CHEMICALS USA, LLC",
-    "AMERICAN TOWER CORPORATION",
-    "THE AMERICAN COALITION FOR TAXPAYER RIGHTS",
-    "AZBRT INC.",
-    "SUNRUN INC.",
-    "CLEAN FUELS ALLIANCE AMERICA",
-    "SL GREEN REALTY CORP.",
-    "CONOCOPHILLIPS",
-    "CONSTELLATION ENERGY GENERATION, LLC",
-    "CORNING INCORPORATED",
-    "FAMILY ENTERPRISE USA ACTION",
-    "DELL TECHNOLOGIES, INC.",
-    "PROLOGIS LP",
-    "NATIONAL AUTOMOBILE DEALERS ASSOCIATION",
-    "WYNN RESORTS, LIMITED",
-    "GBX ASSOCIATES LLC",
-    "HIGHLY INNOVATIVE FUELS",
-    "MARRIOTT INTERNATIONAL, INC.",
-    "INSPERITY SERVICES, L.P.",
-    "MILESTONE ENVIRONMENTAL SERVICES, LLC",
-    "MGM PUBLIC POLICY, LLC",
-    "JOHNSON & JOHNSON SERVICES, INC.",
-    "COOK GROUP, INC.",
-    "BAYLOR COLLEGE OF MEDICINE",
-    "HUNT CONSOLIDATED INC.",
-    "BLOOM ENERGY",
-    "TIAA",
-    "REINSURANCE ASSOCIATION OF AMERICA",
-    "PROTECT COALITION",
-    "MONOLITH MATERIALS, INC.",
-    "APOLLO GLOBAL MANAGEMENT",
-    "NAREIT",
-    "ARA PARTNERS",
-    "ATHENE HOLDING",
-    "DUKE ENERGY CORPORATION",
-    "REAL ESTATE ROUNDTABLE",
-    "RED ROCK RESORTS, INC.",
-    "T-MOBILE",
-    "AMERICAN ACADEMY OF ADOPTION ATTORNEYS",
-    "ECONOMIC INNOVATION GROUP",
-    "CENTENE CORPORATION",
-    "DRAFTKINGS INC."
-   ],
-   "reports": 74,
-   "sample_filing": "https://lda.gov/filings/public/filing/69f27d32-40ce-4c28-a35f-aab13bb416ae/print/"
-  },
-  {
-   "id": 69159,
-   "name": "HAROLD HANCOCK",
-   "covered_positions": [
-    "Tax Counsel, House Ways and Means Committee"
-   ],
-   "clients": [
-    "VITAL CHEMICALS USA, LLC",
-    "AMERICAN TOWER CORPORATION",
-    "THE AMERICAN COALITION FOR TAXPAYER RIGHTS",
-    "SUNRUN INC.",
-    "CLEAN FUELS ALLIANCE AMERICA",
-    "SL GREEN REALTY CORP.",
-    "CONOCOPHILLIPS",
-    "CONSTELLATION ENERGY GENERATION, LLC",
-    "DELL TECHNOLOGIES, INC.",
-    "DESRI",
-    "ROYAL CARIBBEAN CRUISES LTD.",
-    "PROLOGIS LP",
-    "EXHIBITIONS & CONFERENCES ALLIANCE",
-    "NATIONAL MULTIFAMILY HOUSING COUNCIL",
-    "NATIONAL AUTOMOBILE DEALERS ASSOCIATION",
-    "WYNN RESORTS, LIMITED",
-    "GBX ASSOCIATES LLC",
-    "INSPERITY SERVICES, L.P.",
-    "MILESTONE ENVIRONMENTAL SERVICES, LLC",
-    "MGM PUBLIC POLICY, LLC",
-    "JOHNSON & JOHNSON SERVICES, INC.",
-    "TRAJECTORY ENERGY PARTNERS, LLC",
-    "DANIELS FUND",
-    "BAYLOR COLLEGE OF MEDICINE",
-    "HUNT CONSOLIDATED INC.",
-    "TIAA",
-    "INVEST IN EDUCATION COALITION",
-    "JACKSON FAMILY ENTERPRISES",
-    "PROTECT COALITION",
-    "APOLLO GLOBAL MANAGEMENT",
-    "ONDA HOUSING GROUP LLC",
-    "NAREIT",
-    "ARA PARTNERS",
-    "ATHENE HOLDING",
-    "DUKE ENERGY CORPORATION",
-    "REAL ESTATE ROUNDTABLE",
-    "MARVELL TECHNOLOGY INC.",
-    "RED ROCK RESORTS, INC.",
-    "T-MOBILE",
-    "ECONOMIC INNOVATION GROUP",
-    "DRAFTKINGS INC.",
-    "DIMENSION ENERGY",
-    "CAESARS ENTERPRISE SERVICES, LLC"
-   ],
-   "reports": 73,
-   "sample_filing": "https://lda.gov/filings/public/filing/08867c40-e0b3-422e-bbc5-4bbff64a4f51/print/"
   },
   {
    "id": 67957,
@@ -927,10 +1987,52 @@
     "BRISTOL-MYERS SQUIBB",
     "X ENERGY, LLC",
     "AIRLINES FOR AMERICA",
-    "VISA, INC."
+    "VISA, INC.",
+    "ASSOCIATION FOR MATERIALS PROTECTION AND PERFORMANCE (AMPP)",
+    "MARSH MCLENNAN"
    ],
-   "reports": 65,
+   "reports": 130,
    "sample_filing": "https://lda.gov/filings/public/filing/b8aae1fe-21d4-4906-a71a-2f914f754756/print/"
+  },
+  {
+   "id": 59669,
+   "name": "TUCKER SHUMACK",
+   "covered_positions": [
+    "Tax & Finance Counsel, Sen. Small Business Committee/ Sen. Olympia Snowe; Legislative Asst, Sen. Johnny Isakson/ Rep. Isakson"
+   ],
+   "clients": [
+    "VERIZON COMMUNICATIONS INC AND VARIOUS SUBSIDIARIES",
+    "AT&T SERVICES, INC.",
+    "SEMPRA ENERGY",
+    "ECOLAB INC. ON BEHALF OF NALCO COMPANY",
+    "OAKTREE CAPITAL MANAGEMENT",
+    "MONEYGRAM INTERNATIONAL INC.",
+    "CTIA-THE WIRELESS ASSOCIATION",
+    "GLOBAL BUSINESS ALLIANCE",
+    "FEDEX CORPORATION",
+    "RHEEM MANUFACTURING COMPANY",
+    "WELLS FARGO & COMPANY",
+    "TAPESTRY, INC.",
+    "THE SHERWIN-WILLIAMS COMPANY",
+    "AVANGRID, INC.",
+    "BMW OF NORTH AMERICA, LLC",
+    "ASML US, LLC",
+    "CARVANA",
+    "BATH & BODY WORKS, INC.",
+    "PEABODY ENERGY",
+    "CONSTELLATION BRANDS, INC.",
+    "AMERICAN COUNCIL ON EDUCATION",
+    "BLACK & VEATCH CORPORATION",
+    "GENERAL MILLS INC.",
+    "AMERICAN PETROLEUM INSTITUTE",
+    "AMERICAN PROPERTY CASUALTY INSURANCE ASSOCIATION",
+    "CORE NATURAL RESOURCES, INC.",
+    "FALCK USA",
+    "VL BUSINESS SERVICES LLC",
+    "SMALL COLLEGES COALITION"
+   ],
+   "reports": 127,
+   "sample_filing": "https://lda.gov/filings/public/filing/8d1f3377-23a6-4ef9-9dda-115e3f5d486a/print/"
   },
   {
    "id": 151117,
@@ -973,10 +2075,398 @@
     "GUARDIAN CENTERS OF GEORGIA, LLC",
     "MEMPHIS-SHELBY COUNTY AIRPORT AUTHORITY",
     "TAKEDA PHARMACEUTICALS AMERICA, INC.",
+    "VISA, INC.",
+    "MOTOROLA SOLUTIONS, INC.",
+    "U.S. SUGAR CORPORATION",
+    "HF SINCLAIR CORPORATION",
+    "TEXTRON INC."
+   ],
+   "reports": 122,
+   "sample_filing": "https://lda.gov/filings/public/filing/8afd44fb-0ac6-4d3e-a553-d6803657265f/print/"
+  },
+  {
+   "id": 50936,
+   "name": "HUNTER MOORHEAD",
+   "covered_positions": [
+    "Policy Advisor, Sen. Thad Cochran; Special Asst to the President, WH National Economic Council; Professional Staff, Senate Approps Committee; Legislative Asst, Sen. Cochran; Subcommittee Staff Director/ Legislative Asst, House Agriculture Committee"
+   ],
+   "clients": [
+    "AGWORKS, LLC",
+    "AIRLINES FOR AMERICA",
+    "AEROSTAR INTERNATIONAL, LLC",
+    "ALTRIA CLIENT SERVICES LLC",
+    "EXXON MOBIL CORPORATION",
+    "HF SINCLAIR CORPORATION",
+    "IDEMIA IDENTITY & SECURITY USA, LLC",
+    "KOCH GOVERNMENT AFFAIRS, LLC",
+    "MOTOROLA SOLUTIONS, INC.",
+    "SALESFORCE.COM, INC.",
+    "TAKEDA PHARMACEUTICALS AMERICA, INC.",
+    "THE BOEING COMPANY",
+    "COALITION FOR 1099-K FAIRNESS",
+    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
+    "CORTEVA AGRISCIENCE LLC",
+    "GE AEROSPACE",
+    "HUNTINGTON INGALLS INCORPORATED",
+    "INFIN A FINANCIAL SERVICES ALLIANCE",
+    "LIBERTY MUTUAL GROUP INC.",
+    "MEMPHIS-SHELBY COUNTY AIRPORT AUTHORITY",
+    "NATIONAL ASSOCIATION OF FARM SERVICE AGENCY COUNTY OFFICE EMPLOYEES (NASCOE)",
+    "OCEAN AERO, INC.",
+    "PHILLIPS 66 COMPANY",
+    "PROFESSIONAL GOLFERS' ASSOCIATION OF AMERICA",
+    "SANOFI US SERVICES INC.",
+    "SOFTWARE & INFORMATION INDUSTRY ASSOCIATION (SIIA)",
+    "TECHNET",
+    "TEXTRON INC.",
+    "U.S. SUGAR CORPORATION",
+    "VMWARE, INC. OBO BROADCOM INC.",
+    "3M COMPANY",
+    "BRISTOL-MYERS SQUIBB",
+    "VISA, INC.",
+    "EDF POWER SOLUTIONS DEVELOPMENT, INC."
+   ],
+   "reports": 118,
+   "sample_filing": "https://lda.gov/filings/public/filing/af1a2ade-f9e2-4936-9f7e-d784c692f42a/print/"
+  },
+  {
+   "id": 151069,
+   "name": "JOSEPH EDWARD BROWN III",
+   "covered_positions": [
+    "Sr Prof Staff (EPW Comm Maj/Sen. Moore Capito); Prof Staff (EPW Comm Min/Ranking Mem Sen. Moore Capito); Leg Asst (Sen. Boozman); Maj Leg Asst (EPW Comm Maj/Sen. Jim Inhofe); Maj Research Asst (EPW Comm Maj/Sen. Jim Inhofe); Intern (Rep. Jim Renacci)"
+   ],
+   "clients": [
+    "ADDUS HOMECARE",
+    "AMERICAN CHEMISTRY COUNCIL",
+    "AMERICAN MEDICAL GROUP ASSOC. (AMGA)",
+    "ARIZONA STATE UNIVERSITY",
+    "THE CAMPAIGN FOR SUSTAINABLE RX PRICING",
+    "CHEVRON U.S.A., INC.",
+    "CONSTELLATION ENERGY GENERATION, LLC",
+    "EDISON ELECTRIC INSTITUTE",
+    "EMPLOYERS COUNCIL ON FLEXIBLE COMPENSATION",
+    "GENESEE & WYOMING, INC.",
+    "HUMANA",
+    "INFORMATION TECHNOLOGY INDUSTRY COUNCIL (ITI)",
+    "INVENERGY, LLC",
+    "MAYO CLINIC",
+    "NATIONAL ASSOCIATION OF PROFESSIONAL EMPLOYER ORGANIZATIONS",
+    "NATIONAL PACE ASSOCIATION",
+    "NATIONAL RESTAURANT ASSOCIATION",
+    "NEMOURS CHILDREN'S HEALTH",
+    "NORTH AMERICAN INSULATION MANUFACTURING ASSOCIATION",
+    "NORTHERN TRUST",
+    "ONEOK, INC.",
+    "OWENS CORNING",
+    "THE TRUSTEES OF THE UNIVERSITY OF PENNSYLVANIA",
+    "PROVIDENCE ST. JOSEPH HEALTH",
+    "RETAIL INDUSTRY LEADERS ASSOCIATION (RILA)",
+    "ROCKET LP",
+    "THE RESEARCH FOUNDATION FOR THE STATE OF NEW YORK",
+    "TELADOC HEALTH INC",
+    "ULTRAGENYX PHARMACEUTICAL, INC.",
+    "WALMART INC",
+    "AARP, INC.",
+    "AFLAC INC.",
+    "AMERICAN MEDICAL ASSOCIATION",
+    "AMERICAN SOCIETY OF ECHOCARDIOGRAPHY",
+    "ASCENSION HEALTH ALLIANCE",
+    "BLUE CROSS BLUE SHIELD OF ARIZONA",
+    "BLUE SHIELD OF CALIFORNIA",
+    "BLUE CROSS BLUE SHIELD MICHIGAN",
+    "CAREFORTH",
+    "ELEVANCE HEALTH, INC.",
+    "GENERAL AVIATION MANUFACTURERS ASSOCIATION",
+    "GE AEROSPACE",
+    "HCA HEALTHCARE",
+    "HOUSTON METHODIST HOSPITAL",
+    "HYLIION",
+    "LAND O'LAKES",
+    "MDVIP",
+    "MEDTRONIC, INC.",
+    "MOLINA HEALTHCARE, INC.",
+    "NATIONAL FAIR HOUSING ALLIANCE",
+    "NATIONAL VENTURE CAPITAL ASSOCIATION",
+    "THE NEW YORK AND PRESBYTERIAN HOSPITAL",
+    "OCHSNER CLINIC FOUNDATION DBA OCHSNER HEALTH",
+    "OSCAR MANAGEMENT CORPORATION",
+    "RISANT HEALTH",
+    "TE CONNECTIVITY, INC.",
+    "XYLEM, INC.",
+    "ANDURIL INDUSTRIES, INC",
+    "SOO LINE CORPORATION DBA CPKC",
+    "DIAGEO AMERICAS, INC.",
+    "REWORLD"
+   ],
+   "reports": 104,
+   "sample_filing": "https://lda.gov/filings/public/filing/d5cb93ef-976a-45ef-a32f-9ba69c275d04/print/"
+  },
+  {
+   "id": 72632,
+   "name": "ROBERT WILLIAM CHAMBERLIN",
+   "covered_positions": [
+    "Chief Counsel, US Senate Commerce Committee; Senior Counsel, US Senate Commerce Committee; Assistant Counsel, House Transportation and Infrastructure Committee.",
+    "Chief Counsel, US Senate Commerce Committee; Senior Counsel, US Senate Commerce Committee; Assistant Counsel, House Transportation and Infrastructure Committtee."
+   ],
+   "clients": [
+    "NCTA-THE INTERNET AND TELEVISION ASSOCIATION",
+    "GATX CORPORATION",
+    "REGIONAL AIRLINE ASSOCIATION",
+    "MICROSOFT CORPORATION",
+    "META PLATFORMS, INC.",
+    "GENERAL ELECTRIC COMPANY",
+    "CHARTER COMMUNICATIONS OPERATING, LLC",
+    "BABCOCK & WILCOX ENTERPRISES, INC.",
+    "AIR METHODS CORPORATION",
+    "ADB SAFEGATE AMERICAS LLC",
+    "UNITED STATES TOUR OPERATORS ASSOCIATION",
+    "GENERAL MOTORS LLC",
+    "INTERNATIONAL WAREHOUSE LOGISTICS ASSOCIATION",
+    "JOBY AERO, INC.",
+    "MAJOR LEAGUE BASEBALL PLAYERS ASSOCIATION",
+    "NATIONAL BASKETBALL PLAYERS ASSOCIATION",
+    "NATIONAL FOOTBALL LEAGUE PLAYERS ASSOCIATION",
+    "NATIONAL HOCKEY LEAGUE PLAYERS ASSOCIATION",
+    "MAJOR LEAGUE SOCCER PLAYERS ASSOCIATION",
+    "THE GORDIAN GROUP, LLC",
+    "THE VILLAGE OF OSWEGO",
+    "WAGGONER ENGINEERING",
+    "WIRELESS INFRASTRUCTURE ASSOCIATION",
+    "SPS ARS, LLC",
+    "NATIONAL TOUR ASSOCIATION"
+   ],
+   "reports": 94,
+   "sample_filing": "https://lda.gov/filings/public/filing/4537af0c-7c18-4971-9f36-5e0a1181e4ea/print/"
+  },
+  {
+   "id": 69840,
+   "name": "CHRISTOPHER E. WILCOX",
+   "covered_positions": [
+    "LA, Leg Counsel, LD & Counsel, Rep. Arcuri; LD & Counsel, Rep. Demings"
+   ],
+   "clients": [
+    "AFFORDABLE HOUSING TAX CREDIT COALITION",
+    "THE VANGUARD GROUP, INC.",
+    "BUHLER QUALITY YARNS CORPORATION",
+    "JOSEPH ABBOUD MANUFACTURING CORP (FKA J.A. APPAREL CORP)",
+    "W DIAMOND GROUP CORPORATION",
+    "NEW ENGLAND SHIRT CO",
+    "SUPIMA",
+    "TOM JAMES COMPANY",
+    "HAMILTON SHIRTS, LTD.",
+    "MAUS & HOFFMAN",
+    "ROCHESTER TAILORED CLOTHING, INC.",
+    "AMGEN, INC.",
+    "PLASMA PROTEIN THERAPEUTICS ASSOCIATION",
+    "NATIONAL ASSN OF STATE TREASURERS (NAST)",
+    "ELI LILLY & COMPANY",
+    "FORD MOTOR COMPANY",
+    "PFIZER",
+    "SANOFI, U.S.",
+    "NOVO NORDISK INC.",
+    "ZOETIS"
+   ],
+   "reports": 91,
+   "sample_filing": "https://lda.gov/filings/public/filing/81ebd57e-7746-4d98-866d-437f54801fd5/print/"
+  },
+  {
+   "id": 71625,
+   "name": "SAMUEL WHITEHORN",
+   "covered_positions": [
+    "Deputy SD/GC, US Senate Commerce Committee; Acting SD, US Senate Commerce Committee; Sr. Counsel, US Senate Commerce Committee."
+   ],
+   "clients": [
+    "NCTA-THE INTERNET AND TELEVISION ASSOCIATION",
+    "REGIONAL AIRLINE ASSOCIATION",
+    "MICROSOFT CORPORATION",
+    "META PLATFORMS, INC.",
+    "GENERAL ELECTRIC COMPANY",
+    "CHARTER COMMUNICATIONS OPERATING, LLC",
+    "BABCOCK & WILCOX ENTERPRISES, INC.",
+    "AIR METHODS CORPORATION",
+    "AECOM TECHNICAL SERVICES, INC.",
+    "ADB SAFEGATE AMERICAS LLC",
+    "UNITED STATES TOUR OPERATORS ASSOCIATION",
+    "GENERAL MOTORS LLC",
+    "INTERNATIONAL WAREHOUSE LOGISTICS ASSOCIATION",
+    "JOBY AERO, INC.",
+    "MAJOR LEAGUE BASEBALL PLAYERS ASSOCIATION",
+    "NATIONAL BASKETBALL PLAYERS ASSOCIATION",
+    "NATIONAL FOOTBALL LEAGUE PLAYERS ASSOCIATION",
+    "NATIONAL HOCKEY LEAGUE PLAYERS ASSOCIATION",
+    "MAJOR LEAGUE SOCCER PLAYERS ASSOCIATION",
+    "THE GORDIAN GROUP, LLC",
+    "THE VILLAGE OF OSWEGO",
+    "WIRELESS INFRASTRUCTURE ASSOCIATION",
+    "GATX CORPORATION",
+    "NATIONAL TOUR ASSOCIATION"
+   ],
+   "reports": 90,
+   "sample_filing": "https://lda.gov/filings/public/filing/4537af0c-7c18-4971-9f36-5e0a1181e4ea/print/"
+  },
+  {
+   "id": 3117,
+   "name": "CHRIS GIBLIN",
+   "covered_positions": [
+    "Chief of Staff, Rep. John Carter; Legislative Director, Rep. Charlie Norwood"
+   ],
+   "clients": [
+    "VERIZON COMMUNICATIONS INC AND VARIOUS SUBSIDIARIES",
+    "AT&T SERVICES, INC.",
+    "SEMPRA ENERGY",
+    "CONSTELLATION ENERGY GENERATION, LLC",
+    "ECOLAB INC. ON BEHALF OF NALCO COMPANY",
+    "CTIA-THE WIRELESS ASSOCIATION",
+    "GLOBAL BUSINESS ALLIANCE",
+    "RHEEM MANUFACTURING COMPANY",
+    "THE SHERWIN-WILLIAMS COMPANY",
+    "BMW OF NORTH AMERICA, LLC",
+    "ASML US, LLC",
+    "CARVANA",
+    "BATH & BODY WORKS, INC.",
+    "PEABODY ENERGY",
+    "CONSTELLATION BRANDS, INC.",
+    "BLACK & VEATCH CORPORATION",
+    "VL BUSINESS SERVICES LLC",
+    "AMERICAN PETROLEUM INSTITUTE",
+    "CORE NATURAL RESOURCES, INC.",
+    "FALCK USA",
+    "FEDEX CORPORATION"
+   ],
+   "reports": 88,
+   "sample_filing": "https://lda.gov/filings/public/filing/8d1f3377-23a6-4ef9-9dda-115e3f5d486a/print/"
+  },
+  {
+   "id": 143856,
+   "name": "IVELISSE ALEXANDRA PORROA-GARCIA",
+   "covered_positions": [
+    "Policy Director, Congressional Hispanic Caucus (CHC); Legislative Assistant, Rep. Raul Ruiz; Staff Assistant, Sen. Barbara Boxer"
+   ],
+   "clients": [
+    "AMERICAN ASSOCIATION OF COLLEGES OF OSTEOPATHIC MEDICINE",
+    "ADVANCED MEDICAL TECHNOLOGY ASSOCIATION (ADVAMED)",
+    "ADVOCATES FOR COMMUNITY HEALTH",
+    "ALTRIA CLIENT SERVICES LLC",
+    "ARRAY TECHNOLOGIES, INC.",
+    "DATA CENTER COALITION",
+    "EDF POWER SOLUTIONS DEVELOPMENT, INC.",
+    "STRATA CLEAN ENERGY, LLC",
+    "TAKEDA PHARMACEUTICALS AMERICA, INC.",
+    "EISAI, INC.",
+    "CORTEVA AGRISCIENCE LLC",
+    "H&R BLOCK MANAGEMENT, LLC",
+    "INDIVIOR INC.",
+    "LIBERTY MUTUAL GROUP INC.",
+    "MARSH MCLENNAN",
+    "MORGAN STANLEY & CO LLC",
+    "NATIONAL ASSOCIATION OF MUTUAL INSURANCE COMPANIES",
+    "SANOFI US SERVICES INC.",
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION (SIFMA)",
+    "SEMPRA ENERGY",
+    "SOFTWARE & INFORMATION INDUSTRY ASSOCIATION (SIIA)",
+    "TECHNET",
+    "X ENERGY, LLC",
+    "ELECTRONIC PAYMENTS COALITION",
     "VISA, INC."
    ],
-   "reports": 63,
+   "reports": 87,
    "sample_filing": "https://lda.gov/filings/public/filing/8afd44fb-0ac6-4d3e-a553-d6803657265f/print/"
+  },
+  {
+   "id": 57598,
+   "name": "CONRAD LASS",
+   "covered_positions": [
+    "Chief of Staff/ Special Assistant, U.S. Bureau of Land Management"
+   ],
+   "clients": [
+    "VERIZON COMMUNICATIONS INC AND VARIOUS SUBSIDIARIES",
+    "SEMPRA ENERGY",
+    "ECOLAB INC. ON BEHALF OF NALCO COMPANY",
+    "SMITHS GROUP PLC",
+    "CTIA-THE WIRELESS ASSOCIATION",
+    "GLOBAL BUSINESS ALLIANCE",
+    "RHEEM MANUFACTURING COMPANY",
+    "THE SHERWIN-WILLIAMS COMPANY",
+    "AVANGRID, INC.",
+    "BMW OF NORTH AMERICA, LLC",
+    "ASML US, LLC",
+    "CARVANA",
+    "BATH & BODY WORKS, INC.",
+    "PEABODY ENERGY",
+    "BLACK & VEATCH CORPORATION",
+    "VL BUSINESS SERVICES LLC",
+    "AMERICAN PETROLEUM INSTITUTE",
+    "CORE NATURAL RESOURCES, INC.",
+    "SUPERIOR AIR-GROUND AMBULANCE SERVICE, INC."
+   ],
+   "reports": 84,
+   "sample_filing": "https://lda.gov/filings/public/filing/8d1f3377-23a6-4ef9-9dda-115e3f5d486a/print/"
+  },
+  {
+   "id": 67932,
+   "name": "JASON GLEASON",
+   "covered_positions": [
+    "Chief of Staff/Legislative Director, Rep. John Sarbanes; Legislative Director/Legislative Asst/Legislative Correspondent/Staff Asst, Sen. Paul Sarbanes"
+   ],
+   "clients": [
+    "ARRAY TECHNOLOGIES, INC.",
+    "DATA CENTER COALITION",
+    "EDF POWER SOLUTIONS DEVELOPMENT, INC.",
+    "GREEN BUSINESS CERTIFICATION INC.",
+    "SALESFORCE.COM, INC.",
+    "SOLV ENERGY, LLC",
+    "STRATA CLEAN ENERGY, LLC",
+    "THE BOEING COMPANY",
+    "CHUBB INA HOLDING COMPANY INC",
+    "DETECT, INC.",
+    "LIBERTY MUTUAL GROUP INC.",
+    "LPL FINANCIAL LLC",
+    "MORGAN STANLEY & CO LLC",
+    "NATIONAL ASSOCIATION OF MUTUAL INSURANCE COMPANIES",
+    "NATIONAL ASSOCIATION OF REALTORS",
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION (SIFMA)",
+    "SEMPRA ENERGY",
+    "SOFTWARE & INFORMATION INDUSTRY ASSOCIATION (SIIA)",
+    "TECHNET",
+    "TEXTRON INC.",
+    "U.S. SUGAR CORPORATION",
+    "X ENERGY, LLC",
+    "ELECTRONIC PAYMENTS COALITION",
+    "VISA, INC.",
+    "HF SINCLAIR CORPORATION"
+   ],
+   "reports": 81,
+   "sample_filing": "https://lda.gov/filings/public/filing/2944cf5e-cb62-415e-8aa1-47528c52dd77/print/"
+  },
+  {
+   "id": 60050,
+   "name": "KARISSA WILLHITE",
+   "covered_positions": [
+    "Dep. Chief of Staff, Sen. Robert Menendez; Dep. Exec Director/ Policy Director, House Democratic Caucus; Sr. Legislative Asst, Rep. Robert Menendez"
+   ],
+   "clients": [
+    "AT&T SERVICES, INC.",
+    "CONSTELLATION ENERGY GENERATION, LLC",
+    "ECOLAB INC. ON BEHALF OF NALCO COMPANY",
+    "OAKTREE CAPITAL MANAGEMENT",
+    "MONEYGRAM INTERNATIONAL INC.",
+    "CTIA-THE WIRELESS ASSOCIATION",
+    "GLOBAL BUSINESS ALLIANCE",
+    "FEDEX CORPORATION",
+    "WELLS FARGO & COMPANY",
+    "TAPESTRY, INC.",
+    "THE SHERWIN-WILLIAMS COMPANY",
+    "BMW OF NORTH AMERICA, LLC",
+    "ASML US, LLC",
+    "CARVANA",
+    "CONSTELLATION BRANDS, INC.",
+    "AMERICAN COUNCIL ON EDUCATION",
+    "BLACK & VEATCH CORPORATION",
+    "AMERICAN PETROLEUM INSTITUTE",
+    "SMALL COLLEGES COALITION"
+   ],
+   "reports": 81,
+   "sample_filing": "https://lda.gov/filings/public/filing/5787ff6b-677d-4bb2-b199-03204c2f3dcf/print/"
   },
   {
    "id": 69617,
@@ -1022,47 +2512,74 @@
     "PHILLIPS 66 COMPANY",
     "CATERPILLAR INC"
    ],
-   "reports": 54,
+   "reports": 80,
    "sample_filing": "https://lda.gov/filings/public/filing/40113ba8-4b57-4342-b050-3d8dac315c07/print/"
   },
   {
-   "id": 59669,
-   "name": "TUCKER SHUMACK",
+   "id": 65205,
+   "name": "WALLY BURNETT",
    "covered_positions": [
-    "Tax & Finance Counsel, Sen. Small Business Committee/ Sen. Olympia Snowe; Legislative Asst, Sen. Johnny Isakson/ Rep. Isakson"
+    "Clerk, Senate Appropriations Committee"
    ],
    "clients": [
-    "VERIZON COMMUNICATIONS INC AND VARIOUS SUBSIDIARIES",
-    "AT&T SERVICES, INC.",
-    "SEMPRA ENERGY",
-    "ECOLAB INC. ON BEHALF OF NALCO COMPANY",
-    "OAKTREE CAPITAL MANAGEMENT",
-    "MONEYGRAM INTERNATIONAL INC.",
-    "CTIA-THE WIRELESS ASSOCIATION",
-    "GLOBAL BUSINESS ALLIANCE",
-    "FEDEX CORPORATION",
-    "RHEEM MANUFACTURING COMPANY",
-    "WELLS FARGO & COMPANY",
-    "TAPESTRY, INC.",
-    "THE SHERWIN-WILLIAMS COMPANY",
-    "AVANGRID, INC.",
-    "BMW OF NORTH AMERICA, LLC",
-    "ASML US, LLC",
-    "CARVANA",
-    "BATH & BODY WORKS, INC.",
-    "PEABODY ENERGY",
-    "CONSTELLATION BRANDS, INC.",
-    "AMERICAN COUNCIL ON EDUCATION",
-    "BLACK & VEATCH CORPORATION",
-    "GENERAL MILLS INC.",
-    "AMERICAN PETROLEUM INSTITUTE",
-    "AMERICAN PROPERTY CASUALTY INSURANCE ASSOCIATION",
-    "CORE NATURAL RESOURCES, INC.",
-    "FALCK USA",
-    "VL BUSINESS SERVICES LLC"
+    "AIRLINES FOR AMERICA",
+    "EXXON MOBIL CORPORATION",
+    "GREEN BUSINESS CERTIFICATION INC.",
+    "HF SINCLAIR CORPORATION",
+    "IDEMIA IDENTITY & SECURITY USA, LLC",
+    "KOCH GOVERNMENT AFFAIRS, LLC",
+    "MOTOROLA SOLUTIONS, INC.",
+    "THE BOEING COMPANY",
+    "COALITION FOR 1099-K FAIRNESS",
+    "ASSOCIATION FOR MATERIALS PROTECTION AND PERFORMANCE (AMPP)",
+    "GE AEROSPACE",
+    "H&R BLOCK MANAGEMENT, LLC",
+    "HUNTINGTON INGALLS INCORPORATED",
+    "LIBERTY MUTUAL GROUP INC.",
+    "LOS ANGELES WORLD AIRPORTS (LAWA)",
+    "MORGAN STANLEY & CO LLC",
+    "MEMPHIS-SHELBY COUNTY AIRPORT AUTHORITY",
+    "TEXTRON INC.",
+    "U.S. SUGAR CORPORATION",
+    "VMWARE, INC. OBO BROADCOM INC.",
+    "3M COMPANY",
+    "VISA, INC.",
+    "AVIATION INNOVATION COALITION"
    ],
-   "reports": 53,
-   "sample_filing": "https://lda.gov/filings/public/filing/8d1f3377-23a6-4ef9-9dda-115e3f5d486a/print/"
+   "reports": 80,
+   "sample_filing": "https://lda.gov/filings/public/filing/6d8011b8-369e-438b-b787-df3c573c1e2e/print/"
+  },
+  {
+   "id": 143712,
+   "name": "JEFFREY D MARKEY",
+   "covered_positions": [
+    "LD/Deputy Chief of Staff, Representative Doc Hastings."
+   ],
+   "clients": [
+    "GATX CORPORATION",
+    "PORT OF EDMONDS",
+    "MICROSOFT CORPORATION",
+    "CENTRAL PUGET SOUND REGIONAL TRANSIT",
+    "BABCOCK & WILCOX ENTERPRISES, INC.",
+    "AECOM TECHNICAL SERVICES, INC.",
+    "ADB SAFEGATE AMERICAS LLC",
+    "UNITED STATES TOUR OPERATORS ASSOCIATION",
+    "GENERAL MOTORS LLC",
+    "INTERNATIONAL WAREHOUSE LOGISTICS ASSOCIATION",
+    "MAJOR LEAGUE BASEBALL PLAYERS ASSOCIATION",
+    "NATIONAL BASKETBALL PLAYERS ASSOCIATION",
+    "NATIONAL FOOTBALL LEAGUE PLAYERS ASSOCIATION",
+    "NATIONAL HOCKEY LEAGUE PLAYERS ASSOCIATION",
+    "MAJOR LEAGUE SOCCER PLAYERS ASSOCIATION",
+    "SOCIETY OF CHEMICAL MANUFACTURERS & AFFILIATES",
+    "THE GORDIAN GROUP, LLC",
+    "THE VILLAGE OF OSWEGO",
+    "WAGGONER ENGINEERING",
+    "WIRELESS INFRASTRUCTURE ASSOCIATION",
+    "SPS ARS, LLC"
+   ],
+   "reports": 79,
+   "sample_filing": "https://lda.gov/filings/public/filing/faa12768-b090-4a2a-ba26-1664f5de6f26/print/"
   },
   {
    "id": 38177,
@@ -1102,329 +2619,8 @@
     "PHILLIPS 66 COMPANY",
     "CATERPILLAR INC"
    ],
-   "reports": 52,
+   "reports": 78,
    "sample_filing": "https://lda.gov/filings/public/filing/40113ba8-4b57-4342-b050-3d8dac315c07/print/"
-  },
-  {
-   "id": 143778,
-   "name": "WILLIAM ROBERT DAVIS",
-   "covered_positions": [
-    "Legislative Director and Tax Policy Counsel, Rep. Tom Reed"
-   ],
-   "clients": [
-    "FORD MOTOR COMPANY",
-    "FRANKLIN TEMPLETON INVESTMENTS",
-    "MORGAN STANLEY DEAN WITTER & COMPANY",
-    "AMERICAN CLEAN POWER ASSOCIATION",
-    "GE VERNOVA INTERNATIONAL LLC-PREVIOUSLY REPORTED AS GE RENEWABLES NORTH AMERICA",
-    "FMR LLC",
-    "ARMSTRONG WORLD INDUSTRIES",
-    "AVANGRID",
-    "NEXTERA ENERGY, INC.",
-    "VESTAS-AMERICAN WIND TECHNOLOGY, INC.",
-    "CLEARWAY ENERGY GROUP",
-    "RWE ENERGY",
-    "PATTERN ENERGY GROUP",
-    "INVENERGY WIND, LLC",
-    "EDF RENEWABLE ENERGY",
-    "TERRA-GEN POWER LLC",
-    "COPENHAGEN INFRASTRUCTURE PARTNERS INC.",
-    "EDWARD D. JONES & CO., L.P.",
-    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
-    "NATIONAL RURAL ELECTRIC COOPERATIVE ASSOCIATION",
-    "AMERICAN INVESTMENT COUNCIL",
-    "GOLDMAN SACHS GROUP INC",
-    "UNITED SERVICES AUTOMOBILE ASSOCIATION",
-    "BLOCK, INC.",
-    "LARGE PUBLIC POWER COUNCIL",
-    "CITADEL LLC",
-    "HONEYWELL INTERNATIONAL INC.",
-    "NATIONAL VENTURE CAPITAL ASSOCIATION"
-   ],
-   "reports": 50,
-   "sample_filing": "https://lda.gov/filings/public/filing/b3355c40-a1b1-44f7-98ea-66d8a305dfe9/print/"
-  },
-  {
-   "id": 143856,
-   "name": "IVELISSE ALEXANDRA PORROA-GARCIA",
-   "covered_positions": [
-    "Policy Director, Congressional Hispanic Caucus (CHC); Legislative Assistant, Rep. Raul Ruiz; Staff Assistant, Sen. Barbara Boxer"
-   ],
-   "clients": [
-    "AMERICAN ASSOCIATION OF COLLEGES OF OSTEOPATHIC MEDICINE",
-    "ADVANCED MEDICAL TECHNOLOGY ASSOCIATION (ADVAMED)",
-    "ADVOCATES FOR COMMUNITY HEALTH",
-    "ALTRIA CLIENT SERVICES LLC",
-    "ARRAY TECHNOLOGIES, INC.",
-    "DATA CENTER COALITION",
-    "EDF POWER SOLUTIONS DEVELOPMENT, INC.",
-    "STRATA CLEAN ENERGY, LLC",
-    "TAKEDA PHARMACEUTICALS AMERICA, INC.",
-    "EISAI, INC.",
-    "CORTEVA AGRISCIENCE LLC",
-    "H&R BLOCK MANAGEMENT, LLC",
-    "INDIVIOR INC.",
-    "LIBERTY MUTUAL GROUP INC.",
-    "MARSH MCLENNAN",
-    "MORGAN STANLEY & CO LLC",
-    "NATIONAL ASSOCIATION OF MUTUAL INSURANCE COMPANIES",
-    "SANOFI US SERVICES INC.",
-    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION (SIFMA)",
-    "SEMPRA ENERGY",
-    "SOFTWARE & INFORMATION INDUSTRY ASSOCIATION (SIIA)",
-    "TECHNET",
-    "X ENERGY, LLC",
-    "ELECTRONIC PAYMENTS COALITION",
-    "VISA, INC."
-   ],
-   "reports": 47,
-   "sample_filing": "https://lda.gov/filings/public/filing/8afd44fb-0ac6-4d3e-a553-d6803657265f/print/"
-  },
-  {
-   "id": 67932,
-   "name": "JASON GLEASON",
-   "covered_positions": [
-    "Chief of Staff/Legislative Director, Rep. John Sarbanes; Legislative Director/Legislative Asst/Legislative Correspondent/Staff Asst, Sen. Paul Sarbanes"
-   ],
-   "clients": [
-    "ARRAY TECHNOLOGIES, INC.",
-    "DATA CENTER COALITION",
-    "EDF POWER SOLUTIONS DEVELOPMENT, INC.",
-    "GREEN BUSINESS CERTIFICATION INC.",
-    "SALESFORCE.COM, INC.",
-    "SOLV ENERGY, LLC",
-    "STRATA CLEAN ENERGY, LLC",
-    "THE BOEING COMPANY",
-    "CHUBB INA HOLDING COMPANY INC",
-    "DETECT, INC.",
-    "LIBERTY MUTUAL GROUP INC.",
-    "LPL FINANCIAL LLC",
-    "MORGAN STANLEY & CO LLC",
-    "NATIONAL ASSOCIATION OF MUTUAL INSURANCE COMPANIES",
-    "NATIONAL ASSOCIATION OF REALTORS",
-    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION (SIFMA)",
-    "SEMPRA ENERGY",
-    "SOFTWARE & INFORMATION INDUSTRY ASSOCIATION (SIIA)",
-    "TECHNET",
-    "TEXTRON INC.",
-    "U.S. SUGAR CORPORATION",
-    "X ENERGY, LLC",
-    "ELECTRONIC PAYMENTS COALITION",
-    "VISA, INC."
-   ],
-   "reports": 42,
-   "sample_filing": "https://lda.gov/filings/public/filing/2944cf5e-cb62-415e-8aa1-47528c52dd77/print/"
-  },
-  {
-   "id": 150286,
-   "name": "PATRICK CLIFTON",
-   "covered_positions": [
-    "Special Asst. to the President for Operations, Executive Office of the President, President Donald J. Trump (17-19)."
-   ],
-   "clients": [
-    "AMERICAN FOREST & PAPER ASSOCIATION",
-    "AMERICAN HOTEL & LODGING ASSOCIATION",
-    "AMERICAN GAMING ASSOCIATION",
-    "BUSINESS ROUNDTABLE",
-    "CHARTER COMMUNICATIONS, INC.",
-    "CORPORATE HEALTH CARE COALITION",
-    "GENERAL MOTORS COMPANY",
-    "HARTFORD FINANCIAL SERVICES GROUP",
-    "IHRSA (HEALTH & FITNESS ASSOCIATION) - THE GLOBAL HEALTH AND FITNESS ASSOCIATION",
-    "INTERNATIONAL PAPER COMPANY",
-    "MOLSON COORS BEVERAGE COMPANY USA LLC (FORMERLY KNOWN AS MILLERCOORS LLC)",
-    "NATIONAL CABLE AND TELECOMMUNICATIONS ASSOCIATION",
-    "NATIONAL CONFECTIONERS ASSOCIATION",
-    "NATIONAL PORK PRODUCERS COUNCIL",
-    "NEWS MEDIA ALLIANCE",
-    "PEPSICO, INC.",
-    "PHARMACEUTICAL CARE MANAGEMENT ASSOCIATION (PCMA)",
-    "COMCAST CORPORATION",
-    "SECURING AMERICA'S FUTURE ENERGY ALLIANCE",
-    "SIEMENS CORPORATION",
-    "SIEMENS ENERGY, INC.",
-    "SOLAREDGE TECHNOLOGIES INC.",
-    "STEERBRIDGE",
-    "STRIPE, INC.",
-    "THE DOW CHEMICAL COMPANY",
-    "THE HOME DEPOT",
-    "TSMC ARIZONA",
-    "UNION PACIFIC",
-    "UNITEDHEALTH GROUP, INC.",
-    "UPS (UNITED PARCEL SERVICE)",
-    "YUM! BRANDS",
-    "CISCO SYSTEMS, INC",
-    "INFORMATION TECHNOLOGY INDUSTRY COUNCIL",
-    "KINDRED HEALTHCARE D/B/A SCIONHEALTH",
-    "DELTA AIRLINES, INC.",
-    "STANFORD UNIVERSITY",
-    "EDWARD D. JONES & CO., L.P."
-   ],
-   "reports": 42,
-   "sample_filing": "https://lda.gov/filings/public/filing/2f73de54-e9ee-4001-a49a-c9f1b8b0026a/print/"
-  },
-  {
-   "id": 65205,
-   "name": "WALLY BURNETT",
-   "covered_positions": [
-    "Clerk, Senate Appropriations Committee"
-   ],
-   "clients": [
-    "AIRLINES FOR AMERICA",
-    "EXXON MOBIL CORPORATION",
-    "GREEN BUSINESS CERTIFICATION INC.",
-    "HF SINCLAIR CORPORATION",
-    "IDEMIA IDENTITY & SECURITY USA, LLC",
-    "KOCH GOVERNMENT AFFAIRS, LLC",
-    "MOTOROLA SOLUTIONS, INC.",
-    "THE BOEING COMPANY",
-    "COALITION FOR 1099-K FAIRNESS",
-    "ASSOCIATION FOR MATERIALS PROTECTION AND PERFORMANCE (AMPP)",
-    "GE AEROSPACE",
-    "H&R BLOCK MANAGEMENT, LLC",
-    "HUNTINGTON INGALLS INCORPORATED",
-    "LIBERTY MUTUAL GROUP INC.",
-    "LOS ANGELES WORLD AIRPORTS (LAWA)",
-    "MORGAN STANLEY & CO LLC",
-    "MEMPHIS-SHELBY COUNTY AIRPORT AUTHORITY",
-    "TEXTRON INC.",
-    "U.S. SUGAR CORPORATION",
-    "VMWARE, INC. OBO BROADCOM INC.",
-    "3M COMPANY",
-    "VISA, INC."
-   ],
-   "reports": 41,
-   "sample_filing": "https://lda.gov/filings/public/filing/6d8011b8-369e-438b-b787-df3c573c1e2e/print/"
-  },
-  {
-   "id": 149073,
-   "name": "JAMES MAX PEDROTTI",
-   "covered_positions": [
-    "Legislative Correspondent, Legislative Assistant, Senior Legislative Assistant, Legislative Director, Deputy Chief of Staff to Rep. Carol Miller"
-   ],
-   "clients": [
-    "TAX REFORM COALITION",
-    "ALLIANCE FOR BIOPHARMACEUTICAL COMPETITIVENESS AND INNOVATION",
-    "NEXTERA ENERGY CAPITAL HOLDINGS INC. (FORMERLY NEXTERA ENERGY INC.)",
-    "APPLIED MATERIALS, INC.",
-    "ECONOMIC INNOVATION GROUP",
-    "FEDEX CORPORATION",
-    "HEWLETT PACKARD ENTERPRISE COMPANY",
-    "INTEREST DEDUCTIBILITY WORKING GROUP",
-    "KENVUE INC.",
-    "LEGGETT & PLATT, INC.",
-    "BERKSHIRE HATHAWAY ENERGY",
-    "LUMEN TECHNOLOGIES (FORMERLY KNOWN AS CENTURYLINK, INC.)",
-    "MODERNATX, INC.",
-    "PLUG POWER INC.",
-    "SUNTORY GLOBAL SPIRITS (FORMERLY BEAM SUNTORY INC.)",
-    "BAYER CORPORATION (FORMERLY KNOWN AS MONSANTO COMPANY)",
-    "BP AMERICA INC.",
-    "GENERAL MOTORS COMPANY",
-    "YUM! BRANDS",
-    "PHILLIPS 66 COMPANY"
-   ],
-   "reports": 39,
-   "sample_filing": "https://lda.gov/filings/public/filing/40113ba8-4b57-4342-b050-3d8dac315c07/print/"
-  },
-  {
-   "id": 21512,
-   "name": "JONATHAN TALISMAN",
-   "covered_positions": [
-    "Treasury Dept: Asst Secretary Tax Policy; Deputy Asst. Secretary; Tax Leg. Counsel; Sen. Finance Comm. Chief Tax Counsel (Dem Staff); Joint Comm. on Taxation Leg. Counsel."
-   ],
-   "clients": [
-    "COALITION FOR AMERICAN INNOVATION, INC.",
-    "ACCENTURE",
-    "FMR LLC",
-    "THE NORTHWESTERN MUTUAL LIFE INSURANCE COMPANY",
-    "THE MEDICAL DEVICE COMPETITIVENESS COALITION",
-    "EDWARD D. JONES & CO., L.P.",
-    "CISCO SYSTEMS INC",
-    "AMAZON.COM",
-    "AMERICAN INVESTMENT COUNCIL",
-    "AVIS BUDGET GROUP, INC.",
-    "CHARTER COMMUNICATIONS",
-    "CITIGROUP WASHINGTON INC.",
-    "GOLDMAN SACHS GROUP INC",
-    "HALLMARK CARDS",
-    "HEALTH CARE SERVICE CORPORATION",
-    "DISCOVERY COMMUNICATIONS",
-    "JPMORGAN CHASE HOLDINGS LLC",
-    "AMGEN",
-    "CITADEL LLC",
-    "CAPITAL ONE FINANCIAL CORPORATION",
-    "FEDEX CORPORATION",
-    "HONEYWELL INTERNATIONAL INC.",
-    "META PLATFORMS, INC.",
-    "MOTION PICTURE ASSOCIATION",
-    "NATIONAL VENTURE CAPITAL ASSOCIATION",
-    "QUALCOMM INCORPORATED",
-    "CRUISE LINES INTERNATIONAL ASSOCIATION (\"CLIA\")"
-   ],
-   "reports": 39,
-   "sample_filing": "https://lda.gov/filings/public/filing/cd27f93a-2313-404b-a60b-d7873779e2d3/print/"
-  },
-  {
-   "id": 143773,
-   "name": "CHERYL LYNN JAEGER",
-   "covered_positions": [
-    "Shared employee, Ofc of the Speaker & Ofc of VA 07; Sr Policy Adv, Maj Leader, Rep. Cantor; Sr Policy Adv, Republican Whip, Rep. Cantor; Sr Policy Adv, Majority Whip, Rep. Blunt; Prof Staff House Committee on E & C; Sr LA to Rep. Cox"
-   ],
-   "clients": [
-    "AMERICAN ASSOCIATION OF COLLEGES OF OSTEOPATHIC MEDICINE",
-    "ADVANCED MEDICAL TECHNOLOGY ASSOCIATION (ADVAMED)",
-    "ADVOCATES FOR COMMUNITY HEALTH",
-    "ALTRIA CLIENT SERVICES LLC",
-    "ARRAY TECHNOLOGIES, INC.",
-    "DATA CENTER COALITION",
-    "EDF POWER SOLUTIONS DEVELOPMENT, INC.",
-    "SOLV ENERGY, LLC",
-    "STRATA CLEAN ENERGY, LLC",
-    "TAKEDA PHARMACEUTICALS AMERICA, INC.",
-    "THE BOEING COMPANY",
-    "COALITION FOR 1099-K FAIRNESS",
-    "EISAI, INC.",
-    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
-    "INDIVIOR INC.",
-    "SANOFI US SERVICES INC.",
-    "3M COMPANY",
-    "BRISTOL-MYERS SQUIBB",
-    "MERCK & CO., INC."
-   ],
-   "reports": 37,
-   "sample_filing": "https://lda.gov/filings/public/filing/8afd44fb-0ac6-4d3e-a553-d6803657265f/print/"
-  },
-  {
-   "id": 3117,
-   "name": "CHRIS GIBLIN",
-   "covered_positions": [
-    "Chief of Staff, Rep. John Carter; Legislative Director, Rep. Charlie Norwood"
-   ],
-   "clients": [
-    "VERIZON COMMUNICATIONS INC AND VARIOUS SUBSIDIARIES",
-    "AT&T SERVICES, INC.",
-    "SEMPRA ENERGY",
-    "CONSTELLATION ENERGY GENERATION, LLC",
-    "ECOLAB INC. ON BEHALF OF NALCO COMPANY",
-    "CTIA-THE WIRELESS ASSOCIATION",
-    "GLOBAL BUSINESS ALLIANCE",
-    "RHEEM MANUFACTURING COMPANY",
-    "THE SHERWIN-WILLIAMS COMPANY",
-    "BMW OF NORTH AMERICA, LLC",
-    "ASML US, LLC",
-    "CARVANA",
-    "BATH & BODY WORKS, INC.",
-    "PEABODY ENERGY",
-    "CONSTELLATION BRANDS, INC.",
-    "BLACK & VEATCH CORPORATION",
-    "VL BUSINESS SERVICES LLC",
-    "AMERICAN PETROLEUM INSTITUTE",
-    "CORE NATURAL RESOURCES, INC.",
-    "FALCK USA"
-   ],
-   "reports": 37,
-   "sample_filing": "https://lda.gov/filings/public/filing/8d1f3377-23a6-4ef9-9dda-115e3f5d486a/print/"
   },
   {
    "id": 50849,
@@ -1474,167 +2670,61 @@
     "REVENUE CYCLE CODING STRATEGIES (OFFICE-BASED FACILITY ASSN OBFA) (FKA USPA)",
     "TELEFLEX (OFFICE-BASED FACILITY ASSN OBFA) (FKA USPA)"
    ],
-   "reports": 37,
+   "reports": 78,
    "sample_filing": "https://lda.gov/filings/public/filing/31940529-5d9b-423a-ba38-cf538028955c/print/"
   },
   {
-   "id": 151069,
-   "name": "JOSEPH EDWARD BROWN III",
+   "id": 62372,
+   "name": "LAURA M SIMMONS",
    "covered_positions": [
-    "Sr Prof Staff (EPW Comm Maj/Sen. Moore Capito); Prof Staff (EPW Comm Min/Ranking Mem Sen. Moore Capito); Leg Asst (Sen. Boozman); Maj Leg Asst (EPW Comm Maj/Sen. Jim Inhofe); Maj Research Asst (EPW Comm Maj/Sen. Jim Inhofe); Intern (Rep. Jim Renacci)"
+    "Advisor, Office of Legislative Affairs, Dept of Homeland Security"
    ],
    "clients": [
-    "ADDUS HOMECARE",
-    "AMERICAN CHEMISTRY COUNCIL",
-    "AMERICAN MEDICAL GROUP ASSOC. (AMGA)",
-    "ARIZONA STATE UNIVERSITY",
-    "THE CAMPAIGN FOR SUSTAINABLE RX PRICING",
-    "CHEVRON U.S.A., INC.",
-    "CONSTELLATION ENERGY GENERATION, LLC",
-    "EDISON ELECTRIC INSTITUTE",
-    "EMPLOYERS COUNCIL ON FLEXIBLE COMPENSATION",
-    "GENESEE & WYOMING, INC.",
-    "HUMANA",
-    "INFORMATION TECHNOLOGY INDUSTRY COUNCIL (ITI)",
-    "INVENERGY, LLC",
-    "MAYO CLINIC",
-    "NATIONAL ASSOCIATION OF PROFESSIONAL EMPLOYER ORGANIZATIONS",
-    "NATIONAL PACE ASSOCIATION",
-    "NATIONAL RESTAURANT ASSOCIATION",
-    "NEMOURS CHILDREN'S HEALTH",
-    "NORTH AMERICAN INSULATION MANUFACTURING ASSOCIATION",
-    "NORTHERN TRUST",
-    "ONEOK, INC.",
-    "OWENS CORNING",
-    "THE TRUSTEES OF THE UNIVERSITY OF PENNSYLVANIA",
-    "PROVIDENCE ST. JOSEPH HEALTH",
-    "RETAIL INDUSTRY LEADERS ASSOCIATION (RILA)",
-    "ROCKET LP",
-    "THE RESEARCH FOUNDATION FOR THE STATE OF NEW YORK",
-    "TELADOC HEALTH INC",
-    "ULTRAGENYX PHARMACEUTICAL, INC.",
-    "WALMART INC",
-    "AARP, INC.",
-    "AFLAC INC.",
-    "AMERICAN MEDICAL ASSOCIATION",
-    "AMERICAN SOCIETY OF ECHOCARDIOGRAPHY",
-    "ASCENSION HEALTH ALLIANCE"
-   ],
-   "reports": 35,
-   "sample_filing": "https://lda.gov/filings/public/filing/d5cb93ef-976a-45ef-a32f-9ba69c275d04/print/"
-  },
-  {
-   "id": 60050,
-   "name": "KARISSA WILLHITE",
-   "covered_positions": [
-    "Dep. Chief of Staff, Sen. Robert Menendez; Dep. Exec Director/ Policy Director, House Democratic Caucus; Sr. Legislative Asst, Rep. Robert Menendez"
-   ],
-   "clients": [
-    "AT&T SERVICES, INC.",
-    "CONSTELLATION ENERGY GENERATION, LLC",
-    "ECOLAB INC. ON BEHALF OF NALCO COMPANY",
-    "OAKTREE CAPITAL MANAGEMENT",
-    "MONEYGRAM INTERNATIONAL INC.",
-    "CTIA-THE WIRELESS ASSOCIATION",
-    "GLOBAL BUSINESS ALLIANCE",
-    "FEDEX CORPORATION",
-    "WELLS FARGO & COMPANY",
-    "TAPESTRY, INC.",
-    "THE SHERWIN-WILLIAMS COMPANY",
-    "BMW OF NORTH AMERICA, LLC",
-    "ASML US, LLC",
-    "CARVANA",
-    "CONSTELLATION BRANDS, INC.",
-    "AMERICAN COUNCIL ON EDUCATION",
-    "BLACK & VEATCH CORPORATION"
-   ],
-   "reports": 33,
-   "sample_filing": "https://lda.gov/filings/public/filing/5787ff6b-677d-4bb2-b199-03204c2f3dcf/print/"
-  },
-  {
-   "id": 69840,
-   "name": "CHRISTOPHER E. WILCOX",
-   "covered_positions": [
-    "LA, Leg Counsel, LD & Counsel, Rep. Arcuri; LD & Counsel, Rep. Demings"
-   ],
-   "clients": [
-    "AFFORDABLE HOUSING TAX CREDIT COALITION",
-    "THE VANGUARD GROUP, INC.",
     "BUHLER QUALITY YARNS CORPORATION",
     "JOSEPH ABBOUD MANUFACTURING CORP (FKA J.A. APPAREL CORP)",
     "W DIAMOND GROUP CORPORATION",
     "NEW ENGLAND SHIRT CO",
-    "SUPIMA",
     "TOM JAMES COMPANY",
     "HAMILTON SHIRTS, LTD.",
     "MAUS & HOFFMAN",
     "ROCHESTER TAILORED CLOTHING, INC.",
-    "AMGEN, INC.",
+    "STANLEY BLACK & DECKER INC",
     "PLASMA PROTEIN THERAPEUTICS ASSOCIATION",
     "NATIONAL ASSN OF STATE TREASURERS (NAST)",
-    "ELI LILLY & COMPANY",
     "FORD MOTOR COMPANY",
-    "PFIZER",
-    "SANOFI, U.S.",
-    "NOVO NORDISK INC.",
+    "ORGANON",
+    "ACCENDRA HEALTH, INC. (FORMERLY \"OWENS & MINOR, INC.\")",
     "ZOETIS"
    ],
-   "reports": 31,
-   "sample_filing": "https://lda.gov/filings/public/filing/81ebd57e-7746-4d98-866d-437f54801fd5/print/"
+   "reports": 73,
+   "sample_filing": "https://lda.gov/filings/public/filing/8329febb-94fc-49e4-acfe-f99ef1078cd8/print/"
   },
   {
-   "id": 107303,
-   "name": "BRITTANY JOHNSON HERNANDEZ",
+   "id": 15582,
+   "name": "MOSES MERCADO",
    "covered_positions": [
-    "Senior Legislative Assistant, Legislative Assistant, Legislative Correspondent, Staff Assistant: Rep. Steve Cohen"
+    "Deputy Chief of Staff, Democratic Leader Dick Gephardt"
    ],
    "clients": [
-    "AMERICAN ASSOCIATION OF COLLEGES OF OSTEOPATHIC MEDICINE",
-    "ADVANCED MEDICAL TECHNOLOGY ASSOCIATION (ADVAMED)",
-    "ADVOCATES FOR COMMUNITY HEALTH",
-    "ARRAY TECHNOLOGIES, INC.",
-    "TAKEDA PHARMACEUTICALS AMERICA, INC.",
-    "THE BOEING COMPANY",
-    "EISAI, INC.",
-    "PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA",
-    "ASSOCIATION FOR MATERIALS PROTECTION AND PERFORMANCE (AMPP)",
-    "INDIVIOR INC.",
-    "MEMPHIS-SHELBY COUNTY AIRPORT AUTHORITY",
-    "SANOFI US SERVICES INC.",
-    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION (SIFMA)",
-    "BRISTOL-MYERS SQUIBB",
-    "MERCK & CO., INC.",
-    "AIRLINES FOR AMERICA"
+    "AT&T SERVICES, INC.",
+    "SEMPRA ENERGY",
+    "ECOLAB INC. ON BEHALF OF NALCO COMPANY",
+    "MONEYGRAM INTERNATIONAL INC.",
+    "CTIA-THE WIRELESS ASSOCIATION",
+    "GLOBAL BUSINESS ALLIANCE",
+    "RHEEM MANUFACTURING COMPANY",
+    "WELLS FARGO & COMPANY",
+    "THE SHERWIN-WILLIAMS COMPANY",
+    "AVANGRID, INC.",
+    "ASML US, LLC",
+    "PEABODY ENERGY",
+    "CONSTELLATION BRANDS, INC.",
+    "AMERICAN PETROLEUM INSTITUTE",
+    "FALCK USA",
+    "CARVANA"
    ],
-   "reports": 30,
-   "sample_filing": "https://lda.gov/filings/public/filing/8afd44fb-0ac6-4d3e-a553-d6803657265f/print/"
-  },
-  {
-   "id": 41105,
-   "name": "DREW CANTOR",
-   "covered_positions": [
-    "Communications Director/Manager, Senate Republican Conference (2000-2003)."
-   ],
-   "clients": [
-    "UNITED SERVICES AUTOMOBILE ASSOCIATION",
-    "TPI COMPOSITES, INC.",
-    "SECRETARY OF STATE, STATE OF DELAWARE",
-    "CANADA LIFE REINSURANCE COMPANY",
-    "HANNOVER LIFE REASSURANCE COMPANY OF AMERICA",
-    "MUNICH AMERICAN REASSURANCE COMPANY",
-    "SB ENERGY DEVCO (US), INC.",
-    "ARCXIS",
-    "BANK OF AMERICA CORPORATION",
-    "BOYD GAMING CORPORATION",
-    "EQUIPMENT LEASING AND FINANCE ASSOCIATION",
-    "FINSECA",
-    "AMERICAN PROPERTY CASUALTY INSURANCE ASSOCIATION",
-    "COMMERCIAL REAL ESTATE FINANCE COUNCIL",
-    "PRIMERICA, INC.",
-    "THE NORTHWESTERN MUTUAL LIFE INSURANCE COMPANY"
-   ],
-   "reports": 29,
-   "sample_filing": "https://lda.gov/filings/public/filing/8d0f354e-5b7f-4e2b-bd2a-9390a64933a7/print/"
+   "reports": 72,
+   "sample_filing": "https://lda.gov/filings/public/filing/5787ff6b-677d-4bb2-b199-03204c2f3dcf/print/"
   }
  ]
 }

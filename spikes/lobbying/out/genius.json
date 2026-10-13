@@ -14,12 +14,12 @@
   "enactment-quarter": 167,
   "law": 344
  },
- "clients": 225,
+ "clients": 174,
  "registrants": 175,
  "lobbyists": 711,
  "lobbyists_with_covered_position": 147,
- "amount_on_reports_usd": 248994448,
- "amount_share_estimate_usd": 82088329,
+ "total_spend_on_quarters_usd": 243215448,
+ "bill_share_estimate_usd": 78701520,
  "issue_codes": {
   "FIN": 455,
   "BAN": 340,
@@ -44,25 +44,39 @@
  },
  "top_clients": [
   {
-   "id": 146969,
-   "name": "CHAMBER OF COMMERCE OF THE U.S.A.",
-   "reports": 2,
-   "amount_on_reports": 36700000,
-   "registrants": [
-    "CHAMBER OF COMMERCE OF THE U.S.A."
+   "key": "VISA",
+   "names": [
+    "VISA USA, INC.",
+    "VISA U.S.A. INC.",
+    "VISA, INC.",
+    "VISA, U.S.A., INC.",
+    "VISA",
+    "VISA INC."
    ],
-   "phases": [
-    "law"
+   "client_ids": [
+    179395,
+    56957,
+    192163,
+    212092,
+    101000,
+    151365,
+    210419,
+    184206,
+    60475,
+    149631
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/ccb8f0b2-7803-4e16-b48a-399d4429f7a1/print/",
-   "amount_share_estimate": 1223333.3333333335
-  },
-  {
-   "id": 149631,
-   "name": "VISA, INC.",
-   "reports": 6,
-   "amount_on_reports": 15760000,
+   "reports": 39,
+   "quarters": 6,
    "registrants": [
+    "MINDSET ADVOCACY, LLC",
+    "FORBES-TATE",
+    "CROSSROADS STRATEGIES, LLC",
+    "NORTH SOUTH GOVERNMENT STRATEGIES F/K/A JDM PUBLIC STRATEGIES, LLC",
+    "AKIN GUMP STRAUSS HAUER & FELD",
+    "WILLIAMS AND JENSEN, PLLC",
+    "535 GROUP, LLC",
+    "AVOQ, LLC",
+    "PHRONESISDC, LLC",
     "VISA INC."
    ],
    "phases": [
@@ -70,32 +84,339 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/fecb88c3-91a6-46c1-a44b-2ad3f10fa370/print/",
-   "amount_share_estimate": 1942281.7460317463
+   "sample_filing": "https://lda.gov/filings/public/filing/c8cc8274-ed56-49f3-b56b-7dc2b132e4b2/print/",
+   "total_spend_on_quarters_usd": 15760000,
+   "bill_share_estimate_usd": 1942282,
+   "firms": 10
   },
   {
-   "id": 102650,
-   "name": "AMERICAN BANKERS ASSOCIATION",
-   "reports": 6,
-   "amount_on_reports": 14210000,
+   "key": "COINBASE",
+   "names": [
+    "COINBASE, INC."
+   ],
+   "client_ids": [
+    51414,
+    58212,
+    187781,
+    199695
+   ],
+   "reports": 19,
+   "quarters": 6,
    "registrants": [
-    "AMERICAN BANKERS ASSOCIATION"
+    "PORTERFIELD, FETTIG & SEARS, LLC",
+    "THEGROUP DC, LLC",
+    "FRANKLIN SQUARE GROUP, LLC",
+    "COINBASE, INC."
    ],
    "phases": [
     "bill",
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/b147a9b7-8fc4-47e4-837f-6e262e7807b6/print/",
-   "amount_share_estimate": 856656.862745098
+   "sample_filing": "https://lda.gov/filings/public/filing/9beeca5f-74bd-4012-8957-7053df57e67a/print/",
+   "total_spend_on_quarters_usd": 5010000,
+   "bill_share_estimate_usd": 3557500,
+   "firms": 4
   },
   {
-   "id": 186169,
-   "name": "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
-   "reports": 6,
-   "amount_on_reports": 12870000,
+   "key": "ELECTRONIC PAYMENTS COALITION",
+   "names": [
+    "ELECTRONIC PAYMENTS COALITION (\"EPC\")",
+    "ELECTRONIC PAYMENTS COALITION",
+    "ELECTRONIC PAYMENTS COALITION (EPC)"
+   ],
+   "client_ids": [
+    177292,
+    169714,
+    109921,
+    53409
+   ],
+   "reports": 18,
+   "quarters": 6,
    "registrants": [
-    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION"
+    "TASSEY & ASSOCIATES",
+    "CGCN GROUP, LLC",
+    "BROWNSTEIN HYATT FARBER SCHRECK, LLP",
+    "CROSSROADS STRATEGIES, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/5478b004-6ebb-45f4-b462-fb412c430192/print/",
+   "total_spend_on_quarters_usd": 2020000,
+   "bill_share_estimate_usd": 1950000,
+   "firms": 4
+  },
+  {
+   "key": "PAYPAL",
+   "names": [
+    "PAYPAL",
+    "PAYPAL, INC.",
+    "PAYPAL INC"
+   ],
+   "client_ids": [
+    192574,
+    57361,
+    200102,
+    171481
+   ],
+   "reports": 20,
+   "quarters": 6,
+   "registrants": [
+    "THORN RUN PARTNERS",
+    "FRANKLIN SQUARE GROUP, LLC",
+    "PAYPAL, INC.",
+    "ERIS GROUP"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/dd4426c1-96f8-4c1d-8912-092f7dae32ee/print/",
+   "total_spend_on_quarters_usd": 1952500,
+   "bill_share_estimate_usd": 576357,
+   "firms": 4
+  },
+  {
+   "key": "SOLANA POLICY INSTITUTE",
+   "names": [
+    "FEDERAL HALL POLICY ADVISORS, LLC ON BEHALF OF SOLANA POLICY INSTITUTE",
+    "SOLANA POLICY INSTITUTE"
+   ],
+   "client_ids": [
+    67742,
+    66513,
+    66333,
+    67691
+   ],
+   "reports": 11,
+   "quarters": 5,
+   "registrants": [
+    "GOLDSTEIN POLICY SOLUTIONS LLC",
+    "ALPINE GROUP PARTNERS, LLC.",
+    "SOLANA POLICY INSTITUTE",
+    "FEDERAL HALL POLICY ADVISORS, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/a48e613e-4c9b-414f-8221-241d7183a339/print/",
+   "total_spend_on_quarters_usd": 2020000,
+   "bill_share_estimate_usd": 1346667,
+   "firms": 4
+  },
+  {
+   "key": "TETHER OPERATIONS S A DE C V",
+   "names": [
+    "TETHER OPERATIONS, S.A. DE C.V.",
+    "FTI CONSULTING ON BEHALF OF TETHER OPERATIONS, S.A. DE C.V."
+   ],
+   "client_ids": [
+    64477,
+    64931,
+    66800,
+    66664
+   ],
+   "reports": 15,
+   "quarters": 6,
+   "registrants": [
+    "JUCUNDUS BUSINESS SERVICES LLC",
+    "RIDGELINE ADVOCACY GROUP LLC",
+    "LILETTE ADVISORS"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/582b5e28-638b-4083-abaf-dca18ce9b4a6/print/",
+   "total_spend_on_quarters_usd": 1060000,
+   "bill_share_estimate_usd": 1060000,
+   "firms": 3
+  },
+  {
+   "key": "CITIGROUP WASHINGTON",
+   "names": [
+    "CITIGROUP WASHINGTON, INC.",
+    "CITIGROUP WASHINGTON INC."
+   ],
+   "client_ids": [
+    175696,
+    200381,
+    199334
+   ],
+   "reports": 9,
+   "quarters": 5,
+   "registrants": [
+    "MEHLMAN CONSULTING, INC.",
+    "CITIGROUP WASHINGTON, INC.",
+    "HARBINGER STRATEGIES, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/d68e6c97-ad8d-4fcc-82b4-2afed788d964/print/",
+   "total_spend_on_quarters_usd": 5420000,
+   "bill_share_estimate_usd": 1473333,
+   "firms": 3
+  },
+  {
+   "key": "BLOCK",
+   "names": [
+    "BLOCK INC.",
+    "BLOCK, INC."
+   ],
+   "client_ids": [
+    63484,
+    205820,
+    212890
+   ],
+   "reports": 12,
+   "quarters": 5,
+   "registrants": [
+    "CROSSROADS STRATEGIES, LLC",
+    "BLOCK INC.",
+    "AVOQ, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/d87e3a62-405c-4347-9da4-9ecc8cb723fd/print/",
+   "total_spend_on_quarters_usd": 2380000,
+   "bill_share_estimate_usd": 516000,
+   "firms": 3
+  },
+  {
+   "key": "STRIPE",
+   "names": [
+    "STRIPE, INC.",
+    "CORNERSTONE GOVERNMENT AFFAIRS OBO STRIPE, INC."
+   ],
+   "client_ids": [
+    61695,
+    61696,
+    212452
+   ],
+   "reports": 11,
+   "quarters": 5,
+   "registrants": [
+    "CORNERSTONE GOVERNMENT AFFAIRS, INC.",
+    "JGB & ASSOCIATES, LLC",
+    "STRIPE, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/48a668ac-9ed3-419b-ad22-f2f9309157cc/print/",
+   "total_spend_on_quarters_usd": 660000,
+   "bill_share_estimate_usd": 450000,
+   "firms": 3
+  },
+  {
+   "key": "FILECOIN FOUNDATION",
+   "names": [
+    "FILECOIN FOUNDATION"
+   ],
+   "client_ids": [
+    56405,
+    56087,
+    53653
+   ],
+   "reports": 10,
+   "quarters": 5,
+   "registrants": [
+    "GOLDSTEIN POLICY SOLUTIONS LLC",
+    "ALIGNMENT GOVERNMENT STRATEGIES",
+    "FILECOIN FOUNDATION"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/16f129bf-73cf-44cd-832c-739c402ebf54/print/",
+   "total_spend_on_quarters_usd": 460000,
+   "bill_share_estimate_usd": 182000,
+   "firms": 3
+  },
+  {
+   "key": "AVA LABS",
+   "names": [
+    "AVA LABS INC.",
+    "AVA LABS, INC."
+   ],
+   "client_ids": [
+    212542,
+    212575,
+    64418
+   ],
+   "reports": 6,
+   "quarters": 3,
+   "registrants": [
+    "VAN SCOYOC ASSOCIATES",
+    "HOLLAND & KNIGHT LLP",
+    "CAPITOL ASSET STRATEGIES"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/21d7434f-b6c1-4675-92b8-9aa7f05f95a1/print/",
+   "total_spend_on_quarters_usd": 306000,
+   "bill_share_estimate_usd": 197333,
+   "firms": 3
+  },
+  {
+   "key": "CRYPTO COUNCIL FOR INNOVATION",
+   "names": [
+    "CRYPTO COUNCIL FOR INNOVATION"
+   ],
+   "client_ids": [
+    53291,
+    60470
+   ],
+   "reports": 12,
+   "quarters": 7,
+   "registrants": [
+    "CRYPTO COUNCIL FOR INNOVATION",
+    "PHRONESISDC, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/2ad3cd32-c1a7-4b24-939f-5d5f69bc27b1/print/",
+   "total_spend_on_quarters_usd": 1868000,
+   "bill_share_estimate_usd": 1539000,
+   "firms": 2
+  },
+  {
+   "key": "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
+   "names": [
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION (SIFMA)"
+   ],
+   "client_ids": [
+    186169,
+    184123
+   ],
+   "reports": 8,
+   "quarters": 6,
+   "registrants": [
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
+    "AVOQ, LLC"
    ],
    "phases": [
     "bill",
@@ -103,62 +424,127 @@
     "law"
    ],
    "sample_filing": "https://lda.gov/filings/public/filing/e926b820-bcce-4d04-a7a6-c85e2ffd2b59/print/",
-   "amount_share_estimate": 5148000
+   "total_spend_on_quarters_usd": 12870000,
+   "bill_share_estimate_usd": 5148000,
+   "firms": 2
   },
   {
-   "id": 104895,
-   "name": "AMERICAN ASSOCIATION FOR JUSTICE",
+   "key": "PWC",
+   "names": [
+    "PWC US GROUP LLP (FKA PRICEWATERHOUSECOOPERS)",
+    "PWC US GROUP LLP"
+   ],
+   "client_ids": [
+    114399,
+    67344
+   ],
    "reports": 6,
-   "amount_on_reports": 9220000,
+   "quarters": 6,
    "registrants": [
-    "AMERICAN ASSOCIATION FOR JUSTICE"
+    "PRICEWATERHOUSECOOPERS",
+    "PWC US GROUP LLP"
    ],
    "phases": [
     "bill",
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/ea511d3e-8c73-41ae-8a9d-158c926f3799/print/",
-   "amount_share_estimate": 629025.641025641
+   "sample_filing": "https://lda.gov/filings/public/filing/59aa53a1-8187-482d-9241-76719fcf76cc/print/",
+   "total_spend_on_quarters_usd": 4980000,
+   "bill_share_estimate_usd": 1535833,
+   "firms": 2
   },
   {
-   "id": 200381,
-   "name": "CITIGROUP WASHINGTON, INC.",
-   "reports": 4,
-   "amount_on_reports": 5360000,
+   "key": "AMERICAN BANKERS ASSOCIATION",
+   "names": [
+    "AMERICAN BANKERS ASSOCIATION"
+   ],
+   "client_ids": [
+    177287,
+    102650
+   ],
+   "reports": 12,
+   "quarters": 6,
    "registrants": [
-    "CITIGROUP WASHINGTON, INC."
+    "TASSEY & ASSOCIATES",
+    "AMERICAN BANKERS ASSOCIATION"
    ],
    "phases": [
     "bill",
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/3a7abc53-8035-4d37-8971-7b9756f1862f/print/",
-   "amount_share_estimate": 1458333.3333333333
+   "sample_filing": "https://lda.gov/filings/public/filing/46923122-f217-448e-9ef1-5ecab8a0e08c/print/",
+   "total_spend_on_quarters_usd": 14210000,
+   "bill_share_estimate_usd": 856657,
+   "firms": 2
   },
   {
-   "id": 199695,
-   "name": "COINBASE, INC.",
-   "reports": 5,
-   "amount_on_reports": 4860000,
+   "key": "NORTHERN TRUST",
+   "names": [
+    "NORTHERN TRUST",
+    "NORTHERN TRUST CORPORATION"
+   ],
+   "client_ids": [
+    210075,
+    193597
+   ],
+   "reports": 8,
+   "quarters": 6,
    "registrants": [
-    "COINBASE, INC."
+    "MEHLMAN CONSULTING, INC.",
+    "NORTHERN TRUST CORPORATION"
    ],
    "phases": [
-    "law",
     "bill",
-    "enactment-quarter"
+    "enactment-quarter",
+    "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/312adc5d-ff85-4ae8-a640-722a003c29d6/print/",
-   "amount_share_estimate": 3407500
+   "sample_filing": "https://lda.gov/filings/public/filing/ffa18e62-5384-4c81-a163-9fc14ed47b7b/print/",
+   "total_spend_on_quarters_usd": 370000,
+   "bill_share_estimate_usd": 170000,
+   "firms": 2
   },
   {
-   "id": 201038,
-   "name": "JPMORGAN CHASE HOLDINGS LLC",
-   "reports": 4,
-   "amount_on_reports": 4650000,
+   "key": "WISDOMTREE DIGITAL MANAGEMENT",
+   "names": [
+    "WISDOMTREE DIGITAL MANAGEMENT, INC.",
+    "WISDOMTREE DIGITAL MANAGEMENT"
+   ],
+   "client_ids": [
+    64684,
+    68334
+   ],
+   "reports": 7,
+   "quarters": 6,
    "registrants": [
+    "CAPITOL ASSET STRATEGIES",
+    "THORN RUN PARTNERS"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/6ded8a8c-4852-4f63-96e1-335865863630/print/",
+   "total_spend_on_quarters_usd": 160000,
+   "bill_share_estimate_usd": 132500,
+   "firms": 2
+  },
+  {
+   "key": "JPMORGAN CHASE",
+   "names": [
+    "JPMORGAN CHASE HOLDINGS, LLC",
+    "JPMORGAN CHASE HOLDINGS LLC"
+   ],
+   "client_ids": [
+    60623,
+    201038
+   ],
+   "reports": 9,
+   "quarters": 5,
+   "registrants": [
+    "WILLIAMS AND JENSEN, PLLC",
     "JPMORGAN CHASE HOLDINGS LLC"
    ],
    "phases": [
@@ -166,30 +552,223 @@
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/12300457-0a95-4746-88ce-06217dd5daef/print/",
-   "amount_share_estimate": 642678.5714285715
+   "sample_filing": "https://lda.gov/filings/public/filing/f04982c3-2a0a-49f5-a5f7-dc147de66be4/print/",
+   "total_spend_on_quarters_usd": 4700000,
+   "bill_share_estimate_usd": 659345,
+   "firms": 2
   },
   {
-   "id": 106185,
-   "name": "BANK POLICY INSTITUTE",
-   "reports": 6,
-   "amount_on_reports": 4640000,
+   "key": "CIRCLE INTERNET FINANCIAL",
+   "names": [
+    "MAYER BROWN LLP OBO CIRCLE INTERNET FINANCIAL, INC.",
+    "CORNERSTONE GOVERNMENT AFFAIRS OBO CIRCLE INTERNET FINANCIAL, INC."
+   ],
+   "client_ids": [
+    57774,
+    57861
+   ],
+   "reports": 10,
+   "quarters": 5,
    "registrants": [
-    "BANK POLICY INSTITUTE"
+    "CORNERSTONE GOVERNMENT AFFAIRS, INC.",
+    "JGB & ASSOCIATES, LLC"
    ],
    "phases": [
     "bill",
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/a254538a-2fda-4dde-8ab3-91f2ecd2f593/print/",
-   "amount_share_estimate": 1546666.6666666667
+   "sample_filing": "https://lda.gov/filings/public/filing/3c759011-7351-45d9-bf0c-8b2f10ad52f5/print/",
+   "total_spend_on_quarters_usd": 360000,
+   "bill_share_estimate_usd": 240000,
+   "firms": 2
   },
   {
-   "id": 114369,
-   "name": "CONSUMER BANKERS ASSOCIATION",
+   "key": "AMERICAN AIRLINES",
+   "names": [
+    "AMERICAN AIRLINES, INC."
+   ],
+   "client_ids": [
+    58814,
+    203660
+   ],
+   "reports": 10,
+   "quarters": 5,
+   "registrants": [
+    "WILLIAMS AND JENSEN, PLLC",
+    "ELEVATE GOVERNMENT AFFAIRS, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/a6427c92-470d-4dc0-b009-57e64e48b0fc/print/",
+   "total_spend_on_quarters_usd": 600000,
+   "bill_share_estimate_usd": 135000,
+   "firms": 2
+  },
+  {
+   "key": "FINANCIAL SERVICES FORUM",
+   "names": [
+    "FINANCIAL SERVICES FORUM"
+   ],
+   "client_ids": [
+    172043,
+    203126
+   ],
    "reports": 5,
-   "amount_on_reports": 4630000,
+   "quarters": 4,
+   "registrants": [
+    "FINANCIAL SERVICES FORUM",
+    "RESOLUTION PUBLIC AFFAIRS, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/ba8dff00-285a-4909-9ae0-01768d46cc56/print/",
+   "total_spend_on_quarters_usd": 3018000,
+   "bill_share_estimate_usd": 3018000,
+   "firms": 2
+  },
+  {
+   "key": "PARADIGM OPERATIONS",
+   "names": [
+    "PARADIGM OPERATIONS LP"
+   ],
+   "client_ids": [
+    56956,
+    63965
+   ],
+   "reports": 7,
+   "quarters": 4,
+   "registrants": [
+    "PARADIGM OPERATIONS LP",
+    "PHRONESISDC, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/26b5d6a6-0f3b-4b28-8cbe-e08d8d6a5c52/print/",
+   "total_spend_on_quarters_usd": 1380000,
+   "bill_share_estimate_usd": 1380000,
+   "firms": 2
+  },
+  {
+   "key": "BLOCKCHAIN ASSOCIATION",
+   "names": [
+    "BLOCKCHAIN ASSOCIATION"
+   ],
+   "client_ids": [
+    200963,
+    203020
+   ],
+   "reports": 5,
+   "quarters": 4,
+   "registrants": [
+    "GOLDSTEIN POLICY SOLUTIONS LLC",
+    "BLOCKCHAIN ASSOCIATION"
+   ],
+   "phases": [
+    "bill",
+    "law",
+    "enactment-quarter"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/19ad17f4-e320-43ae-812e-90061cf9b342/print/",
+   "total_spend_on_quarters_usd": 1550000,
+   "bill_share_estimate_usd": 1339167,
+   "firms": 2
+  },
+  {
+   "key": "AMERICAN COUNCIL OF LIFE INSURERS",
+   "names": [
+    "AMERICAN COUNCIL OF LIFE INSURERS",
+    "THE AMERICAN COUNCIL OF LIFE INSURERS"
+   ],
+   "client_ids": [
+    103080,
+    184933
+   ],
+   "reports": 6,
+   "quarters": 3,
+   "registrants": [
+    "AMERICAN COUNCIL OF LIFE INSURERS",
+    "INVARIANT LLC"
+   ],
+   "phases": [
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/7ee50a60-de53-4de9-b50f-c70e65ded141/print/",
+   "total_spend_on_quarters_usd": 4108343,
+   "bill_share_estimate_usd": 684724,
+   "firms": 2
+  },
+  {
+   "key": "TRON BLOCKCHAIN AND DAO",
+   "names": [
+    "TRON BLOCKCHAIN AND DAO (AS SUPPORTED BY TRON TECH LIMITED AND RAINCO PTE LTD.)"
+   ],
+   "client_ids": [
+    61280,
+    61889
+   ],
+   "reports": 5,
+   "quarters": 3,
+   "registrants": [
+    "KELLEY DRYE & WARREN LLP",
+    "DIGITAL SOVEREIGNTY ALLIANCE"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/99d6c8b5-0aac-4d40-9c79-16b4cea284b5/print/",
+   "total_spend_on_quarters_usd": 220000,
+   "bill_share_estimate_usd": 220000,
+   "firms": 2
+  }
+ ],
+ "top_clients_by_share_estimate": [
+  {
+   "key": "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
+   "names": [
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION (SIFMA)"
+   ],
+   "client_ids": [
+    186169,
+    184123
+   ],
+   "reports": 8,
+   "quarters": 6,
+   "registrants": [
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
+    "AVOQ, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/e926b820-bcce-4d04-a7a6-c85e2ffd2b59/print/",
+   "total_spend_on_quarters_usd": 12870000,
+   "bill_share_estimate_usd": 5148000,
+   "firms": 2
+  },
+  {
+   "key": "CONSUMER BANKERS ASSOCIATION",
+   "names": [
+    "CONSUMER BANKERS ASSOCIATION"
+   ],
+   "client_ids": [
+    114369
+   ],
+   "reports": 5,
+   "quarters": 5,
    "registrants": [
     "CONSUMER BANKERS ASSOCIATION"
    ],
@@ -199,196 +778,77 @@
     "law"
    ],
    "sample_filing": "https://lda.gov/filings/public/filing/afb4e456-8ae1-41e6-867a-60c9859d9daf/print/",
-   "amount_share_estimate": 4630000
+   "total_spend_on_quarters_usd": 4630000,
+   "bill_share_estimate_usd": 4630000,
+   "firms": 1
   },
   {
-   "id": 134187,
-   "name": "BANK OF AMERICA CORPORATION",
-   "reports": 5,
-   "amount_on_reports": 4530000,
+   "key": "COINBASE",
+   "names": [
+    "COINBASE, INC."
+   ],
+   "client_ids": [
+    51414,
+    58212,
+    187781,
+    199695
+   ],
+   "reports": 19,
+   "quarters": 6,
    "registrants": [
-    "BANK OF AMERICA CORPORATION"
+    "PORTERFIELD, FETTIG & SEARS, LLC",
+    "THEGROUP DC, LLC",
+    "FRANKLIN SQUARE GROUP, LLC",
+    "COINBASE, INC."
    ],
    "phases": [
     "bill",
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/548ed6b1-79a9-4d70-889a-b5f61c1c0751/print/",
-   "amount_share_estimate": 1132500
+   "sample_filing": "https://lda.gov/filings/public/filing/9beeca5f-74bd-4012-8957-7053df57e67a/print/",
+   "total_spend_on_quarters_usd": 5010000,
+   "bill_share_estimate_usd": 3557500,
+   "firms": 4
   },
   {
-   "id": 126309,
-   "name": "INDEPENDENT COMMUNITY BANKERS OF AMERICA",
-   "reports": 3,
-   "amount_on_reports": 4416581,
-   "registrants": [
-    "INDEPENDENT COMMUNITY BANKERS OF AMERICA"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/99edf491-0fb0-4ad1-b39a-2719a7c68b81/print/",
-   "amount_share_estimate": 926658.25
-  },
-  {
-   "id": 67344,
-   "name": "PWC US GROUP LLP",
-   "reports": 5,
-   "amount_on_reports": 4230000,
-   "registrants": [
-    "PWC US GROUP LLP"
-   ],
-   "phases": [
-    "enactment-quarter",
-    "bill",
-    "law"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/51c749a7-d607-4992-b992-15f405eea6b2/print/",
-   "amount_share_estimate": 1348333.3333333333
-  },
-  {
-   "id": 134745,
-   "name": "WELLS FARGO & COMPANY",
-   "reports": 6,
-   "amount_on_reports": 4140000,
-   "registrants": [
-    "WELLS FARGO & COMPANY"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter",
-    "law"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/b57f13a9-b1fe-4eee-a194-8d981e9ef70f/print/",
-   "amount_share_estimate": 762857.1428571428
-  },
-  {
-   "id": 103080,
-   "name": "AMERICAN COUNCIL OF LIFE INSURERS",
-   "reports": 3,
-   "amount_on_reports": 4108343,
-   "registrants": [
-    "AMERICAN COUNCIL OF LIFE INSURERS"
-   ],
-   "phases": [
-    "law"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/7ee50a60-de53-4de9-b50f-c70e65ded141/print/",
-   "amount_share_estimate": 684723.8333333333
-  },
-  {
-   "id": 128604,
-   "name": "NATIONAL VENTURE CAPITAL ASSOCIATION",
-   "reports": 5,
-   "amount_on_reports": 3891848,
-   "registrants": [
-    "NATIONAL VENTURE CAPITAL ASSOCIATION"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter",
-    "law"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/f8a60b16-3a80-4bb6-ac60-e35aea249c3e/print/",
-   "amount_share_estimate": 648641.3333333334
-  },
-  {
-   "id": 115381,
-   "name": "CREDIT UNION NATIONAL ASSOCIATION, INC. DBA AMERICA'S CREDIT UNIONS",
-   "reports": 3,
-   "amount_on_reports": 3420000,
-   "registrants": [
-    "CREDIT UNION NATIONAL ASSOCIATION. INC. DBA AMERICA'S CREDIT UNIONS"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/579f0209-4eac-4933-b277-3978e56896a8/print/",
-   "amount_share_estimate": 1140000
-  },
-  {
-   "id": 126471,
-   "name": "INVESTMENT COMPANY INSTITUTE",
-   "reports": 3,
-   "amount_on_reports": 3396510,
-   "registrants": [
-    "INVESTMENT COMPANY INSTITUTE"
-   ],
-   "phases": [
-    "law"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/d0f345f1-923d-425d-966c-23731bf39cca/print/",
-   "amount_share_estimate": 925503.3333333333
-  },
-  {
-   "id": 160225,
-   "name": "ERNST & YOUNG LLP (WASHINGTON COUNCIL ERNST & YOUNG)",
-   "reports": 5,
-   "amount_on_reports": 3260000,
-   "registrants": [
-    "ERNST & YOUNG LLP (WASHINGTON COUNCIL ERNST & YOUNG)"
-   ],
-   "phases": [
-    "bill",
-    "enactment-quarter",
-    "law"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/5ccebb5b-61d1-4983-be76-5c728b1bd901/print/",
-   "amount_share_estimate": 599238.0952380951
-  },
-  {
-   "id": 131182,
-   "name": "MASTERCARD WORLDWIDE",
-   "reports": 2,
-   "amount_on_reports": 3120000,
-   "registrants": [
+   "key": "MASTERCARD WORLDWIDE",
+   "names": [
     "MASTERCARD WORLDWIDE"
+   ],
+   "client_ids": [
+    131182,
+    169726
+   ],
+   "reports": 3,
+   "quarters": 2,
+   "registrants": [
+    "MASTERCARD WORLDWIDE",
+    "CGCN GROUP, LLC"
    ],
    "phases": [
     "bill",
     "law"
    ],
    "sample_filing": "https://lda.gov/filings/public/filing/c6485b21-b95e-4a6c-9ebc-0a051adfc224/print/",
-   "amount_share_estimate": 3120000
+   "total_spend_on_quarters_usd": 3120000,
+   "bill_share_estimate_usd": 3120000,
+   "firms": 2
   },
   {
-   "id": 134461,
-   "name": "NFIB (NATIONAL FEDERATION OF INDEPENDENT BUSINESS)",
-   "reports": 1,
-   "amount_on_reports": 3050000,
-   "registrants": [
-    "NFIB (NATIONAL FEDERATION OF INDEPENDENT BUSINESS)"
-   ],
-   "phases": [
-    "bill"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/313e80dd-9b41-4fe4-b426-411c49058246/print/",
-   "amount_share_estimate": 305000
-  },
-  {
-   "id": 201112,
-   "name": "AICPA ASSOCIATION OF INTERNATIONAL CERTIFIED PROFESSIONAL ACCOUNTANTS",
-   "reports": 2,
-   "amount_on_reports": 3050000,
-   "registrants": [
-    "AICPA ASSOCIATION OF INTERNATIONAL CERTIFIED PROFESSIONAL ACCOUNTANTS"
-   ],
-   "phases": [
-    "law"
-   ],
-   "sample_filing": "https://lda.gov/filings/public/filing/aefc3142-a5b8-43a0-930f-08d7671244db/print/",
-   "amount_share_estimate": 610000
-  },
-  {
-   "id": 172043,
-   "name": "FINANCIAL SERVICES FORUM",
-   "reports": 4,
-   "amount_on_reports": 3018000,
-   "registrants": [
+   "key": "FINANCIAL SERVICES FORUM",
+   "names": [
     "FINANCIAL SERVICES FORUM"
+   ],
+   "client_ids": [
+    172043,
+    203126
+   ],
+   "reports": 5,
+   "quarters": 4,
+   "registrants": [
+    "FINANCIAL SERVICES FORUM",
+    "RESOLUTION PUBLIC AFFAIRS, LLC"
    ],
    "phases": [
     "bill",
@@ -396,38 +856,291 @@
     "law"
    ],
    "sample_filing": "https://lda.gov/filings/public/filing/ba8dff00-285a-4909-9ae0-01768d46cc56/print/",
-   "amount_share_estimate": 3018000
+   "total_spend_on_quarters_usd": 3018000,
+   "bill_share_estimate_usd": 3018000,
+   "firms": 2
   },
   {
-   "id": 120846,
-   "name": "FOOD MARKETPLACE INC",
-   "reports": 5,
-   "amount_on_reports": 2594000,
+   "key": "ELECTRONIC PAYMENTS COALITION",
+   "names": [
+    "ELECTRONIC PAYMENTS COALITION (\"EPC\")",
+    "ELECTRONIC PAYMENTS COALITION",
+    "ELECTRONIC PAYMENTS COALITION (EPC)"
+   ],
+   "client_ids": [
+    177292,
+    169714,
+    109921,
+    53409
+   ],
+   "reports": 18,
+   "quarters": 6,
    "registrants": [
-    "FOOD MARKETPLACE INC."
+    "TASSEY & ASSOCIATES",
+    "CGCN GROUP, LLC",
+    "BROWNSTEIN HYATT FARBER SCHRECK, LLP",
+    "CROSSROADS STRATEGIES, LLC"
    ],
    "phases": [
     "bill",
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/18138d98-3320-4c2f-a406-f5436aa925cf/print/",
-   "amount_share_estimate": 227650.34965034964
+   "sample_filing": "https://lda.gov/filings/public/filing/5478b004-6ebb-45f4-b462-fb412c430192/print/",
+   "total_spend_on_quarters_usd": 2020000,
+   "bill_share_estimate_usd": 1950000,
+   "firms": 4
   },
   {
-   "id": 184039,
-   "name": "MANAGED FUNDS ASSOCIATION",
-   "reports": 2,
-   "amount_on_reports": 2450000,
+   "key": "VISA",
+   "names": [
+    "VISA USA, INC.",
+    "VISA U.S.A. INC.",
+    "VISA, INC.",
+    "VISA, U.S.A., INC.",
+    "VISA",
+    "VISA INC."
+   ],
+   "client_ids": [
+    179395,
+    56957,
+    192163,
+    212092,
+    101000,
+    151365,
+    210419,
+    184206,
+    60475,
+    149631
+   ],
+   "reports": 39,
+   "quarters": 6,
    "registrants": [
-    "MANAGED FUNDS ASSOCIATION"
+    "MINDSET ADVOCACY, LLC",
+    "FORBES-TATE",
+    "CROSSROADS STRATEGIES, LLC",
+    "NORTH SOUTH GOVERNMENT STRATEGIES F/K/A JDM PUBLIC STRATEGIES, LLC",
+    "AKIN GUMP STRAUSS HAUER & FELD",
+    "WILLIAMS AND JENSEN, PLLC",
+    "535 GROUP, LLC",
+    "AVOQ, LLC",
+    "PHRONESISDC, LLC",
+    "VISA INC."
    ],
    "phases": [
+    "bill",
     "enactment-quarter",
     "law"
    ],
-   "sample_filing": "https://lda.gov/filings/public/filing/6a146a3b-3d38-47e6-881a-5f47e8ff56c2/print/",
-   "amount_share_estimate": 612500
+   "sample_filing": "https://lda.gov/filings/public/filing/c8cc8274-ed56-49f3-b56b-7dc2b132e4b2/print/",
+   "total_spend_on_quarters_usd": 15760000,
+   "bill_share_estimate_usd": 1942282,
+   "firms": 10
+  },
+  {
+   "key": "FRANKLIN RESOURCES",
+   "names": [
+    "FRANKLIN RESOURCES, INC. (FRANKLIN TEMPLETON) AND AFFILIATES"
+   ],
+   "client_ids": [
+    55667
+   ],
+   "reports": 6,
+   "quarters": 6,
+   "registrants": [
+    "FRANKLIN RESOURCES, INC. (FRANKLIN TEMPLETON) AND AFFILIATES"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/465131a1-278e-4ac8-8c4a-dd45a671402c/print/",
+   "total_spend_on_quarters_usd": 1660000,
+   "bill_share_estimate_usd": 1660000,
+   "firms": 1
+  },
+  {
+   "key": "BANK POLICY INSTITUTE",
+   "names": [
+    "BANK POLICY INSTITUTE"
+   ],
+   "client_ids": [
+    106185
+   ],
+   "reports": 6,
+   "quarters": 6,
+   "registrants": [
+    "BANK POLICY INSTITUTE"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/a254538a-2fda-4dde-8ab3-91f2ecd2f593/print/",
+   "total_spend_on_quarters_usd": 4640000,
+   "bill_share_estimate_usd": 1546667,
+   "firms": 1
+  },
+  {
+   "key": "CRYPTO COUNCIL FOR INNOVATION",
+   "names": [
+    "CRYPTO COUNCIL FOR INNOVATION"
+   ],
+   "client_ids": [
+    53291,
+    60470
+   ],
+   "reports": 12,
+   "quarters": 7,
+   "registrants": [
+    "CRYPTO COUNCIL FOR INNOVATION",
+    "PHRONESISDC, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/2ad3cd32-c1a7-4b24-939f-5d5f69bc27b1/print/",
+   "total_spend_on_quarters_usd": 1868000,
+   "bill_share_estimate_usd": 1539000,
+   "firms": 2
+  },
+  {
+   "key": "PWC",
+   "names": [
+    "PWC US GROUP LLP (FKA PRICEWATERHOUSECOOPERS)",
+    "PWC US GROUP LLP"
+   ],
+   "client_ids": [
+    114399,
+    67344
+   ],
+   "reports": 6,
+   "quarters": 6,
+   "registrants": [
+    "PRICEWATERHOUSECOOPERS",
+    "PWC US GROUP LLP"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/59aa53a1-8187-482d-9241-76719fcf76cc/print/",
+   "total_spend_on_quarters_usd": 4980000,
+   "bill_share_estimate_usd": 1535833,
+   "firms": 2
+  },
+  {
+   "key": "CITIGROUP WASHINGTON",
+   "names": [
+    "CITIGROUP WASHINGTON, INC.",
+    "CITIGROUP WASHINGTON INC."
+   ],
+   "client_ids": [
+    175696,
+    200381,
+    199334
+   ],
+   "reports": 9,
+   "quarters": 5,
+   "registrants": [
+    "MEHLMAN CONSULTING, INC.",
+    "CITIGROUP WASHINGTON, INC.",
+    "HARBINGER STRATEGIES, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/d68e6c97-ad8d-4fcc-82b4-2afed788d964/print/",
+   "total_spend_on_quarters_usd": 5420000,
+   "bill_share_estimate_usd": 1473333,
+   "firms": 3
+  },
+  {
+   "key": "PARADIGM OPERATIONS",
+   "names": [
+    "PARADIGM OPERATIONS LP"
+   ],
+   "client_ids": [
+    56956,
+    63965
+   ],
+   "reports": 7,
+   "quarters": 4,
+   "registrants": [
+    "PARADIGM OPERATIONS LP",
+    "PHRONESISDC, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/26b5d6a6-0f3b-4b28-8cbe-e08d8d6a5c52/print/",
+   "total_spend_on_quarters_usd": 1380000,
+   "bill_share_estimate_usd": 1380000,
+   "firms": 2
+  },
+  {
+   "key": "SOLANA POLICY INSTITUTE",
+   "names": [
+    "FEDERAL HALL POLICY ADVISORS, LLC ON BEHALF OF SOLANA POLICY INSTITUTE",
+    "SOLANA POLICY INSTITUTE"
+   ],
+   "client_ids": [
+    67742,
+    66513,
+    66333,
+    67691
+   ],
+   "reports": 11,
+   "quarters": 5,
+   "registrants": [
+    "GOLDSTEIN POLICY SOLUTIONS LLC",
+    "ALPINE GROUP PARTNERS, LLC.",
+    "SOLANA POLICY INSTITUTE",
+    "FEDERAL HALL POLICY ADVISORS, LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/a48e613e-4c9b-414f-8221-241d7183a339/print/",
+   "total_spend_on_quarters_usd": 2020000,
+   "bill_share_estimate_usd": 1346667,
+   "firms": 4
+  },
+  {
+   "key": "BLOCKCHAIN ASSOCIATION",
+   "names": [
+    "BLOCKCHAIN ASSOCIATION"
+   ],
+   "client_ids": [
+    200963,
+    203020
+   ],
+   "reports": 5,
+   "quarters": 4,
+   "registrants": [
+    "GOLDSTEIN POLICY SOLUTIONS LLC",
+    "BLOCKCHAIN ASSOCIATION"
+   ],
+   "phases": [
+    "bill",
+    "law",
+    "enactment-quarter"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/19ad17f4-e320-43ae-812e-90061cf9b342/print/",
+   "total_spend_on_quarters_usd": 1550000,
+   "bill_share_estimate_usd": 1339167,
+   "firms": 2
   }
  ],
  "top_registrants": [
@@ -437,48 +1150,6 @@
    "reports": 40,
    "clients": 10,
    "amount_on_reports": 2930000
-  },
-  {
-   "id": 400531586,
-   "name": "CROSSROADS STRATEGIES, LLC",
-   "reports": 25,
-   "clients": 5,
-   "amount_on_reports": 1710000
-  },
-  {
-   "id": 401108637,
-   "name": "PHRONESISDC, LLC",
-   "reports": 22,
-   "clients": 5,
-   "amount_on_reports": 1170000
-  },
-  {
-   "id": 41454,
-   "name": "WILLIAMS AND JENSEN, PLLC",
-   "reports": 15,
-   "clients": 3,
-   "amount_on_reports": 800000
-  },
-  {
-   "id": 284950,
-   "name": "MEHLMAN CONSULTING, INC.",
-   "reports": 13,
-   "clients": 3,
-   "amount_on_reports": 770000
-  },
-  {
-   "id": 288954,
-   "name": "TASSEY & ASSOCIATES",
-   "reports": 11,
-   "clients": 2,
-   "amount_on_reports": 930000
-  },
-  {
-   "id": 40013096,
-   "name": "FRANKLIN SQUARE GROUP, LLC",
-   "reports": 11,
-   "clients": 2,
-   "amount_on_reports": 700000
   },
   {
    "id": 401109062,
@@ -495,11 +1166,46 @@
    "amount_on_reports": 640000
   },
   {
+   "id": 400531586,
+   "name": "CROSSROADS STRATEGIES, LLC",
+   "reports": 25,
+   "clients": 5,
+   "amount_on_reports": 1710000
+  },
+  {
+   "id": 401108637,
+   "name": "PHRONESISDC, LLC",
+   "reports": 22,
+   "clients": 5,
+   "amount_on_reports": 1170000
+  },
+  {
    "id": 401104210,
    "name": "GOLDSTEIN POLICY SOLUTIONS LLC",
    "reports": 11,
    "clients": 4,
    "amount_on_reports": 370000
+  },
+  {
+   "id": 284950,
+   "name": "MEHLMAN CONSULTING, INC.",
+   "reports": 13,
+   "clients": 3,
+   "amount_on_reports": 770000
+  },
+  {
+   "id": 292892,
+   "name": "WHITMER & WORRALL, LLC",
+   "reports": 8,
+   "clients": 3,
+   "amount_on_reports": 250000
+  },
+  {
+   "id": 41454,
+   "name": "WILLIAMS AND JENSEN, PLLC",
+   "reports": 15,
+   "clients": 3,
+   "amount_on_reports": 800000
   },
   {
    "id": 75557,
@@ -516,6 +1222,13 @@
    "amount_on_reports": 0
   },
   {
+   "id": 288954,
+   "name": "TASSEY & ASSOCIATES",
+   "reports": 11,
+   "clients": 2,
+   "amount_on_reports": 930000
+  },
+  {
    "id": 400534596,
    "name": "THORN RUN PARTNERS",
    "reports": 10,
@@ -523,18 +1236,18 @@
    "amount_on_reports": 410000
   },
   {
-   "id": 401104313,
-   "name": "MILLER STRATEGIES, LLC",
-   "reports": 10,
+   "id": 40013096,
+   "name": "FRANKLIN SQUARE GROUP, LLC",
+   "reports": 11,
    "clients": 2,
-   "amount_on_reports": 810000
+   "amount_on_reports": 700000
   },
   {
-   "id": 292892,
-   "name": "WHITMER & WORRALL, LLC",
-   "reports": 8,
-   "clients": 3,
-   "amount_on_reports": 250000
+   "id": 307114,
+   "name": "KELLEY DRYE & WARREN LLP",
+   "reports": 4,
+   "clients": 2,
+   "amount_on_reports": 180000
   }
  ],
  "covered_lobbyists_sample": [
