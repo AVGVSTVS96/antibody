@@ -5,6 +5,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 LEVELS = ("division", "title", "subtitle", "chapter", "part", "subpart")
+SPLIT = ("subsection", "paragraph")
+SPLIT_WORDS = 1500
 DOLLARS = re.compile(r"\$([\d,]+(?:\.\d+)?)(?:\s*(billion|million))?")
 
 
@@ -37,20 +39,31 @@ def sections(path):
             if child.tag in LEVELS:
                 walk(child, trail + [heading(child)])
             elif child.tag == "section" and child.find("header") is not None:
-                full = text(child)
-                out.append({
-                    "id": f"sec-{len(out)}",
-                    "enum": text(child.find("enum")),
-                    "header": text(child.find("header")),
-                    "path": [t for t in trail if t],
-                    "words": len(full.split()),
-                    "appropriated": appropriated_dollars(full),
-                    "text": full[:1500],
-                })
+                units(child, [t for t in trail if t], text(child.find("enum")))
             elif child.tag not in ("section",):
                 walk(child, trail)
 
+    def units(el, trail, enum):
+        full = text(el)
+        parts = [c for c in el if c.tag in SPLIT and c.find("header") is not None]
+        if len(full.split()) > SPLIT_WORDS and len(parts) > 1:
+            for c in parts:
+                units(c, trail + [heading(el)], f"{enum}({text(c.find('enum')).strip('()')})")
+            return
+        out.append({
+            "id": f"u-{len(out)}",
+            "enum": enum,
+            "header": text(el.find("header")),
+            "path": trail,
+            "words": len(full.split()),
+            "appropriated": appropriated_dollars(full),
+            "text": full[:1500],
+        })
+
     walk(body, [])
+    title = text(root.find(".//official-title"))
+    out.append({"id": "general", "enum": "-", "header": "The bill as a whole", "path": [], "words": 0,
+                "appropriated": 0, "text": title})
     return out
 
 
