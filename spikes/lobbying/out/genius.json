@@ -1,0 +1,860 @@
+{
+ "candidates_from_api": 817,
+ "matched_filings": 816,
+ "by_confidence": {
+  "high": 816,
+  "medium": 0,
+  "low": 0
+ },
+ "bill": "GENIUS Act (S.1582, 119th; earlier S.394, S.919)",
+ "reports": 756,
+ "registrations": 17,
+ "by_phase": {
+  "bill": 245,
+  "enactment-quarter": 167,
+  "law": 344
+ },
+ "clients": 225,
+ "registrants": 175,
+ "lobbyists": 711,
+ "lobbyists_with_covered_position": 147,
+ "amount_on_reports_usd": 248994448,
+ "issue_codes": {
+  "FIN": 455,
+  "BAN": 340,
+  "TAX": 26,
+  "CDT": 22,
+  "SCI": 21,
+  "CSP": 16,
+  "GOV": 13,
+  "ACC": 12,
+  "MON": 9,
+  "AGR": 8,
+  "SMB": 6,
+  "RET": 5,
+  "CON": 4,
+  "NAT": 3,
+  "LAW": 3,
+  "ECN": 2,
+  "INS": 2,
+  "CPT": 1,
+  "ENG": 1,
+  "BUD": 1
+ },
+ "top_clients": [
+  {
+   "id": 146969,
+   "name": "CHAMBER OF COMMERCE OF THE U.S.A.",
+   "reports": 2,
+   "amount_on_reports": 36700000,
+   "registrants": [
+    "CHAMBER OF COMMERCE OF THE U.S.A."
+   ],
+   "phases": [
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/ccb8f0b2-7803-4e16-b48a-399d4429f7a1/print/"
+  },
+  {
+   "id": 149631,
+   "name": "VISA, INC.",
+   "reports": 6,
+   "amount_on_reports": 15760000,
+   "registrants": [
+    "VISA INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/fecb88c3-91a6-46c1-a44b-2ad3f10fa370/print/"
+  },
+  {
+   "id": 102650,
+   "name": "AMERICAN BANKERS ASSOCIATION",
+   "reports": 6,
+   "amount_on_reports": 14210000,
+   "registrants": [
+    "AMERICAN BANKERS ASSOCIATION"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/b147a9b7-8fc4-47e4-837f-6e262e7807b6/print/"
+  },
+  {
+   "id": 186169,
+   "name": "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION",
+   "reports": 6,
+   "amount_on_reports": 12870000,
+   "registrants": [
+    "SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/e926b820-bcce-4d04-a7a6-c85e2ffd2b59/print/"
+  },
+  {
+   "id": 104895,
+   "name": "AMERICAN ASSOCIATION FOR JUSTICE",
+   "reports": 6,
+   "amount_on_reports": 9220000,
+   "registrants": [
+    "AMERICAN ASSOCIATION FOR JUSTICE"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/ea511d3e-8c73-41ae-8a9d-158c926f3799/print/"
+  },
+  {
+   "id": 200381,
+   "name": "CITIGROUP WASHINGTON, INC.",
+   "reports": 4,
+   "amount_on_reports": 5360000,
+   "registrants": [
+    "CITIGROUP WASHINGTON, INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/3a7abc53-8035-4d37-8971-7b9756f1862f/print/"
+  },
+  {
+   "id": 199695,
+   "name": "COINBASE, INC.",
+   "reports": 5,
+   "amount_on_reports": 4860000,
+   "registrants": [
+    "COINBASE, INC."
+   ],
+   "phases": [
+    "law",
+    "bill",
+    "enactment-quarter"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/312adc5d-ff85-4ae8-a640-722a003c29d6/print/"
+  },
+  {
+   "id": 201038,
+   "name": "JPMORGAN CHASE HOLDINGS LLC",
+   "reports": 4,
+   "amount_on_reports": 4650000,
+   "registrants": [
+    "JPMORGAN CHASE HOLDINGS LLC"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/12300457-0a95-4746-88ce-06217dd5daef/print/"
+  },
+  {
+   "id": 106185,
+   "name": "BANK POLICY INSTITUTE",
+   "reports": 6,
+   "amount_on_reports": 4640000,
+   "registrants": [
+    "BANK POLICY INSTITUTE"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/a254538a-2fda-4dde-8ab3-91f2ecd2f593/print/"
+  },
+  {
+   "id": 114369,
+   "name": "CONSUMER BANKERS ASSOCIATION",
+   "reports": 5,
+   "amount_on_reports": 4630000,
+   "registrants": [
+    "CONSUMER BANKERS ASSOCIATION"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/afb4e456-8ae1-41e6-867a-60c9859d9daf/print/"
+  },
+  {
+   "id": 134187,
+   "name": "BANK OF AMERICA CORPORATION",
+   "reports": 5,
+   "amount_on_reports": 4530000,
+   "registrants": [
+    "BANK OF AMERICA CORPORATION"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/548ed6b1-79a9-4d70-889a-b5f61c1c0751/print/"
+  },
+  {
+   "id": 126309,
+   "name": "INDEPENDENT COMMUNITY BANKERS OF AMERICA",
+   "reports": 3,
+   "amount_on_reports": 4416581,
+   "registrants": [
+    "INDEPENDENT COMMUNITY BANKERS OF AMERICA"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/99edf491-0fb0-4ad1-b39a-2719a7c68b81/print/"
+  },
+  {
+   "id": 67344,
+   "name": "PWC US GROUP LLP",
+   "reports": 5,
+   "amount_on_reports": 4230000,
+   "registrants": [
+    "PWC US GROUP LLP"
+   ],
+   "phases": [
+    "enactment-quarter",
+    "bill",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/51c749a7-d607-4992-b992-15f405eea6b2/print/"
+  },
+  {
+   "id": 134745,
+   "name": "WELLS FARGO & COMPANY",
+   "reports": 6,
+   "amount_on_reports": 4140000,
+   "registrants": [
+    "WELLS FARGO & COMPANY"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/b57f13a9-b1fe-4eee-a194-8d981e9ef70f/print/"
+  },
+  {
+   "id": 103080,
+   "name": "AMERICAN COUNCIL OF LIFE INSURERS",
+   "reports": 3,
+   "amount_on_reports": 4108343,
+   "registrants": [
+    "AMERICAN COUNCIL OF LIFE INSURERS"
+   ],
+   "phases": [
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/7ee50a60-de53-4de9-b50f-c70e65ded141/print/"
+  },
+  {
+   "id": 128604,
+   "name": "NATIONAL VENTURE CAPITAL ASSOCIATION",
+   "reports": 5,
+   "amount_on_reports": 3891848,
+   "registrants": [
+    "NATIONAL VENTURE CAPITAL ASSOCIATION"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/f8a60b16-3a80-4bb6-ac60-e35aea249c3e/print/"
+  },
+  {
+   "id": 115381,
+   "name": "CREDIT UNION NATIONAL ASSOCIATION, INC. DBA AMERICA'S CREDIT UNIONS",
+   "reports": 3,
+   "amount_on_reports": 3420000,
+   "registrants": [
+    "CREDIT UNION NATIONAL ASSOCIATION. INC. DBA AMERICA'S CREDIT UNIONS"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/579f0209-4eac-4933-b277-3978e56896a8/print/"
+  },
+  {
+   "id": 126471,
+   "name": "INVESTMENT COMPANY INSTITUTE",
+   "reports": 3,
+   "amount_on_reports": 3396510,
+   "registrants": [
+    "INVESTMENT COMPANY INSTITUTE"
+   ],
+   "phases": [
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/d0f345f1-923d-425d-966c-23731bf39cca/print/"
+  },
+  {
+   "id": 160225,
+   "name": "ERNST & YOUNG LLP (WASHINGTON COUNCIL ERNST & YOUNG)",
+   "reports": 5,
+   "amount_on_reports": 3260000,
+   "registrants": [
+    "ERNST & YOUNG LLP (WASHINGTON COUNCIL ERNST & YOUNG)"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/5ccebb5b-61d1-4983-be76-5c728b1bd901/print/"
+  },
+  {
+   "id": 131182,
+   "name": "MASTERCARD WORLDWIDE",
+   "reports": 2,
+   "amount_on_reports": 3120000,
+   "registrants": [
+    "MASTERCARD WORLDWIDE"
+   ],
+   "phases": [
+    "bill",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/c6485b21-b95e-4a6c-9ebc-0a051adfc224/print/"
+  },
+  {
+   "id": 134461,
+   "name": "NFIB (NATIONAL FEDERATION OF INDEPENDENT BUSINESS)",
+   "reports": 1,
+   "amount_on_reports": 3050000,
+   "registrants": [
+    "NFIB (NATIONAL FEDERATION OF INDEPENDENT BUSINESS)"
+   ],
+   "phases": [
+    "bill"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/313e80dd-9b41-4fe4-b426-411c49058246/print/"
+  },
+  {
+   "id": 201112,
+   "name": "AICPA ASSOCIATION OF INTERNATIONAL CERTIFIED PROFESSIONAL ACCOUNTANTS",
+   "reports": 2,
+   "amount_on_reports": 3050000,
+   "registrants": [
+    "AICPA ASSOCIATION OF INTERNATIONAL CERTIFIED PROFESSIONAL ACCOUNTANTS"
+   ],
+   "phases": [
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/aefc3142-a5b8-43a0-930f-08d7671244db/print/"
+  },
+  {
+   "id": 172043,
+   "name": "FINANCIAL SERVICES FORUM",
+   "reports": 4,
+   "amount_on_reports": 3018000,
+   "registrants": [
+    "FINANCIAL SERVICES FORUM"
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/ba8dff00-285a-4909-9ae0-01768d46cc56/print/"
+  },
+  {
+   "id": 120846,
+   "name": "FOOD MARKETPLACE INC",
+   "reports": 5,
+   "amount_on_reports": 2594000,
+   "registrants": [
+    "FOOD MARKETPLACE INC."
+   ],
+   "phases": [
+    "bill",
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/18138d98-3320-4c2f-a406-f5436aa925cf/print/"
+  },
+  {
+   "id": 184039,
+   "name": "MANAGED FUNDS ASSOCIATION",
+   "reports": 2,
+   "amount_on_reports": 2450000,
+   "registrants": [
+    "MANAGED FUNDS ASSOCIATION"
+   ],
+   "phases": [
+    "enactment-quarter",
+    "law"
+   ],
+   "sample_filing": "https://lda.gov/filings/public/filing/6a146a3b-3d38-47e6-881a-5f47e8ff56c2/print/"
+  }
+ ],
+ "top_registrants": [
+  {
+   "id": 314237,
+   "name": "INVARIANT LLC",
+   "reports": 40,
+   "clients": 10,
+   "amount_on_reports": 2930000
+  },
+  {
+   "id": 400531586,
+   "name": "CROSSROADS STRATEGIES, LLC",
+   "reports": 25,
+   "clients": 5,
+   "amount_on_reports": 1710000
+  },
+  {
+   "id": 401108637,
+   "name": "PHRONESISDC, LLC",
+   "reports": 22,
+   "clients": 5,
+   "amount_on_reports": 1170000
+  },
+  {
+   "id": 41454,
+   "name": "WILLIAMS AND JENSEN, PLLC",
+   "reports": 15,
+   "clients": 3,
+   "amount_on_reports": 800000
+  },
+  {
+   "id": 284950,
+   "name": "MEHLMAN CONSULTING, INC.",
+   "reports": 13,
+   "clients": 3,
+   "amount_on_reports": 770000
+  },
+  {
+   "id": 288954,
+   "name": "TASSEY & ASSOCIATES",
+   "reports": 11,
+   "clients": 2,
+   "amount_on_reports": 930000
+  },
+  {
+   "id": 40013096,
+   "name": "FRANKLIN SQUARE GROUP, LLC",
+   "reports": 11,
+   "clients": 2,
+   "amount_on_reports": 700000
+  },
+  {
+   "id": 401109062,
+   "name": "CAPITOL ASSET STRATEGIES",
+   "reports": 11,
+   "clients": 5,
+   "amount_on_reports": 167500
+  },
+  {
+   "id": 313271,
+   "name": "AVOQ, LLC",
+   "reports": 11,
+   "clients": 5,
+   "amount_on_reports": 640000
+  },
+  {
+   "id": 401104210,
+   "name": "GOLDSTEIN POLICY SOLUTIONS LLC",
+   "reports": 11,
+   "clients": 4,
+   "amount_on_reports": 370000
+  },
+  {
+   "id": 75557,
+   "name": "CORNERSTONE GOVERNMENT AFFAIRS, INC.",
+   "reports": 10,
+   "clients": 2,
+   "amount_on_reports": 660000
+  },
+  {
+   "id": 401017872,
+   "name": "JGB & ASSOCIATES, LLC",
+   "reports": 10,
+   "clients": 2,
+   "amount_on_reports": 0
+  },
+  {
+   "id": 400534596,
+   "name": "THORN RUN PARTNERS",
+   "reports": 10,
+   "clients": 2,
+   "amount_on_reports": 410000
+  },
+  {
+   "id": 401104313,
+   "name": "MILLER STRATEGIES, LLC",
+   "reports": 10,
+   "clients": 2,
+   "amount_on_reports": 810000
+  },
+  {
+   "id": 292892,
+   "name": "WHITMER & WORRALL, LLC",
+   "reports": 8,
+   "clients": 3,
+   "amount_on_reports": 250000
+  }
+ ],
+ "covered_lobbyists_sample": [
+  {
+   "id": 114912,
+   "name": "NOAH MARINE",
+   "covered_positions": [
+    "Leg. Dir, Rep. Ed Perlmutter (2013-2017); Leg. Asst, Rep. Ed Perlmutter (2011-2013)"
+   ],
+   "clients": [
+    "CIRCLE",
+    "PAYWARD INC D/B/A KRAKEN",
+    "FLEXA INC.",
+    "COINFLIP",
+    "MYSTEN LABS, INC.",
+    "PUDGY PENGUINS, INC.",
+    "THE AMERICAN COUNCIL OF LIFE INSURERS",
+    "RAMP BUSINESS CORPORATION"
+   ],
+   "reports": 29,
+   "sample_filing": "https://lda.gov/filings/public/filing/f3849f67-7a22-4f4f-9b63-be52be43d519/print/"
+  },
+  {
+   "id": 149543,
+   "name": "ALEJANDRO CISNEROS",
+   "covered_positions": [
+    "Leg. Dir, Rep. Young Kim (2021-2025); Dir of Public Policy, Finseca/AALU (2020-2021); Sr. Leg. Asst, Rep. Anthony Gonzalez (2019-2020); Rep. Carlos Curbelo: Leg. Asst (2018); Leg. Aide/Ops Manager (2017-2018); Staff Asst/Scheduler (2015-2017)"
+   ],
+   "clients": [
+    "CIRCLE",
+    "MYSTEN LABS, INC.",
+    "PUDGY PENGUINS, INC.",
+    "COINFLIP"
+   ],
+   "reports": 17,
+   "sample_filing": "https://lda.gov/filings/public/filing/d84d75b4-95f6-434a-bb0e-a85e852f3acb/print/"
+  },
+  {
+   "id": 151949,
+   "name": "JACK WILKINSON",
+   "covered_positions": [
+    "Intern, Rep. French Hill; Financial Services Fellow, Rep. French Hill; Legislative Correspondent, Rep. Alex Mooney."
+   ],
+   "clients": [
+    "CRYPTO COUNCIL FOR INNOVATION",
+    "LMAX GROUP",
+    "MOONPAY USA LLC",
+    "PARADIGM OPERATIONS LP",
+    "VISA INC."
+   ],
+   "reports": 17,
+   "sample_filing": "https://lda.gov/filings/public/filing/e3403229-7c13-469c-b932-cba19cea0783/print/"
+  },
+  {
+   "id": 149010,
+   "name": "REGINALD ALEXANDER MCCRIMMON",
+   "covered_positions": [
+    "Director Member Services & External Affairs - Congressional Black Caucus; Special Assistant, Staff Assistant - Rep. G. K. Butterfield"
+   ],
+   "clients": [
+    "BLOCK INC.",
+    "H&R BLOCK MANAGEMENT, LLC",
+    "DEFENSE CREDIT UNION COUNCIL",
+    "ELECTRONIC PAYMENTS COALITION"
+   ],
+   "reports": 15,
+   "sample_filing": "https://lda.gov/filings/public/filing/d87e3a62-405c-4347-9da4-9ecc8cb723fd/print/"
+  },
+  {
+   "id": 143856,
+   "name": "IVELISSE ALEXANDRA PORROA-GARCIA",
+   "covered_positions": [
+    "Policy Director, Congressional Hispanic Caucus (CHC); Legislative Assistant, Rep. Raul Ruiz; Staff Assistant, Sen. Barbara Boxer"
+   ],
+   "clients": [
+    "VISA, INC.",
+    "H&R BLOCK MANAGEMENT, LLC",
+    "DEFENSE CREDIT UNION COUNCIL",
+    "ELECTRONIC PAYMENTS COALITION"
+   ],
+   "reports": 15,
+   "sample_filing": "https://lda.gov/filings/public/filing/f6887fe7-476e-4a0d-8355-59f5ff0b4f08/print/"
+  },
+  {
+   "id": 148559,
+   "name": "JOSHUA DAVID FENDRICK",
+   "covered_positions": [
+    "Staff Assistant, Legislative Correspondent, and Legislative Aide, Sen. Gary C. Peters; Economic Policy Adviser, Rep. Josh Gottheimer; Economic Policy Adviser, Sen. Gary C. Peters"
+   ],
+   "clients": [
+    "AMERICAN AIRLINES, INC.",
+    "JPMORGAN CHASE HOLDINGS, LLC",
+    "VISA"
+   ],
+   "reports": 15,
+   "sample_filing": "https://lda.gov/filings/public/filing/a6427c92-470d-4dc0-b009-57e64e48b0fc/print/"
+  },
+  {
+   "id": 151117,
+   "name": "STEPHEN THOMAS VOLJAVEC",
+   "covered_positions": [
+    "Legislative Director, Rep. Vern Buchanan; Legislative Assistant, Senator Marsha Blackburn"
+   ],
+   "clients": [
+    "DEFENSE CREDIT UNION COUNCIL",
+    "BLOCK INC.",
+    "VISA, INC.",
+    "ELECTRONIC PAYMENTS COALITION"
+   ],
+   "reports": 14,
+   "sample_filing": "https://lda.gov/filings/public/filing/61d0c869-14fb-494f-9154-eacce6729dfe/print/"
+  },
+  {
+   "id": 146689,
+   "name": "DAVID PLANNING",
+   "covered_positions": [
+    "Floor Dir, House Maj Whip; Staff Dir, House Smll Biz Cmte; Spec. Asst to Pres/Leg Affairs, Exec Office of Pres; Dep. Dir Coalitions&Mmbr Services, House Financial Cmte; Floor Asst, House Maj Whip; Spec. Asst, House Chf Dep. Whip; Staff Asst, Speaker",
+    "Floor Dir, House Maj Whip; Staff Dir, House Smll Biz Cmte; Spec. Asst to Pres/Leg Affairs, Exec Office of Pres; Dep. Dir Coalitions& Mmbr Services, House Financial Cmte; Floor Asst, House Maj Whip; Spec. Asst, House Chf Dep. Whip; Staff Asst,Speaker",
+    "Floor Dir, House Maj Whip; Staff Dir, House Smll Biz Cmte; Spec. Asst to Pres/Leg Affairs, Exec Office of Pres; Dep. Dir Coalitions& Mmbr Services, House Financial Cmte; Floor Asst, House Maj Whip; Spec. Asst, House Chf Dep. Whip; Staff Asst, Speaker"
+   ],
+   "clients": [
+    "MAYER BROWN LLP OBO CIRCLE INTERNET FINANCIAL, INC.",
+    "STRIPE, INC."
+   ],
+   "reports": 10,
+   "sample_filing": "https://lda.gov/filings/public/filing/3c759011-7351-45d9-bf0c-8b2f10ad52f5/print/"
+  },
+  {
+   "id": 57613,
+   "name": "JOHN BUSCHER",
+   "covered_positions": [
+    "LC, Sen. Alan Dixon; LA, Sen. Carol Moseley-Braun",
+    "LC, Sen. Alan Dixon, LA, Sen. Carol Moseley-Braun"
+   ],
+   "clients": [
+    "CORNERSTONE GOVERNMENT AFFAIRS OBO CIRCLE INTERNET FINANCIAL, INC.",
+    "CORNERSTONE GOVERNMENT AFFAIRS OBO STRIPE, INC."
+   ],
+   "reports": 10,
+   "sample_filing": "https://lda.gov/filings/public/filing/27e8e513-7d56-4f38-b822-b2daa45a3294/print/"
+  },
+  {
+   "id": 67932,
+   "name": "JASON GLEASON",
+   "covered_positions": [
+    "Chief of Staff/Legislative Director, Rep. John Sarbanes; Legislative Director/Legislative Asst/Legislative Correspondent/Staff Asst, Sen. Paul Sarbanes"
+   ],
+   "clients": [
+    "BLOCK INC.",
+    "VISA, INC.",
+    "ELECTRONIC PAYMENTS COALITION"
+   ],
+   "reports": 10,
+   "sample_filing": "https://lda.gov/filings/public/filing/d87e3a62-405c-4347-9da4-9ecc8cb723fd/print/"
+  },
+  {
+   "id": 69840,
+   "name": "CHRISTOPHER E. WILCOX",
+   "covered_positions": [
+    "LA, Leg Counsel, LD & Counsel, Rep. Arcuri; LD & Counsel, Rep. Demings"
+   ],
+   "clients": [
+    "AMERICAN AIRLINES, INC.",
+    "VISA"
+   ],
+   "reports": 10,
+   "sample_filing": "https://lda.gov/filings/public/filing/a6427c92-470d-4dc0-b009-57e64e48b0fc/print/"
+  },
+  {
+   "id": 141323,
+   "name": "DANIEL ZIEGLER",
+   "covered_positions": [
+    "Executive Director, Republican Study Committee; Legislative Director for Rep Doug Lamborn, Policy Director; Speaker Mike Johnson"
+   ],
+   "clients": [
+    "AMERICAN AIRLINES, INC.",
+    "JPMORGAN CHASE HOLDINGS, LLC"
+   ],
+   "reports": 10,
+   "sample_filing": "https://lda.gov/filings/public/filing/a6427c92-470d-4dc0-b009-57e64e48b0fc/print/"
+  },
+  {
+   "id": 50936,
+   "name": "HUNTER MOORHEAD",
+   "covered_positions": [
+    "Policy Advisor, Sen. Thad Cochran; Special Asst to the President, WH National Economic Council; Professional Staff, Senate Approps Committee; Legislative Asst, Sen. Cochran; Subcommittee Staff Director/ Legislative Asst, House Agriculture Committee"
+   ],
+   "clients": [
+    "VISA, INC.",
+    "BLOCK INC."
+   ],
+   "reports": 9,
+   "sample_filing": "https://lda.gov/filings/public/filing/f6887fe7-476e-4a0d-8355-59f5ff0b4f08/print/"
+  },
+  {
+   "id": 149379,
+   "name": "JON ADAME",
+   "covered_positions": [
+    "CoS, LD, GC (Sen. Blackburn); Counsel (Rep. Blackburn); Policy Coordinator (House E&C); Intern (Sen. Domenici)"
+   ],
+   "clients": [
+    "A16Z CAPITAL MANAGEMENT LLC",
+    "NORTHERN TRUST"
+   ],
+   "reports": 8,
+   "sample_filing": "https://lda.gov/filings/public/filing/ff6371c5-3263-486a-9f2a-b743667b6bb3/print/"
+  },
+  {
+   "id": 145860,
+   "name": "RYAN EAGAN",
+   "covered_positions": [
+    "Legislative Aide, Office of Senate Majority Leader Charles Schumer; Legislative Correspondent, Office of the Senate Minority Leader Charles Schumer; Correspondent Assistant, Office of Senator Charles Schumer; March 2015 - Jan 2024",
+    "Director, Government Affairs"
+   ],
+   "clients": [
+    "CRYPTO COUNCIL FOR INNOVATION"
+   ],
+   "reports": 7,
+   "sample_filing": "https://lda.gov/filings/public/filing/2ad3cd32-c1a7-4b24-939f-5d5f69bc27b1/print/"
+  },
+  {
+   "id": 139118,
+   "name": "KEVIN WYSOCKI",
+   "covered_positions": [
+    "KevinWysockiProfessional Staff, House Financial Services Committee/ Rep. Barr; Legislative Assistant, Rep. Emmer; Legislative Assistant, Rep. Bachmann",
+    "Professional Staff, House Financial Services Committee/ Rep. Barr; Legislative Assistant, Rep. Emmer; Legislative Assistant, Rep. Bachmann"
+   ],
+   "clients": [
+    "ANCHOR LABS, INC."
+   ],
+   "reports": 7,
+   "sample_filing": "https://lda.gov/filings/public/filing/10d4b843-33e6-4034-868d-5437e7c266c3/print/"
+  },
+  {
+   "id": 11986,
+   "name": "MARTIN WHITMER",
+   "covered_positions": [
+    "Deputy CoS - USDOT",
+    "Deputy CoS - Dept. of Transportation"
+   ],
+   "clients": [
+    "AMERICAN TRANSACTION PROCESSORS COALITION",
+    "THE FINTECH ACCORD",
+    "PAYSAFE PAYMENT PROCESSING SOLUTIONS, LLC"
+   ],
+   "reports": 7,
+   "sample_filing": "https://lda.gov/filings/public/filing/bb00cb15-b574-418d-b517-890c514ee8f1/print/"
+  },
+  {
+   "id": 59932,
+   "name": "JASON M ROSENSTOCK",
+   "covered_positions": [
+    "Legislative Counsel, Rep. Tom Lantos"
+   ],
+   "clients": [
+    "PAYPAL"
+   ],
+   "reports": 6,
+   "sample_filing": "https://lda.gov/filings/public/filing/dd4426c1-96f8-4c1d-8912-092f7dae32ee/print/"
+  },
+  {
+   "id": 66844,
+   "name": "CHARLES B. THOMAS",
+   "covered_positions": [
+    "Senior Legislative Asst, Legislative Asst, Legislative Aide, Staff Asst; Rep. Robert Pittenger"
+   ],
+   "clients": [
+    "PAYPAL"
+   ],
+   "reports": 6,
+   "sample_filing": "https://lda.gov/filings/public/filing/dd4426c1-96f8-4c1d-8912-092f7dae32ee/print/"
+  },
+  {
+   "id": 149565,
+   "name": "TIFFANY ANGULO",
+   "covered_positions": [
+    "Sr. Policy and Outreach Advisor- Joint Economic Committee; LD, Policy Advisor, LA, LC, Staff Assistant, Intern - US House"
+   ],
+   "clients": [
+    "DIGITAL CURRENCY GROUP"
+   ],
+   "reports": 6,
+   "sample_filing": "https://lda.gov/filings/public/filing/08874f20-a5b1-4415-a448-5d3e05c09222/print/"
+  },
+  {
+   "id": 140688,
+   "name": "ANNE-MARIE KELLEY",
+   "covered_positions": [
+    "Deputy Director, Offfice of Legislative and Intergovernmental Affairs, Securities and Exchange Commission."
+   ],
+   "clients": [
+    "ANCHORAGE DIGITAL BANK"
+   ],
+   "reports": 6,
+   "sample_filing": "https://lda.gov/filings/public/filing/3b8153c1-9e85-4518-8106-7cc30b87f592/print/"
+  },
+  {
+   "id": 52936,
+   "name": "JOHN DALE MCMICKLE",
+   "covered_positions": [
+    "Counsel, Senate Judiciary Committee"
+   ],
+   "clients": [
+    "DEFI EUDCATION FUND",
+    "VISA, INC."
+   ],
+   "reports": 6,
+   "sample_filing": "https://lda.gov/filings/public/filing/49e554f0-e3ae-4678-96c9-4391ef61b444/print/"
+  },
+  {
+   "id": 113688,
+   "name": "LILA NIEVES-LEE",
+   "covered_positions": [
+    "Staff Director, Senate Banking (2023-2025); LA, US Senator Tim Scott (2019-2020); Director of Congressional Affairs, USTR (2017-2019); LA, House Committee on Ways and Means (2016-2017); Staff Associate, House Committee on Foreign Affairs (2015-2016)"
+   ],
+   "clients": [
+    "VISA, INC."
+   ],
+   "reports": 6,
+   "sample_filing": "https://lda.gov/filings/public/filing/fecb88c3-91a6-46c1-a44b-2ad3f10fa370/print/"
+  },
+  {
+   "id": 151069,
+   "name": "JOSEPH EDWARD BROWN III",
+   "covered_positions": [
+    "Sr Prof Staff (EPW Comm Maj/Sen. Moore Capito); Prof Staff (EPW Comm Min/Ranking Mem Sen. Moore Capito); Leg Asst (Sen. Boozman); Maj Leg Asst (EPW Comm Maj/Sen. Jim Inhofe); Maj Research Asst (EPW Comm Maj/Sen. Jim Inhofe); Intern (Rep. Jim Renacci)"
+   ],
+   "clients": [
+    "A16Z CAPITAL MANAGEMENT LLC",
+    "NORTHERN TRUST"
+   ],
+   "reports": 6,
+   "sample_filing": "https://lda.gov/filings/public/filing/61a314d4-73e4-4f77-907d-60e980eed359/print/"
+  },
+  {
+   "id": 67723,
+   "name": "MICHAEL SEAN HAYWOOD",
+   "covered_positions": [
+    "LA, Senator Jim Bunning; LA, Rep. Dave Camp"
+   ],
+   "clients": [
+    "INTERNATIONAL SWAPS AND DERIVATIVES ASSOCIATION",
+    "SOLANA POLICY INSTITUTE"
+   ],
+   "reports": 6,
+   "sample_filing": "https://lda.gov/filings/public/filing/6d3ea075-07e6-48b0-a9a6-81bb6b088c4b/print/"
+  }
+ ]
+}
