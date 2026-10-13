@@ -1,0 +1,13 @@
+{
+  "bill": "119-hr-1",
+  "bill_name": "One Big Beautiful Bill Act (P.L. 119-21)",
+  "estimate_title": "Estimated Budgetary Effects of Public Law 119-21, to Provide for Reconciliation Pursuant to Title II of H. Con. Res. 14, Relative to CBO's January 2025 Baseline",
+  "estimate_url": "https://www.cbo.gov/publication/61570",
+  "file_url": "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx",
+  "archive_url": "https://web.archive.org/web/20250721184355/https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx",
+  "published": "2025-07-21",
+  "bill_version_scored": "Public Law 119-21 as enacted on July 4, 2025 (GovInfo PLAW-119publ21 / BILLS-119hr1enr)",
+  "baseline": "CBO January 2025 baseline",
+  "units": "millions of dollars, by fiscal year; * = between -$500,000 and $500,000 (stored as 0, raw kept)",
+  "found_via": "https://api.congress.gov/v3/bill/119/hr/1 -> bill.cboCostEstimates"
+}
