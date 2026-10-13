@@ -1,0 +1,1 @@
+{ "name": "antibody-report", "private": true, "type": "module", "dependencies": { "playwright-core": "1.57.0" } }

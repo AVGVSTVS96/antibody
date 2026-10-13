@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>antibody · GENIUS Act</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f4efe8; --panel: #fbf8f4; --card: #ffffff; --card-2: #f1ebe3; --line: #e2d9cd; --line-2: #d3c7b8;
+  --text: #1d1915; --muted: #6b6157; --dim: #998e82;
+  --violet: #5d56c2; --violet-soft: rgba(93, 86, 194, .12); --red: #c2412f; --red-soft: rgba(194, 65, 47, .12);
+  --gold: #a8741a; --gold-soft: rgba(168, 116, 26, .14); --grey: #8d8379;
+  --band-1: rgba(93, 86, 194, .07); --band-2: rgba(29, 25, 21, .035); --band-3: rgba(93, 86, 194, .045);
+  --seal: #f0e6da; --shadow: 0 10px 30px rgba(40, 30, 20, .14);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12100c; --panel: #16130f; --card: #201b18; --card-2: #2a2420; --line: #342d27; --line-2: #463d35;
+    --text: #ece6df; --muted: #a59b90; --dim: #6f665d;
+    --violet: #827cd7; --violet-soft: rgba(130, 124, 215, .16); --red: #e0604f; --red-soft: rgba(224, 96, 79, .16);
+    --gold: #d9a54a; --gold-soft: rgba(217, 165, 74, .16); --grey: #7c736a;
+    --band-1: rgba(130, 124, 215, .10); --band-2: rgba(255, 255, 255, .025); --band-3: rgba(130, 124, 215, .06);
+    --seal: #2b2420; --shadow: 0 14px 40px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12100c; --panel: #16130f; --card: #201b18; --card-2: #2a2420; --line: #342d27; --line-2: #463d35;
+  --text: #ece6df; --muted: #a59b90; --dim: #6f665d;
+  --violet: #827cd7; --violet-soft: rgba(130, 124, 215, .16); --red: #e0604f; --red-soft: rgba(224, 96, 79, .16);
+  --gold: #d9a54a; --gold-soft: rgba(217, 165, 74, .16); --grey: #7c736a;
+  --band-1: rgba(130, 124, 215, .10); --band-2: rgba(255, 255, 255, .025); --band-3: rgba(130, 124, 215, .06);
+  --seal: #2b2420; --shadow: 0 14px 40px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font: 14px/1.5 Inter, system-ui, sans-serif; font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+.mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.cap { font: 500 10.5px/1.3 "JetBrains Mono", ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+
+.verdict {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
+  margin: 12px 16px 0; padding: 10px 14px; border-radius: 12px;
+  background: var(--card); border: 1px solid var(--line);
+}
+.verdict .go { font: 600 12px/1 "JetBrains Mono", monospace; letter-spacing: .1em; color: var(--bg); background: var(--violet); padding: 6px 9px; border-radius: 6px; }
+.verdict .what { font-weight: 600; }
+.pieces { display: flex; flex-wrap: wrap; gap: 6px; }
+.piece { font: 500 10.5px/1 "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; padding: 5px 7px; border-radius: 5px; border: 1px solid var(--line-2); color: var(--muted); }
+.piece b { font-weight: 600; color: var(--text); }
+.piece.ok b::before { content: "● "; color: var(--violet); }
+.piece.part b::before { content: "◐ "; color: var(--gold); }
+.verdict .read { margin-left: auto; font: 500 11px/1 "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--violet); text-decoration: none; padding: 6px 0; }
+.verdict .read:hover { text-decoration: underline; }
+
+.app { display: grid; grid-template-columns: minmax(380px, 460px) 1fr; gap: 12px; padding: 12px 16px 16px; align-items: start; }
+.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; }
+.card h2 { margin: 0 0 4px; font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+.card .sub { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+.brand { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+.brand .mark { width: 18px; height: 18px; color: var(--red); }
+.brand b { font-weight: 600; }
+.brand .slash { color: var(--dim); }
+
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0 4px; }
+.stat { background: var(--card-2); border-radius: 8px; padding: 9px 10px; min-width: 0; }
+.stat .v { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.stat .v.missing { color: var(--dim); font-size: 13px; font-weight: 500; padding-top: 4px; }
+.stat .k { font: 500 9.5px/1.3 "JetBrains Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stat .n { font: 400 10.5px/1.35 "JetBrains Mono", monospace; color: var(--dim); margin-top: 3px; }
+
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { padding: 9px 0; border-top: 1px solid var(--line); }
+.rows li:first-child { border-top: 0; }
+.row-top { display: flex; align-items: baseline; gap: 8px; }
+.row-top .t { font-weight: 550; flex: 1; min-width: 0; }
+.row-top .num { font: 500 12px/1 "JetBrains Mono", monospace; color: var(--muted); white-space: nowrap; }
+.row-meta { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; vertical-align: middle; }
+.src {
+  display: inline-flex; align-items: center; gap: 3px; text-decoration: none;
+  font: 500 9.5px/1 "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--violet); background: var(--violet-soft); padding: 4px 6px; border-radius: 4px; white-space: nowrap;
+}
+.src::after { content: "↗"; font-size: 9px; }
+.src:hover { outline: 1px solid var(--violet); }
+.inf { font: 600 9px/1 "JetBrains Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); border: 1px dashed var(--gold); padding: 3px 5px; border-radius: 4px; white-space: nowrap; }
+.fact { font: 600 9px/1 "JetBrains Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-2); padding: 3px 5px; border-radius: 4px; white-space: nowrap; }
+.tag { font: 600 9px/1 "JetBrains Mono", monospace; letter-spacing: .1em; text-transform: uppercase; padding: 3px 5px; border-radius: 4px; white-space: nowrap; }
+.tag.headline { color: var(--gold); background: var(--gold-soft); }
+.tag.buried { color: var(--red); background: var(--red-soft); }
+.tag.missing { color: var(--dim); border: 1px dashed var(--line-2); }
+.warn { display: flex; gap: 8px; align-items: flex-start; background: var(--gold-soft); color: var(--text); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; margin: 0 0 10px; }
+.warn::before { content: "!"; font: 700 11px/1 "JetBrains Mono", monospace; color: var(--bg); background: var(--gold); border-radius: 50%; min-width: 16px; height: 16px; display: grid; place-items: center; margin-top: 1px; }
+.miss { color: var(--dim); font-style: normal; border-bottom: 1px dashed var(--line-2); }
+.bar { height: 4px; background: var(--card-2); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: var(--violet); border-radius: 2px; }
+details > summary { cursor: pointer; list-style: none; color: var(--violet); font: 500 11px/1 "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; padding-top: 10px; }
+details > summary::-webkit-details-marker { display: none; }
+details[open] > summary { padding-bottom: 4px; }
+.quote { font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--line-2); padding-left: 8px; margin-top: 4px; }
+.split { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 2px; }
+.split span { font: 500 11px/1 "JetBrains Mono", monospace; background: var(--card-2); padding: 5px 7px; border-radius: 5px; }
+
+.stage { position: sticky; top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; min-height: 640px; height: calc(100vh - 92px); overflow: hidden; }
+.stage-head { position: absolute; left: 0; right: 0; top: 14px; text-align: center; pointer-events: none; z-index: 2; padding: 0 60px; }
+.stage-head .cap { color: var(--text); letter-spacing: .24em; font-size: 11px; }
+.stage-head .s { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.iconbtn { position: absolute; top: 12px; width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line); background: var(--card); color: var(--text); display: grid; place-items: center; cursor: pointer; z-index: 3; }
+.iconbtn:hover { border-color: var(--line-2); }
+.iconbtn svg { width: 16px; height: 16px; }
+#theme { right: 12px; }
+#map { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 56px 12px 64px; }
+#map svg { width: 100%; height: 100%; display: block; overflow: visible; }
+#xray { position: absolute; inset: 0; overflow: auto; padding: 64px 22px 80px; display: none; }
+.stage.list #map { display: none; }
+.stage.list #xray { display: block; }
+.seg { position: absolute; right: 12px; bottom: 12px; display: flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; z-index: 3; }
+.seg button { border: 0; background: transparent; color: var(--muted); font: 500 13px/1 Inter, sans-serif; padding: 9px 14px; border-radius: 7px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--card-2); color: var(--text); }
+.legend { position: absolute; left: 12px; bottom: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; z-index: 3; max-width: calc(100% - 200px); }
+.legend .cap { margin-bottom: 6px; }
+.legend .items { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.lg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 4px 7px; cursor: pointer; font-family: Inter, sans-serif; }
+.lg[aria-pressed="false"] { opacity: .45; }
+.lg svg { width: 22px; height: 8px; }
+.lg.static { cursor: default; }
+
+.node { cursor: pointer; }
+.node .hit { fill: transparent; }
+.edge { fill: none; stroke-linecap: round; transition: opacity .18s ease; }
+.edge.lobbied { stroke: var(--violet); }
+.edge.traded { stroke: var(--red); }
+.edge.funded { stroke: var(--gold); stroke-dasharray: 3 3; }
+.edge.voted { stroke: var(--grey); }
+.edge.inference { stroke-dasharray: 4 3; }
+svg.focus .edge { opacity: 0 !important; }
+svg.focus .edge.on { opacity: .9 !important; stroke-width: 1.6; }
+svg.focus .node { opacity: .22; }
+svg.focus .node.on { opacity: 1; }
+.ringlabel { font: 500 10px "JetBrains Mono", monospace; letter-spacing: .26em; text-transform: uppercase; fill: var(--muted); }
+.nlabel { font: 500 9.5px "JetBrains Mono", monospace; fill: var(--muted); pointer-events: none; }
+.nlabel.strong { fill: var(--text); }
+
+.tip {
+  position: absolute; z-index: 5; width: 300px; max-width: calc(100% - 24px); background: var(--card); border: 1px solid var(--line-2);
+  border-radius: 12px; padding: 13px 14px; box-shadow: var(--shadow); pointer-events: auto; display: none;
+}
+.tip h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.tip .k { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.tip .ln { font-size: 12.5px; margin-top: 7px; }
+.tip .close { position: absolute; right: 8px; top: 8px; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; }
+
+.xr-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 18px 0 8px; }
+.xr-h:first-child { margin-top: 0; }
+.timeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.tl { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-width: 0; }
+.tl .d { font: 500 10.5px "JetBrains Mono", monospace; color: var(--muted); }
+.tl .t { font-weight: 600; font-size: 13px; margin: 2px 0; }
+.tl .m { font-size: 12px; color: var(--muted); }
+.tl.pred { border-style: dashed; }
+table.secs { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.secs th { text-align: left; font: 500 9.5px "JetBrains Mono", monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line-2); }
+table.secs td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.secs td.n { font-family: "JetBrains Mono", monospace; color: var(--muted); white-space: nowrap; }
+table.secs tr.buried td { background: var(--red-soft); }
+table.secs tr.headline td { background: var(--gold-soft); }
+.att { display: flex; align-items: center; gap: 6px; min-width: 110px; }
+.att .bar { flex: 1; margin: 0; }
+.att span { font: 500 11px "JetBrains Mono", monospace; color: var(--muted); width: 30px; text-align: right; }
+.arr { font: 500 10px "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.arr.es { color: var(--red); }
+.arr.pcs { color: var(--gold); }
+.foot { color: var(--dim); font-size: 12px; padding: 4px 18px 20px; }
+
+@media (max-width: 980px) {
+  .app { grid-template-columns: 1fr; }
+  .stage { position: relative; top: 0; order: -1; height: auto; min-height: 0; aspect-ratio: 1 / 1.12; }
+  .stage.list { aspect-ratio: auto; height: 78vh; }
+  .timeline { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .verdict { margin: 10px 12px 0; }
+  .verdict .read { margin-left: 0; }
+  .app { padding: 10px 12px 12px; }
+  .card { padding: 14px; }
+  .stage, .stage.list { aspect-ratio: auto; height: auto; display: flex; flex-direction: column; }
+  .stage-head { position: static; padding: 16px 52px 0; }
+  .stage-head .s { display: none; }
+  #map { position: relative; inset: auto; aspect-ratio: 1; padding: 6px 0; }
+  .legend { position: static; max-width: none; margin: 0 12px 8px; padding: 7px 9px; }
+  .legend .cap { display: none; }
+  .seg { position: static; margin: 0 12px 12px; }
+  .seg button { flex: 1; }
+  #xray { position: static; padding: 14px 12px 8px; }
+  table.secs .hide-s { display: none; }
+  table.secs { table-layout: fixed; }
+  table.secs th:nth-child(1) { width: 34px; }
+  table.secs th:nth-child(3) { width: 74px; }
+  table.secs th:nth-child(4) { width: 52px; }
+  table.secs td { padding: 8px 4px; }
+  .att { min-width: 0; }
+  .att .bar { display: none; }
+  table.secs td .miss { font-size: 11px; }
+  .arr { white-space: normal; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .edge { transition: none; } }
+</style>
+</head>
+<body>
+<div class="verdict">
+  <span class="go">PHASE 0 · GO</span>
+  <span class="what">5 of 6 pieces proven on real bills. Attention is partial. 6 fixes before Phase 1.</span>
+  <span class="pieces">
+    <span class="piece ok"><b>bills</b> 59/59</span>
+    <span class="piece ok"><b>cbo</b> 312/312</span>
+    <span class="piece ok"><b>lobbying</b> 30/30</span>
+    <span class="piece ok"><b>trades</b> 320/320</span>
+    <span class="piece ok"><b>entities</b> 49/50</span>
+    <span class="piece part"><b>attention</b> 1/5 genius</span>
+  </span>
+  <a class="read" href="https://github.com/AVGVSTVS96/antibody/tree/main/spikes" target="_blank" rel="noopener">Phase 0 results ↗</a>
+</div>
+
+<div class="app">
+  <aside class="side" id="side">
+    <div class="card brand">
+      <svg class="mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/></svg>
+      <b>antibody</b><span class="slash">/</span><span>GENIUS Act</span>
+      <span class="cap" style="margin-left:auto">prototype</span>
+    </div>
+    <div class="card" id="c-bill"></div>
+    <div class="card" id="c-headline"></div>
+    <div class="card" id="c-buried"></div>
+    <div class="card" id="c-lobby"></div>
+    <div class="card" id="c-members"></div>
+  </aside>
+
+  <section class="stage" id="stage">
+    <div class="stage-head">
+      <div class="cap">X-ray: S.1582 GENIUS Act</div>
+      <div class="s" id="stage-sub"></div>
+    </div>
+    <button class="iconbtn" id="theme" aria-label="Toggle light or dark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+    <div id="map"></div>
+    <div id="xray"></div>
+    <div class="tip" id="tip"></div>
+    <div class="legend" id="legend">
+      <div class="cap">Edges · click to toggle</div>
+      <div class="items" id="legend-items"></div>
+    </div>
+    <div class="seg" role="group" aria-label="View">
+      <button id="v-map" aria-pressed="true">Map</button>
+      <button id="v-list" aria-pressed="false">X-ray list</button>
+    </div>
+  </section>
+</div>
+<div class="foot">Every line links its public source. Dashed lines and <span class="inf">inference</span> pills are inferences, kept apart from facts. Same rules, colors and wording for every party. Data: the six Phase 0 spike outputs in <a href="https://github.com/AVGVSTVS96/antibody/tree/main/spikes">AVGVSTVS96/antibody/spikes</a>, joined by <span class="mono">spikes/report/export.py</span>.</div>
+
+<script>
+const $ = s => document.querySelector(s)
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const chip = (label, url) => url ? `<a class="src" href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>` : ''
+const INF = '<span class="inf">inference</span>'
+const money = n => n == null ? '—' : Math.abs(n) >= 1e6 ? `$${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : Math.abs(n) >= 1e3 ? `$${Math.round(n / 1e3)}K` : `$${n}`
+const pct = p => p == null ? '—' : `${Math.round(p * 100)}`
+const STAGE = { 's394-is': 'S.394 (predecessor)', pcs: 'committee text', es: 'Senate floor' }
+const STAGE_SHORT = { 's394-is': 'S.394', pcs: 'committee', es: 'floor' }
+const FIX = { 'Jpmorgan': 'JPMorgan', 'Pnc ': 'PNC ', 'Cme ': 'CME ', 'Hsbc ': 'HSBC ', 'Us Bancorp': 'US Bancorp', 'H&r ': 'H&R ', 'S&p ': 'S&P ', 'Pwc': 'PwC', 'Dao': 'DAO' }
+function nice(s) {
+  s = s.replace(/\s*\/[A-Z]{2,3}\/?$/, '').replace(/\s*\/NEW\/$/, '').replace(/ DE$/, '')
+  if (s === s.toUpperCase()) s = s.toLowerCase().replace(/(^|[\s(&-])(\w)/g, (m, a, b) => a + b.toUpperCase())
+  for (const [a, b] of Object.entries(FIX)) s = s.replace(a, b)
+  return s.replace(/ S A De C V$/, ' S.A. de C.V.')
+}
+const srcName = url => {
+  if (!url) return 'source'
+  if (url.includes('lda.gov')) return 'LDA'
+  if (url.includes('disclosures-clerk')) return 'House PTR'
+  if (url.includes('efdsearch')) return 'Senate eFD'
+  if (url.includes('clerk.house.gov')) return 'House roll'
+  if (url.includes('senate.gov')) return 'Senate vote'
+  if (url.includes('fec.gov')) return 'FEC'
+  if (url.includes('sec.gov')) return 'SEC'
+  if (url.includes('cbo.gov')) return 'CBO'
+  if (url.includes('govinfo')) return 'GovInfo'
+  if (url.includes('congress.gov')) return 'congress.gov'
+  try { return new URL(url).hostname.replace(/^www\./, '').split('.')[0] } catch { return 'source' }
+}
+const partyText = p => ({ R: 'R', D: 'D', I: 'I' }[p] || '?')
+
+const themeBtn = $('#theme')
+themeBtn.onclick = () => {
+  const dark = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === 'dark'
+    : matchMedia('(prefers-color-scheme: dark)').matches
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark'
+  try { localStorage.setItem('antibody-theme', document.documentElement.dataset.theme) } catch {}
+}
+try { const t = localStorage.getItem('antibody-theme'); if (t) document.documentElement.dataset.theme = t } catch {}
+const qs = new URLSearchParams(location.search)
+if (qs.get('theme')) document.documentElement.dataset.theme = qs.get('theme')
+
+fetch('antibody/genius.json').then(r => r.json()).then(render)
+
+function render(D) {
+  const S = D.sections, C = D.companies, M = D.members
+  const byId = new Map([...C.map(c => [c.id, c]), ...M.map(m => [m.id, m])])
+  const late = S.filter(s => s.kind === 'buried')
+  const head = S.filter(s => s.kind === 'headline').sort((a, b) => b.attention_pct - a.attention_pct)
+
+  $('#stage-sub').textContent = `${S.length} sections · ${C.length} lobbying clients that named the bill · ${M.length} members with trades, PAC money or a sponsor role`
+
+  const cbo = D.cbo
+  const cboUrl = cbo.cite.split(' ')[0]
+  $('#c-bill').innerHTML = `
+    <div class="cap">Bill · ${esc(D.bill.law)} · signed ${esc(D.bill.signed)}</div>
+    <h2 style="margin-top:6px">${esc(D.bill.title)} <span class="mono" style="color:var(--muted);font-size:13px;font-weight:500">${esc(D.bill.id)}</span></h2>
+    <p class="sub">${esc(D.bill.full_title)}. Sponsor ${esc(D.bill.sponsor)}. ${chip('congress.gov', D.bill.url)} ${chip('BILLSTATUS', D.bill.billstatus)}</p>
+    <div class="stats">
+      <div class="stat"><div class="k">Deficit ${esc(cbo.period)}</div><div class="v">+$${cbo.deficit}M</div><div class="n">${chip('CBO', cbo.estimate_url)}</div></div>
+      <div class="stat"><div class="k">Private mandate</div><div class="v" style="font-size:14px;padding-top:3px">Over threshold</div><div class="n">${chip('CBO p.1', cbo.mandates.cite)}</div></div>
+      <div class="stat"><div class="k">$ per section</div><div class="v missing">Not published</div><div class="n">CBO scored only the whole bill</div></div>
+    </div>
+    <div class="cap" style="margin-top:12px">Votes</div>
+    <ul class="rows">${D.bill.votes.map(v => `<li><div class="row-top"><span class="t" style="font-weight:500">${esc(v.label)}</span><span class="num">${esc(v.date)}</span></div><span class="chips">${chip(srcName(v.url), v.url)}</span></li>`).join('')}</ul>
+    <details><summary>Version timeline (${D.versions.length})</summary>
+      <ul class="rows">${D.versions.map(v => `<li><div class="row-top"><span class="t" style="font-weight:500">${esc(v.name)}</span><span class="num">${esc(v.date)}</span></div>
+      <div class="row-meta">${v.sections} sections · ${v.words.toLocaleString()} words ${v.predecessor ? INF : ''}</div><span class="chips">${chip('GovInfo XML', v.url)}</span></li>`).join('')}</ul>
+    </details>`
+
+  const A = D.attention, am = D.amendments
+  $('#c-headline').innerHTML = `
+    <h2>Headline</h2>
+    <p class="sub">Sections with the most news attention (top ${Math.round((1 - A.headline_pct) * 100)}% of ${S.filter(s => s.attention_pct != null).length} scored), from ${A.units.headlines} headlines and ${A.units.articles} articles.</p>
+    <div class="warn"><span>The attention signal missed its bar on this bill: ${A.recall} known public fights landed in its top 15%. Most GENIUS coverage is law-firm explainers that walk every section evenly. Read these ranks as weak.</span></div>
+    <ul class="rows">${head.map(s => `<li>
+      <div class="row-top"><span class="t">§${s.num} ${esc(s.heading)}</span><span class="num">pct ${pct(s.attention_pct)}</span></div>
+      <div class="bar"><i style="width:${s.attention_pct * 100}%"></i></div>
+      <div class="row-meta">${s.attention_hits} matched news units</div>
+      <span class="chips">${chip('law text', s.text_url)} ${s.attention_example ? chip(s.attention_example.source, s.attention_example.url) : ''}</span></li>`).join('')}
+      <li><div class="row-top"><span class="t">The bill as a whole</span><span class="num">${A.general_bucket_hits} units</span></div>
+      <div class="row-meta">News that matched no single section better than the bill in general. The attention lead reads this as the loudest GENIUS fight (Trump-family crypto ties) being about something that is not in the bill. ${INF}</div>
+      <span class="chips">${chip('attention results', 'https://github.com/AVGVSTVS96/antibody/blob/main/spikes/attention/RESULTS.md')}</span></li>
+    </ul>
+    <div class="cap" style="margin-top:12px">Fights outside the text: amendments</div>
+    <div class="row-meta" style="margin-top:4px">${am.total} Senate amendments filed. ${am.agreed.length} agreed (SA 2307, Hagerty's substitute, 67-30). ${am.no_action} never got any floor action.</div>
+    <div class="split"><span>R ${am.by_party.R} filed</span><span>D ${am.by_party.D} filed</span><span>I ${am.by_party.I} filed</span></div>
+    <span class="chips">${chip('BILLSTATUS', am.source)} ${chip('congress.gov list', am.list_url)}</span>`
+
+  const s19 = late[0]
+  const quiet = S.filter(s => s.kind === 'normal' && s.attention_pct != null && s.attention_pct <= A.quiet_pct).sort((a, b) => a.attention_pct - b.attention_pct)
+  const committee = S.filter(s => s.first_version === 'pcs')
+  const sa = D.amendments_agreed[0]
+  $('#c-buried').innerHTML = `
+    <h2>Buried candidates ${INF}</h2>
+    <p class="sub">Rule: added after the first text, and in the bottom ${Math.round(A.quiet_pct * 100)}% of attention. Lateness comes from the bills lead's version lineage (fact); quietness from the attention lead (weak on this bill).</p>
+    <ul class="rows">
+    ${s19 ? `<li>
+      <div class="row-top"><span class="t">§${s19.num} ${esc(s19.heading)}</span><span class="tag buried">late + quiet</span></div>
+      <div class="row-meta"><b style="color:var(--text);font-weight:550">Fact:</b> first appears in the Senate-passed text (Jun 17 2025); absent from the committee text. It amends 5 U.S.C. 13104(a)(3), the federal officials' financial disclosure law, so payment stablecoins aggregating $5,000 or less sit next to the small-deposit exception.</div>
+      <span class="chips">${chip('Senate-passed XML', s19.first_url)} ${chip('committee XML', D.versions.find(v => v.code === 'pcs').url)}</span>
+      <div class="row-meta" style="margin-top:6px"><b style="color:var(--text);font-weight:550">Fact:</b> the only amendment agreed in that step is ${esc(sa.amendment.replace('SAMDT', 'SA'))}, ${esc(sa.sponsors[0].name)}, "${esc(sa.purpose.replace(/\.$/, ''))}", 67-30.</div>
+      <span class="chips">${chip('congress.gov', sa.source)} ${chip('BILLSTATUS', sa.source_billstatus)}</span>
+      <div class="row-meta" style="margin-top:6px">It entered through that substitute. ${INF}</div>
+      <div class="row-meta" style="margin-top:6px">Attention: ${s19.attention_hits} units, pct ${pct(s19.attention_pct)}. ${s19.attention_example ? chip(s19.attention_example.source, s19.attention_example.url) : ''}</div>
+      <div class="row-meta" style="margin-top:6px">Dollar impact: <span class="miss">not scored per section by CBO</span></div>
+    </li>` : ''}
+    </ul>
+    <details><summary>Quiet but not late (${quiet.length})</summary>
+      <ul class="rows">${quiet.map(s => `<li><div class="row-top"><span class="t" style="font-weight:500">§${s.num} ${esc(s.heading)}</span><span class="num">pct ${pct(s.attention_pct)}</span></div><span class="chips">${chip('law text', s.text_url)}</span></li>`).join('')}</ul>
+    </details>
+    <details><summary>Added in the committee text, not in S.394 (${committee.length})</summary>
+      <div class="row-meta" style="margin-top:6px">S.394 (Feb 2025, same short title) is the predecessor. That link is ${INF}</div>
+      <ul class="rows">${committee.map(s => `<li><div class="row-top"><span class="t" style="font-weight:500">§${s.num} ${esc(s.heading)}</span><span class="num">${s.words} words</span></div><span class="chips">${chip('committee XML', s.first_url)}</span></li>`).join('')}</ul>
+    </details>`
+
+  const L = D.lobbying
+  const lobbyRow = c => `<li>
+      <div class="row-top"><span class="t">${esc(nice(c.label))} ${c.ticker ? `<span class="mono" style="color:var(--muted);font-size:11.5px">${esc(c.ticker)}</span>` : ''}</span><span class="num">${c.filings} filings</span></div>
+      <div class="row-meta">${c.firms ? `${c.firms} firms · ` : ''}${c.public ? (c.resolution.method.startsWith('llm') ? `matched to SEC parent from "${esc(c.resolution.client)}" ${INF}` : 'name matches SEC registrant') : 'no public parent'}</div>
+      <span class="chips">${chip('LDA filing', c.lobby_url)} ${c.sec_url ? chip('SEC', c.sec_url) : ''}</span></li>`
+  $('#c-lobby').innerHTML = `
+    <h2>Who lobbied</h2>
+    <p class="sub">LD-2 filings that name S.1582, S.394, S.919 or the GENIUS Act. Hand-checked precision 90/90 (lead) and 30/30 (verifier).</p>
+    <div class="stats">
+      <div class="stat"><div class="k">Filings</div><div class="v">${L.matched_filings}</div><div class="n">${L.by_phase.bill} while a bill</div></div>
+      <div class="stat"><div class="k">Clients</div><div class="v">${L.clients}</div><div class="n">${L.lobbyists} lobbyists</div></div>
+      <div class="stat"><div class="k">Spend, bill share</div><div class="v">${money(L.bill_share_estimate_usd)}</div><div class="n">of ${money(L.total_spend_on_quarters_usd)} total ${INF}</div></div>
+    </div>
+    <div class="row-meta" style="margin:6px 0 2px">LD-2s report one total for all issues, so the bill share is an estimate. ${L.by_phase.law} filings came after it became law.</div>
+    <ul class="rows">${C.slice(0, 8).map(lobbyRow).join('')}</ul>
+    <details><summary>All ${C.length} clients on the map</summary><ul class="rows">${C.slice(8).map(lobbyRow).join('')}</ul></details>
+    <details><summary>Former congressional staff lobbying on it (${L.lobbyists_with_covered_position})</summary>
+      <ul class="rows">${D.lobbyists.slice(0, 8).map(l => `<li><div class="row-top"><span class="t" style="font-weight:500">${esc(l.name)}</span></div>
+      <div class="quote">"${esc(l.position.length > 140 ? l.position.slice(0, 140) + '…' : l.position)}"</div>
+      <div class="row-meta">for ${l.clients.slice(0, 3).map(x => esc(nice(x))).join(', ')}</div><span class="chips">${chip('LDA filing', l.url)}</span></li>`).join('')}</ul>
+    </details>`
+
+  const T = D.trades, P = D.pac
+  const tradeRow = m => {
+    const tk = [...new Set(m.trades.map(t => t.ticker))].slice(0, 6).join(' ')
+    const first = m.trades[0]
+    return `<li>
+      <div class="row-top"><span class="t">${esc(m.name)} <span class="mono" style="color:var(--muted);font-size:11.5px">${partyText(m.party)}${m.state ? '-' + esc(m.state) : ''} · ${esc(m.chamber)}</span></span><span class="num">${m.trades.length} trades</span></div>
+      <div class="row-meta">${esc(tk)} · voted ${esc(m.vote || 'not recorded')}${m.role ? ' · ' + esc(m.role) : ''}${m.trades.some(t => !/^self$/i.test(t.owner)) ? ' · includes spouse/joint/child' : ''}</div>
+      <span class="chips">${first ? chip(srcName(first.source), first.source) : ''} ${chip(srcName(m.vote_url), m.vote_url)}</span></li>`
+  }
+  const traders = M.filter(m => m.trades.length)
+  const funded = [...M].filter(m => m.funding_total > 0).sort((a, b) => b.funding_total - a.funding_total)
+  const paper = T.paper_unread
+  $('#c-members').innerHTML = `
+    <h2>Members with stakes</h2>
+    <p class="sub">${T.total} trades by ${T.members} members in bank, payments and crypto stocks (${T.window[0]} to ${T.window[1]}). ${INF} The sector list is not evidence anyone traded on the bill.</p>
+    <div class="split"><span>R ${T.by_party.R} members</span><span>D ${T.by_party.D}</span><span>I ${T.by_party.I}</span></div>
+    <div class="warn" style="margin-top:8px"><span>Paper filings not yet read: ${paper.map(p => `${esc(p.name)} (${p.party})`).join(', ')}. Khanna alone has 906 scanned pages. Until a vision step reads them, this list is incomplete.</span></div>
+    <div class="cap" style="margin-top:4px">Traded stock of a company that lobbied on it</div>
+    <ul class="rows">${traders.slice(0, 7).map(tradeRow).join('')}</ul>
+    <details><summary>All ${traders.length} traders on the map</summary><ul class="rows">${traders.slice(7).map(tradeRow).join('')}</ul></details>
+    <div class="cap" style="margin-top:14px">PAC money from lobbying orgs ${INF}</div>
+    <div class="row-meta" style="margin-top:4px">${esc(P.rule)}. 2024 + 2026 cycles.</div>
+    <div class="split"><span>R ${money(P.by_party.R.amount)} → ${P.by_party.R.members}</span><span>D ${money(P.by_party.D.amount)} → ${P.by_party.D.members}</span><span>I ${money(P.by_party.I.amount)} → ${P.by_party.I.members}</span></div>
+    <ul class="rows">${funded.slice(0, 5).map(m => `<li><div class="row-top"><span class="t">${esc(m.name)} <span class="mono" style="color:var(--muted);font-size:11.5px">${partyText(m.party)}${m.state ? '-' + esc(m.state) : ''}</span></span><span class="num">${money(m.funding_total)}</span></div>
+      <div class="row-meta">top: ${m.funding.slice(0, 2).map(f => esc(nice(byId.get(f.company)?.label || f.pac))).join(', ')} · ${m.committees.map(c => esc(c.committee)).join(', ') || 'no banking committee seat'}</div>
+      <span class="chips">${chip('FEC filing', m.funding[0].url)} ${chip('FEC all', m.funding[0].all_txns)}</span></li>`).join('')}</ul>
+    <div class="row-meta" style="margin-top:6px">Individual donors by employer: <span class="miss">not pulled yet</span></div>`
+
+  drawMap(D, byId)
+  drawList(D)
+}
+
+function drawMap(D, byId) {
+  const NS = 'http://www.w3.org/2000/svg'
+  const R = { badge: 74, sec: { 's394-is': 148, pcs: 180, es: 212 }, secBand: [122, 238], co: 322, coBand: [270, 374], mem: 448, memBand: [412, 484] }
+  const S = D.sections, C = D.companies, M = D.members
+  const pos = new Map()
+  const ang = (i, n, off = -Math.PI / 2) => off + (i / n) * Math.PI * 2
+  const pt = (a, r) => [500 + Math.cos(a) * r, 500 + Math.sin(a) * r]
+
+  S.forEach((s, i) => { const a = ang(i, S.length); pos.set('s' + s.num, { a, r: R.sec[s.first_version] }) })
+
+  const traders = c => M.filter(m => m.trades.some(t => t.company === c.id)).length
+  const pub = C.filter(c => c.public).sort((a, b) => traders(b) - traders(a) || b.filings - a.filings)
+  const priv = C.filter(c => !c.public)
+  const order = []
+  const left = [], right = []
+  pub.forEach((c, i) => (i % 2 ? right : left).push(c))
+  order.push(...left.reverse(), ...right)
+  const pl = [], pr = []
+  priv.forEach((c, i) => (i % 2 ? pr : pl).push(c))
+  const ring = [...pr.reverse(), ...order, ...pl]
+  const coOff = Math.PI / 2 - Math.PI
+  const shift = ring.indexOf(order[left.length]) - ring.length / 2
+  ring.forEach((c, i) => pos.set(c.id, { a: coOff + ((i - shift) / ring.length) * Math.PI * 2 + Math.PI, r: R.co }))
+
+  const want = M.map(m => {
+    let x = 0, y = 0
+    for (const t of m.trades) { const p = pos.get(t.company); if (p) { x += Math.cos(p.a) * 3; y += Math.sin(p.a) * 3 } }
+    for (const f of m.funding.slice(0, 4)) { const p = pos.get(f.company); if (p) { x += Math.cos(p.a); y += Math.sin(p.a) } }
+    return { m, a: x || y ? Math.atan2(y, x) : Math.PI / 2 }
+  }).sort((p, q) => p.a - q.a)
+  const step = Math.PI * 2 / want.length
+  let best = 0, bestCost = Infinity
+  for (let k = 0; k < 72; k++) {
+    const off = -Math.PI + (k / 72) * step
+    const cost = want.reduce((s, w, i) => { const d = Math.atan2(Math.sin(off + i * step - w.a), Math.cos(off + i * step - w.a)); return s + d * d }, 0)
+    if (cost < bestCost) { bestCost = cost; best = off }
+  }
+  want.forEach((w, i) => pos.set(w.m.id, { a: best + i * step, r: R.mem }))
+
+  const svg = document.createElementNS(NS, 'svg')
+  svg.setAttribute('viewBox', '-20 -20 1040 1040')
+  svg.setAttribute('role', 'img')
+  svg.setAttribute('aria-label', 'Radial map of the GENIUS Act: sections, lobbying clients and members, joined by lobbying, funding, trading and voting edges')
+  const el = (tag, attrs, parent = svg) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e }
+  const donut = (r0, r1, fill) => el('path', { d: `M${500 - r1},500a${r1},${r1} 0 1,0 ${2 * r1},0a${r1},${r1} 0 1,0 ${-2 * r1},0ZM${500 - r0},500a${r0},${r0} 0 1,1 ${2 * r0},0a${r0},${r0} 0 1,1 ${-2 * r0},0Z`, fill, 'fill-rule': 'evenodd' })
+  donut(...R.memBand, 'var(--band-3)')
+  donut(...R.coBand, 'var(--band-2)')
+  donut(...R.secBand, 'var(--band-1)')
+  for (const r of Object.values(R.sec)) el('circle', { cx: 500, cy: 500, r, fill: 'none', stroke: 'var(--line-2)', 'stroke-dasharray': '1 4', 'stroke-width': .8 })
+
+  const defs = el('defs', {})
+  const arcLabel = (id, r, text, a0 = -150, a1 = -30, small = false) => {
+    const p0 = pt(a0 * Math.PI / 180, r), p1 = pt(a1 * Math.PI / 180, r)
+    el('path', { id, d: `M${p0[0]},${p0[1]}A${r},${r} 0 0,1 ${p1[0]},${p1[1]}`, fill: 'none' }, defs)
+    const t = el('text', { class: 'ringlabel', dy: small ? 3 : -4 })
+    if (small) { t.style.fontSize = '7px'; t.style.letterSpacing = '.14em' }
+    const tp = el('textPath', { href: '#' + id, startOffset: '50%', 'text-anchor': 'middle' }, t)
+    tp.textContent = text
+  }
+  arcLabel('al-sec', R.secBand[1] + 2, 'Sections · ring = stage added', -125, -55)
+  arcLabel('al-co', R.coBand[1] + 2, 'Who lobbied · named the bill', -120, -60)
+  arcLabel('al-mem', R.memBand[1] + 4, 'Members · traded, funded or sponsored', -118, -62)
+  ;[['S.394', R.sec['s394-is']], ['CMTE', R.sec.pcs], ['FLOOR', R.sec.es]].forEach(([t, r], i) => {
+    const mid = -90 - 180 / S.length
+    arcLabel('al-st' + i, r, t, mid - 9, mid + 9, true)
+  })
+
+  const edgeLayer = el('g', {})
+  const nodeLayer = el('g', {})
+  const edges = []
+  const curve = (a, b) => {
+    const [x1, y1] = a, [x2, y2] = b
+    const mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+    const cx = 500 + (mx - 500) * .55, cy = 500 + (my - 500) * .55
+    return `M${x1},${y1}Q${cx},${cy} ${x2},${y2}`
+  }
+  const xy = id => { if (id === 'bill') return [500, 500]; const p = pos.get(id); return pt(p.a, p.r) }
+  const counts = {}
+  for (const e of D.edges) {
+    if (!pos.has(e.src) && e.src !== 'bill' || !pos.has(e.dst) && e.dst !== 'bill') continue
+    const a = xy(e.src), b = xy(e.dst)
+    const p = el('path', { d: e.dst === 'bill' ? curveTo(a) : curve(a, b), class: `edge ${e.kind}${e.basis === 'inference' ? ' inference' : ''}`, 'stroke-width': e.kind === 'traded' ? Math.min(.6 + (e.count || 1) * .12, 2.2) : e.kind === 'funded' ? Math.min(.4 + (e.amount || 0) / 40000, 2) : .7 }, edgeLayer)
+    p.dataset.kind = e.kind
+    edges.push({ e, p })
+    counts[e.kind] = (counts[e.kind] || 0) + 1
+  }
+  function curveTo([x, y]) { const a = Math.atan2(y - 500, x - 500); const [bx, by] = pt(a, R.badge + 4); return `M${x},${y}L${bx},${by}` }
+
+  const visible = { lobbied: true, traded: true, funded: false, voted: false }
+  const baseOpacity = { lobbied: .32, traded: .34, funded: .18, voted: .12 }
+  const applyVisible = () => edges.forEach(({ e, p }) => { p.style.opacity = visible[e.kind] ? baseOpacity[e.kind] : 0 })
+  applyVisible()
+
+  const nodes = new Map()
+  const addNode = (id, g) => { g.classList.add('node'); g.dataset.id = id; nodes.set(id, g) }
+  S.forEach(s => {
+    const p = pos.get('s' + s.num), [x, y] = pt(p.a, p.r)
+    const g = el('g', { transform: `translate(${x},${y})` }, nodeLayer)
+    const r = 6.5 + Math.sqrt(s.words) / 9
+    if (s.kind === 'headline') el('circle', { r: r + 6, fill: 'var(--gold)', opacity: .22 }, g)
+    if (s.kind === 'buried') el('circle', { r: r + 6, fill: 'none', stroke: 'var(--red)', 'stroke-width': 1.4, 'stroke-dasharray': '2 2' }, g)
+    const fill = s.kind === 'buried' ? 'var(--red)' : s.kind === 'headline' ? 'var(--gold)' : 'var(--violet)'
+    const solid = s.kind !== 'normal' || (s.attention_pct ?? 0) > .5
+    el('circle', { r, fill, 'fill-opacity': s.kind === 'buried' ? 1 : s.attention_pct == null ? .25 : .3 + s.attention_pct * .7, stroke: fill, 'stroke-width': 1 }, g)
+    const t = el('text', { class: 'nlabel strong', 'text-anchor': 'middle', y: 3.4, 'font-size': 9.5 }, g)
+    t.textContent = s.num
+    t.style.fill = solid ? 'var(--bg)' : 'var(--text)'
+    t.style.fontWeight = 600
+    el('circle', { r: r + 6, class: 'hit' }, g)
+    addNode('s' + s.num, g)
+  })
+
+  C.forEach(c => {
+    const p = pos.get(c.id), [x, y] = pt(p.a, p.r)
+    const g = el('g', { transform: `translate(${x},${y})` }, nodeLayer)
+    const s = 5 + Math.sqrt(c.filings) * 1.6
+    el('rect', { x: -s / 2, y: -s / 2, width: s, height: s, rx: 2.5, fill: c.public ? 'var(--violet)' : 'var(--card)', 'fill-opacity': c.public ? .85 : 1, stroke: 'var(--violet)', 'stroke-width': 1.2, 'stroke-dasharray': c.resolution && c.resolution.method.startsWith('llm') ? '2 1.5' : 'none', transform: `rotate(${p.a * 180 / Math.PI})` }, g)
+    const label = c.ticker || nice(c.label).split(/[ ,]/)[0]
+    const out = pt(p.a, 1)
+    const lx = Math.cos(p.a) * (s / 2 + 5), ly = Math.sin(p.a) * (s / 2 + 5)
+    const t = el('text', { class: 'nlabel' + (c.filings >= 9 ? ' strong' : ''), x: lx, y: ly + 3, 'text-anchor': Math.cos(p.a) > .3 ? 'start' : Math.cos(p.a) < -.3 ? 'end' : 'middle', 'font-size': 8.5 }, g)
+    if (Math.abs(Math.cos(p.a)) <= .3) t.setAttribute('y', ly + (Math.sin(p.a) > 0 ? 9 : -3))
+    t.textContent = c.ticker ? c.ticker : label.length > 9 ? label.slice(0, 8) + '…' : label
+    el('circle', { r: s / 2 + 6, class: 'hit' }, g)
+    addNode(c.id, g)
+  })
+
+  const topMembers = new Set([...M].sort((a, b) => b.trades.length - a.trades.length).slice(0, 8).map(m => m.id))
+  ;[...M].sort((a, b) => b.funding_total - a.funding_total).slice(0, 4).forEach(m => topMembers.add(m.id))
+  M.filter(m => m.role).forEach(m => topMembers.add(m.id))
+  M.forEach(m => {
+    const p = pos.get(m.id), [x, y] = pt(p.a, p.r)
+    const g = el('g', { transform: `translate(${x},${y})` }, nodeLayer)
+    const r = 3.2 + Math.sqrt(m.trades.length + m.funding_total / 20000) * .75
+    const vote = m.vote
+    el('circle', { r, fill: vote === 'Yea' ? 'var(--violet)' : 'var(--panel)', stroke: 'var(--violet)', 'stroke-width': 1.3, 'stroke-dasharray': vote ? 'none' : '1.5 1.5' }, g)
+    if (m.role) el('circle', { r: r + 3.5, fill: 'none', stroke: 'var(--gold)', 'stroke-width': 1.2 }, g)
+    if (topMembers.has(m.id)) {
+      const lx = Math.cos(p.a) * (r + 6), ly = Math.sin(p.a) * (r + 6)
+      const t = el('text', { class: 'nlabel', x: lx, y: ly + 3, 'text-anchor': Math.cos(p.a) > .2 ? 'start' : Math.cos(p.a) < -.2 ? 'end' : 'middle', 'font-size': 8.5 }, g)
+      if (Math.abs(Math.cos(p.a)) <= .2) t.setAttribute('y', ly + (Math.sin(p.a) > 0 ? 10 : -4))
+      t.textContent = `${m.name.split(',')[0].split(' ').filter(w => !/^[A-Z]\.$/.test(w)).slice(-1)[0]} ${partyText(m.party)}`
+    }
+    el('circle', { r: r + 5, class: 'hit' }, g)
+    addNode(m.id, g)
+  })
+
+  const badge = el('g', { class: 'node' })
+  const teeth = 28
+  let d = ''
+  for (let i = 0; i <= teeth * 2; i++) { const a = (i / (teeth * 2)) * Math.PI * 2, r = i % 2 ? R.badge - 5 : R.badge; const [x, y] = pt(a, r); d += (i ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1) }
+  el('path', { d: d + 'Z', fill: 'var(--seal)', stroke: 'var(--red)', 'stroke-width': 1.4 }, badge)
+  const bt = (t, y, size, cls, fill) => { const x = el('text', { x: 500, y, 'text-anchor': 'middle', 'font-size': size, class: cls, fill }, badge); x.textContent = t; x.style.fill = fill }
+  bt('S.1582', 487, 11, 'nlabel strong', 'var(--red)')
+  bt('GENIUS Act', 505, 15.5, '', 'var(--text)')
+  bt('P.L. 119-27', 521, 9.5, 'nlabel', 'var(--muted)')
+  badge.querySelectorAll('text:not(.nlabel)').forEach(t => { t.style.font = '600 15.5px Inter, sans-serif' })
+  badge.dataset.id = 'bill'
+  nodes.set('bill', badge)
+
+  $('#map').appendChild(svg)
+
+  const legend = $('#legend-items')
+  const sw = (cls, dash) => `<svg viewBox="0 0 22 8"><line x1="1" y1="4" x2="21" y2="4" class="edge ${cls}" style="opacity:1" stroke-width="2" ${dash ? 'stroke-dasharray="3 2"' : ''}/></svg>`
+  const names = { lobbied: 'lobbied', traded: 'traded stock', funded: 'PAC money', voted: 'voted' }
+  for (const k of ['lobbied', 'traded', 'funded', 'voted']) {
+    const b = document.createElement('button')
+    b.className = 'lg'; b.setAttribute('aria-pressed', visible[k]); b.innerHTML = `${sw(k, k === 'funded')}${names[k]} <span class="mono" style="color:var(--muted);font-size:10.5px">${counts[k] || 0}</span>`
+    b.onclick = () => { visible[k] = !visible[k]; b.setAttribute('aria-pressed', visible[k]); applyVisible() }
+    legend.appendChild(b)
+  }
+  const inf = document.createElement('span')
+  inf.className = 'lg static'; inf.innerHTML = `${sw('lobbied', true)}dashed = inference`
+  legend.appendChild(inf)
+
+  const tip = $('#tip'), stage = $('#stage')
+  let pinned = null
+  const linked = id => edges.filter(({ e }) => e.src === id || e.dst === id)
+  function focus(id) {
+    svg.classList.add('focus')
+    edges.forEach(({ p }) => p.classList.remove('on'))
+    nodes.forEach(n => n.classList.remove('on'))
+    nodes.get(id)?.classList.add('on')
+    if (id === 'bill') {
+      edges.forEach(({ e, p }) => { if (e.kind === 'lobbied') { p.classList.add('on'); nodes.get(e.src)?.classList.add('on') } })
+      nodes.forEach((n, k) => { if (k.startsWith('s')) n.classList.add('on') })
+    } else if (id.startsWith('s')) {
+      nodes.forEach((n, k) => { if (k === 'bill') n.classList.add('on') })
+    } else {
+      for (const { e, p } of linked(id)) {
+        p.classList.add('on')
+        nodes.get(e.src === id ? e.dst : e.src)?.classList.add('on')
+      }
+    }
+  }
+  function unfocus() { svg.classList.remove('focus'); edges.forEach(({ p }) => p.classList.remove('on')); nodes.forEach(n => n.classList.remove('on')) }
+
+  function card(id) {
+    if (id === 'bill') return `<h3>GENIUS Act · S.1582</h3><div class="k">P.L. 119-27 · signed 2025-07-18</div>
+      <div class="ln">${D.sections.length} sections in the law. ${D.companies.length} lobbying clients on this map named it in an LD-2.</div>
+      <span class="chips">${chip('law XML', D.bill.law_url)} ${chip('congress.gov', D.bill.url)}</span>`
+    if (id.startsWith('s')) {
+      const s = D.sections.find(x => 's' + x.num === id)
+      return `<h3>§${s.num} ${esc(s.heading)}</h3>
+        <div class="k">${s.kind === 'headline' ? '<span class="tag headline">headline</span> ' : s.kind === 'buried' ? '<span class="tag buried">buried candidate</span> ' + INF + ' ' : ''}${s.words.toLocaleString()} words</div>
+        <div class="ln">Added: <b>${STAGE[s.first_version]}</b>${s.changed_in.length ? ` · changed in ${s.changed_in.map(c => STAGE_SHORT[c] || c).join(', ')}` : ' · unchanged since'}</div>
+        <div class="ln">Attention: ${s.attention_pct == null ? '<span class="miss">not scored</span>' : `pct ${pct(s.attention_pct)} · ${s.attention_hits} units`}</div>
+        <div class="ln">CBO $: <span class="miss">whole bill only</span></div>
+        <span class="chips">${chip('law text', s.text_url)} ${chip('first version', s.first_url)} ${s.attention_example ? chip(s.attention_example.source, s.attention_example.url) : ''}</span>`
+    }
+    const n = byId.get(id)
+    if (id.startsWith('member:')) {
+      const tk = Object.entries(n.trades.reduce((o, t) => (o[t.ticker] = (o[t.ticker] || 0) + 1, o), {})).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t, c]) => `${t}×${c}`).join(' ')
+      return `<h3>${esc(n.name)}</h3><div class="k">${partyText(n.party)}${n.state ? '-' + esc(n.state) : ''} · ${esc(n.chamber)}${n.role ? ' · ' + esc(n.role) : ''}${n.committees.length ? ' · ' + n.committees.map(c => esc(c.committee)).join(', ') : ''}</div>
+        <div class="ln">Final passage vote: <b>${esc(n.vote || 'not recorded')}</b> ${chip(srcName(n.vote_url), n.vote_url)}</div>
+        <div class="ln">${n.trades.length ? `${n.trades.length} trades in lobbying companies' stock: <span class="mono">${esc(tk)}</span>` : 'No trades in lobbying companies\' stock found'}${n.sector_trades > n.trades.length ? ` · ${n.sector_trades} in the wider sector list` : ''}</div>
+        ${n.trades[0] ? `<div class="ln">Latest: ${esc(n.trades[n.trades.length - 1].type)} ${esc(n.trades[n.trades.length - 1].ticker)} ${esc(n.trades[n.trades.length - 1].amount)} on ${esc(n.trades[n.trades.length - 1].date)} (owner: ${esc(n.trades[n.trades.length - 1].owner)}) ${chip(srcName(n.trades[n.trades.length - 1].source), n.trades[n.trades.length - 1].source)}</div>` : ''}
+        <div class="ln">PAC money from lobbying orgs: <b>${money(n.funding_total)}</b> ${n.funding[0] ? INF + ' ' + chip('FEC', n.funding[0].url) : ''}</div>`
+    }
+    return `<h3>${esc(nice(n.label))}${n.ticker ? ` <span class="mono" style="color:var(--muted);font-size:12px">${esc(n.ticker)}</span>` : ''}</h3>
+      <div class="k">${n.filings} LD-2 filings name the bill${n.firms ? ` · ${n.firms} firms` : ''}</div>
+      ${n.issue_text ? `<div class="quote">"${esc(n.issue_text.length > 180 ? n.issue_text.slice(0, 180) + '…' : n.issue_text)}"</div>` : ''}
+      <div class="ln">${n.public ? `SEC: ${esc(n.resolution.method.startsWith('llm') ? `"${n.resolution.client}" → parent (${n.resolution.reason || 'LLM review'})` : 'name match')} ${n.resolution.method.startsWith('llm') ? INF : ''}` : 'No public parent company'}</div>
+      <div class="ln">${M.filter(m => m.trades.some(t => t.company === id)).length} members on the map traded its stock</div>
+      <span class="chips">${chip('LDA filing', n.lobby_url)} ${n.sec_url ? chip('SEC', n.sec_url) : ''}</span>`
+  }
+
+  function show(id, evt) {
+    tip.innerHTML = card(id) + (pinned ? '<button class="close" aria-label="Close">×</button>' : '')
+    tip.style.display = 'block'
+    const box = stage.getBoundingClientRect()
+    const g = nodes.get(id).getBoundingClientRect()
+    let x = g.right - box.left + 10, y = g.top - box.top - 10
+    if (x + tip.offsetWidth > box.width - 12) x = g.left - box.left - tip.offsetWidth - 10
+    if (x < 12) x = Math.max(12, (box.width - tip.offsetWidth) / 2)
+    y = Math.min(Math.max(12, y), box.height - tip.offsetHeight - 70)
+    tip.style.left = x + 'px'; tip.style.top = Math.max(12, y) + 'px'
+    tip.querySelector('.close')?.addEventListener('click', () => { pinned = null; tip.style.display = 'none'; unfocus() })
+  }
+  nodes.forEach((g, id) => {
+    g.style.cursor = 'pointer'
+    g.addEventListener('mouseenter', () => { if (!pinned) { focus(id); show(id) } })
+    g.addEventListener('mouseleave', () => { if (!pinned) { unfocus(); tip.style.display = 'none' } })
+    g.addEventListener('click', ev => { ev.stopPropagation(); pinned = id; focus(id); show(id) })
+  })
+  svg.addEventListener('click', () => { pinned = null; unfocus(); tip.style.display = 'none' })
+  window.__show = id => { pinned = id; focus(id); show(id) }
+}
+
+function drawList(D) {
+  const tl = D.versions.map(v => `<div class="tl${v.predecessor ? ' pred' : ''}">
+    <div class="d">${esc(v.date)}</div><div class="t">${esc(v.code === 's394-is' ? 'S.394 introduced' : v.code === 'plaw' ? 'P.L. 119-27' : v.name)}</div>
+    <div class="m">${v.sections} sections · ${(v.words / 1000).toFixed(1)}k words</div>
+    <span class="chips">${chip('XML', v.url)} ${v.predecessor ? INF : ''}</span></div>`).join('')
+  const rows = D.sections.map(s => `<tr class="${s.kind}">
+    <td class="n">§${s.num}</td>
+    <td>${esc(s.heading)} ${s.kind === 'headline' ? '<span class="tag headline">headline</span>' : s.kind === 'buried' ? '<span class="tag buried">buried?</span>' : ''}
+      <div class="chips">${chip('text', s.text_url)} ${s.attention_example ? chip(s.attention_example.source, s.attention_example.url) : ''}</div></td>
+    <td><span class="arr ${s.first_version.replace('-is', '')}">${STAGE_SHORT[s.first_version]}</span></td>
+    <td>${s.attention_pct == null ? '<span class="miss" title="not scored by the attention lead">not scored</span>' : `<div class="att"><div class="bar"><i style="width:${s.attention_pct * 100}%"></i></div><span>${pct(s.attention_pct)}</span></div>`}</td>
+    <td class="hide-s"><span class="tag missing">whole bill</span></td>
+  </tr>`).join('')
+  $('#xray').innerHTML = `
+    <div class="xr-h"><span class="cap" style="color:var(--text)">Versions</span><span class="cap">first text → law</span></div>
+    <div class="timeline">${tl}</div>
+    <div class="xr-h"><span class="cap" style="color:var(--text)">Sections of the law</span><span class="cap">added at · attention pct · CBO $</span></div>
+    <table class="secs"><thead><tr><th>§</th><th>Section</th><th>Added</th><th>Attn</th><th class="hide-s">CBO $</th></tr></thead><tbody>${rows}</tbody></table>`
+}
+
+const stage = $('#stage')
+$('#v-map').onclick = () => { stage.classList.remove('list'); $('#v-map').setAttribute('aria-pressed', true); $('#v-list').setAttribute('aria-pressed', false); $('#legend').style.display = '' }
+$('#v-list').onclick = () => { stage.classList.add('list'); $('#v-list').setAttribute('aria-pressed', true); $('#v-map').setAttribute('aria-pressed', false); $('#legend').style.display = 'none'; $('#tip').style.display = 'none' }
+if (qs.get('view') === 'list') setTimeout(() => $('#v-list').click())
+</script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{
+  "needsBassim": [
+    {
+      "id": "cbo-baseline",
+      "question": "Which baseline is the headline dollar figure on reconciliation bills: CBO current-law or the Senate current-policy (budget-enforcement) baseline? They can flip the sign (OBBBA SALT sec. 70120: +$944B vs -$143B revenue).",
+      "recommendation": "Current-law by default, current-policy next to it, baseline named on every figure.",
+      "options": ["current-law default + current-policy alongside", "current-policy default", "current-law only"]
+    },
+    {
+      "id": "attention-source",
+      "question": "Where does news attention come from, and which outlets count as the news cycle?",
+      "recommendation": "Free Media Cloud account (hex-ai@agentmail.to) as the counted signal, a fixed published balanced outlet list (left, right, wire, TV), and trade/legal coverage shown separately. Google News RSS stays as the text corpus for matching.",
+      "options": ["Media Cloud + fixed balanced list", "Google News RSS only", "paid news API"]
+    },
+    {
+      "id": "model-spend",
+      "question": "Approve model spend: a vision pass over ~1,300 scanned House PTR pages and 44 Senate paper reports, plus LLM passes that produce labeled inferences (Senate-rewrite counterparts, CBO prose to sections, subsidiaries to parents)? The server has no Anthropic API key; the spikes used claude -p.",
+      "recommendation": "Yes. Measure cost on 50 pages first; uncertain cells get a flag and a second read.",
+      "options": ["yes, measure on 50 pages first", "leave paper filings out and say so", "manual review only"]
+    },
+    {
+      "id": "naming-people",
+      "question": "Show spouse, dependent and joint trades under the member, and lobbyists' former bosses (members named in their covered positions)?",
+      "recommendation": "Yes to both: owner always shown, former bosses quoted from the filing, same rule for every party.",
+      "options": ["both, as recommended", "member's own trades only, no former bosses", "trades with owner, no former bosses"]
+    }
+  ],
+  "decided": [
+    {"id": "fix-same-law", "decision": "Bills: minimum text similarity (or a shared cited provision) before a same-law match counts; the old side of a split says split_into, not removed.", "why": "Verifier found 2 false IRA matches, one hiding the late $4B drought section."},
+    {"id": "fix-late-flag", "decision": "Attention takes late-add flags from the bills lineage, not its own heading detector.", "why": "6 of 7 H.R.1 late flags were wrong; the detector fired on 35% of H.R.1 vs 13% of IRA sections, a party-tilt risk."},
+    {"id": "fix-cbo-splits", "decision": "Even splits of grouped CBO lines are labeled inference; dollar signs are kept.", "why": "CBO never made those splits; $149B for state directed payments is a cut."},
+    {"id": "fix-cbo-cites", "decision": "A deficit figure cites every cell range it adds up.", "why": "70101 and 71119 deficit claims cited only the outlay range."},
+    {"id": "fix-trades-party", "decision": "Trades party count is 40 R / 24 D / 1 I; every member list shows 'paper filings not yet read' until the vision step runs.", "why": "RESULTS.md text said 41/23; unread paper filers are Khanna (D, 906 pages), McCaul, Rogers, Fleischmann, Wied, Harshbarger (R), Fetterman, Blumenthal (D)."},
+    {"id": "fix-claim-urls", "decision": "One claim, one specific URL; say spouse when the spouse owns the asset.", "why": "The Tina Smith claim cited a stub URL and left out that it was her spouse's sale."},
+    {"id": "predecessor-bills", "decision": "Show predecessor bills (e.g. S.394 for GENIUS) as a labeled inference stage in the version timeline.", "why": "The committee rewrite happened between S.394 and S.1582."},
+    {"id": "split-not-added", "decision": "Sections split out of an existing section show as 'split from', not 'added'; flagged only if their text changed beyond the split.", "why": "Otherwise the Senate's reconciliation restructuring looks like 33 new insertions."},
+    {"id": "llm-counterparts", "decision": "LLM pairs leftover removed/added sections that share a title or cited law, stored as inference with the model's evidence.", "why": "Text matching misses functional rewrites (SNAP work rules, border wall). Spend covered by model-spend."},
+    {"id": "cbo-archive", "decision": "Cite the cbo.gov URL and store the web.archive.org copy we read as archive_url.", "why": "cbo.gov blocks scripts with DataDome; both are public and primary."},
+    {"id": "small-bill-cbo", "decision": "For bills with only whole-bill CBO numbers, show whole-bill facts and mandate flags; LLM-linked prose-to-section notes are labeled inferences quoting CBO's sentence and page.", "why": "GENIUS has no per-section table."},
+    {"id": "lobbying-phases", "decision": "Lobbying is split into 'while a bill', 'quarter of enactment' and 'after enactment'.", "why": "5,276 of 11,961 OBBBA filings came after enactment."},
+    {"id": "lobbying-dollars", "decision": "Show the factual total for client-quarters that named the bill plus a bill-share estimate labeled inference; never the estimate alone.", "why": "LD-2s report one total for all issues."},
+    {"id": "topic-only-lobbying", "decision": "Filings that only describe the topic are off by default and shown as dashed inference edges when turned on.", "why": "They never name the bill."},
+    {"id": "tied-stock-rule", "decision": "A stock is tied to a bill if the company lobbied on it (LDA) or is named in its text; shown as inference with the rule attached. Sector lists become a separate weaker layer.", "why": "One explainable rule for every bill and party; replaces hand-made sector lists."},
+    {"id": "affected-donors", "decision": "Affected donors default to orgs that lobbied on the bill or are the same org as a lobbying client; SIC/NAICS sector tags are a separate labeled layer.", "why": "Explainable and citable."},
+    {"id": "subsidiary-parent", "decision": "A subsidiary's lobbying or PAC counts toward its public parent as an inference edge naming the subsidiary and the reason.", "why": "Visa U.S.A. -> V, Coinbase Inc -> COIN."},
+    {"id": "weak-tier-assets", "decision": "Bonds, structured notes and bank-branded funds stay out of the headline and go in a weaker tier later.", "why": "They don't track the company's fortunes the way stock does."},
+    {"id": "outside-text-lane", "decision": "Add a lane for fights outside the bill text: failed and never-voted amendments from BILLSTATUS, plus general-bucket news.", "why": "GENIUS: 130 Senate amendments filed, 1 agreed, 120 with no floor action; the loudest fight was about something not in the bill."},
+    {"id": "splink", "decision": "No Splink for company names (rapidfuzz + LLM review gets 98%); use it later for FEC individual donors.", "why": "Name is the only usable field for companies."},
+    {"id": "data-gov-key", "decision": "Phase 1 runs on bulk files; an agent retries the api.data.gov signup with headless Chrome, and only if reCAPTCHA blocks it does Bassim do a one-minute signup.", "why": "congress.gov DEMO_KEY allows 10 requests/hour; bulk files covered every spike."}
+  ]
+}
