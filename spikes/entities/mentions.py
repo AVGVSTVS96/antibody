@@ -32,7 +32,7 @@ for cid, e in lda.items():
 for cmte, name, org, tp, total, image in db.sql("""
     select p.CMTE_ID, any_value(c.CMTE_NM), any_value(c.CONNECTED_ORG_NM), any_value(c.ORG_TP), sum(amt), any_value(IMAGE_NUM)
     from fec_pas2 p join fec_cm c using (CMTE_ID)
-    where c.ORG_TP in ('C', 'T', 'M', 'V', 'W') or (c.ORG_TP is null and c.CMTE_TP in ('Q', 'N') and c.CONNECTED_ORG_NM is not null)
+    where coalesce(c.CMTE_DSGN, '') <> 'D' and (c.ORG_TP in ('C', 'T', 'M', 'V', 'W') or (c.ORG_TP is null and c.CMTE_TP in ('Q', 'N') and c.CONNECTED_ORG_NM is not null))
     group by 1""").fetchall():
     org_name = org if org and org.upper() not in ("NONE", "N/A", "NA") else name
     rows.append(("fec_pac", cmte, org_name, None, f"https://www.fec.gov/data/committee/{cmte}/",
