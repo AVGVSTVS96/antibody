@@ -1,0 +1,23 @@
+```json
+[
+{"owner":"DC","asset":"ECOLAB INC CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"CRH PUBLIC LIMITED COMPANY CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"INTUITIVE SURGICAL INC. CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"METTLER TOLEDO INTL CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"APPLOVIN CORPORATION CMN CLASS A","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"BLACKROCK FUNDING INC. CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"THE PROCTER & GAMBLE COMPANY CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"UNITED RENTALS INC. CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"INTL BUSINESS MACHINES CORP CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"DOVER CORPORATION CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"FEDEX CORPORATION CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"CROWN CASTLE INTL CORP CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"UNITED PARCEL SERVICE INC CLASS B COMMON STOCK","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"STANLEY BLACK & DECKER INC. CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"WYNN RESORTS LIMITED CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"COSTAR GROUP INC. CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"BECTON DICKINSON AND COMPANY CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"DELTA AIR LINES INC. CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"},
+{"owner":"DC","asset":"MODERNA INC. CMN","type":"purchase","date":"09/11/2026","notified":"10/01/2026","amount":"$1,001 - $15,000"}
+]
+```

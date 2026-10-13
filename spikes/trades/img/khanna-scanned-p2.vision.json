@@ -1,0 +1,11 @@
+```json
+[
+  {"owner": "DC", "asset": "BOFA FINANCE LLC LINKED TO S&P 500 INDEX", "type": "purchase", "date": "09/18/2026", "notified": "10/01/2026", "amount": "$1,001 - $15,000"},
+  {"owner": "DC", "asset": "AMAZON COM INC CMN", "type": "purchase", "date": "09/04/2026", "notified": "10/01/2026", "amount": "$1,001 - $15,000"},
+  {"owner": "DC", "asset": "AMERICAN EXPRESS COMPANY HYBRID PERPETUAL USD", "type": "purchase", "date": "09/15/2026", "notified": "10/01/2026", "amount": "$1,001 - $15,000"},
+  {"owner": "DC", "asset": "WELLS FARGO & COMPANY HYBRID PERPETUAL", "type": "purchase", "date": "09/15/2026", "notified": "10/01/2026", "amount": "$1,001 - $15,000"},
+  {"owner": "DC", "asset": "VERIZON COMMUNICATIONS INC HYBRID 02/15/2059", "type": "purchase", "date": "09/15/2026", "notified": "10/01/2026", "amount": "$1,001 - $15,000"},
+  {"owner": "DC", "asset": "FIRST CITIZENS BANCSHARE HYBRID PERPETUAL", "type": "purchase", "date": "09/09/2026", "notified": "10/01/2026", "amount": "$1,001 - $15,000"},
+  {"owner": "DC", "asset": "CALL/MSFT FLEX EURO PM 460 EXP 09/04/2026", "type": "purchase", "date": "09/04/2026", "notified": "10/01/2026", "amount": "$1,001 - $15,000"}
+]
+```

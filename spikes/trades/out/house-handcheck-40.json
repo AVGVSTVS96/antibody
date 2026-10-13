@@ -1,0 +1,857 @@
+[
+ {
+  "doc_id": "20030746",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030746.pdf",
+  "page": 1,
+  "filer": "Hon. Donald Sternoff Beyer Jr",
+  "owner": "JT",
+  "type": "exchange",
+  "date": "07/01/2025",
+  "notified": "07/27/2025",
+  "amount_parts": [
+   "$15,001 -",
+   "$50,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Stocks, Bonds, & Mutual Funds",
+   "description": "Bond Reached Maturity"
+  },
+  "asset": "Oklahoma Cnt OK Independent 3:00% 07/01/25 [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$15,001 - $50,000"
+ },
+ {
+  "doc_id": "20025891",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025891.pdf",
+  "page": 2,
+  "filer": "Hon. William R. Keating",
+  "owner": "self",
+  "type": "sale (partial)",
+  "date": "09/11/2024",
+  "notified": "09/23/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Bill's IRA",
+   "description": "37045VAZ3"
+  },
+  "asset": "GENERAL MTRS CO NOTE CALL MAKE WHOLE 5.60000% 10/15/2032 [CS]",
+  "asset_type": "CS",
+  "ticker": null,
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20033490",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033490.pdf",
+  "page": 1,
+  "filer": "Hon. Scott DesJarlais",
+  "owner": "self",
+  "type": "sale",
+  "date": "10/28/2025",
+  "notified": "10/30/2025",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "Pepsico, Inc. (PEP) [ST]",
+  "asset_type": "ST",
+  "ticker": "PEP",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20024722",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20024722.pdf",
+  "page": 1,
+  "filer": "Hon. Michael C. Burgess",
+  "owner": "self",
+  "type": "sale (partial)",
+  "date": "03/11/2024",
+  "notified": "03/12/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "Illumina, Inc. - Common Stock (ILMN) [ST]",
+  "asset_type": "ST",
+  "ticker": "ILMN",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20025037",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025037.pdf",
+  "page": 1,
+  "filer": "Hon. Scott H. Peters",
+  "owner": "SP",
+  "type": "purchase",
+  "date": "04/03/2024",
+  "notified": "04/30/2024",
+  "amount_parts": [
+   "$500,001 -",
+   "$1,000,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "U.S Treasury Notes [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$500,001 - $1,000,000"
+ },
+ {
+  "doc_id": "20034897",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034897.pdf",
+  "page": 1,
+  "filer": "Hon. David J. Taylor",
+  "owner": "self",
+  "type": "purchase",
+  "date": "06/15/2026",
+  "notified": "06/30/2026",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "David Taylor Trust > Sardinia Ready Mix 401(k) - Dave"
+  },
+  "asset": "Chevron Corporation Common Stock (CVX) [ST]",
+  "asset_type": "ST",
+  "ticker": "CVX",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20025255",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025255.pdf",
+  "page": 1,
+  "filer": "Hon. Mark Dr Green",
+  "owner": "self",
+  "type": "sale",
+  "date": "06/03/2024",
+  "notified": "06/11/2024",
+  "amount_parts": [
+   "$100,001 -",
+   "$250,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Equitable Retirement Account"
+  },
+  "asset": "NGL ENERGY PARTNERS LP Common Units representing Limited Partner Interests (NGL) [ST]",
+  "asset_type": "ST",
+  "ticker": "NGL",
+  "amount": "$100,001 - $250,000"
+ },
+ {
+  "doc_id": "20032230",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032230.pdf",
+  "page": 1,
+  "filer": "Hon. Debbie Wasserman Schultz",
+  "owner": "self",
+  "type": "sale",
+  "date": "09/15/2025",
+  "notified": "09/16/2025",
+  "amount_parts": [
+   "$1,972.55"
+  ],
+  "details": {
+   "filing_status": "New",
+   "description": "Asset held in an IRA"
+  },
+  "asset": "Berry Corporation (BRY) [ST]",
+  "asset_type": "ST",
+  "ticker": "BRY",
+  "amount": "$1,972.55"
+ },
+ {
+  "doc_id": "20035471",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035471.pdf",
+  "page": 1,
+  "filer": "Hon. David J. Taylor",
+  "owner": "self",
+  "type": "purchase",
+  "date": "09/08/2026",
+  "notified": "09/09/2026",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "David Taylor Trust > Schwab Joint Brokerage #1 (Home Grown)"
+  },
+  "asset": "Installed Building Products, Inc. Common Stock (IBP) [ST]",
+  "asset_type": "ST",
+  "ticker": "IBP",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20024839",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20024839.pdf",
+  "page": 1,
+  "filer": "Hon. Lloyd Doggett",
+  "owner": "self",
+  "type": "purchase",
+  "date": "03/12/2024",
+  "notified": "04/09/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "description": "Reinvest Shares"
+  },
+  "asset": "PPG Industries, Inc. Common Stock (PPG) [ST]",
+  "asset_type": "ST",
+  "ticker": "PPG",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20034552",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034552.pdf",
+  "page": 1,
+  "filer": "Hon. Susie Lee",
+  "owner": "self",
+  "type": "sale (partial)",
+  "date": "04/21/2026",
+  "notified": "05/13/2026",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Fidelity Investments IRA"
+  },
+  "asset": "Full House Resorts, Inc. - Common Stock (FLL) [ST]",
+  "asset_type": "ST",
+  "ticker": "FLL",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20026736",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026736.pdf",
+  "page": 1,
+  "filer": "Hon. David P. Joyce",
+  "owner": "self",
+  "type": "sale (partial)",
+  "date": "01/10/2025",
+  "notified": "02/07/2025",
+  "amount_parts": [
+   "$50,001 -",
+   "$100,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "David P. Joyce Trust",
+   "location": "US",
+   "description": "MAI Managed funds"
+  },
+  "asset": "MAI Managed [PS]",
+  "asset_type": "PS",
+  "ticker": null,
+  "amount": "$50,001 - $100,000"
+ },
+ {
+  "doc_id": "20024596",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20024596.pdf",
+  "page": 2,
+  "filer": "Hon. Virginia Foxx",
+  "owner": "JT",
+  "type": "purchase",
+  "date": "02/26/2024",
+  "notified": "03/02/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "FLEX LNG Ltd. Ordinary Shares (FLNG) [ST]",
+  "asset_type": "ST",
+  "ticker": "FLNG",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20025194",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025194.pdf",
+  "page": 1,
+  "filer": "Hon. Earl Blumenauer",
+  "owner": "self",
+  "type": "purchase",
+  "date": "05/17/2024",
+  "notified": "06/04/2024",
+  "amount_parts": [
+   "$15,001 -",
+   "$50,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "US Treasury Due 10/03/24 [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$15,001 - $50,000"
+ },
+ {
+  "doc_id": "20033821",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033821.pdf",
+  "page": 1,
+  "filer": "Hon. Thomas H. Kean Jr",
+  "owner": "self",
+  "type": "purchase",
+  "date": "12/31/2025",
+  "notified": "01/02/2026",
+  "amount_parts": [
+   "$15,001 -",
+   "$50,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Kean Family Partnership",
+   "description": "4.125%, maturity 6/15/26"
+  },
+  "asset": "U.S. Treasury Note [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$15,001 - $50,000"
+ },
+ {
+  "doc_id": "20033714",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033714.pdf",
+  "page": 1,
+  "filer": "Hon. Donald Sternoff Beyer Jr",
+  "owner": "JT",
+  "type": "sale",
+  "date": "12/18/2025",
+  "notified": "01/02/2026",
+  "amount_parts": [
+   "$50,001 -",
+   "$100,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Stocks, Bonds, & Mutual Funds",
+   "description": "Bonds reached maturity"
+  },
+  "asset": "Madison Conn GO BD 3.5% 12/18/25 [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$50,001 - $100,000"
+ },
+ {
+  "doc_id": "20025021",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025021.pdf",
+  "page": 1,
+  "filer": "Hon. Marjorie Taylor Mrs Greene",
+  "owner": "self",
+  "type": "purchase",
+  "date": "05/09/2024",
+  "notified": "05/09/2024",
+  "amount_parts": [
+   "$250,001 -",
+   "$500,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "US Treaury Bill [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$250,001 - $500,000"
+ },
+ {
+  "doc_id": "20027995",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027995.pdf",
+  "page": 1,
+  "filer": "Hon. Scott Scott Franklin",
+  "owner": "self",
+  "type": "sale",
+  "date": "01/28/2025",
+  "notified": "03/18/2025",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Fidelity Roth IRA"
+  },
+  "asset": "Costco Wholesale Corporation - Common Stock (COST) [ST]",
+  "asset_type": "ST",
+  "ticker": "COST",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20025224",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025224.pdf",
+  "page": 1,
+  "filer": "Hon. Abigail Spanberger",
+  "owner": "SP",
+  "type": "sale",
+  "date": "06/04/2024",
+  "notified": "06/04/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "Amended",
+   "subholding_of": "Shares of Restricted Stock",
+   "description": "On 6/1/2021, spouse was granted a Restricted Unit Award of L3Harris Technologies, Inc common stock as part of his compensation pursuant to the provisions of the Harris Corporation 2015 Equity Incentive Plan ( see https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2021/20018843.pdf ). These RSUs vested on 6/1/2024, were distributed on 6/3/2024 at the end of the day, and were sold as soon as possible on 6/4/2024."
+  },
+  "asset": "L3Harris Technologies, Inc. Common Stock (LHX) [ST]",
+  "asset_type": "ST",
+  "ticker": "LHX",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20035035",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035035.pdf",
+  "page": 4,
+  "filer": "Hon. Julie Johnson",
+  "owner": "JT",
+  "type": "purchase",
+  "date": "10/03/2025",
+  "notified": "11/06/2025",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Merrill Lynch Long Term Growth"
+  },
+  "asset": "Fiserv, Inc. - Common Stock (FISV) [ST]",
+  "asset_type": "ST",
+  "ticker": "FISV",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20033754",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033754.pdf",
+  "page": 1,
+  "filer": "Hon. Steve Cohen",
+  "owner": "self",
+  "type": "sale (partial)",
+  "date": "12/17/2025",
+  "notified": "12/30/2025",
+  "amount_parts": [
+   "$15,001 -",
+   "$50,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Stephens Advantage Account"
+  },
+  "asset": "Bank OZK - 4.625% Series A Non- Cumulative Perpetual Preferred Stock (OZKAP) [ST]",
+  "asset_type": "ST",
+  "ticker": "OZKAP",
+  "amount": "$15,001 - $50,000"
+ },
+ {
+  "doc_id": "20024848",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20024848.pdf",
+  "page": 1,
+  "filer": "Hon. Chip Roy",
+  "owner": "SP",
+  "type": "sale",
+  "date": "04/10/2024",
+  "notified": "04/10/2024",
+  "amount_parts": [
+   "$15,001 -",
+   "$50,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "description": "Sold entire holding"
+  },
+  "asset": "Exxon Mobil Corporation Common Stock (XOM) [ST]",
+  "asset_type": "ST",
+  "ticker": "XOM",
+  "amount": "$15,001 - $50,000"
+ },
+ {
+  "doc_id": "20035235",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035235.pdf",
+  "page": 1,
+  "filer": "Hon. Steve Cohen",
+  "owner": "self",
+  "type": "purchase",
+  "date": "08/06/2026",
+  "notified": "08/11/2026",
+  "amount_parts": [
+   "$100,001 -",
+   "$250,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Stephens Advantage Account"
+  },
+  "asset": "U.S. Tres Bill Int. Rate 0.00% Mat 8/5/2027 [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$100,001 - $250,000"
+ },
+ {
+  "doc_id": "20025626",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025626.pdf",
+  "page": 1,
+  "filer": "Hon. James E Hon Banks",
+  "owner": "JT",
+  "type": "purchase",
+  "date": "08/08/2024",
+  "notified": "08/09/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "Yum! Brands, Inc. (YUM) [ST]",
+  "asset_type": "ST",
+  "ticker": "YUM",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20027838",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027838.pdf",
+  "page": 1,
+  "filer": "Hon. Max Miller",
+  "owner": "self",
+  "type": "purchase",
+  "date": "02/05/2025",
+  "notified": "02/24/2025",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "2012 Trust",
+   "description": "Capital call for $7,035"
+  },
+  "asset": "Mercato Partners Travers IV QP, LP (GLAS Funds, LP) [HN]",
+  "asset_type": "HN",
+  "ticker": null,
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20024901",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20024901.pdf",
+  "page": 1,
+  "filer": "Hon. Robert E. Latta",
+  "owner": "SP",
+  "type": "purchase",
+  "date": "04/20/2024",
+  "notified": "04/20/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "description": "dividend reinvestment",
+   "comments": "dividend reinvestment"
+  },
+  "asset": "Farmers & Merchants Bancorp, Inc. (FMAO) [ST]",
+  "asset_type": "ST",
+  "ticker": "FMAO",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20035408",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035408.pdf",
+  "page": 4,
+  "filer": "Hon. April McClain Delaney",
+  "owner": "DC",
+  "type": "purchase",
+  "date": "08/06/2026",
+  "notified": "09/01/2026",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "Life Time Group Holdings, Inc. Common Stock (LTH) [ST]",
+  "asset_type": "ST",
+  "ticker": "LTH",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20035499",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035499.pdf",
+  "page": 1,
+  "filer": "Hon. Pete Sessions",
+  "owner": "SP",
+  "type": "sale",
+  "date": "09/22/2026",
+  "notified": "09/22/2026",
+  "amount_parts": [
+   "$100,001 -",
+   "$250,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "IRA One"
+  },
+  "asset": "Apple Inc. - Common Stock (AAPL) [ST]",
+  "asset_type": "ST",
+  "ticker": "AAPL",
+  "amount": "$100,001 - $250,000"
+ },
+ {
+  "doc_id": "20033495",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033495.pdf",
+  "page": 1,
+  "filer": "Hon. David J. Taylor",
+  "owner": "self",
+  "type": "sale",
+  "date": "11/03/2025",
+  "notified": "11/14/2025",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "David Taylor Trust > Sardinia Ready Mix 401(k) - Dave"
+  },
+  "asset": "Alphabet Inc. - Class A Common Stock (GOOGL) [ST]",
+  "asset_type": "ST",
+  "ticker": "GOOGL",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20024743",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20024743.pdf",
+  "page": 1,
+  "filer": "Hon. Brian Mast",
+  "owner": "DC",
+  "type": "purchase",
+  "date": "03/04/2024",
+  "notified": "03/04/2024",
+  "amount_parts": [
+   "$223.60"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Maverick Mast Charles Schwab Brokerage Account"
+  },
+  "asset": "AT&T Inc. (T) [ST]",
+  "asset_type": "ST",
+  "ticker": "T",
+  "amount": "$223.60"
+ },
+ {
+  "doc_id": "20027807",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027807.pdf",
+  "page": 1,
+  "filer": "Hon. Suzan K. DelBene",
+  "owner": "JT",
+  "type": "purchase",
+  "date": "02/12/2025",
+  "notified": "02/12/2025",
+  "amount_parts": [
+   "$500,001 -",
+   "$1,000,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "Ohio ST Higher Ed Go BDS Ser. 2025 A 5.00% Due May 1, 2036 [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$500,001 - $1,000,000"
+ },
+ {
+  "doc_id": "20024685",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20024685.pdf",
+  "page": 1,
+  "filer": "Hon. Thomas H. Kean Jr.",
+  "owner": "self",
+  "type": "purchase",
+  "date": "02/12/2024",
+  "notified": "03/01/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Kean Family Partnership"
+  },
+  "asset": "Berry Global Group, Inc. Common Stock (BERY) [ST]",
+  "asset_type": "ST",
+  "ticker": "BERY",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20035134",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035134.pdf",
+  "page": 2,
+  "filer": "Hon. Kevin Hern",
+  "owner": "JT",
+  "type": "purchase",
+  "date": "07/24/2026",
+  "notified": "08/05/2026",
+  "amount_parts": [
+   "$100,001 -",
+   "$250,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Hern Family Revocable Trust"
+  },
+  "asset": "TULSA CNTY OKLA INDPT SCH DIST NO 02.00000% 09/01/2026 [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$100,001 - $250,000"
+ },
+ {
+  "doc_id": "20025719",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025719.pdf",
+  "page": 10,
+  "filer": "Hon. John James",
+  "owner": "self",
+  "type": "purchase",
+  "date": "11/10/2023",
+  "notified": "08/13/2024",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "John A. James Children\u2019s Trust"
+  },
+  "asset": "McDonald's Corporation Common Stock (MCD) [ST]",
+  "asset_type": "ST",
+  "ticker": "MCD",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20030448",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030448.pdf",
+  "page": 1,
+  "filer": "Hon. Kelly Louise Morrison",
+  "owner": "self",
+  "type": "purchase",
+  "date": "05/05/2025",
+  "notified": "05/05/2025",
+  "amount_parts": [
+   "$50,001 -",
+   "$100,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Investment Fund 1",
+   "description": "Aviation parts manufacturer"
+  },
+  "asset": "Aero Engineering Holdings LLC [OI]",
+  "asset_type": "OI",
+  "ticker": null,
+  "amount": "$50,001 - $100,000"
+ },
+ {
+  "doc_id": "20033725",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033725.pdf",
+  "page": 3,
+  "filer": "Hon. Nancy Pelosi",
+  "owner": "SP",
+  "type": "exchange",
+  "date": "01/02/2026",
+  "notified": "01/02/2026",
+  "amount_parts": [
+   "$15.00"
+  ],
+  "details": {
+   "filing_status": "New",
+   "description": "776 shares and cash in lieu received as a result of spinoff from Comcast Corporation. No shares of Comcast were surrendered as a result of the spinoff."
+  },
+  "asset": "Versant Media Group, Inc. - Class A Common Stock (VSNT) [ST]",
+  "asset_type": "ST",
+  "ticker": "VSNT",
+  "amount": "$15.00"
+ },
+ {
+  "doc_id": "20025820",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025820.pdf",
+  "page": 1,
+  "filer": "Hon. Doris O. Matsui",
+  "owner": "SP",
+  "type": "purchase",
+  "date": "09/03/2024",
+  "notified": "09/04/2024",
+  "amount_parts": [
+   "$500,001 -",
+   "$1,000,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "U.S. Treasury Note due 05/31/2026 [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$500,001 - $1,000,000"
+ },
+ {
+  "doc_id": "20034932",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034932.pdf",
+  "page": 1,
+  "filer": "Hon. April McClain Delaney",
+  "owner": "DC",
+  "type": "sale (partial)",
+  "date": "06/12/2026",
+  "notified": "07/01/2026",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "Corpay, Inc. Common Stock (CPAY) [ST]",
+  "asset_type": "ST",
+  "ticker": "CPAY",
+  "amount": "$1,001 - $15,000"
+ },
+ {
+  "doc_id": "20025568",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025568.pdf",
+  "page": 1,
+  "filer": "Hon. Suzan K. DelBene",
+  "owner": "JT",
+  "type": "sale",
+  "date": "07/24/2024",
+  "notified": "07/24/2024",
+  "amount_parts": [
+   "$500,001 -",
+   "$1,000,000"
+  ],
+  "details": {
+   "filing_status": "New"
+  },
+  "asset": "New York NY Go BDS Ser. Fiscal 2015F 5.00% Due Jun 1, 2044 [GS]",
+  "asset_type": "GS",
+  "ticker": null,
+  "amount": "$500,001 - $1,000,000"
+ },
+ {
+  "doc_id": "20035326",
+  "url": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035326.pdf",
+  "page": 3,
+  "filer": "Hon. Kevin Hern",
+  "owner": "JT",
+  "type": "sale",
+  "date": "08/10/2026",
+  "notified": "08/27/2026",
+  "amount_parts": [
+   "$1,001 - $15,000"
+  ],
+  "details": {
+   "filing_status": "New",
+   "subholding_of": "Hern Family Foundation"
+  },
+  "asset": "Veralto Corp Common Stock (VLTO) [ST]",
+  "asset_type": "ST",
+  "ticker": "VLTO",
+  "amount": "$1,001 - $15,000"
+ }
+]

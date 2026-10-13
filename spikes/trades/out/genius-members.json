@@ -1,0 +1,1824 @@
+[
+ {
+  "member": "Julie Johnson",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "J000310",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 55,
+  "buys": 13,
+  "sells": 41,
+  "tickers": [
+   "AXP",
+   "BAC",
+   "BK",
+   "COF",
+   "FI",
+   "FISV",
+   "GPN",
+   "GS",
+   "JPM",
+   "MS",
+   "PNC",
+   "PYPL",
+   "SCHW",
+   "TFC",
+   "V",
+   "WFC"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026762.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027936.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029064.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030296.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030474.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030909.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032066.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033420.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033611.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033789.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035035.pdf"
+  ]
+ },
+ {
+  "member": "Josh Gottheimer",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "G000583",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 52,
+  "buys": 29,
+  "sells": 23,
+  "tickers": [
+   "FI",
+   "GS",
+   "MA",
+   "PYPL",
+   "SCHW",
+   "SQ",
+   "V",
+   "XYZ"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025419.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025678.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025804.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025953.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026154.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026533.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026732.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027901.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029083.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030338.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030462.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030621.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030848.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20031032.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034130.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034585.pdf"
+  ]
+ },
+ {
+  "member": "Gilbert Ray Cisneros, Jr.",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "C001123",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 51,
+  "buys": 31,
+  "sells": 20,
+  "tickers": [
+   "COF",
+   "COIN",
+   "FISV",
+   "GPN",
+   "HOOD",
+   "JPM",
+   "MA",
+   "MS",
+   "MSTR",
+   "PYPL",
+   "SCHW",
+   "SQ",
+   "USB",
+   "WFC"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030901.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032248.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033455.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033619.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033762.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033983.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034144.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034285.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034500.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034713.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034906.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035190.pdf"
+  ]
+ },
+ {
+  "member": "Marjorie Taylor Greene",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "G000596",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 36,
+  "buys": 36,
+  "sells": 0,
+  "tickers": [
+   "AXP",
+   "BAC",
+   "GS",
+   "IBIT",
+   "JPM",
+   "MS",
+   "SCHW",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025108.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025518.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025777.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025986.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026059.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026174.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026281.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026658.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026791.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027933.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029089.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029138.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030295.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030389.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030996.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032174.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033314.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033360.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033570.pdf"
+  ]
+ },
+ {
+  "member": "Mike Collins",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "C001129",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 36,
+  "buys": 29,
+  "sells": 7,
+  "tickers": [
+   "Aerodrome [CT]",
+   "Ethereum Crypto currency [CT]",
+   "Ethereum [CT]",
+   "Ski Mask Dog [CT]",
+   "Sui [CT]",
+   "The Graph [CT]",
+   "Velodrome [CT]",
+   "Virtuals Protocol [CT]",
+   "aerodrome [CT]",
+   "ski mask dog [CT]",
+   "usdc [CT]"
+  ],
+  "groups": [
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025282.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025446.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025729.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026127.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026303.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026489.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026696.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027820.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027962.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029130.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029131.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030439.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030466.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030622.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030692.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20031007.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033840.pdf"
+  ]
+ },
+ {
+  "member": "Lisa C. McClain",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "M001136",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 35,
+  "buys": 18,
+  "sells": 17,
+  "tickers": [
+   "AXP",
+   "BAC",
+   "BK",
+   "FI",
+   "GS",
+   "JPM",
+   "MA",
+   "PYPL",
+   "SCHW",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030891.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030932.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032129.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033446.pdf"
+  ]
+ },
+ {
+  "member": "Jefferson Shreve",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "S001229",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 34,
+  "buys": 9,
+  "sells": 25,
+  "tickers": [
+   "AXP",
+   "BAC",
+   "COIN",
+   "FI",
+   "GS",
+   "JPM",
+   "MA",
+   "MS",
+   "MSTR",
+   "PYPL",
+   "SCHW",
+   "V",
+   "WFC",
+   "XYZ"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027879.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029038.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030231.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030387.pdf"
+  ]
+ },
+ {
+  "member": "Val T. Hoyle",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "H001094",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 30,
+  "buys": 13,
+  "sells": 17,
+  "tickers": [
+   "BAC",
+   "BK",
+   "COF",
+   "GS",
+   "JPM",
+   "MA",
+   "MS",
+   "PNC",
+   "PYPL",
+   "SCHW",
+   "USB",
+   "V",
+   "WFC"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032070.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032211.pdf"
+  ]
+ },
+ {
+  "member": "David McCormick",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "M001243",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 26,
+  "buys": 24,
+  "sells": 2,
+  "tickers": [
+   "BITB",
+   "GS"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/05a652a7-5402-47c6-85ad-04c1c978815b/",
+   "https://efdsearch.senate.gov/search/view/ptr/5823084a-1dd6-4707-aee5-53c57af4df8c/",
+   "https://efdsearch.senate.gov/search/view/ptr/5d118fc0-14f4-426a-8d38-05056392b4d8/",
+   "https://efdsearch.senate.gov/search/view/ptr/87e8ffc9-b032-4706-a4d1-8769a6eca634/",
+   "https://efdsearch.senate.gov/search/view/ptr/ac293f74-570f-4c11-9224-79686a7500a9/",
+   "https://efdsearch.senate.gov/search/view/ptr/c2d4f369-8305-4360-a7dc-b6ce3fd136eb/",
+   "https://efdsearch.senate.gov/search/view/ptr/e337e1b4-ff0a-4b83-8a58-1d25a81ea26f/",
+   "https://efdsearch.senate.gov/search/view/ptr/f977c281-48c1-4de0-af95-6765127f4720/"
+  ]
+ },
+ {
+  "member": "Jared Moskowitz",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "M001217",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 25,
+  "buys": 16,
+  "sells": 9,
+  "tickers": [
+   "AXP",
+   "GS",
+   "JPM",
+   "MA",
+   "PNC",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20024672.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025680.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026346.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026731.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030282.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033421.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034274.pdf"
+  ]
+ },
+ {
+  "member": "Byron Donalds",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "D000032",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 22,
+  "buys": 14,
+  "sells": 8,
+  "tickers": [
+   "Bitcoin (BTC) [CT]",
+   "Bitcoin (CRYPTO:BTC) [CT]",
+   "FI",
+   "HOOD",
+   "JPM",
+   "PYPL",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029092.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030342.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032234.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033491.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033747.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033780.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033981.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034134.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034297.pdf"
+  ]
+ },
+ {
+  "member": "Alan Armstrong",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "A000383",
+  "vote": "not a member at vote",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 21,
+  "buys": 18,
+  "sells": 3,
+  "tickers": [
+   "AXP",
+   "BAC",
+   "Bank of New York Mellon Corp (",
+   "C",
+   "COF",
+   "COIN",
+   "FISV",
+   "GPN",
+   "GS",
+   "HOOD",
+   "JPM",
+   "MA",
+   "MS",
+   "PNC",
+   "PYPL",
+   "SCHW",
+   "TFC",
+   "V",
+   "WFC"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin",
+   "payments"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/fda235b3-bad7-4637-8fa1-053f354d929c/"
+  ]
+ },
+ {
+  "member": "Robert P. Bresnahan, Jr.",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "B001327",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 20,
+  "buys": 8,
+  "sells": 12,
+  "tickers": [
+   "BAC",
+   "COIN",
+   "CRCL",
+   "HOOD",
+   "JPM",
+   "MA",
+   "PYPL",
+   "TFC",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20024346.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027923.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027940.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029034.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029055.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030212.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030238.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030291.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030433.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030482.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030635.pdf"
+  ]
+ },
+ {
+  "member": "Bruce Westerman",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "W000821",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 19,
+  "buys": 9,
+  "sells": 10,
+  "tickers": [
+   "AXP",
+   "BAC",
+   "C",
+   "GS",
+   "JPM",
+   "MA",
+   "MS",
+   "SCHW",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030146.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030332.pdf"
+  ]
+ },
+ {
+  "member": "Markwayne Mullin",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "M001190",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 19,
+  "buys": 13,
+  "sells": 6,
+  "tickers": [
+   "AXP",
+   "C",
+   "COF",
+   "FI",
+   "GS",
+   "JPM",
+   "MA"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/315cd41e-0e2e-492b-9fc6-32bb92100734/",
+   "https://efdsearch.senate.gov/search/view/ptr/446c7588-5f97-42c0-8983-3ca975b91793/",
+   "https://efdsearch.senate.gov/search/view/ptr/502805c9-fddf-417d-a07a-21e01f76767f/",
+   "https://efdsearch.senate.gov/search/view/ptr/6826f825-671a-42f4-b367-0c7f571821e9/",
+   "https://efdsearch.senate.gov/search/view/ptr/7202646a-173e-4d52-ae17-80536038a476/",
+   "https://efdsearch.senate.gov/search/view/ptr/7ab0d2fd-19ea-459d-a1d9-3701e2cc8e93/",
+   "https://efdsearch.senate.gov/search/view/ptr/849c731f-a2a7-4ed8-91ad-8fee325ab75e/",
+   "https://efdsearch.senate.gov/search/view/ptr/86adfb06-a8b5-4bc9-ad3e-9c8e24a8ba30/",
+   "https://efdsearch.senate.gov/search/view/ptr/98b3317b-2632-48c3-b636-d5555c4680ca/",
+   "https://efdsearch.senate.gov/search/view/ptr/b195126e-7bb2-4d54-baf5-e6fc8e7a0165/"
+  ]
+ },
+ {
+  "member": "John Boozman",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "B001236",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 17,
+  "buys": 8,
+  "sells": 9,
+  "tickers": [
+   "AXP",
+   "BAC",
+   "FI",
+   "FISV",
+   "JPM",
+   "MA",
+   "PYPL",
+   "V",
+   "WFC"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/0677bd3f-167e-4cae-8f1d-05eb4340fcdc/",
+   "https://efdsearch.senate.gov/search/view/ptr/135ebfe9-099e-4d58-ba46-f739b90d61da/",
+   "https://efdsearch.senate.gov/search/view/ptr/2c4705cc-0f3e-4105-9093-f82fcec8bacd/",
+   "https://efdsearch.senate.gov/search/view/ptr/331e9f42-09c3-4edc-b923-a1566486262c/",
+   "https://efdsearch.senate.gov/search/view/ptr/3a779539-8451-49d2-8419-d3eb72c7922a/",
+   "https://efdsearch.senate.gov/search/view/ptr/51455bcd-4966-4e77-b481-09897ada81ae/",
+   "https://efdsearch.senate.gov/search/view/ptr/52c9fa8c-a4fa-4f74-9013-0e1076574cfa/",
+   "https://efdsearch.senate.gov/search/view/ptr/5d03af49-5bd7-4212-9587-7bfd13b98185/",
+   "https://efdsearch.senate.gov/search/view/ptr/6cf4a78e-92f0-4201-bf73-e9b02cd8f9ef/",
+   "https://efdsearch.senate.gov/search/view/ptr/b6f24083-8ed9-4368-b482-3d14155c1e9b/",
+   "https://efdsearch.senate.gov/search/view/ptr/bd886067-927f-48a8-9d43-8ab6fa713f98/",
+   "https://efdsearch.senate.gov/search/view/ptr/e059c06a-1f17-4143-bdca-be82e73eba53/"
+  ]
+ },
+ {
+  "member": "Jonathan L. Jackson",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "J000309",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 17,
+  "buys": 13,
+  "sells": 4,
+  "tickers": [
+   "BK",
+   "C",
+   "GS",
+   "HOOD",
+   "JPM",
+   "STT",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030860.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032232.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033409.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033566.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033739.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033929.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034113.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034519.pdf"
+  ]
+ },
+ {
+  "member": "David J. Taylor",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "T000490",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 15,
+  "buys": 12,
+  "sells": 3,
+  "tickers": [
+   "JPM",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029060.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029069.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030567.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030782.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033495.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033590.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033916.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033918.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034036.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034138.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034489.pdf"
+  ]
+ },
+ {
+  "member": "Julia Letlow",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "L000595",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 13,
+  "buys": 9,
+  "sells": 4,
+  "tickers": [
+   "BK",
+   "C",
+   "GS",
+   "JPM",
+   "PNC",
+   "STT",
+   "V",
+   "WFC"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20030977.pdf"
+  ]
+ },
+ {
+  "member": "Shelley Moore Capito",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "C001047",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 11,
+  "buys": 4,
+  "sells": 7,
+  "tickers": [
+   "AXP",
+   "C",
+   "Citigroup Inc New (C)",
+   "Citigroup New Inc (C)",
+   "JPM",
+   "MA",
+   "PNC",
+   "WFC"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/119cb6b4-75e0-4955-9a84-21e7a2612695/",
+   "https://efdsearch.senate.gov/search/view/ptr/1e086831-c7e8-43cd-a11d-dd366a27f400/",
+   "https://efdsearch.senate.gov/search/view/ptr/4f4d76c6-52ab-4edb-884d-b6c43e7b1bbe/",
+   "https://efdsearch.senate.gov/search/view/ptr/919a2b2d-d5f8-4f14-ab26-9e67b82b7b4c/",
+   "https://efdsearch.senate.gov/search/view/ptr/aa38bdb0-5847-4bec-8e36-80d6ffc90837/",
+   "https://efdsearch.senate.gov/search/view/ptr/ab712d8d-1afd-4f09-b29e-f1b65bba50b8/",
+   "https://efdsearch.senate.gov/search/view/ptr/defd46d8-f9db-46d6-96f9-77bebce203b6/",
+   "https://efdsearch.senate.gov/search/view/ptr/e80feabd-db9d-4949-bc5b-3c847028076e/"
+  ]
+ },
+ {
+  "member": "Brandon Gill",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "G000603",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 10,
+  "buys": 10,
+  "sells": 0,
+  "tickers": [
+   "BTC [CT]",
+   "Bitcoin [CT]",
+   "IBIT",
+   "iShares Bitcoin Trust ETF - iS"
+  ],
+  "groups": [
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030417.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030641.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030889.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033476.pdf"
+  ]
+ },
+ {
+  "member": "Jake Auchincloss",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "A000148",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 9,
+  "buys": 0,
+  "sells": 9,
+  "tickers": [
+   "STT"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025708.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026246.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027810.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030397.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030976.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033492.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034024.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034622.pdf"
+  ]
+ },
+ {
+  "member": "John James",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "J000307",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 9,
+  "buys": 0,
+  "sells": 9,
+  "tickers": [
+   "AXP",
+   "BAC",
+   "BK",
+   "JPM",
+   "MS",
+   "PNC",
+   "V",
+   "WFC"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025719.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025799.pdf"
+  ]
+ },
+ {
+  "member": "Mitch McConnell",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "M000355",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 9,
+  "buys": 9,
+  "sells": 0,
+  "tickers": [
+   "WFC"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/07155f69-e46a-49db-8341-66a2fab74c3c/",
+   "https://efdsearch.senate.gov/search/view/ptr/30986bcb-c94b-406a-8c4c-2927590e1d22/",
+   "https://efdsearch.senate.gov/search/view/ptr/33379f87-4267-4484-baa7-1f48a4375f65/",
+   "https://efdsearch.senate.gov/search/view/ptr/36b2e868-6789-43e3-91eb-ebe85aad5699/",
+   "https://efdsearch.senate.gov/search/view/ptr/53191e77-cbc8-4155-ad7f-3a720b83da89/",
+   "https://efdsearch.senate.gov/search/view/ptr/8ee57a8c-076d-4e8b-bf04-061edaf0724e/",
+   "https://efdsearch.senate.gov/search/view/ptr/bf5feb82-a589-4318-a3ba-5905269d580a/",
+   "https://efdsearch.senate.gov/search/view/ptr/d1af8002-3bf0-4188-aca4-87007c729893/",
+   "https://efdsearch.senate.gov/search/view/ptr/de5dbd67-5370-432c-a943-a267f16ef49d/"
+  ]
+ },
+ {
+  "member": "Tommy Tuberville",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "T000278",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 9,
+  "buys": 0,
+  "sells": 9,
+  "tickers": [
+   "GS",
+   "JPM",
+   "MA",
+   "PYPL"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/014817f0-9809-457f-8ac5-048948608e02/",
+   "https://efdsearch.senate.gov/search/view/ptr/392ac3e5-07f6-4f8c-840f-84e9066ffb29/",
+   "https://efdsearch.senate.gov/search/view/ptr/63e4a2b1-5bfc-43b6-b952-ba54e377212c/"
+  ]
+ },
+ {
+  "member": "Ritchie Torres",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "T000486",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 8,
+  "buys": 3,
+  "sells": 5,
+  "tickers": [
+   "BAC",
+   "C",
+   "GS",
+   "JPM",
+   "MS",
+   "USB"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030930.pdf"
+  ]
+ },
+ {
+  "member": "Dan Newhouse",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "N000189",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 7,
+  "buys": 2,
+  "sells": 5,
+  "tickers": [
+   "FI",
+   "MS",
+   "PYPL",
+   "SCHW",
+   "TFC",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030292.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033654.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034998.pdf"
+  ]
+ },
+ {
+  "member": "Guy Reschenthaler",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "R000610",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 6,
+  "buys": 3,
+  "sells": 3,
+  "tickers": [
+   "BTC (Bitcoin) [CT]",
+   "SOL (Solana) [CT]",
+   "XRP (Ripple) [CT]"
+  ],
+  "groups": [
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026547.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030237.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030371.pdf"
+  ]
+ },
+ {
+  "member": "Scott Franklin",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "F000472",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 6,
+  "buys": 2,
+  "sells": 4,
+  "tickers": [
+   "JPM",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025711.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030494.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030670.pdf"
+  ]
+ },
+ {
+  "member": "Sheldon Whitehouse",
+  "party": "Democrat",
+  "chamber": "Senate",
+  "bioguide": "W000802",
+  "vote": "Nay",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 5,
+  "buys": 1,
+  "sells": 4,
+  "tickers": [
+   "GS",
+   "JPM",
+   "MA"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/4ce4bf43-4f25-4cc0-b084-4ab230a1b080/",
+   "https://efdsearch.senate.gov/search/view/ptr/747b4aac-bbc9-4636-bf0f-95b0454e39d9/",
+   "https://efdsearch.senate.gov/search/view/ptr/a3fd3dbc-8c32-476a-85eb-67ee0ce304cb/",
+   "https://efdsearch.senate.gov/search/view/ptr/a95aa661-875c-461e-9dbd-fccd25dce9de/"
+  ]
+ },
+ {
+  "member": "Angus S. King, Jr.",
+  "party": "Independent",
+  "chamber": "Senate",
+  "bioguide": "K000383",
+  "vote": "Nay",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 4,
+  "buys": 3,
+  "sells": 1,
+  "tickers": [
+   "BAC",
+   "JPM",
+   "PYPL"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/09b9c1ed-1d73-4f17-b6f8-7b2d92021c5b/",
+   "https://efdsearch.senate.gov/search/view/ptr/218c16a3-d408-4cc0-aa89-08730d05dfc3/"
+  ]
+ },
+ {
+  "member": "George Whitesides",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "W000830",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 4,
+  "buys": 0,
+  "sells": 4,
+  "tickers": [
+   "BAC",
+   "C",
+   "JPM",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027982.pdf"
+  ]
+ },
+ {
+  "member": "James Comer",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "C001108",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 4,
+  "buys": 3,
+  "sells": 1,
+  "tickers": [
+   "PYPL",
+   "SOFI"
+  ],
+  "groups": [
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20018054.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030716.pdf"
+  ]
+ },
+ {
+  "member": "Kathy E. Manning",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "M001135",
+  "vote": "not a member at vote",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 4,
+  "buys": 4,
+  "sells": 0,
+  "tickers": [
+   "MA",
+   "V"
+  ],
+  "groups": [
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025679.pdf"
+  ]
+ },
+ {
+  "member": "Katie Boyd Britt",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "B001319",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 4,
+  "buys": 3,
+  "sells": 1,
+  "tickers": [
+   "JPM",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/28e79480-3dcb-4793-86ed-48e7fd214587/",
+   "https://efdsearch.senate.gov/search/view/ptr/37900303-65bf-467d-962b-76555d510b28/"
+  ]
+ },
+ {
+  "member": "Maria Elvira Salazar",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "S000168",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 4,
+  "buys": 4,
+  "sells": 0,
+  "tickers": [
+   "C",
+   "GS"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033993.pdf"
+  ]
+ },
+ {
+  "member": "Thomas H. Kean, Jr.",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "K000398",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 4,
+  "buys": 3,
+  "sells": 1,
+  "tickers": [
+   "FI",
+   "FISV",
+   "TOST"
+  ],
+  "groups": [
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025291.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030275.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033474.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035273.pdf"
+  ]
+ },
+ {
+  "member": "Cleo Fields",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "F000110",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 3,
+  "buys": 3,
+  "sells": 0,
+  "tickers": [
+   "HOOD",
+   "JPM"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030472.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030803.pdf"
+  ]
+ },
+ {
+  "member": "Rick Larsen",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "L000560",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 3,
+  "buys": 2,
+  "sells": 1,
+  "tickers": [
+   "AXP",
+   "GS"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025486.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030158.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034351.pdf"
+  ]
+ },
+ {
+  "member": "Rick W. Allen",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "A000372",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 3,
+  "buys": 2,
+  "sells": 1,
+  "tickers": [
+   "AXP",
+   "SCHW"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026031.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030850.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034740.pdf"
+  ]
+ },
+ {
+  "member": "Sheri Biggs",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "B001325",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 3,
+  "buys": 2,
+  "sells": 1,
+  "tickers": [
+   "IBIT",
+   "SCHW",
+   "iShares Bitcoin Trust ETF - iS"
+  ],
+  "groups": [
+   "banks",
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032149.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034346.pdf"
+  ]
+ },
+ {
+  "member": "Steve Cohen",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "C001068",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 3,
+  "buys": 0,
+  "sells": 3,
+  "tickers": [
+   "GS",
+   "MS"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033754.pdf"
+  ]
+ },
+ {
+  "member": "Carol D. Miller",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "M001205",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 0,
+  "sells": 2,
+  "tickers": [
+   "USB"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029135.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033779.pdf"
+  ]
+ },
+ {
+  "member": "Greg Landsman",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "L000601",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 0,
+  "sells": 2,
+  "tickers": [
+   "JPM",
+   "V"
+  ],
+  "groups": [
+   "banks",
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20029084.pdf"
+  ]
+ },
+ {
+  "member": "John Fetterman",
+  "party": "Democrat",
+  "chamber": "Senate",
+  "bioguide": "F000479",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 2,
+  "sells": 0,
+  "tickers": [
+   "JPMORGAN CHASE & CO"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/50e54b67-b398-470e-8baf-e09e3be81d86/",
+   "https://efdsearch.senate.gov/search/view/ptr/d899796b-3221-4c1c-a28a-265fe99303c3/"
+  ]
+ },
+ {
+  "member": "Laurel M. Lee",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "L000597",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 1,
+  "sells": 1,
+  "tickers": [
+   "BAC",
+   "JPM"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025714.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034694.pdf"
+  ]
+ },
+ {
+  "member": "Lloyd Smucker",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "S001199",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 0,
+  "sells": 2,
+  "tickers": [
+   "TFC",
+   "WFC"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20019182.pdf"
+  ]
+ },
+ {
+  "member": "Nancy Pelosi",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "P000197",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 0,
+  "sells": 2,
+  "tickers": [
+   "PYPL",
+   "V"
+  ],
+  "groups": [
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20025368.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033725.pdf"
+  ]
+ },
+ {
+  "member": "Shri Thanedar",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "T000488",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 1,
+  "sells": 1,
+  "tickers": [
+   "MSTR"
+  ],
+  "groups": [
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030869.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033910.pdf"
+  ]
+ },
+ {
+  "member": "Tim Moore",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "M001236",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 1,
+  "sells": 1,
+  "tickers": [
+   "COIN"
+  ],
+  "groups": [
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032256.pdf",
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034034.pdf"
+  ]
+ },
+ {
+  "member": "Tim Walberg",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "W000798",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 2,
+  "buys": 2,
+  "sells": 0,
+  "tickers": [
+   "BAC",
+   "WFC"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034660.pdf"
+  ]
+ },
+ {
+  "member": "Adam Smith",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "S000510",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "C"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030868.pdf"
+  ]
+ },
+ {
+  "member": "Bernie Moreno",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "M001242",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "cosponsor",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "Bitcoin"
+  ],
+  "groups": [
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/42ed7699-61fc-4a73-813d-4ae47af91e61/"
+  ]
+ },
+ {
+  "member": "Daniel Meuser",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "M001204",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "V"
+  ],
+  "groups": [
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030922.pdf"
+  ]
+ },
+ {
+  "member": "Derek Tran",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "T000491",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "Litecoin (LTC) [CT]"
+  ],
+  "groups": [
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20035183.pdf"
+  ]
+ },
+ {
+  "member": "Emily Randall",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "R000621",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "WFC"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026756.pdf"
+  ]
+ },
+ {
+  "member": "J. French Hill",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "H001072",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "WFC"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20030551.pdf"
+  ]
+ },
+ {
+  "member": "Lizzie Fletcher",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "F000468",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "JPM"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034413.pdf"
+  ]
+ },
+ {
+  "member": "Mark Alford",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "A000379",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "PYPL"
+  ],
+  "groups": [
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20034201.pdf"
+  ]
+ },
+ {
+  "member": "Morgan McGarvey",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "M001220",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "SCHW"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2024/20026360.pdf"
+  ]
+ },
+ {
+  "member": "Neal P. Dunn",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "D000628",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 1,
+  "sells": 0,
+  "tickers": [
+   "MSTR"
+  ],
+  "groups": [
+   "crypto/stablecoin"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20027895.pdf"
+  ]
+ },
+ {
+  "member": "Richard McCormick",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "M001218",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 1,
+  "sells": 0,
+  "tickers": [
+   "V"
+  ],
+  "groups": [
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033610.pdf"
+  ]
+ },
+ {
+  "member": "Roger Williams",
+  "party": "Republican",
+  "chamber": "House",
+  "bioguide": "W000816",
+  "vote": "Yea",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 1,
+  "sells": 0,
+  "tickers": [
+   "JPM"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2026/20033783.pdf"
+  ]
+ },
+ {
+  "member": "Ted Cruz",
+  "party": "Republican",
+  "chamber": "Senate",
+  "bioguide": "C001098",
+  "vote": "Yea",
+  "vote_source": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 0,
+  "sells": 1,
+  "tickers": [
+   "GS"
+  ],
+  "groups": [
+   "banks"
+  ],
+  "filings": [
+   "https://efdsearch.senate.gov/search/view/ptr/4290febc-6042-4538-a193-08a9f941647c/"
+  ]
+ },
+ {
+  "member": "William R. Keating",
+  "party": "Democrat",
+  "chamber": "House",
+  "bioguide": "K000375",
+  "vote": "Nay",
+  "vote_source": "https://clerk.house.gov/evs/2025/roll200.xml",
+  "role": "",
+  "trades": 1,
+  "buys": 1,
+  "sells": 0,
+  "tickers": [
+   "FI"
+  ],
+  "groups": [
+   "payments"
+  ],
+  "filings": [
+   "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20026556.pdf"
+  ]
+ }
+]
