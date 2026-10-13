@@ -62,6 +62,8 @@ def parse_sheet(ws, years):
     for i, r in enumerate(ws.iter_rows(values_only=True), 1):
         r = list(r) + [None] * 16
         a, b, c = text(r[0]), text(r[1]), text(r[2])
+        if not c and b and measure_kind(b) != "other":
+            b, c = "", b
         data = r[YEAR_COL0 : YEAR_COL0 + len(years)]
         has_data = any(number(x) is not None for x in data)
         header = text(r[YEAR_COL0])
@@ -99,14 +101,20 @@ def parse_sheet(ws, years):
                 "has_rows": False,
                 "context": {k: v for k, v in ctx.items() if k != "block"},
             }
-            if inline:
+            if has_data:
                 current["has_rows"] = True
-                rows.append(row(ws, title, current, ctx, c, data, years, i))
+                rows.append(row(ws, title, current, ctx, c if inline else implied_measure(ctx["block"]), data, years, i))
             continue
 
-        if b and not has_data and not re.match(r"^\d", b):
+        if b.lower().startswith("memorand"):
+            ctx["block"], current = "memorandum", None
+            continue
+
+        if b and not re.match(r"^\d", b) and (not has_data or b.lower().startswith("subtotal")):
             current = {"kind": classify_line(b), "section_raw": None, "section_title": b, "component": None, "row0": i, "has_rows": False,
                        "context": {k: v for k, v in ctx.items() if k != "block"}}
+            if has_data:
+                rows.append(row(ws, title, current, ctx, implied_measure(ctx["block"]) if measure_kind(b) == "other" else b, data, years, i))
             continue
 
         if a.startswith("Total Changes in") or a.startswith("Net Effect on the Deficit"):
@@ -142,6 +150,10 @@ def parse_sheet(ws, years):
         r["sections"] = expand_sections(line["section_raw"]) if line["section_raw"] else []
         r["range"] = cell_range(ws.title, line["row0"], int(r["range"].split(":O")[1]))
     return title, rows
+
+
+def implied_measure(block):
+    return {"revenues": "Estimated Revenues", "deficit": "Effect on the Deficit"}.get(block, "Estimated Outlays")
 
 
 def row(ws, title, current, ctx, label, data, years, i):

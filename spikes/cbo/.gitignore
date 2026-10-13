@@ -1,0 +1,6 @@
+out/hr1-*.json
+out/hr5376-*.json
+out/s1582-*.json
+!out/*.mapping.json
+!out/*.top.json
+__pycache__/

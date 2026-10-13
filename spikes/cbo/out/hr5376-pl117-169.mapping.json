@@ -1,0 +1,70 @@
+{
+ "bill_sections": 153,
+ "cbo_section_refs": 146,
+ "found_in_bill_by_number": 146,
+ "found_by_heading_only": 0,
+ "missing": [],
+ "low_title_similarity": [
+  [
+   "11002",
+   "Special Rule to Delay Selection and",
+   "Special rule to delay selection and negotiation of biologics for biosimilar market entry",
+   0.57
+  ],
+  [
+   "11003",
+   "Excise Tax Imposed on Drug",
+   "Excise tax imposed on drug manufacturers during noncompliance periods",
+   0.55
+  ],
+  [
+   "13103",
+   "Increase in Energy Credit for Solar",
+   "Increase in energy credit for solar and wind facilities placed in service in connection with low-income communities",
+   0.47
+  ],
+  [
+   "13801",
+   "Elective Payment for Energy",
+   "Elective payment for energy property and electricity produced from certain renewable resources, etc",
+   0.43
+  ],
+  [
+   "13904",
+   "Noncorporate Taxpayers",
+   "Removal of harmful small business taxes; extension of limitation on deduction for State and local, etc., taxes",
+   0.12
+  ],
+  [
+   "50261",
+   "",
+   "Offshore oil and gas royalty rate",
+   0.0
+  ],
+  [
+   "50262",
+   "",
+   "Mineral Leasing Act modernization",
+   0.0
+  ],
+  [
+   "50263",
+   "",
+   "Royalties on all extracted methane",
+   0.0
+  ],
+  [
+   "50264",
+   "",
+   "Lease sales under the 2017\u20132022 Outer Continental Shelf leasing program",
+   0.0
+  ],
+  [
+   "50265",
+   "",
+   "Ensuring energy security",
+   0.0
+  ]
+ ],
+ "bill_sections_without_cbo_row": 7
+}

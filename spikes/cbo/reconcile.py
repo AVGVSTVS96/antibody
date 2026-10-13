@@ -10,7 +10,10 @@ report = []
 for sheet in doc.get("sheets") or doc["tables"]:
     sums = collections.defaultdict(lambda: collections.Counter())
     totals = {}
+    leaf_blocks = {r["block"] for r in sheet["rows"] if r["line_kind"] == "section"}
     for r in sheet["rows"]:
+        if r["line_kind"] == "subtotal" and r["block"] not in leaf_blocks:
+            r = {**r, "line_kind": "other"}
         key = (r["block"], r["measure_kind"])
         if r["measure_kind"] not in MEASURES:
             continue

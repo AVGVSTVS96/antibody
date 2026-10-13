@@ -1,0 +1,168 @@
+{
+ "estimate": "hr1-pl119-21-clb",
+ "sections_with_dollars": 292,
+ "top": [
+  {
+   "sections": "70101",
+   "cbo_title": "Extension and Enhancement of Reduced Rates",
+   "outlays_10yr_musd": 10751,
+   "revenues_10yr_musd": -2182627,
+   "deficit_10yr_musd": 2193378,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A19:O21)",
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A374:O375)"
+   ],
+   "bill_text": {
+    "70101": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#H359E7CA602554D94AEA83C1DEA1C6A78"
+   }
+  },
+  {
+   "sections": "70103",
+   "cbo_title": "Termination of Deduction for Personal Exemptions Other Than Temporary Senior Deduction",
+   "outlays_10yr_musd": -140163,
+   "revenues_10yr_musd": 1666911,
+   "deficit_10yr_musd": -1807074,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A28:O31)",
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A381:O383)"
+   ],
+   "bill_text": {
+    "70103": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#HA96376C924794FBDA210A0A6E18FC9D4"
+   }
+  },
+  {
+   "sections": "70102",
+   "cbo_title": "Extension and Enhancement of Increased Standard Deduction",
+   "outlays_10yr_musd": 109515,
+   "revenues_10yr_musd": -1315167,
+   "deficit_10yr_musd": 1424682,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A23:O26)",
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A377:O379)"
+   ],
+   "bill_text": {
+    "70102": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#H27A3BF740ED140CCAB4076FDF19F61FC"
+   }
+  },
+  {
+   "sections": "70107",
+   "cbo_title": "Extension of Increased Alternative Minimum Tax Exemption Amounts and Modification of Phaseout Thresholds",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": -1362810,
+   "deficit_10yr_musd": 1362810,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A397:O400)"
+   ],
+   "bill_text": {
+    "70107": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#HC4EBA15A87C049B2892CBDC96BB93D75"
+   }
+  },
+  {
+   "sections": "70120",
+   "cbo_title": "Limitation on Individual Deductions for Certain State and Local Taxes, etc.",
+   "outlays_10yr_musd": -2054,
+   "revenues_10yr_musd": 944155,
+   "deficit_10yr_musd": -946209,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A455:O457)",
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A63:O66)"
+   ],
+   "bill_text": {
+    "70120": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#H6FC13F4AFDDF42EB85828BEDF10BF168"
+   }
+  },
+  {
+   "sections": "70104",
+   "cbo_title": "Extension and Enhancement of Increased Child Tax Credit",
+   "outlays_10yr_musd": 190501,
+   "revenues_10yr_musd": -626345,
+   "deficit_10yr_musd": 816846,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A33:O36)",
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A385:O387)"
+   ],
+   "bill_text": {
+    "70104": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#H2172B34E4322422AA7D836F8AC2286B1"
+   }
+  },
+  {
+   "sections": "70105",
+   "cbo_title": "Extension and Enhancement of Deduction for Qualified Business Income",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": -736539,
+   "deficit_10yr_musd": 736539,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A389:O391)"
+   ],
+   "bill_text": {
+    "70105": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#HFA2E2B5875B74DFF8E8855A85560A214"
+   }
+  },
+  {
+   "sections": "70301",
+   "cbo_title": "Full Expensing for Certain Business Property",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": -362650,
+   "deficit_10yr_musd": 362650,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A477:O478)"
+   ],
+   "bill_text": {
+    "70301": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#H3431B677F5F04A5786EEBFFA134970BE"
+   }
+  },
+  {
+   "sections": "71119",
+   "cbo_title": "Requirement for States to Establish Medicaid Community Engagement Requirements for Certain Individuals",
+   "outlays_10yr_musd": -325610,
+   "revenues_10yr_musd": -8650,
+   "deficit_10yr_musd": -316960,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A271:O274)",
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A868:O870)"
+   ],
+   "bill_text": {
+    "71119": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#HE10C293F1AD14FEE88FED90835BFBB2D"
+   }
+  },
+  {
+   "sections": "82001",
+   "cbo_title": "Loan Repayment",
+   "outlays_10yr_musd": -270520,
+   "revenues_10yr_musd": 0,
+   "deficit_10yr_musd": -270520,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VIII'!A40:O42)"
+   ],
+   "bill_text": {
+    "82001": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#H4FA6F4CA465D407CB6A4D17CD61059FF"
+   }
+  },
+  {
+   "sections": "70111",
+   "cbo_title": "Limitation on Tax Benefit of Itemized Deductions",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": -255515,
+   "deficit_10yr_musd": 255515,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A414:O415)"
+   ],
+   "bill_text": {
+    "70111": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#H8D3F6723F81F49C3B78F2131BCD82ADE"
+   }
+  },
+  {
+   "sections": "70110",
+   "cbo_title": "Termination of Miscellaneous Itemized Deductions Other Than Educator Expenses",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": 231553,
+   "deficit_10yr_musd": -231553,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2025-07/61570-pl119-21-2025Recon-CLB.xlsx ('Title VII'!A410:O412)"
+   ],
+   "bill_text": {
+    "70110": "https://www.govinfo.gov/content/pkg/BILLS-119hr1enr/xml/BILLS-119hr1enr.xml#HF3AE4F8BAF36462D9087CB1C9F525221"
+   }
+  }
+ ]
+}

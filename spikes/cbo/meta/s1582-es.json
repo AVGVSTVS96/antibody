@@ -1,0 +1,14 @@
+{
+  "bill": "119-s-1582",
+  "bill_name": "GENIUS Act (S. 1582, P.L. 119-27)",
+  "estimate_title": "S. 1582, GENIUS Act",
+  "estimate_url": "https://www.cbo.gov/publication/61551",
+  "file_url": "https://www.cbo.gov/system/files/2025-07/s1582table1.xlsx",
+  "pdf_url": "https://www.cbo.gov/system/files/2025-07/s1582.pdf",
+  "archive_url": "https://web.archive.org/web/20250711222145/https://www.cbo.gov/system/files/2025-07/s1582table1.xlsx",
+  "published": "2025-07-11",
+  "bill_version_scored": "As passed by the Senate on June 17, 2025 (GovInfo BILLS-119s1582es); the House passed it unchanged and it was enacted as P.L. 119-27",
+  "baseline": "CBO current-law baseline (cost estimate)",
+  "units": "millions of dollars, by fiscal year; * = between zero and $500,000 (stored as 0, raw kept)",
+  "found_via": "https://api.congress.gov/v3/bill/119/s/1582 -> bill.cboCostEstimates"
+}

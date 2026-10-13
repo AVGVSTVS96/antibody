@@ -1,0 +1,168 @@
+{
+ "estimate": "hr5376-pl117-169",
+ "sections_with_dollars": 137,
+ "top": [
+  {
+   "sections": "10101",
+   "cbo_title": "Corporate Alternative Minimum Tax",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": 222248,
+   "deficit_10yr_musd": -222248,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=10"
+   ],
+   "bill_text": {
+    "10101": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#HC78945474DEC4551B59D4FDD10D23048"
+   }
+  },
+  {
+   "sections": "11301",
+   "cbo_title": "Extension of Moratorium on Implementation of Rule Relating to Eliminating the Anti-Kickback Statute Safe Harbor Protection for Prescription Drug Rebates",
+   "outlays_10yr_musd": -122151,
+   "revenues_10yr_musd": 0,
+   "deficit_10yr_musd": -122151,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=7"
+   ],
+   "bill_text": {
+    "11301": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#HB789977A97A4438DAB799A4CD5CABA1D"
+   }
+  },
+  {
+   "sections": "11101 and 11102",
+   "cbo_title": "Medicare Part B Rebate by Manufacturers and Medicare Part D Rebate by Manufacturers",
+   "outlays_10yr_musd": -112678,
+   "revenues_10yr_musd": 6850,
+   "deficit_10yr_musd": -119528,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=10",
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=6"
+   ],
+   "bill_text": {
+    "11101": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#H31E55EA604B74246992FA5E1BBDBD56E",
+    "11102": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#H327D1C90B9A24CC58FAF2828053E7C47"
+   }
+  },
+  {
+   "sections": "11001",
+   "cbo_title": "Providing for Lower Prices for Certain High-Priced Single Source Drugs",
+   "outlays_10yr_musd": -98521,
+   "revenues_10yr_musd": 0,
+   "deficit_10yr_musd": -98521,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=5"
+   ],
+   "bill_text": {
+    "11001": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#HA73F3A6DC6484095B5E93CA49335CA42"
+   }
+  },
+  {
+   "sections": "10301",
+   "cbo_title": "Enhancement of Internal Revenue Service Resources",
+   "outlays_10yr_musd": 79600,
+   "revenues_10yr_musd": 0,
+   "deficit_10yr_musd": 79600,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=10",
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=5"
+   ],
+   "bill_text": {
+    "10301": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#HE9F18349FD9F4363817BC95A1A2B1028"
+   }
+  },
+  {
+   "sections": "10201",
+   "cbo_title": "Excise Tax on Repurchase of Corporate Stock",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": 73686,
+   "deficit_10yr_musd": -73686,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=10"
+   ],
+   "bill_text": {
+    "10201": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#H9D2FACCC293B4D4ABEF966C356D8CF7D"
+   }
+  },
+  {
+   "sections": "12001",
+   "cbo_title": "Improve Affordability and Reduce Premium Costs of Health Insurance for Consumers",
+   "outlays_10yr_musd": 32820,
+   "revenues_10yr_musd": -31238,
+   "deficit_10yr_musd": 64058,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=11",
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=8"
+   ],
+   "bill_text": {
+    "12001": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#H8AA9C12F1E9E42C991DB53C5F5F59852"
+   }
+  },
+  {
+   "sections": "13904",
+   "cbo_title": "Noncorporate Taxpayers",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": 52759,
+   "deficit_10yr_musd": -52759,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=14"
+   ],
+   "bill_text": {
+    "13904": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#H6C942E119E824D69B9CCC3B58EF7012C"
+   }
+  },
+  {
+   "sections": "13101",
+   "cbo_title": "Extension and Modification of Credit for Electricity Produced From Certain Renewable Resources",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": -51062,
+   "deficit_10yr_musd": 51062,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=11"
+   ],
+   "bill_text": {
+    "13101": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#H549B153E4FDF48719E224811E65EDD2E"
+   }
+  },
+  {
+   "sections": "13702",
+   "cbo_title": "Clean Electricity Investment Credit",
+   "outlays_10yr_musd": 0,
+   "revenues_10yr_musd": -50858,
+   "deficit_10yr_musd": 50858,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=13"
+   ],
+   "bill_text": {
+    "13702": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#HB18DB26FD8B94C3B8097F99048FAB228"
+   }
+  },
+  {
+   "sections": "13502",
+   "cbo_title": "Advanced Manufacturing Production Credit",
+   "outlays_10yr_musd": 14699,
+   "revenues_10yr_musd": -15933,
+   "deficit_10yr_musd": 30632,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=13",
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=9"
+   ],
+   "bill_text": {
+    "13502": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#HED782DE55E2C428EAE072814F0BB4218"
+   }
+  },
+  {
+   "sections": "13105",
+   "cbo_title": "Zero-Emission Nuclear Power Production Credit",
+   "outlays_10yr_musd": 14401,
+   "revenues_10yr_musd": -15600,
+   "deficit_10yr_musd": 30001,
+   "cbo_sources": [
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=11",
+    "https://www.cbo.gov/system/files/2022-09/PL117-169_9-7-22.pdf#page=9"
+   ],
+   "bill_text": {
+    "13105": "https://www.govinfo.gov/content/pkg/BILLS-117hr5376enr/xml/BILLS-117hr5376enr.xml#HA886882604AB46F5828936E857503421"
+   }
+  }
+ ]
+}

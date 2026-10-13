@@ -1,0 +1,130 @@
+{
+ "bill_sections": 310,
+ "cbo_section_refs": 304,
+ "found_in_bill_by_number": 303,
+ "found_by_heading_only": 1,
+ "missing": [
+  [
+   "830005",
+   "Ineligibility Based on Low Earning Outcomes",
+   "84001"
+  ]
+ ],
+ "low_title_similarity": [
+  [
+   "10301",
+   "Price Loss Coverage",
+   "Effective reference price; reference price",
+   0.3
+  ],
+  [
+   "10302",
+   "Price Loss Coverage",
+   "Base acres",
+   0.28
+  ],
+  [
+   "10303",
+   "Price Loss Coverage",
+   "Producer election",
+   0.33
+  ],
+  [
+   "10309",
+   "Price Loss Coverage",
+   "Marketing loans",
+   0.35
+  ],
+  [
+   "10310",
+   "Price Loss Coverage",
+   "Repayment of marketing loans",
+   0.26
+  ],
+  [
+   "10303(b)",
+   "Federal Crop Insurance Supplemental Coverage Option",
+   "Producer election",
+   0.38
+  ],
+  [
+   "10307",
+   "Equitable Treatment of Certain Entities; Payment Limitations",
+   "Payment limitations",
+   0.49
+  ],
+  [
+   "20001",
+   "Quality of Life",
+   "Enhancement of Department of Defense resources for improving the quality of life for military personnel",
+   0.25
+  ],
+  [
+   "20002",
+   "Shipbuilding",
+   "Enhancement of Department of Defense resources for shipbuilding",
+   0.32
+  ],
+  [
+   "20003",
+   "Air and Missile Defense",
+   "Enhancement of Department of Defense resources for integrated air and missile defense",
+   0.43
+  ],
+  [
+   "20004",
+   "Munitions and Industrial Base",
+   "Enhancement of Department of Defense resources for munitions and defense supply chain resiliency",
+   0.27
+  ],
+  [
+   "20005",
+   "Low-Cost Weapons",
+   "Enhancement of Department of Defense resources for scaling low-cost weapons into production",
+   0.3
+  ],
+  [
+   "20006",
+   "Audits and Cybersecurity",
+   "Enhancement of Department of Defense resources for improving the efficiency and cybersecurity of the Department of Defense",
+   0.29
+  ],
+  [
+   "20007",
+   "Air Superiority",
+   "Enhancement of Department of Defense resources for air superiority",
+   0.37
+  ],
+  [
+   "20008",
+   "Nuclear Forces",
+   "Enhancement of resources for nuclear forces",
+   0.49
+  ],
+  [
+   "20009",
+   "Indo-Pacific Command",
+   "Enhancement of Department of Defense resources to improve capabilities of United States Indo-Pacific Command",
+   0.31
+  ],
+  [
+   "20010",
+   "Military Readiness",
+   "Enhancement of Department of Defense resources for improving the readiness of the Department of Defense",
+   0.23
+  ],
+  [
+   "20011",
+   "Border Security",
+   "Improving Department of Defense border support and counter-drug missions",
+   0.25
+  ],
+  [
+   "20012",
+   "Inspector General",
+   "Department of Defense oversight",
+   0.25
+  ]
+ ],
+ "bill_sections_without_cbo_row": 8
+}

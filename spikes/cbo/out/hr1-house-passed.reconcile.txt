@@ -1,0 +1,44 @@
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2026", "sum_of_rows": -210, "cbo_total": -231, "diff": 21}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2027", "sum_of_rows": -355, "cbo_total": 4045, "diff": -4400}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2028", "sum_of_rows": -1398, "cbo_total": 6441, "diff": -7839}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2029", "sum_of_rows": -1484, "cbo_total": 8640, "diff": -10124}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2030", "sum_of_rows": -1542, "cbo_total": 9942, "diff": -11484}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2031", "sum_of_rows": -1601, "cbo_total": 12025, "diff": -13626}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2032", "sum_of_rows": -1795, "cbo_total": 13220, "diff": -15015}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2033", "sum_of_rows": -1793, "cbo_total": 4120, "diff": -5913}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2034", "sum_of_rows": -1914, "cbo_total": 171, "diff": -2085}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2025-2029", "sum_of_rows": -3472, "cbo_total": 18869, "diff": -22341}
+{"sheet": "Title IV - Energy and Commerce", "block": "revenues", "measure": "revenues", "period": "2025-2034", "sum_of_rows": -12117, "cbo_total": 58347, "diff": -70464}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2027", "sum_of_rows": -458, "cbo_total": -724, "diff": 266}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2028", "sum_of_rows": -445, "cbo_total": -720, "diff": 275}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2029", "sum_of_rows": -466, "cbo_total": -752, "diff": 286}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2030", "sum_of_rows": 1377, "cbo_total": 1081, "diff": 296}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2031", "sum_of_rows": -103, "cbo_total": -410, "diff": 307}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2032", "sum_of_rows": -110, "cbo_total": -427, "diff": 317}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2033", "sum_of_rows": -114, "cbo_total": -443, "diff": 329}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2034", "sum_of_rows": -114, "cbo_total": -455, "diff": 341}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2025-2029", "sum_of_rows": -1842, "cbo_total": -2669, "diff": 827}
+{"sheet": "Title V - Financial Services", "block": "revenues", "measure": "revenues", "period": "2025-2034", "sum_of_rows": -906, "cbo_total": -3323, "diff": 2417}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2026", "sum_of_rows": 0, "cbo_total": 65, "diff": -65}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2027", "sum_of_rows": 0, "cbo_total": 130, "diff": -130}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2028", "sum_of_rows": 0, "cbo_total": 130, "diff": -130}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2029", "sum_of_rows": 0, "cbo_total": 135, "diff": -135}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2030", "sum_of_rows": 0, "cbo_total": 140, "diff": -140}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2031", "sum_of_rows": 0, "cbo_total": 140, "diff": -140}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2032", "sum_of_rows": 0, "cbo_total": 145, "diff": -145}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2033", "sum_of_rows": 0, "cbo_total": 150, "diff": -150}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2034", "sum_of_rows": 0, "cbo_total": 150, "diff": -150}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2025-2029", "sum_of_rows": 0, "cbo_total": 460, "diff": -460}
+{"sheet": "Title VIII - Natural Resources", "block": "revenues", "measure": "revenues", "period": "2025-2034", "sum_of_rows": 0, "cbo_total": 1185, "diff": -1185}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2025", "sum_of_rows": 0, "cbo_total": 8, "diff": -8}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2026", "sum_of_rows": 0, "cbo_total": 64, "diff": -64}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2027", "sum_of_rows": 0, "cbo_total": 160, "diff": -160}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2028", "sum_of_rows": 0, "cbo_total": 258, "diff": -258}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2029", "sum_of_rows": 0, "cbo_total": 359, "diff": -359}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2030", "sum_of_rows": 0, "cbo_total": 459, "diff": -459}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2031", "sum_of_rows": 0, "cbo_total": 563, "diff": -563}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2032", "sum_of_rows": 0, "cbo_total": 668, "diff": -668}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2033", "sum_of_rows": 0, "cbo_total": 775, "diff": -775}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2034", "sum_of_rows": 0, "cbo_total": 887, "diff": -887}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2025-2029", "sum_of_rows": 0, "cbo_total": 849, "diff": -849}
+{"sheet": "Title IX - Oversight", "block": "revenues", "measure": "revenues", "period": "2025-2034", "sum_of_rows": 0, "cbo_total": 4201, "diff": -4201}

@@ -1,0 +1,13 @@
+{
+  "bill": "119-hr-1",
+  "bill_name": "One Big Beautiful Bill Act (P.L. 119-21)",
+  "estimate_title": "Estimated Budgetary Effects of H.R. 1, the One Big Beautiful Bill Act",
+  "estimate_url": "https://www.cbo.gov/publication/61461",
+  "file_url": "https://www.cbo.gov/system/files/2025-06/HR1_HousePassed_6-4-2025.xlsx",
+  "archive_url": "https://web.archive.org/web/20250604141144/https://www.cbo.gov/system/files/2025-06/HR1_HousePassed_6-4-2025.xlsx",
+  "published": "2025-06-04",
+  "bill_version_scored": "As passed by the House of Representatives on May 22, 2025 (GovInfo BILLS-119hr1eh)",
+  "baseline": "CBO January 2025 baseline",
+  "units": "millions of dollars, by fiscal year; * = between -$500,000 and $500,000 (stored as 0, raw kept)",
+  "found_via": "https://api.congress.gov/v3/bill/119/hr/1 -> bill.cboCostEstimates"
+}
