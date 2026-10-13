@@ -43,7 +43,7 @@ const targets: Record<string, Target> = {
     bill: "obbba",
     numbers: [{ chamber: "hr", num: 1, introduced: "2025-05-20" }],
     support: /\breconciliation\b|H\.\s?Con\.\s?Res\.\s?14\b|\bSec(?:tion)?s?\.?\s*7\d{4}\b/i,
-    names: [/\bOne,?\.? Big,?\.? Beautiful Bill\b/i, /\bOBBBA?\b/, /\bBig Beautiful Bill\b/i],
+    names: [/\bOne,?\.? Big,?\.? Beautiful Bill\b/i, /\bOBB?BA?\b/, /\bBig,?\.? Beautiful Bill\b/i],
     laws: ["119-21"],
     rivals: /\b(Tax Cuts and Jobs Act|TCJA|115-97|115th|For the People Act|Lower Energy Costs Act|118th|117th)\b/i,
   },
@@ -56,8 +56,8 @@ const targets: Record<string, Target> = {
   },
 };
 
-const numberRe = /(?<![A-Za-z.])(H\.?\s?R\.?|S\.?)\s?(\d{1,5})(?![\d-])/g;
-const lawRe = /\b(?:P\.?\s?L\.?|Pub(?:lic|\.)?\s+L(?:aw|\.)?)\s*(?:No\.?\s*)?(\d{2,3})\s*[-–]\s*(\d{1,3})\b/gi;
+const numberRe = /(?<![A-Za-z.])(H\.?\s?R[.,]?|S\.?)\s?(\d{1,5})(?!\d|-\d)/gi;
+const lawRe = /\b(?:P\.?\s?L\.?|Pub(?:lic|\.)?\s+L(?:aw|\.)?)\s*(?:No[.:]?\s*)?(\d{2,3})\s*[-–]\s*(\d{1,3})\b/gi;
 
 export function findRefs(text: string, filingYear: number, period: string, billKey: string): Ref[] {
   const t = targets[billKey]!;
@@ -103,7 +103,7 @@ export function findRefs(text: string, filingYear: number, period: string, billK
       why = "H.R.5376 was titled the Build Back Better Act until Aug 2022";
       confidence = "medium";
     }
-    if (billKey === "obbba" && /^OBBB/.test(m[0])) why = "acronym";
+    if (billKey === "obbba" && /^OBB/.test(m[0])) { why = "acronym"; if (m[0] !== "OBBBA") confidence = "medium"; }
     refs.push({ bill: billKey, how: "name", text: m[0], confidence, why });
     break;
   }
@@ -112,6 +112,11 @@ export function findRefs(text: string, filingYear: number, period: string, billK
     const law = `${m[1]}-${m[2]}`;
     if (t.laws.includes(law)) refs.push({ bill: billKey, how: "public-law", text: m[0], confidence: "high", why: "public law number" });
   }
+  if (!refs.some((r) => r.how === "public-law"))
+    for (const law of t.laws) {
+      const m = text.match(new RegExp(`(?<![\\d-])${law}(?![\\d-])`));
+      if (m) refs.push({ bill: billKey, how: "public-law", text: m[0], confidence: "medium", why: "bare public law number" });
+    }
   return refs;
 }
 

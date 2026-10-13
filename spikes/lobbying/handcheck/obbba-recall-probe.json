@@ -1,0 +1,57 @@
+{
+ "billKey": "obbba",
+ "query": "\"budget reconciliation\" OR \"reconciliation bill\" OR \"H. Con. Res. 14\" OR \"H.Con.Res.14\"",
+ "years": [
+  "2025"
+ ],
+ "broad": 2735,
+ "regexHits": 1265,
+ "missedByApiSearch": 6,
+ "missed": [
+  {
+   "url": "https://lda.gov/filings/public/filing/ca8ffb2d-1f83-4377-86ec-b6864b456fa1/print/",
+   "refs": [
+    "H.R. 1",
+    "OBBB"
+   ],
+   "snippet": "S. 653/H.R. 2062: The Health Care Sharing Ministry Tax Parity Act; H.R. 1/OBBB budget reconciliation | Issues pertaining to FEMA reimbursement"
+  },
+  {
+   "url": "https://lda.gov/filings/public/filing/15c8f73c-4f42-4095-adab-82d1b3786105/print/",
+   "refs": [
+    "H.R. 1",
+    "OBBB"
+   ],
+   "snippet": "S. 653/H.R. 2062: The Health Care Sharing Ministry Tax Parity Act; H.R. 1/OBBB budget reconciliation and possible reconciliation 2.0 opportunities; IRS issues pertaining to sharing ministries."
+  },
+  {
+   "url": "https://lda.gov/filings/public/filing/fe3dcc41-36c6-416f-9e9b-932e0c09c884/print/",
+   "refs": [
+    "H.R. 1",
+    "OBBB"
+   ],
+   "snippet": "S. 653/H.R. 2062: The Health Care Sharing Ministry Tax Parity Act; H.R. 1/OBBB budget reconciliation and possible reconciliation 2.0 opportunities; IRS issues pertaining to sharing ministries."
+  },
+  {
+   "url": "https://lda.gov/filings/public/filing/fab9c23d-37d3-4ae8-9065-6e9093163f26/print/",
+   "refs": [
+    "OBBA"
+   ],
+   "snippet": "implementation of pension provisions of the Puerto Rico Oversight, Management and Economic Stability Act of 2016; infrastructure financing; general Federal regulation and taxation of state and local governmental retirement systems; restrictions related to public pensions on Federal aid to states in "
+  },
+  {
+   "url": "https://lda.gov/filings/public/filing/d8580fe4-6a35-47c9-bb44-7a9df2c67816/print/",
+   "refs": [
+    "OBBA"
+   ],
+   "snippet": "infrastructure financing; proxy adviser regulations; The Retirement Fairness for Charities and Educational Institutions Act of 2025\" (S. 424/H.R. 1013) to amend relevant securities laws to permit 403(b) plans - in which a plan fiduciary, employer, or person acting on behalf of the employer reviews a"
+  },
+  {
+   "url": "https://lda.gov/filings/public/filing/5a02596f-d2f1-45d1-9fd2-28fef4514860/print/",
+   "refs": [
+    "OBBA"
+   ],
+   "snippet": "infrastructure financing; proxy adviser regulations; The Retirement Fairness for Charities and Educational Institutions Act of 2025\" (S. 424/H.R. 1013) to amend relevant securities laws to permit 403(b) plans - in which a plan fiduciary, employer, or person acting on behalf of the employer reviews a"
+  }
+ ]
+}

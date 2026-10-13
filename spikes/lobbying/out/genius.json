@@ -1,18 +1,18 @@
 {
- "candidates_from_api": 817,
- "matched_filings": 816,
+ "candidates_from_api": 819,
+ "matched_filings": 818,
  "by_confidence": {
-  "high": 816,
+  "high": 818,
   "medium": 0,
   "low": 0
  },
  "bill": "GENIUS Act (S.1582, 119th; earlier S.394, S.919)",
- "reports": 756,
+ "reports": 757,
  "registrations": 17,
  "by_phase": {
   "bill": 245,
   "enactment-quarter": 167,
-  "law": 344
+  "law": 345
  },
  "clients": 174,
  "registrants": 175,
@@ -22,7 +22,7 @@
  "bill_share_estimate_usd": 78701520,
  "issue_codes": {
   "FIN": 455,
-  "BAN": 340,
+  "BAN": 341,
   "TAX": 26,
   "CDT": 22,
   "SCI": 21,

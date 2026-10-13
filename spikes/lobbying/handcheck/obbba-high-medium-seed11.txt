@@ -1,120 +1,120 @@
-#1 high 2025 fourth_quarter THE ALUMINUM ASSOCIATION | ref="H.R.1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/74ff52fd-c5f0-4bf8-8fcb-154d992ad195/print/
-   …Tax policies impacting the aluminum industry and supply chain H.R.1 One Big Beautiful Bill Act…
+#1 high 2025 fourth_quarter AMERICAN PROPERTY CASUALTY INSURANCE ASSOCIATION | ref="One Big Beautiful Bill" (name; bill named)
+   https://lda.gov/filings/public/filing/d06a4759-6a3d-4516-9a3e-1d42cb877fcb/print/
+   …Issues related to third party litigation financing; Issues related to the One Big Beautiful Bill Act (PL 119-21); Issues related to H.R. 2675/S. 3180 - Protecting Our Courts from Foreign Manipulation Act; I…
 
-#2 high 2025 third_quarter AMERICAN CLINICAL NEUROPHYSIOLOGY SOCIETY | ref="HR 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/ddd5a78a-514a-48fd-9d16-06950121b49e/print/
-   …an Payment Reform; Medicare telehealth flexibility extension; Improving Seniors' Timely Access to Care Act of 2025, S 1816/HR 3514; One Big Beautiful Bill Act, HR 1…
+#2 medium 2025 third_quarter SOO LINE RAILROAD COMPANY | ref="OBBB" (name; acronym)
+   https://lda.gov/filings/public/filing/54fb64ee-b400-40fb-99fb-9c08f723e403/print/
+   …revious CRISI and RCE grant awards. Surface Transportation Reauthorization issues, tax reconciliation. HR I - OBBB.…
 
-#3 high 2026 first_quarter GALAXY DIGITAL HOLDINGS, LP | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/4b7882e4-7193-4222-b266-aaac31e2edb6/print/
-   …Issues related to implementation of the One Big Beautiful Bill Act.…
+#3 high 2026 first_quarter U.S. TRAVEL ASSOCIATION | ref="H.R. 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/02b2914c-e007-4dbf-82ae-9d17ed56f618/print/
+   …s at airports of entry and technology resources for biometric entry-exit, including through implementation of H.R. 1, the One Big Beautiful Bill Act. Support for additional funding for security, planning, and other costs relat…
 
-#4 high 2025 third_quarter AMERICAN SUGARBEET GROWERS ASSOCIATION | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/fd84a446-0310-4078-881c-dd22967beef6/print/
-   …PL 119-106 One Big Beautiful Bill Act - Sugar Provisions Farm, Food, and National Security Act of 2024-Sugar Provisions PL 118-158 American Relief Act - Economic and Disaster Assistance Program…
+#4 high 2025 third_quarter SECURITIES INDUSTRY AND FINANCIAL MARKETS ASSOCIATION | ref="One Big Beautiful Bill" (name; bill named)
+   https://lda.gov/filings/public/filing/30d14850-edcd-4846-97ea-1390c1f247a6/print/
+   …tion; Reintroduction of the Local Infrastructure Act; Data privacy legislative proposals; Pub. L. No. 119-21 (One Big Beautiful Bill Act) issues relating to Section 899; Digital Assets Taxation; TRUMP Accounts in Public Law 119-21.…
 
-#5 medium 2025 third_quarter SIBANYE STILLWATER | ref="HR 1" (number; number matches, same Congress, after introduction)
-   https://lda.gov/filings/public/filing/544d32d2-6a9c-4f1a-b9f6-c4a63f63f5e9/print/
-   …HR 1, Preventing Auto Recycling Theft Act S. 154, H.R. 621…
+#5 high 2025 third_quarter PHARMACEUTICAL RESEARCH AND MANUFACTURERS OF AMERICA | ref="H.R.1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/9a555ae2-bd95-4581-b54a-7293345ecc8b/print/
+   …H.R.1, One Big Beautiful Bill Act (P.L.119-21), all bio-pharmaceutical related provisions.…
 
-#6 high 2025 fourth_quarter COMCAST CORPORATION | ref="H.R.1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/d2f28591-28f7-48ed-a806-a06714bd938d/print/
-   …One Big Beautiful Bill Act (H.R.1).…
+#6 high 2025 fourth_quarter NATIONAL ASSN OF STATE TREASURERS (NAST) | ref="PL 119-21" (public-law; public law number)
+   https://lda.gov/filings/public/filing/d1cede13-8254-49a8-8639-f2dee999cb30/print/
+   …9A ABLE provisions set to expire in 2026; and implementation of and guidance on related provisions enacted in PL 119-21. Implementation of related provisions included in SECURE 2.0, enacted in Division T of the Consolidated Appro…
 
-#7 high 2026 first_quarter NYRSTAR CLARKSVILLE, INC | ref="H.R. 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/009e9ac3-eb78-45da-a545-d92a031b17c2/print/
-   …H.R. 1 - One Big Beautiful Bill Act, critical minerals policy. H.R.3872 - MERICA Act of 2025. CHIPS Program…
+#7 high 2026 first_quarter GREATER ST. LOUIS, INC. | ref="H.R. 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/a437f22d-70f7-447f-a610-d55d021fea10/print/
+   …g St. Louis Lambert new terminal project. Discussions on research funding at institutions of higher learning. H.R. 1, One Big Beautiful Bill Act (Public Law 119-21). Discussions with Congressional delegation on Granite City St…
 
-#8 high 2025 fourth_quarter PILOT TRAVEL CENTERS LLC | ref="H.R. 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/74770740-e69c-4e9e-8a52-69d04a855c58/print/
-   …Issues related to energy policy. Issues related to E15 policy. H.R. 1. - The One Big Beautiful Bill Act S. 881 - Renewable Fuel for Ocean-Going Vessels Act H.R. 3137 - Biodiesel Tax Credit Extension Act of 2025 S. 3297 - CROP Act…
+#8 high 2025 fourth_quarter IRON MOUNTAIN | ref="H.R.1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/d43a62cd-fd90-4e36-b650-28ed65f5eb08/print/
+   …The One Big Beautiful Bill Act (H.R.1): issues related to the tax treatment of real estate investment trusts.…
 
-#9 high 2025 second_quarter VANTOR HOLDINGS | ref="H.R.1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/8a7c321e-c92f-4d83-8bd1-4a7505c2efbb/print/
-   …H.R.1, One Big Beautiful Bill Act; H.R.3838, Streamlining Procurement for Effective Execution and Delivery and National Defense Authorization Act for Fiscal Year 202…
+#9 high 2025 second_quarter INTUITIVE MACHINES | ref="H.R.1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/729331a9-1076-435a-a181-761c44bc2e09/print/
+   …H.R.1, One Big Beautiful Bill Act; H.R.3838, Streamlining Procurement for Effective Execution and Delivery and Nati…
 
-#10 high 2025 fourth_quarter CITY OF LOS ANGELES OF BEHALF OF THE HARBOR DEPARTMENT / PORT OF LOS ANGELES | ref="HR 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/bc7f82e0-43ad-4a40-857a-a172f68310d0/print/
-   …Water Development and Related Agencies Appropriations Bill - HMT funding issues & Harbor Maintenance Trust Fund spending IRA implementation - clean port grants HR 1 - One Big Beautiful Bill Act - EPA clean air programs implementation HR 5371 Continuing Appropriations, Agriculture, Legislative Branch, Military Construction …
+#10 high 2025 fourth_quarter BOEHRINGER INGELHEIM ANIMAL HEALTH USA INC. | ref="One Big Beautiful Bill" (name; bill named)
+   https://lda.gov/filings/public/filing/77c50d98-ab74-47a3-94e8-c410a902f257/print/
+   …s capabilities to address emerging animal diseases. Monitor agriculture-related provisions in P.L.119-21, the One Big Beautiful Bill Act, and educate Members on Boehringer's priorities, including on animal disease prevention and response.…
 
-#11 high 2026 first_quarter FIREHAWK AEROSPACE | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/a0202592-45b0-4a87-9df6-53a5237b83c4/print/
-   … National Defense Authorization Act (no bill). Issues related to additive manufacturing for next generation rocket propellant technologies in P.L. 119-121, the One Big Beautiful Bill Act.…
+#11 high 2026 first_quarter FIRSTENERGY SERVICES COMPANY | ref="HR 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/36708f73-d90b-45f0-9186-ecbc31f89d6b/print/
+   …Inflation Reduction Act Implementation One Big Beautiful Bill (OBBB, HR 1) implementation, including changes to CAMT S. 1559. Book Minimum Tax Repeal Act (Barrasso) HR 3210 Book Minim…
 
-#12 high 2025 third_quarter NATIONAL COTTON COUNCIL OF AMERICA | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/2a345e6d-42e9-4741-9034-2d0e4d86a2c1/print/
-   …Monitor the Farm Bill reauthorization process. Monitor agriculture-related provisions in P.L.119-21, the One Big Beautiful Bill Act, and educate Members on NCCs priorities, including commodity support programs. Educate Members and the Administration about sustainability initiatives with…
+#12 high 2025 third_quarter META PLATFORMS, INC. | ref="P.L. 119-21" (public-law; public law number)
+   https://lda.gov/filings/public/filing/e82dbaec-b1a0-4f0b-8739-de48b672a038/print/
+   …Issues related to tax and trade, including P.L. 119-21.…
 
-#13 high 2026 first_quarter PHILADELPHIA INDUSTRIAL DEVELOPMENT CORPORATION | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/4f91c307-7e3c-48ff-ba4f-88f921cd7da9/print/
-   …ng, and Urban Development (THUD) and Military Construction and Veterans Affairs appropriations bills; Opportunity Zones and New Market Tax Credit (NMTC) within One Big Beautiful Bill Act…
+#13 high 2026 first_quarter MERCK & CO. INC. | ref="H.R. 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/94b78c4f-a437-45b5-8a97-a561185aafc6/print/
+   …Monitored implementation of H.R. 1 (P.L. 119-21), One Big Beautiful Bill Act, as it relates to corporate taxes.…
 
-#14 high 2025 second_quarter THE BOEING COMPANY | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/2450c828-cdfb-4173-a0c1-d735d929995a/print/
-   …Education and outreach in support of programmatic funding in the One Big Beautiful Bill, the FY26 NDAA and the FY26 DOD and CJS Appropriations Bills.…
+#14 high 2025 second_quarter AMERICAN MEDICAL ASSOCIATION | ref="H.R. 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/eaa1a0c1-f163-4c7b-9e52-afe45ef1db90/print/
+   …H.R. 1, One Big Beautiful Bill Act (House and Senate amendments), provisions relating to Medicaid, Children's Health…
 
-#15 high 2026 first_quarter STATE FARM INSURANCE COMPANIES | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/df5b5cfd-5c66-49e8-84fb-75417423701a/print/
-   …nsolidation, loss reserve discounting, net operating loss carryback and conformity with statutory accounting. Corporate tax issues, including implementation of One Big Beautiful Bill.…
+#15 high 2026 first_quarter CHARTER BROKERAGE, LLC | ref="H.R. 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/dffc0bf4-1c7a-4825-bf0a-e6c8d10f250a/print/
+   …H.R. 1 (P.L. 119-21), One Big Beautiful Bill Act, as it relates to duty drawback regulations.…
 
-#16 high 2025 fourth_quarter AMERICAN INTERNATIONAL GROUP, INC. | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/e6422e6d-c2f7-424b-a7a0-5ff1b7d557a1/print/
-   …ct reauthorization No Bill Number: Issues related to flood insurance No Bill Number: Issues related to National Flood Insurance Program Public Law No. 119-21 - One Big Beautiful Bill Act: Issues related to insurance regulation…
+#16 medium 2025 fourth_quarter ASSOCIATION OF EQUIPMENT MANUFACTURERS | ref="OBBB" (name; acronym)
+   https://lda.gov/filings/public/filing/1f2e6283-d846-4f7a-ad9d-61661bae92ea/print/
+   …OBBB Implementation.…
 
-#17 high 2025 second_quarter UNITEDHEALTH GROUP, INC. | ref="H.R.1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/89fe1423-4108-4044-ae46-590262a5326a/print/
-   …Healthcare issues. H.R.1 - One Big Beautiful Bill Act.…
+#17 high 2025 second_quarter WESTERN UNION | ref="H.R.1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/8effc649-3417-4891-959c-8c8fee92ba39/print/
+   …Financial Services Issues. Cross Border Remittance Issues. H.R.1 - One Big Beautiful Bill Act.…
 
-#18 medium 2026 second_quarter CASE WESTERN RESERVE UNIVERSITY | ref="HR 1" (number; number matches, same Congress, after introduction)
-   https://lda.gov/filings/public/filing/89a07dac-fde8-44c1-85d9-187273c5d6b0/print/
-   …- General support for Federal TRIO Programs - Issues related to student loans provisions in HR 1.…
+#18 high 2026 second_quarter CLEAN ENERGY BUYERS ASSOCIATION (FORMERLY RENEWABLE ENERGY BUYERS ALLIANCE) | ref="H.R.1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/eb685d46-7801-42bf-ad93-e70a4801d0c5/print/
+   …d Resilience State and Tribal Formula Grant Program. Sections of the following bills related to these topics: H.R.1: the One Big Beautiful Bill Act; H.R.5371: Continuing Appropriations, Agriculture, Legislative Branch, Milita…
 
-#19 high 2025 third_quarter NATIONAL LUMBER AND BUILDING MATERIAL DEALERS ASSOCIATION | ref="H.R. 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/1a526fba-df5b-4a3d-8f36-76baa369770b/print/
-   …ment Act of 2025 (H.R.2725) - Issues related to the Neighborhood Homes Investment Act(H.R.2854) - Issues related to the Disaster Reforestation Act (H.R. 262) - H.R. 1, One Big Beautiful Bill Act…
+#19 high 2025 third_quarter BERKSHIRE HATHAWAY ENERGY | ref="Pub. Law No. 119-21" (public-law; public law number)
+   https://lda.gov/filings/public/filing/8b77743a-0667-406c-ae3b-481d5df54480/print/
+   …Issues related to corporate tax and energy tax policy, particularly Congressional development of Pub. Law No. 119-21; interaction between the OECD Inclusive Framework and U.S. tax policy.…
 
-#20 high 2026 second_quarter COOK GROUP, INC. | ref="H.R. 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/c426b77c-712e-4962-bd4e-6092b1959603/print/
-   …Issues related to international tax and corporate tax P.L. 119-21 (H.R. 1): One Big Beautiful Bill implementation…
+#20 high 2026 second_quarter THE CARLYLE GROUP | ref="Public Law No. 119-21" (public-law; public law number)
+   https://lda.gov/filings/public/filing/e0969cfd-47ad-4916-8a6d-3fb1fdbfcd88/print/
+   …Multiple corporate tax provisions, including those in Public Law No. 119-21 and Public Law No. 115-97.…
 
-#21 medium 2026 first_quarter ST. JOSEPH'S REGIONAL MEDICAL CENTER | ref="HR 1" (number; number matches, same Congress, after introduction)
-   https://lda.gov/filings/public/filing/c85dc6d5-8097-465f-94e3-dd7c3605f110/print/
-   …Community project funding; changes to Medicaid policy in HR 1…
+#21 high 2026 first_quarter COMBINED FEDERAL CHARITABLE COALITION (INFORMAL COALITION) | ref="HR 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/a5e41b89-3e8d-45b6-8b37-98b52b05a6b5/print/
+   …Issues regarding the Combined Federal Campaign (CFC). HR 1 - One Big Beautiful Bill Act (OBBB) P.L. 119-21. FY 2027 FSGG Appropriations Act.…
 
-#22 high 2025 fourth_quarter GENERAL MILLS SERVICES INC. (FKA GENERAL MILLS) | ref="H.R.1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/762c5030-16ca-4f75-bd5a-8e52f3eb5aac/print/
-   …Issues related to implementation of H.R.1, (P.L.119-21), including deduction for domestic R&D expenditures and FDDEI.…
+#22 high 2025 fourth_quarter AMERICAN RENTAL ASSOCIATION | ref="One Big Beautiful Bill" (name; bill named)
+   https://lda.gov/filings/public/filing/b34d161d-2bb4-4eb5-8280-f62cc2f3db56/print/
+   …TCJA Provisions Tax Reform in general One Big Beautiful Bill in general H-2B Visa Program NAICS code revisions for event rental industry…
 
-#23 high 2025 second_quarter MUSCULAR DYSTROPHY ASSOCIATION, INC. | ref="One Big Beautiful Bill" (name; bill named)
-   https://lda.gov/filings/public/filing/3b8cd2c2-25e2-479a-9d67-760e43ce3217/print/
-   …Opposed the One Big Beautiful Bill Act Joined Coalition Comments Related to H.R. 2528, the Association Health Plans Act and H.R. 2571, the Self-Insurance Protection Act Joined Coalition Comments…
+#23 high 2025 second_quarter ENI US OPERATING CO. INC. | ref="HR 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/c954f3fb-fca9-4c92-a953-0b4675657b2c/print/
+   …Issues related to modifications of clean energy production tax credits, including 45Z, 48E, 45Y (HR 1 - OBBB)…
 
-#24 high 2025 fourth_quarter ASCENSION HEALTH ALLIANCE D/B/A ASCENSION | ref="H.R. 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/c938ef5a-c262-4966-9d79-fa73b185a6cc/print/
-   …ents Communities Act; issues related to cybersecurity; enhanced Advanced Premium Tax Credits; H.R. 2433, the Reducing Medically Unnecessary Delays in Care Act; H.R. 1, the One Big Beautiful Bill Act…
+#24 high 2025 fourth_quarter BLUE BIRD BODY COMPANY | ref="HR 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/4e5d8654-0e73-4c5c-b799-d3990d58aab2/print/
+   …e Tax Code relating to electric vehicle and charging infrastructure incentives, including those enacted in in HR 1, the One Big Beautiful Bill Act, PL 119-21.…
 
-#25 high 2025 fourth_quarter NATIONAL DOWN SYNDROME CONGRESS | ref="HR 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/cf205f7c-05a1-45ba-8248-34e7a0a15c6a/print/
-   …One Big Beautiful Bill (HR 1) - OPPOSE; Advocate for funding for Medicaid, HHS, Developmental Disabilities programs, save funding for UCEDDDs…
+#25 medium 2025 fourth_quarter RWJ BARNABAS HEALTH - FKA BARNABAS HEALTH | ref="HR 1" (number; number matches, same Congress, after introduction)
+   https://lda.gov/filings/public/filing/d137461b-bfa0-4821-8097-66239a3fd577/print/
+   …Annual LHHS and Defense Appropriations bills; community project funding; changes to Medicaid policy in HR 1…
 
-#26 high 2025 second_quarter OPAL FUELS INC. | ref="H.R. 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/c0b0dfb7-f317-4292-92f0-d51aa50e66f8/print/
-   …General tax policy, including Internal Revenue Code Section 45Z - H.R. 1, One Big Beautiful Bill Act.…
+#26 high 2025 third_quarter FLORIDA CRYSTALS CORPORATION | ref="HR 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/2bc06770-456b-408f-b7d0-4f56ca245e10/print/
+   …om sugar or sugar cane, general commodity and conservation program issues. Administration of US sugar policy. HR 1,Public Law 119-21, the One Big Beautiful Bill Act, provisions reauthorizing and amending the sugar title of t…
 
-#27 high 2025 third_quarter SUCCESS ACADEMY CHARTER SCHOOLS, INC. | ref="HR 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/b16bb840-0076-4fdc-b83d-56fda68928d3/print/
-   …charter school tax credit, HR 2798/S1813 High-Quality Charter Schools Act, HR 1 One Big Beautiful Bill Act…
+#27 medium 2025 third_quarter UNITED BROTHERHOOD OF CARPENTERS | ref="H.R. 1" (number; number matches, same Congress, after introduction)
+   https://lda.gov/filings/public/filing/578a8ad0-72f8-47e0-8cd9-643210e66dfe/print/
+   …Lobbied against cuts to federal incentives for renewable energy projects in H.R. 1. Lobbied in support of efforts to uphold Davis-Bacon protections on energy tax credits.…
 
-#28 high 2025 second_quarter THE P3I GROUP | ref="H.R.1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/b109ab32-afff-4d3b-95aa-df8bacff604b/print/
-   …nse Authorization Act for Fiscal Year 2026; H.R.4016 - Department of Defense Appropriations Act, 2026; Senate Department of Defense Appropriations Act, FY2026; H.R.1 - One Big Beautiful Bill Act.…
+#28 high 2025 third_quarter LABORATORY CORPORATION OF AMERICA HOLDINGS | ref="H.R. 1" (number; number matches, same Congress, and the clause says "Section 71120")
+   https://lda.gov/filings/public/filing/45c05a6e-7208-4c7b-a782-fffca1372f72/print/
+   …are Act, Pub. L. 113-93; Federal policy relating to oversight of laboratory-developed tests; Section 71120 of H.R. 1, An Act to provide for reconciliation pursuant to title II of H. Con. Res. 14, provisions relating to modifyi…
 
-#29 high 2025 second_quarter OWENS CORNING | ref="H.R. 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/c196eb39-0f4b-49af-8755-1a19db3d6a16/print/
-   …Issues related to corporate taxes, R&D expensing/amortization, bonus depreciation and 25C. H.R. 1 - One Big Beautiful Bill Act.…
+#29 high 2025 second_quarter SUMMIT RIDGE ENERGY, LLC | ref="H.R. 1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/59789048-06e5-4923-af8e-084f628eccf8/print/
+   …H.R. 1 - One Big Beautiful Bill Act; provisions related to preserving 48E and 45X tax credits as they relate to sola…
 
-#30 high 2026 first_quarter SL GREEN REALTY CORP. | ref="H.R. 1" (number; number sits next to the bill's name or public law)
-   https://lda.gov/filings/public/filing/a6bad162-5f96-4dd6-a53f-2440ff9ff70b/print/
-   …ptive insurers Issues related to Terrorism Risk Insurance program reauthorization Housing tax issues Transportation and infrastructure programming P.L. 119-21 (H.R. 1): One Big Beautiful Bill implementation REIT Tax issues…
+#30 high 2026 first_quarter SOUTH FLORIDA REGIONAL TRANSPORTATION AUTHORITY | ref="H.R.1" (number; number sits next to the bill's name or public law)
+   https://lda.gov/filings/public/filing/bb8a9f37-0146-4149-be2e-b4addb9f18c4/print/
+   …P.L.117-58) implementation and reauthorization; Inflation Reduction Act of 2022 (P.L.117-169) implementation; H.R.1, One Big Beautiful Bill Act (P.L.119-21) implementation; FY2026 Transportation, Housing and Urban Development…
 

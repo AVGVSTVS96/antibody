@@ -1,0 +1,12 @@
+{
+ "billKey": "genius",
+ "query": "\"stablecoin\" OR \"stablecoins\" OR \"payment stablecoin\"",
+ "years": [
+  "2025",
+  "2026"
+ ],
+ "broad": 566,
+ "regexHits": 353,
+ "missedByApiSearch": 0,
+ "missed": []
+}
