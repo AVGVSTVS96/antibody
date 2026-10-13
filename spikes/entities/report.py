@@ -17,3 +17,4 @@ q("""select m.label as member, m.props->>'party' as party, c.props->>'ticker' as
      where e.kind='traded' and e.src in (select src from edges where kind='member_of') order by date desc limit 10""")
 q("""select m.props->>'party' as party, count(distinct e.dst) as members_funded, sum((e.props->>'amount_usd')::double) as usd
      from edges e join nodes m on m.id=e.dst where e.kind='contributed' group by 1""")
+q("select count(*) as edges, count(*) filter (where coalesce(source_url, '') = '') as without_url from edges")

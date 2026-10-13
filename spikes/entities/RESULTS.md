@@ -14,7 +14,7 @@ Bill IDs checked: GENIUS Act is **S.1582, 119th, P.L. 119-27** (not 119-21; that
 | Senate PTR stock lines resolved | 771/1198 names = 64% | report | n/a | same |
 | House PTR stock lines resolved (2025 PDFs from the trades lead) | 888/1011 = 88% | report | n/a | same |
 | Roll-call joins: Senate #318 + House roll 200 mapped to bioguide | 532/532 (376 yea, 152 nay, 4 NV, matching 68-30 + 308-122) | 100% | yes | `uv run python -I members.py data/entities` |
-| Edges with a source URL | 6,954/6,954 | 100% | yes | `uv run --project spikes/entities python -c "import duckdb;print(duckdb.connect('data/entities/genius.duckdb',read_only=True).sql('select count(*) from edges where coalesce(source_url,'\')='\''))"` |
+| Edges with a source URL | 6,954/6,954 | 100% | yes | `uv run python -I spikes/entities/report.py data/entities/genius.duckdb` (last table) |
 
 The whole pipeline: `spikes/entities/run.sh` (about 6 min, with the LLM step cached).
 
