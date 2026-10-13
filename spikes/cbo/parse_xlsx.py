@@ -116,6 +116,12 @@ def parse_sheet(ws, years):
                 rows.append(row(ws, title, current, ctx, a, data, years, i))
             continue
 
+        if current and c and not has_data and text(r[YEAR_COL0]):
+            current["has_rows"] = True
+            rows.append({**row(ws, title, current, ctx, c, [None] * len(years), years, i), "note": text(r[YEAR_COL0]),
+                         "included_in": re.findall(r"\d{4,6}", text(r[YEAR_COL0]))})
+            continue
+
         if current and c and not has_data:
             if current["has_rows"]:
                 current["component"] = c
