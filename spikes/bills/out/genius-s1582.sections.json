@@ -1,0 +1,1452 @@
+{
+ "bill": "119-s-1582",
+ "title": "GENIUS Act",
+ "sources": {
+  "billstatus": "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/s/BILLSTATUS-119s1582.xml",
+  "congress_gov": "https://www.congress.gov/bill/119th-congress/senate-bill/1582"
+ },
+ "versions": [
+  {
+   "code": "s394-is",
+   "name": "S.394 Introduced in Senate (predecessor bill, same short title)",
+   "date": "2025-02-04",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119s394is/xml/BILLS-119s394is.xml",
+   "predecessor": true,
+   "sections": 16,
+   "words": 8413,
+   "parse_seconds": 0.07
+  },
+  {
+   "code": "pcs",
+   "name": "Placed on Calendar Senate",
+   "date": "2025-05-05",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119s1582pcs/xml/BILLS-119s1582pcs.xml",
+   "sections": 19,
+   "words": 18047,
+   "parse_seconds": 0.07
+  },
+  {
+   "code": "es",
+   "name": "Engrossed in Senate",
+   "date": "2025-06-17",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119s1582es/xml/BILLS-119s1582es.xml",
+   "sections": 20,
+   "words": 19838,
+   "parse_seconds": 0.16
+  },
+  {
+   "code": "enr",
+   "name": "Enrolled Bill",
+   "date": "2025-07-17",
+   "url": "https://www.govinfo.gov/content/pkg/BILLS-119s1582enr/xml/BILLS-119s1582enr.xml",
+   "sections": 20,
+   "words": 19838,
+   "parse_seconds": 0.1
+  },
+  {
+   "code": "plaw",
+   "name": "Public Law 119-27 (USLM)",
+   "date": "2025-07-18",
+   "url": "https://www.govinfo.gov/content/pkg/PLAW-119publ27/uslm/PLAW-119publ27.xml",
+   "sections": 20,
+   "words": 20321,
+   "parse_seconds": 0.16
+  }
+ ],
+ "pairs": [
+  {
+   "from": "s394-is",
+   "to": "pcs",
+   "old_sections": 16,
+   "new_sections": 19,
+   "matched": 16,
+   "matched_fuzzy": 9,
+   "matched_heading": 4,
+   "matched_rewritten": 2,
+   "matched_same-law": 1,
+   "added": 3,
+   "added_split_from_old": 0,
+   "revived": 0,
+   "removed": 0,
+   "removed_merged_into_new": 0,
+   "match_seconds": 0.24
+  },
+  {
+   "from": "pcs",
+   "to": "es",
+   "old_sections": 19,
+   "new_sections": 20,
+   "matched": 19,
+   "matched_identical": 6,
+   "matched_xml-id": 13,
+   "added": 1,
+   "added_split_from_old": 0,
+   "revived": 0,
+   "removed": 0,
+   "removed_merged_into_new": 0,
+   "match_seconds": 0.17
+  },
+  {
+   "from": "es",
+   "to": "enr",
+   "old_sections": 20,
+   "new_sections": 20,
+   "matched": 20,
+   "matched_identical": 20,
+   "added": 0,
+   "added_split_from_old": 0,
+   "revived": 0,
+   "removed": 0,
+   "removed_merged_into_new": 0,
+   "match_seconds": 0.16
+  },
+  {
+   "from": "enr",
+   "to": "plaw",
+   "old_sections": 20,
+   "new_sections": 20,
+   "matched": 20,
+   "matched_identical": 20,
+   "added": 0,
+   "added_split_from_old": 0,
+   "revived": 0,
+   "removed": 0,
+   "removed_merged_into_new": 0,
+   "match_seconds": 0.1
+  }
+ ],
+ "sections": [
+  {
+   "id": "119-s-1582@s394-is:sec:1",
+   "heading": "Short title",
+   "text_hash": "97b15940e5b1a998",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "This Act may be cited as the \" Guiding and Establishing National Innovation for U.S. Stablecoins Act \" or the \" GENIUS Act \".",
+   "versions": {
+    "s394-is": {
+     "path": "sec:1",
+     "heading": "Short title",
+     "hash": "a4f850a215b878cb",
+     "words": 24
+    },
+    "pcs": {
+     "path": "sec:1",
+     "heading": "Short title",
+     "hash": "97b15940e5b1a998",
+     "words": 21,
+     "match": "fuzzy",
+     "similarity": 0.593,
+     "diff_from_prev": {
+      "words_added": 1,
+      "words_removed": 4,
+      "largest_inserts": [
+       "act"
+      ]
+     }
+    },
+    "es": {
+     "path": "sec:1",
+     "heading": "Short title",
+     "hash": "97b15940e5b1a998",
+     "words": 21,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "enr": {
+     "path": "sec:1",
+     "heading": "Short title",
+     "hash": "97b15940e5b1a998",
+     "words": 21,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:1",
+     "heading": "SHORT TITLE.",
+     "hash": "97b15940e5b1a998",
+     "words": 24,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:2",
+   "heading": "Definitions",
+   "text_hash": "c0034a4e00ea6fa0",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "In this Act: (1) Appropriate federal banking agency .- The term \" appropriate Federal banking agency \" has the meaning given that term in section 3 of the Federal Deposit Insurance Act ( 12 U.S.C. 181",
+   "versions": {
+    "s394-is": {
+     "path": "sec:2",
+     "heading": "Definitions",
+     "hash": "e79cc6142ffb6d4b",
+     "words": 1037
+    },
+    "pcs": {
+     "path": "sec:2",
+     "heading": "Definitions",
+     "hash": "2963ee6d2e1fd955",
+     "words": 1706,
+     "match": "heading",
+     "similarity": 0.43,
+     "diff_from_prev": {
+      "words_added": 919,
+      "words_removed": 255,
+      "largest_inserts": [
+       "digital asset service provider the term digital asset service provider a means a person that for compensation or profit engages in the business in the united states including on behalf of customers or users in the united states of i exchang",
+       "b an uninsured national bank i that is chartered by the comptroller pursuant to title lxii of the revised statutes and ii that is approved by the comptroller pursuant to section 5 to issue payment stablecoins and c a federal branch that is ",
+       "16 lawful order the term lawful order means any final and valid writ process order rule decree command or other requirement issued or promulgated under federal law issued by a court of competent jurisdiction or by an authorized federal agen"
+      ]
+     }
+    },
+    "es": {
+     "path": "sec:2",
+     "heading": "Definitions",
+     "hash": "c0034a4e00ea6fa0",
+     "words": 1787,
+     "match": "xml-id",
+     "similarity": 0.91,
+     "diff_from_prev": {
+      "words_added": 108,
+      "words_removed": 26,
+      "largest_inserts": [
+       "stablecoin certification review committee the term stablecoin certification review committee means the committee of that name and having the functions as provided in this act a of which i the secretary of the treasury shall serve as chair a",
+       "is",
+       "29"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:2",
+     "heading": "Definitions",
+     "hash": "c0034a4e00ea6fa0",
+     "words": 1787,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:2",
+     "heading": "DEFINITIONS.",
+     "hash": "c0034a4e00ea6fa0",
+     "words": 1887,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:3",
+   "heading": "Issuance and treatment of payment stablecoins",
+   "text_hash": "93214ec4757fccd5",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Limitation on Issuers .- It shall be unlawful for any person other than a permitted payment stablecoin issuer to issue a payment stablecoin in the United States. (b) Prohibition on Offers or Sales",
+   "versions": {
+    "s394-is": {
+     "path": "sec:3",
+     "heading": "Limitation on who may issue a payment stablecoin",
+     "hash": "2c58338d9a8c9757",
+     "words": 23
+    },
+    "pcs": {
+     "path": "sec:3",
+     "heading": "Issuance and treatment of payment stablecoins",
+     "hash": "66f43c07d5ba64a8",
+     "words": 549,
+     "match": "fuzzy",
+     "similarity": 0.517,
+     "diff_from_prev": {
+      "words_added": 530,
+      "words_removed": 0,
+      "largest_inserts": [
+       "b prohibition on offers or sales 1 in general except as provided in subsection c and section 18 beginning on the date that is 3 years after the date of enactment of this act it shall be unlawful for any digital asset service provider to off",
+       "a limitation on issuers"
+      ]
+     }
+    },
+    "es": {
+     "path": "sec:3",
+     "heading": "Issuance and treatment of payment stablecoins",
+     "hash": "93214ec4757fccd5",
+     "words": 674,
+     "match": "xml-id",
+     "similarity": 0.776,
+     "diff_from_prev": {
+      "words_added": 137,
+      "words_removed": 12,
+      "largest_inserts": [
+       "2 treasury authority nothing in this act shall alter the existing authority of the secretary of the treasury to block restrict or limit transactions involving payment stablecoins that reference or are denominated in united states dollars th",
+       "shall submit to the chairs and ranking members of the committee on banking housing and urban affairs of the senate and the committee on financial services of the house of representatives a justification for the determination of the unusual ",
+       "b justification prior to issuing a limited safe harbor under this paragraph"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:3",
+     "heading": "Issuance and treatment of payment stablecoins",
+     "hash": "93214ec4757fccd5",
+     "words": 674,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:3",
+     "heading": "ISSUANCE AND TREATMENT OF PAYMENT STABLECOINS.",
+     "hash": "93214ec4757fccd5",
+     "words": 692,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:4",
+   "heading": "Requirements for issuing payment stablecoins",
+   "text_hash": "4b60c1bbb69be591",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Standards for the Issuance of Payment Stablecoins .- (1) In general .- A permitted payment stablecoin issuer shall- (A) maintain identifiable reserves backing the outstanding payment stablecoins o",
+   "versions": {
+    "s394-is": {
+     "path": "sec:4",
+     "heading": "Requirements for issuing payment stablecoins",
+     "hash": "691cde5506d34eb7",
+     "words": 1800
+    },
+    "pcs": {
+     "path": "sec:4",
+     "heading": "Requirements for issuing payment stablecoins",
+     "hash": "14e83733634fdbe8",
+     "words": 4968,
+     "match": "heading",
+     "similarity": 0.312,
+     "diff_from_prev": {
+      "words_added": 3750,
+      "words_removed": 537,
+      "largest_inserts": [
+       "any of the activities described in clauses i through iv b rule of construction nothing in subparagraph a shall limit a permitted payment stablecoin issuer from engaging in non payment stablecoin activities that are authorized by the primary",
+       "including regulations and guidance for the supervision of digital assets or payment stablecoins before the 90 day period ending on the date of enactment of this act that has been certified pursuant to subsection c and has approved 1 or more",
+       "coordination with permitted payment stablecoin issuers with respect to blocking of property and technological capabilities to comply with lawful orders a in general the secretary of the treasury i shall to the best of the secretary s abilit"
+      ]
+     }
+    },
+    "es": {
+     "path": "sec:4",
+     "heading": "Requirements for issuing payment stablecoins",
+     "hash": "4b60c1bbb69be591",
+     "words": 5697,
+     "match": "xml-id",
+     "similarity": 0.877,
+     "diff_from_prev": {
+      "words_added": 877,
+      "words_removed": 146,
+      "largest_inserts": [
+       "prohibition on interest no permitted payment stablecoin issuer or foreign payment stablecoin issuer shall pay the holder of any payment stablecoin any form of interest or yield whether in cash tokens or other consideration solely in connect",
+       "issue a payment stablecoin unless the public company obtains a unanimous vote of the stablecoin certification review committee finding that i it will not pose a material risk to the safety and soundness of the united states banking system t",
+       "8 ii exception the prohibition under clause i against the sharing of consumer information shall not apply to sharing of such information i to comply with federal state or local laws rules and other applicable legal requirements ii to comply"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:4",
+     "heading": "Requirements for issuing payment stablecoins",
+     "hash": "4b60c1bbb69be591",
+     "words": 5697,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:4",
+     "heading": "REQUIREMENTS FOR ISSUING PAYMENT STABLECOINS.",
+     "hash": "4b60c1bbb69be591",
+     "words": 5811,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:5",
+   "heading": "Approval of subsidiaries of insured depository institutions and Federal qualified payment stablecoin issuers",
+   "text_hash": "987e2d02248b3908",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Application .- (1) In general .- Each primary Federal payment stablecoin regulator shall- (A) receive, review, and consider for approval applications from any insured depository institution that s",
+   "versions": {
+    "s394-is": {
+     "path": "sec:5",
+     "heading": "Approval of subsidiaries of insured depository institutions and Federal qualified nonbank payment stablecoin issuers",
+     "hash": "d6827e36fc061c3e",
+     "words": 753
+    },
+    "pcs": {
+     "path": "sec:5",
+     "heading": "Approval of subsidiaries of insured depository institutions and Federal qualified payment stablecoin issuers",
+     "hash": "ce576b90943a16bc",
+     "words": 1615,
+     "match": "fuzzy",
+     "similarity": 0.498,
+     "diff_from_prev": {
+      "words_added": 915,
+      "words_removed": 48,
+      "largest_inserts": [
+       "h relation to other licensing requirements the provisions of this section supersede and preempt any state requirement for a charter license or other authorization to do business with respect to a federal qualified payment stablecoin issuer ",
+       "2 whether an individual who has been convicted of a felony offense involving insider trading embezzlement cybercrime money laundering financing of terrorism or financial fraud is serving as an officer or director of the applicant 3 the comp",
+       "safe harbor for pending applications the primary federal payment stablecoin regulators may waive the application of the requirements of this act for a period not to exceed 12 months beginning on the effective date of this act with respect t"
+      ]
+     }
+    },
+    "es": {
+     "path": "sec:5",
+     "heading": "Approval of subsidiaries of insured depository institutions and Federal qualified payment stablecoin issuers",
+     "hash": "987e2d02248b3908",
+     "words": 1670,
+     "match": "xml-id",
+     "similarity": 0.983,
+     "diff_from_prev": {
+      "words_added": 56,
+      "words_removed": 1,
+      "largest_inserts": [
+       "nothing in this subsection shall preempt or supersede the authority of a state to charter license supervise or regulate an insured depository institution or credit union chartered in such state or to supervise a subsidiary of such insured d"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:5",
+     "heading": "Approval of subsidiaries of insured depository institutions and Federal qualified payment stablecoin issuers",
+     "hash": "987e2d02248b3908",
+     "words": 1670,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:5",
+     "heading": "APPROVAL OF SUBSIDIARIES OF INSURED DEPOSITORY INSTITUTIONS AND FEDERAL QUALIFIED PAYMENT STABLECOIN ISSUERS.",
+     "hash": "987e2d02248b3908",
+     "words": 1709,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:6",
+   "heading": "Supervision and enforcement with respect to Federal qualified payment stablecoin issuers and subsidiaries of insured depository institutions",
+   "text_hash": "488e90d0f544192d",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Supervision .- (1) In general .- Each permitted payment stablecoin issuer that is not a State qualified payment stablecoin issuer with a payment stablecoin with a consolidated total outstanding is",
+   "versions": {
+    "s394-is": {
+     "path": "sec:6",
+     "heading": "Supervision and enforcement with respect to subsidiaries of insured depository institutions and Comptroller-regulated entities",
+     "hash": "e2fb0b480f1bb324",
+     "words": 1363
+    },
+    "pcs": {
+     "path": "sec:6",
+     "heading": "Supervision and enforcement with respect to Federal qualified payment stablecoin issuers and subsidiaries of insured depository institutions",
+     "hash": "bae1a922848bd312",
+     "words": 1653,
+     "match": "fuzzy",
+     "similarity": 0.54,
+     "diff_from_prev": {
+      "words_added": 480,
+      "words_removed": 184,
+      "largest_inserts": [
+       "c federal trade commission jurisdiction nothing in this act shall be construed to limit impair or otherwise affect the authority or jurisdiction of the federal trade commission under the federal trade commission act 15 u s c 41 et seq or an",
+       "and d the compliance of the federal qualified nonbank payment stablecoin issuer with the requirements of the bank secrecy act and with laws authorizing the imposition of sanctions to be implemented by the secretary of the treasury 3",
+       "of a permitted payment stablecoin issuer that is not a state qualified payment stablecoin issuer with a payment stablecoin with a consolidated total outstanding issuance of less than 10 000 000 000"
+      ]
+     }
+    },
+    "es": {
+     "path": "sec:6",
+     "heading": "Supervision and enforcement with respect to Federal qualified payment stablecoin issuers and subsidiaries of insured depository institutions",
+     "hash": "488e90d0f544192d",
+     "words": 1646,
+     "match": "xml-id",
+     "similarity": 0.934,
+     "diff_from_prev": {
+      "words_added": 26,
+      "words_removed": 29,
+      "largest_inserts": [
+       "consumer financial law including 12 u s c 5515 and",
+       "rule of construction",
+       "remedy under any"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:6",
+     "heading": "Supervision and enforcement with respect to Federal qualified payment stablecoin issuers and subsidiaries of insured depository institutions",
+     "hash": "488e90d0f544192d",
+     "words": 1646,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:6",
+     "heading": "SUPERVISION AND ENFORCEMENT WITH RESPECT TO FEDERAL QUALIFIED PAYMENT STABLECOIN ISSUERS AND SUBSIDIARIES OF INSURED DEPOSITORY INSTITUTIONS.",
+     "hash": "488e90d0f544192d",
+     "words": 1673,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:7",
+   "heading": "State qualified payment stablecoin issuers",
+   "text_hash": "73ff30afb82a2dd0",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) In General .- A State payment stablecoin regulator shall have supervisory, examination, and enforcement authority over all State qualified payment stablecoin issuers of such State. (b) Authority T",
+   "versions": {
+    "s394-is": {
+     "path": "sec:7",
+     "heading": "State qualified payment stablecoin issuers",
+     "hash": "d9d8221a26032653",
+     "words": 1220
+    },
+    "pcs": {
+     "path": "sec:7",
+     "heading": "State qualified payment stablecoin issuers",
+     "hash": "00f374c8a1e84a54",
+     "words": 1383,
+     "match": "fuzzy",
+     "similarity": 0.585,
+     "diff_from_prev": {
+      "words_added": 325,
+      "words_removed": 171,
+      "largest_inserts": [
+       "3 applicability a in general this subsection shall only apply to an out of state state qualified payment stablecoin issuer chartered licensed or otherwise authorized to do business by a state that has a certification in place pursuant to se",
+       "unusual and exigent circumstances which may include limitations on redemptions of payment stablecoins and which",
+       "unusual and exigent circumstances which may include limitations on redemption of payment stablecoins and which"
+      ]
+     }
+    },
+    "es": {
+     "path": "sec:7",
+     "heading": "State qualified payment stablecoin issuers",
+     "hash": "73ff30afb82a2dd0",
+     "words": 1398,
+     "match": "xml-id",
+     "similarity": 0.966,
+     "diff_from_prev": {
+      "words_added": 25,
+      "words_removed": 10,
+      "largest_inserts": [
+       "for state laws relating to the chartering licensure or other authorization to do business",
+       "notwithstanding any other provision of law",
+       "a permitted payment stablecoin issuer"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:7",
+     "heading": "State qualified payment stablecoin issuers",
+     "hash": "73ff30afb82a2dd0",
+     "words": 1398,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:7",
+     "heading": "STATE QUALIFIED PAYMENT STABLECOIN ISSUERS.",
+     "hash": "73ff30afb82a2dd0",
+     "words": 1433,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:8",
+   "heading": "Custody of payment stablecoin reserve and collateral",
+   "text_hash": "d2ef91c01c49185b",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) In General .- A person may only engage in the business of providing custodial or safekeeping services for the payment stablecoin reserve, the payment stablecoins used as collateral, or the private",
+   "versions": {
+    "s394-is": {
+     "path": "sec:8",
+     "heading": "Customer protection",
+     "hash": "1a0f7b7980d7f5b4",
+     "words": 580
+    },
+    "pcs": {
+     "path": "sec:10",
+     "heading": "Custody of payment stablecoin reserve and collateral",
+     "hash": "e8f0318e1ca8d308",
+     "words": 884,
+     "match": "same-law",
+     "similarity": 0.58,
+     "diff_from_prev": {
+      "words_added": 319,
+      "words_removed": 14,
+      "largest_inserts": [
+       "or d an insured depository institution that provides custodial or safekeeping services for payment stablecoin reserves shall be permitted to hold payment stablecoin reserves in the form of cash on deposit 3 customer priority with or without",
+       "with respect to payment stablecoin reserves received from a permitted payment stablecoin issuer for deposit in a reserve account treat and deal with such payment stablecoin reserves as belonging to the holders of the permitted payment stabl",
+       "and any payment stablecoin reserves in the form of cash held in the form of a deposit liability at a depository institution shall not be subject to any requirement relating to the separation of such cash from the property of the applicable "
+      ]
+     },
+     "moved_from": "sec:8"
+    },
+    "es": {
+     "path": "sec:10",
+     "heading": "Custody of payment stablecoin reserve and collateral",
+     "hash": "d2ef91c01c49185b",
+     "words": 859,
+     "match": "xml-id",
+     "similarity": 0.822,
+     "diff_from_prev": {
+      "words_added": 51,
+      "words_removed": 76,
+      "largest_inserts": [
+       "with respect to payment stablecoins held by a person described in subsection a for a customer",
+       "provided such treatment is consistent with federal law",
+       "with respect to payment stablecoins held by such"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:10",
+     "heading": "Custody of payment stablecoin reserve and collateral",
+     "hash": "d2ef91c01c49185b",
+     "words": 859,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:10",
+     "heading": "CUSTODY OF PAYMENT STABLECOIN RESERVE AND COLLATERAL.",
+     "hash": "d2ef91c01c49185b",
+     "words": 867,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:9",
+   "heading": "Treatment of payment stablecoin issuers in insolvency proceedings",
+   "text_hash": "2495d14fb2be5a72",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) In General .- Subject to section 507(e) of title 11, United States Code , as added by subsection (d), in any insolvency proceeding of a permitted payment stablecoin issuer under Federal or State l",
+   "versions": {
+    "s394-is": {
+     "path": "sec:9",
+     "heading": "Treatment of insolvent payment stablecoin issuers",
+     "hash": "f5e0cd7efa8def68",
+     "words": 194
+    },
+    "pcs": {
+     "path": "sec:11",
+     "heading": "Treatment of payment stablecoin issuers in insolvency proceedings",
+     "hash": "b0df4da4ff675c53",
+     "words": 738,
+     "match": "rewritten",
+     "similarity": 0.266,
+     "diff_from_prev": {
+      "words_added": 576,
+      "words_removed": 42,
+      "largest_inserts": [
+       "definitions section 101 of title 11 united states code is amended by adding after paragraph 40b the following 40c the terms payment stablecoin and permitted payment stablecoin issuer have the meanings given those terms in section 2 of the g",
+       "amended 1 in paragraph 9 in the matter following subparagraph b by striking or at the end 2 in paragraph 10 c by striking the period and inserting or and 3 by inserting after paragraph 10 the following 11 required payment stablecoin reserve",
+       "shall be resolved by the federal deposit insurance corporation national credit union administration or state payment stablecoin regulator as applicable 2 a subsidiary of a depository institution as defined in section 3 of the federal deposi"
+      ]
+     },
+     "moved_from": "sec:9"
+    },
+    "es": {
+     "path": "sec:11",
+     "heading": "Treatment of payment stablecoin issuers in insolvency proceedings",
+     "hash": "2495d14fb2be5a72",
+     "words": 1015,
+     "match": "xml-id",
+     "similarity": 0.767,
+     "diff_from_prev": {
+      "words_added": 293,
+      "words_removed": 14,
+      "largest_inserts": [
+       "h study by primary federal payment stablecoin regulators 1 study required the primary federal payment stablecoin regulators shall perform a study of the potential insolvency proceedings of permitted payment stablecoin issuers including an e",
+       "the permitted payment stablecoin issuer shall be deemed to hold a claim and 3 the priority under paragraph 1 shall not apply to claims other than those arising directly from the holding of payment stablecoins",
+       "provided that notwithstanding the exclusion of such reserves from the property of the estate section 362 of this title shall apply to such reserves"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:11",
+     "heading": "Treatment of payment stablecoin issuers in insolvency proceedings",
+     "hash": "2495d14fb2be5a72",
+     "words": 1015,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:11",
+     "heading": "TREATMENT OF PAYMENT STABLECOIN ISSUERS IN INSOLVENCY PROCEEDINGS.",
+     "hash": "2495d14fb2be5a72",
+     "words": 1043,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:10",
+   "heading": "Interoperability standards",
+   "text_hash": "45e4ad9a57070cf7",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "The primary Federal payment stablecoin regulators, in consultation with the National Institute of Standards and Technology, other relevant standard-setting organizations, and State bank and credit uni",
+   "versions": {
+    "s394-is": {
+     "path": "sec:10",
+     "heading": "Interoperability standards",
+     "hash": "262f98d4917a6679",
+     "words": 68
+    },
+    "pcs": {
+     "path": "sec:12",
+     "heading": "Interoperability standards",
+     "hash": "45e4ad9a57070cf7",
+     "words": 98,
+     "match": "fuzzy",
+     "similarity": 0.622,
+     "diff_from_prev": {
+      "words_added": 32,
+      "words_removed": 1,
+      "largest_inserts": [
+       "with 1 other permitted payment stablecoin issuers and 2 the broader digital finance ecosystem including accepted communications protocols and blockchains permissioned or public",
+       "bank and credit union regulators",
+       "united states code"
+      ]
+     },
+     "moved_from": "sec:10"
+    },
+    "es": {
+     "path": "sec:12",
+     "heading": "Interoperability standards",
+     "hash": "45e4ad9a57070cf7",
+     "words": 98,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "enr": {
+     "path": "sec:12",
+     "heading": "Interoperability standards",
+     "hash": "45e4ad9a57070cf7",
+     "words": 98,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:12",
+     "heading": "INTEROPERABILITY STANDARDS.",
+     "hash": "45e4ad9a57070cf7",
+     "words": 99,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:11",
+   "heading": "Study on non-payment stablecoins",
+   "text_hash": "d61b9888e3fc1f70",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Study by Treasury .- (1) Study .- The Secretary of the Treasury, in consultation with the Board, the Comptroller, the Corporation, the Securities and Exchange Commission, and the Commodity Futures",
+   "versions": {
+    "s394-is": {
+     "path": "sec:11",
+     "heading": "Study on endogenously collateralized stablecoins",
+     "hash": "20daf14821a4dab1",
+     "words": 222
+    },
+    "pcs": {
+     "path": "sec:14",
+     "heading": "Study on non-payment stablecoins",
+     "hash": "d61b9888e3fc1f70",
+     "words": 254,
+     "match": "fuzzy",
+     "similarity": 0.603,
+     "diff_from_prev": {
+      "words_added": 48,
+      "words_removed": 15,
+      "largest_inserts": [
+       "3 classified annex a report under this section may include a classified annex if applicable",
+       "and the committee on financial services of the house of representatives",
+       "commission and the commodity futures trading"
+      ]
+     },
+     "moved_from": "sec:11"
+    },
+    "es": {
+     "path": "sec:14",
+     "heading": "Study on non-payment stablecoins",
+     "hash": "d61b9888e3fc1f70",
+     "words": 254,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "enr": {
+     "path": "sec:14",
+     "heading": "Study on non-payment stablecoins",
+     "hash": "d61b9888e3fc1f70",
+     "words": 254,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:14",
+     "heading": "STUDY ON NON-PAYMENT STABLECOINS.",
+     "hash": "d61b9888e3fc1f70",
+     "words": 261,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:12",
+   "heading": "Reports",
+   "text_hash": "96c5bf748f2024f5",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Annual Reporting Requirement .- Beginning on the date that is 1 year after the date of enactment of this Act, and annually thereafter, the primary Federal payment stablecoin regulators, in consult",
+   "versions": {
+    "s394-is": {
+     "path": "sec:12",
+     "heading": "Reports",
+     "hash": "fc637f123076ee24",
+     "words": 231
+    },
+    "pcs": {
+     "path": "sec:15",
+     "heading": "Reports",
+     "hash": "3f13cc0576c44997",
+     "words": 184,
+     "match": "fuzzy",
+     "similarity": 0.564,
+     "diff_from_prev": {
+      "words_added": 27,
+      "words_removed": 74,
+      "largest_inserts": [
+       "which may include a classified annex if applicable",
+       "primary federal payment stablecoin regulators",
+       "financial stability"
+      ]
+     },
+     "moved_from": "sec:12"
+    },
+    "es": {
+     "path": "sec:15",
+     "heading": "Reports",
+     "hash": "96c5bf748f2024f5",
+     "words": 193,
+     "match": "xml-id",
+     "similarity": 0.942,
+     "diff_from_prev": {
+      "words_added": 9,
+      "words_removed": 0,
+      "largest_inserts": [
+       "in consultation with state payment stablecoin regulators as necessary"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:15",
+     "heading": "Reports",
+     "hash": "96c5bf748f2024f5",
+     "words": 193,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:15",
+     "heading": "REPORTS.",
+     "hash": "96c5bf748f2024f5",
+     "words": 193,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:13",
+   "heading": "Authority of banking institutions",
+   "text_hash": "c706ed3a43727140",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Rule of Construction .- Nothing in this Act may be construed to limit the authority of a depository institution, Federal credit union, State credit union, national bank, or trust company to engage",
+   "versions": {
+    "s394-is": {
+     "path": "sec:13",
+     "heading": "Authority of banking institutions",
+     "hash": "f61996dedae8c349",
+     "words": 370
+    },
+    "pcs": {
+     "path": "sec:16",
+     "heading": "Authority of banking institutions",
+     "hash": "6198cf36f61692f8",
+     "words": 596,
+     "match": "heading",
+     "similarity": 0.366,
+     "diff_from_prev": {
+      "words_added": 336,
+      "words_removed": 103,
+      "largest_inserts": [
+       "d state chartered depository institutions a state chartered depository institution chartered under the banking laws of a state shall not be required to obtain a charter license or other authorization to do business from a state to engage in",
+       "regulatory review entities regulated by the primary federal payment stablecoin regulators are authorized to engage in the payment stablecoin activities and investments contemplated by this act including acting as a principal or agent with r",
+       "12 u s c 1752 3 state credit union supervisor the term state credit union supervisor has the meaning given that term in section 6003 of the anti money laundering act of 2020 31 u s c 5311 note"
+      ]
+     },
+     "moved_from": "sec:13"
+    },
+    "es": {
+     "path": "sec:16",
+     "heading": "Authority of banking institutions",
+     "hash": "c706ed3a43727140",
+     "words": 632,
+     "match": "xml-id",
+     "similarity": 0.514,
+     "diff_from_prev": {
+      "words_added": 229,
+      "words_removed": 194,
+      "largest_inserts": [
+       "be construed to limit the authority of a host state bank regulator to perform examinations of a depository institution s subsidiary permitted payment stablecoin issuer or activities conducted through the permitted payment stablecoin issuer ",
+       "establish and maintain adequate capital and such capital is regularly reassessed by the home state banking supervisor to take into account any changes in the financial condition and risk profile of the institution including any uninsured de",
+       "the financial condition and risk profile of the institution including any uninsured deposits maintained by such institution and b required by the laws or regulations of the home state"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:16",
+     "heading": "Authority of banking institutions",
+     "hash": "c706ed3a43727140",
+     "words": 632,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:16",
+     "heading": "AUTHORITY OF BANKING INSTITUTIONS.",
+     "hash": "c706ed3a43727140",
+     "words": 645,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:14",
+   "heading": "Amendments to clarify that payment stablecoins are not securities or commodities and permitted payment stablecoin issuers are not investment companies",
+   "text_hash": "a58002a9017fdd19",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Investment Advisers Act of 1940 .- Section 202(a)(18) of the Investment Advisers Act of 1940 ( 15 U.S.C. 80b-2(a)(18) ) is amended by adding at the end the following: \" The term ' security ' does ",
+   "versions": {
+    "s394-is": {
+     "path": "sec:14",
+     "heading": "Amendments to clarify that payment stablecoins are not securities or commodities",
+     "hash": "7d4b4a8846ec5525",
+     "words": 320
+    },
+    "pcs": {
+     "path": "sec:17",
+     "heading": "Amendments to clarify that payment stablecoins are not securities or commodities and permitted payment stablecoin issuers are not investment companies",
+     "hash": "a58002a9017fdd19",
+     "words": 396,
+     "match": "fuzzy",
+     "similarity": 0.619,
+     "diff_from_prev": {
+      "words_added": 116,
+      "words_removed": 40,
+      "largest_inserts": [
+       "genius act f commodity exchange act section 1a 9 of the commodity exchange act 7 u s c 1a 9 is amended by adding at the end the following the term commodity does not include a",
+       "stablecoin issued by a permitted payment stablecoin issuer as such terms are defined in section 2 of the genius",
+       "genius act and 2 in section 3 c 3 of the act 15 u s c 80a 3 c 3 by inserting any permitted"
+      ]
+     },
+     "moved_from": "sec:14"
+    },
+    "es": {
+     "path": "sec:17",
+     "heading": "Amendments to clarify that payment stablecoins are not securities or commodities and permitted payment stablecoin issuers are not investment companies",
+     "hash": "a58002a9017fdd19",
+     "words": 397,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "enr": {
+     "path": "sec:17",
+     "heading": "Amendments to clarify that payment stablecoins are not securities or commodities and permitted payment stablecoin issuers are not investment companies",
+     "hash": "a58002a9017fdd19",
+     "words": 397,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:17",
+     "heading": "AMENDMENTS TO CLARIFY THAT PAYMENT STABLECOINS ARE NOT SECURITIES OR COMMODITIES AND PERMITTED PAYMENT STABLECOIN ISSUERS ARE NOT INVESTMENT COMPANIES.",
+     "hash": "a58002a9017fdd19",
+     "words": 417,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:15",
+   "heading": "Exception for foreign payment stablecoin issuers and reciprocity for payment stablecoins issued in overseas jurisdictions",
+   "text_hash": "d0ca089351511b59",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs",
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) In General .- The prohibitions under section 3 shall not apply to a foreign payment stablecoin issuer if all of the following apply: (1) The foreign payment stablecoin issuer is subject to regulat",
+   "versions": {
+    "s394-is": {
+     "path": "sec:15",
+     "heading": "Reciprocity for stablecoins issued in overseas jurisdictions",
+     "hash": "bcca2208bee923d8",
+     "words": 47
+    },
+    "pcs": {
+     "path": "sec:18",
+     "heading": "Exception for foreign payment stablecoin issuers and reciprocity for payment stablecoins issued in overseas jurisdictions",
+     "hash": "240b280589eba340",
+     "words": 1008,
+     "match": "rewritten",
+     "similarity": 0.249,
+     "diff_from_prev": {
+      "words_added": 970,
+      "words_removed": 5,
+      "largest_inserts": [
+       "general the secretary of the treasury may in consultation with the federal payment stablecoin regulators rescind a determination made under paragraph 1 if the secretary determines that the regulatory regime of such foreign country is no lon",
+       "a in general the prohibitions under section 3 shall not apply to a foreign payment stablecoin issuer if all of the following apply 1 the foreign payment stablecoin issuer is subject to regulation and supervision by a foreign payment stablec",
+       "rescind approval of a registration of a foreign payment stablecoin issuer under this subsection if the comptroller determines that the foreign payment stablecoin issuer is not in compliance with the requirements of this act including for ma"
+      ]
+     },
+     "moved_from": "sec:15"
+    },
+    "es": {
+     "path": "sec:18",
+     "heading": "Exception for foreign payment stablecoin issuers and reciprocity for payment stablecoins issued in overseas jurisdictions",
+     "hash": "d0ca089351511b59",
+     "words": 1225,
+     "match": "xml-id",
+     "similarity": 0.873,
+     "diff_from_prev": {
+      "words_added": 235,
+      "words_removed": 13,
+      "largest_inserts": [
+       "is comparable to the requirements established under this act including the requirements under section 4 a the secretary of the treasury may make such a determination only upon a recommendation from each other member of the stablecoin certif",
+       "4 the foreign country in which the foreign payment stablecoin issuer is domiciled and regulated is not subject to comprehensive economic sanctions by the united states or in a jurisdiction that the secretary of the treasury has determined t",
+       "publication not later than 90 days prior to the entry into force of any arrangement or agreement under paragraph 1 the secretary of the treasury shall publish the arrangement or agreement in the federal register 3"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:18",
+     "heading": "Exception for foreign payment stablecoin issuers and reciprocity for payment stablecoins issued in overseas jurisdictions",
+     "hash": "d0ca089351511b59",
+     "words": 1225,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:18",
+     "heading": "EXCEPTION FOR FOREIGN PAYMENT STABLECOIN ISSUERS AND RECIPROCITY FOR PAYMENT STABLECOINS ISSUED IN OVERSEAS JURISDICTIONS.",
+     "hash": "d0ca089351511b59",
+     "words": 1251,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@s394-is:sec:16",
+   "heading": "Effective date",
+   "text_hash": "313344a233c62e8f",
+   "first_version": "s394-is",
+   "changed_in": [
+    "pcs"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "This Act, and the amendments made by this Act, shall take effect on the earlier of (1) the date that is 18 months after the date of enactment of this Act; or (2) the date that is 120 days after the da",
+   "versions": {
+    "s394-is": {
+     "path": "sec:16",
+     "heading": "Effective date",
+     "hash": "14a7c30e830d1d50",
+     "words": 161
+    },
+    "pcs": {
+     "path": "sec:19",
+     "heading": "Effective date",
+     "hash": "313344a233c62e8f",
+     "words": 57,
+     "match": "heading",
+     "similarity": 0.44,
+     "diff_from_prev": {
+      "words_added": 11,
+      "words_removed": 116,
+      "largest_inserts": [
+       "this act and the amendments made by",
+       "the date that is"
+      ]
+     },
+     "moved_from": "sec:16"
+    },
+    "es": {
+     "path": "sec:20",
+     "heading": "Effective date",
+     "hash": "313344a233c62e8f",
+     "words": 57,
+     "match": "identical",
+     "similarity": 1.0,
+     "moved_from": "sec:19"
+    },
+    "enr": {
+     "path": "sec:20",
+     "heading": "Effective date",
+     "hash": "313344a233c62e8f",
+     "words": 57,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:20",
+     "heading": "EFFECTIVE DATE.",
+     "hash": "313344a233c62e8f",
+     "words": 57,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@pcs:sec:8",
+   "heading": "Anti-money laundering protections",
+   "text_hash": "6abde6668648298a",
+   "first_version": "pcs",
+   "changed_in": [
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Payment Stablecoins Issued by a Foreign Payment Stablecoin Issuer .- (1) In general .- A payment stablecoin that is issued by a foreign payment stablecoin issuer may not be publicly offered, sold,",
+   "versions": {
+    "pcs": {
+     "path": "sec:8",
+     "heading": "Anti-money laundering protections",
+     "hash": "fa0c16109ccdc8ff",
+     "words": 1020
+    },
+    "es": {
+     "path": "sec:8",
+     "heading": "Anti-money laundering protections",
+     "hash": "6abde6668648298a",
+     "words": 1176,
+     "match": "xml-id",
+     "similarity": 0.872,
+     "diff_from_prev": {
+      "words_added": 162,
+      "words_removed": 6,
+      "largest_inserts": [
+       "notwithstanding the foregoing the secretary of treasury may determine that multiple acts of noncompliance constitute separate violations if such acts were the result of gross negligence a reckless disregard for or a pattern of indifference ",
+       "d rule of construction nothing in this act shall be construed as altering the existing authority of the secretary of the treasury to block restrict or limit transactions involving payment stablecoins that reference or are denominated in uni",
+       "c publication upon a determination under subparagraph a the secretary of the treasury shall publish the determination in the federal register including a statement detailing how the foreign payment stablecoin issuer has met the criteria des"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:8",
+     "heading": "Anti-money laundering protections",
+     "hash": "6abde6668648298a",
+     "words": 1176,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:8",
+     "heading": "ANTI-MONEY LAUNDERING PROTECTIONS.",
+     "hash": "6abde6668648298a",
+     "words": 1199,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@pcs:sec:9",
+   "heading": "Anti-money laundering innovation",
+   "text_hash": "53b693b7b7de8746",
+   "first_version": "pcs",
+   "changed_in": [
+    "es"
+   ],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) Public Comment .- Beginning on the date that is 30 days after the date of enactment of this Act, and for a period of 60 days thereafter, the Secretary of the Treasury shall seek public comment to ",
+   "versions": {
+    "pcs": {
+     "path": "sec:9",
+     "heading": "Anti-money laundering innovation",
+     "hash": "ecf8d3acc1381c4f",
+     "words": 782
+    },
+    "es": {
+     "path": "sec:9",
+     "heading": "Anti-money laundering innovation",
+     "hash": "53b693b7b7de8746",
+     "words": 862,
+     "match": "xml-id",
+     "similarity": 0.812,
+     "diff_from_prev": {
+      "words_added": 109,
+      "words_removed": 29,
+      "largest_inserts": [
+       "d the extent to which transactions on distributed ledgers digital asset mixing services tumblers or other similar services that mix payment stablecoins in such a way as to make such transaction or the identity of the transaction parties les",
+       "4 tailored risk management standards for financial institutions interacting with decentralized finance protocols",
+       "1 in general"
+      ]
+     }
+    },
+    "enr": {
+     "path": "sec:9",
+     "heading": "Anti-money laundering innovation",
+     "hash": "53b693b7b7de8746",
+     "words": 862,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:9",
+     "heading": "ANTI-MONEY LAUNDERING INNOVATION.",
+     "hash": "53b693b7b7de8746",
+     "words": 875,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@pcs:sec:13",
+   "heading": "Rulemaking",
+   "text_hash": "696dc5c040c65840",
+   "first_version": "pcs",
+   "changed_in": [],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "(a) In General .- Not later than 1 year after the date of enactment of this Act, each primary Federal payment stablecoin regulator, the Secretary of the Treasury, and each State payment stablecoin reg",
+   "versions": {
+    "pcs": {
+     "path": "sec:13",
+     "heading": "Rulemaking",
+     "hash": "696dc5c040c65840",
+     "words": 135
+    },
+    "es": {
+     "path": "sec:13",
+     "heading": "Rulemaking",
+     "hash": "696dc5c040c65840",
+     "words": 135,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "enr": {
+     "path": "sec:13",
+     "heading": "Rulemaking",
+     "hash": "696dc5c040c65840",
+     "words": 135,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:13",
+     "heading": "RULEMAKING.",
+     "hash": "696dc5c040c65840",
+     "words": 138,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  },
+  {
+   "id": "119-s-1582@es:sec:19",
+   "heading": "Disclosure relating to payment stablecoins",
+   "text_hash": "f20ba0b77fe45fd3",
+   "first_version": "es",
+   "changed_in": [],
+   "removed_in": null,
+   "revived_in": [],
+   "split_from": null,
+   "merged_into": null,
+   "in_final": true,
+   "preview": "Section 13104(a)(3) of title 5, United States Code , is amended , in the first sentence, by striking \" , or any deposits \" and inserting \" , any payment stablecoins issued by a permitted payment stabl",
+   "versions": {
+    "es": {
+     "path": "sec:19",
+     "heading": "Disclosure relating to payment stablecoins",
+     "hash": "f20ba0b77fe45fd3",
+     "words": 42
+    },
+    "enr": {
+     "path": "sec:19",
+     "heading": "Disclosure relating to payment stablecoins",
+     "hash": "f20ba0b77fe45fd3",
+     "words": 42,
+     "match": "identical",
+     "similarity": 1.0
+    },
+    "plaw": {
+     "path": "sec:19",
+     "heading": "DISCLOSURE RELATING TO PAYMENT STABLECOINS.",
+     "hash": "f20ba0b77fe45fd3",
+     "words": 47,
+     "match": "identical",
+     "similarity": 1.0
+    }
+   }
+  }
+ ],
+ "total_seconds": 1.79,
+ "max_rss_mb": 36
+}
