@@ -89,5 +89,5 @@ Warm near-black canvas (#12100c), card sidebar, violet accent, monospace caps la
   - "is this really buried?"
   - "does every claim cite its source?"
   - a partisan-symmetry audit (same thresholds and wording for each party)
-- Machine rules from seqno: memory-capped slice, headless only, never touch the Mac, signed commits, no wait loops. Plus a live dashboard per run.
+- Machine rules: memory-capped jobs, headless browsers, signed commits, no wait loops.
 
