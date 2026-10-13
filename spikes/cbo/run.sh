@@ -24,3 +24,6 @@ map hr1-house-passed BILLS-119hr1eh
 map hr5376-pl117-169 BILLS-117hr5376enr
 
 python3 -I export.py out > out/cbo_rows.json
+
+for e in hr1-pl119-21-clb hr5376-pl117-169; do python3 -I section_effects.py out/cbo_rows.json $e 12 > out/$e.top.json; done
+cat out/*.reconcile.txt >&2 || true
