@@ -1367,7 +1367,8 @@ table.secs tr.detail td {
     display: none;
   }
   .seg {
-    position: static;
+    position: relative;
+    inset: auto;
     margin: 0 12px 12px;
   }
   .seg button {
@@ -1383,6 +1384,27 @@ table.secs tr.detail td {
   }
   table.secs td {
     padding: 8px 4px;
+  }
+  .stagecode {
+    white-space: normal;
+    font-size: 9px;
+    line-height: 1.35;
+    letter-spacing: 0.03em;
+  }
+  table.secs {
+    table-layout: fixed;
+  }
+  .att {
+    min-width: 0;
+  }
+  table.secs th:nth-child(1) {
+    width: 34px;
+  }
+  table.secs th:nth-child(3) {
+    width: 88px;
+  }
+  table.secs th:nth-child(4) {
+    width: 72px;
   }
   .stats {
     grid-template-columns: repeat(2, 1fr);

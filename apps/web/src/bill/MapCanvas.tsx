@@ -153,6 +153,7 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
           },
         } as never,
         settings: {
+          allowInvalidContainer: true,
           itemSizesReference: "positions",
           zoomToSizeRatioFunction: (r) => r,
           autoRescale: true,
