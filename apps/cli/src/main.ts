@@ -37,12 +37,12 @@ process.on("SIGINT", () => controller.abort());
 /** Global stages that already ran in this process; `build` refreshes them once, not once per bill. */
 const ranGlobal = new Set<string>();
 
-async function run(stages: Registered[], bill: BillId | null) {
+async function run(stages: Registered[], bill: BillId | null, targets: string[] = []) {
   for (const s of stages) {
     if (s.scope === "global") {
       if (ranGlobal.has(s.name)) continue;
       ranGlobal.add(s.name);
-      if (!values.refresh && s.writes.length) {
+      if (!values.refresh && !targets.includes(s.name) && s.writes.length) {
         const filled = await Promise.all(s.writes.map(async (t) => (await readRows(t)).length > 0));
         if (filled.every(Boolean)) {
           console.log(`· ${s.name} (global, cached)`);
@@ -165,11 +165,11 @@ switch (command) {
   case "run": {
     if (!args[0]) throw new Error("usage: antibody run <stage> [<bill>]");
     const stages = values.only ? [all.get(args[0])!].filter(Boolean) : order(all, [args[0]]);
-    await run(stages, args[1] ? parseBillId(args[1]) : null);
+    await run(stages, args[1] ? parseBillId(args[1]) : null, [args[0]]);
     break;
   }
   case "watch":
-    await run(order(all, ["watch"]), null);
+    await run(order(all, ["watch"]), null, ["watch"]);
     break;
   case "stages":
     for (const [pkg, stages] of Object.entries(PACKAGES))
