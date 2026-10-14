@@ -251,7 +251,10 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
     log(`x-ray ${billDisplay(id)} (score ${c.score})`);
     c.xray = await runXray(id, logs, signal);
     if (!c.xray.ok) problems.push(`x-ray ${billDisplay(id)} failed: ${c.xray.error} (log ${c.xray.log})`);
-    applyXray(c, await xrayFacts(id));
+    const facts = await xrayFacts(id);
+    if (c.xray.ok && !facts.bundle)
+      problems.push(`x-ray ${billDisplay(id)} finished but wrote no bundle (log ${c.xray.log})`);
+    applyXray(c, facts);
     xrayed.push(id);
   }
   rank(candidates);

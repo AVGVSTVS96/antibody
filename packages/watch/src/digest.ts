@@ -55,7 +55,7 @@ export function reasons(c: Candidate): Reason[] {
       ev.lateFrom === "x-ray" && x
         ? {
             signal: "late",
-            text: `${f.lateSections} section${f.lateSections > 1 ? "s" : ""} first appear after the first chamber passed it${x[0] ? `, e.g. Sec. ${x[0].num} "${x[0].heading}"` : ""}`,
+            text: `${f.lateSections} section${f.lateSections > 1 ? "s first appear" : " first appears"} after the first chamber passed it${x[0] ? `, e.g. Sec. ${x[0].num} "${x[0].heading}"` : ""}`,
             url: x[0]?.url || ev.newest?.xmlUrl || congressGovUrl(s.id),
           }
         : {
@@ -70,8 +70,8 @@ export function reasons(c: Candidate): Reason[] {
       signal: "lobbying",
       text:
         ev.lobbyingFrom === "x-ray"
-          ? `${num(f.lobbyingFilings)} lobbying filings name it${ev.lobbyingClients !== null ? ` (${num(ev.lobbyingClients)} clients)` : ""}`
-          : `${num(f.lobbyingFilings)} lobbying filings mention its number or short title (search count, before the x-ray checks each one)`,
+          ? `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} name${f.lobbyingFilings === 1 ? "s" : ""} it${ev.lobbyingClients !== null ? ` (${num(ev.lobbyingClients)} clients)` : ""}`
+          : `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} mention${f.lobbyingFilings === 1 ? "s" : ""} its number or short title (search count, before the x-ray checks each one)`,
       url: ev.lobbyingUrls.at(-1) ?? congressGovUrl(s.id),
     });
   const clock = ev.clock;
