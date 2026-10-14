@@ -441,7 +441,7 @@ export const TABLES = {
   outlets: table("@antibody/ingest-news", {
     name: z.string(),
     domain: z.string(),
-    group: z.enum(["left", "center-left", "center", "center-right", "right", "wire", "tv", "trade-legal"]),
+    group: z.enum(["left", "center-left", "center", "center-right", "right", "trade-legal"]),
     list_version: z.string(),
     mediacloud_id: z.number().int().nullable(),
   }),

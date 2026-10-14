@@ -787,6 +787,28 @@ details[open]::details-content {
 }
 
 /* bill page */
+.verdict {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  padding: 12px 16px 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.verdict i {
+  font: 600 10.5px var(--mono);
+  font-style: normal;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+.verdict b {
+  color: var(--text);
+  font-weight: 600;
+}
+.seemap {
+  display: none;
+}
 .app {
   display: grid;
   grid-template-columns: minmax(380px, 460px) 1fr;
@@ -1223,12 +1245,6 @@ table.secs tr.detail td {
   font: 500 12px var(--mono);
   white-space: nowrap;
 }
-.money.cut {
-  color: var(--violet);
-}
-.money.cost {
-  color: var(--red);
-}
 .hist {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -1316,6 +1332,21 @@ table.secs tr.detail td {
   }
 }
 @media (max-width: 560px) {
+  .verdict {
+    padding: 10px 12px 0;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .seemap {
+    display: block;
+    margin: 10px 12px 0;
+    padding: 10px 14px;
+    border: 1px solid var(--line-2);
+    border-radius: 10px;
+    background: var(--panel);
+    color: var(--text);
+    font: 600 14px var(--sans, inherit);
+  }
   .top {
     padding: 10px 12px 0;
   }

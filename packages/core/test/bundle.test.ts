@@ -44,6 +44,7 @@ test("billStats counts the index card numbers", () => {
     headline: 0,
     buried: 0,
     late: 1,
+    tally: null,
     lobbyingReports: 757,
     companies: 1,
     membersTraded: 2,

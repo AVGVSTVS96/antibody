@@ -34,6 +34,9 @@ export interface BuildResult {
   warnings: string[];
 }
 
+/** What filers type in the covered-position box when they have none. */
+const NO_POSITION = /^(?:n\/?a|none|no|yes|nil|see form ld-?1.*|[-.\s]*)\.?$/i;
+
 export class BuildError extends Error {}
 
 const YEAR = 365 * 24 * 3600 * 1000;
@@ -749,7 +752,10 @@ class Builder {
       ids: namedFilings.map((f) => f.id),
     });
     const covered = lobbyists.filter(
-      (l) => l.covered_position && (!l.bill_ids?.length || l.bill_ids.includes(this.bill)),
+      (l) =>
+        l.covered_position &&
+        !NO_POSITION.test(l.covered_position.trim()) &&
+        (!l.bill_ids?.length || l.bill_ids.includes(this.bill)),
     );
     if (covered.length) this.rulesUsed.add("lobbyist-nodes");
     for (const [lid, ls] of groupBy(covered, (l) => l.lobbyist_id)) {

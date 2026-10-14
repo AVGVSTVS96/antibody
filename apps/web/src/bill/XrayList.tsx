@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
-import { count, day, musd, pct } from "../lib/format.ts";
+import { count, day, musd, rank } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
 import { useFocus } from "./focus.ts";
@@ -13,7 +13,7 @@ const FILTERS: [Filter, string][] = [
   ["buried", "Buried"],
   ["late", "Added late"],
   ["money", "Has CBO $"],
-  ["removed", "Cut"],
+  ["removed", "Dropped"],
 ];
 
 const keep: Record<Filter, (v: SectionView) => boolean> = {
@@ -31,6 +31,9 @@ const sorter: Record<Sort, (a: SectionView, b: SectionView) => number> = {
   dollars: (a, b) => Math.abs(b.dollarsMusd ?? 0) - Math.abs(a.dollarsMusd ?? 0),
   buried: (a, b) => (b.s.score?.buried ?? -1) - (a.s.score?.buried ?? -1),
 };
+
+const figureNote = (v: SectionView) =>
+  v.figure ? `${v.figure.estimate.versionScored}; ${v.figure.estimate.baselineLabel}` : "";
 
 export function XrayList({ m }: { m: BillModel }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -78,7 +81,7 @@ export function XrayList({ m }: { m: BillModel }) {
       <fieldset className="filters" aria-label="Filter sections">
         {FILTERS.map(([f, label]) => {
           const n = m.sections.filter(keep[f]).length;
-          if (f !== "all" && !n) return null;
+          if ((f !== "all" && !n) || (f === "late" && m.b.bill.lateUnavailable)) return null;
           return (
             <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>
               {label} {n}
@@ -86,6 +89,10 @@ export function XrayList({ m }: { m: BillModel }) {
           );
         })}
       </fieldset>
+      <p className="row-meta">
+        News rank: 100 is the most-covered section of the bill; the number after the dot is how many articles matched.
+        CBO $: ten-year effect on the deficit, + adds to it and − reduces it; hover for the estimate and baseline.
+      </p>
       <table className="secs">
         <thead>
           <tr>
@@ -98,12 +105,12 @@ export function XrayList({ m }: { m: BillModel }) {
             <th>Added</th>
             <th>
               <SortBtn s="attention" cur={sort} set={setSort}>
-                Attn
+                News rank
               </SortBtn>
             </th>
             <th className="hide-s">
               <SortBtn s="dollars" cur={sort} set={setSort}>
-                CBO $
+                CBO 10-yr $
               </SortBtn>
             </th>
             <th className="hide-s">
@@ -133,7 +140,7 @@ export function XrayList({ m }: { m: BillModel }) {
                     {v.kind === "buried" && <span className="pill buried">buried?</span>}
                     {!s.inFinal && (
                       <span className="pill removed">
-                        {s.mergedInto ? "merged" : s.splitInto.length ? "split" : "cut"}
+                        {s.mergedInto ? "merged" : s.splitInto.length ? "split" : "dropped"}
                       </span>
                     )}
                   </td>
@@ -142,13 +149,17 @@ export function XrayList({ m }: { m: BillModel }) {
                   </td>
                   <td>
                     {s.attention?.pct == null ? (
-                      <span className="miss">—</span>
+                      <span className="miss" title="Too little news coverage on this bill to rank sections">
+                        {s.attention ? count(s.attention.hits, "article") : "—"}
+                      </span>
                     ) : (
-                      <div className="att">
+                      <div className="att" title={`${count(s.attention.hits, "article")} matched this section`}>
                         <div className="bar">
                           <i style={{ width: `${s.attention.pct * 100}%` }} />
                         </div>
-                        <span>{pct(s.attention.pct)}</span>
+                        <span>
+                          {rank(s.attention.pct)} <span className="dim">· {s.attention.hits}</span>
+                        </span>
                       </div>
                     )}
                   </td>
@@ -156,8 +167,9 @@ export function XrayList({ m }: { m: BillModel }) {
                     {v.dollarsMusd == null ? (
                       <span className="miss">{m.perSectionDollars ? "—" : "whole bill"}</span>
                     ) : (
-                      <span className={`money ${v.dollarsMusd > 0 ? "cost" : v.dollarsMusd < 0 ? "cut" : ""}`}>
+                      <span className="money" title={figureNote(v)}>
                         {musd(v.dollarsMusd)}
+                        {!s.inFinal && <span className="dim"> est. for an earlier version</span>}
                       </span>
                     )}
                   </td>

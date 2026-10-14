@@ -1,5 +1,5 @@
 import { type Dollar, headlineDeficit } from "@antibody/core";
-import { count, day, musd, nice, pct, usd } from "../lib/format.ts";
+import { count, day, musd, nice, rank, usd } from "../lib/format.ts";
 import type { Actor, BillModel, MemberView, SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
 import { useRowFocus } from "./focus.ts";
@@ -7,6 +7,32 @@ import { useRowFocus } from "./focus.ts";
 const MEASURE = { deficit: "Deficit", outlays: "Outlays", revenues: "Revenues", budget_authority: "Budget authority" };
 
 export const secId = (v: SectionView) => `section:${v.s.id}`;
+
+/** The ten-second read: what is loudest, what is quiet with big stakes, and how much money touches the bill. */
+export function Verdict({ m }: { m: BillModel }) {
+  const loud = m.headline[0];
+  const quiet = m.buried[0];
+  const companies = m.actors.filter((a) => a.lobbied.length).length;
+  const traders = m.members.filter((v) => v.tradeCount).length;
+  const sec = (v: SectionView) => (
+    <b>
+      §{v.s.num} {v.s.heading}
+    </b>
+  );
+  return (
+    <div className="verdict">
+      <span>
+        <i>Loudest</i> {loud ? sec(loud) : "no section stands out"}
+      </span>
+      <span>
+        <i>Quiet, big stakes</i> {quiet ? sec(quiet) : "none meets the rule"}
+      </span>
+      <span>
+        <i>Money</i> {count(companies, "company", "companies")} lobbied · {count(traders, "member")} traded tied stock
+      </span>
+    </div>
+  );
+}
 
 export function BillCard({ m }: { m: BillModel }) {
   const { b } = m;
@@ -106,10 +132,8 @@ export function BillCard({ m }: { m: BillModel }) {
         </div>
       )}
       {b.votes.length > 0 && (
-        <>
-          <div className="cap" style={{ marginTop: 14 }}>
-            Roll call votes
-          </div>
+        <details>
+          <summary>Roll call votes ({b.votes.length})</summary>
           <ul className="rows">
             {[...b.votes]
               .sort((x, y) => x.date.localeCompare(y.date))
@@ -129,7 +153,7 @@ export function BillCard({ m }: { m: BillModel }) {
                 </li>
               ))}
           </ul>
-        </>
+        </details>
       )}
       <details>
         <summary>Version timeline ({m.versions.length})</summary>
@@ -195,7 +219,8 @@ function Gap({ m, kind }: { m: BillModel; kind: BillModel["b"]["gaps"][number]["
   ));
 }
 
-const groups = ["left", "center-left", "center", "center-right", "right", "wire", "tv"] as const;
+const groups = ["left", "center-left", "center", "center-right", "right"] as const;
+const OUTLETS_URL = "https://github.com/AVGVSTVS96/antibody/blob/main/packages/ingest-news/data/outlets.json";
 
 function AttentionSplit({ a }: { a: NonNullable<SectionView["s"]["attention"]> }) {
   const parts = groups.filter((g) => a.hitsByGroup[g]);
@@ -226,9 +251,20 @@ export function HeadlineCard({ m }: { m: BillModel }) {
     <div className="card">
       <h2>Headline</h2>
       <p className="sub">
-        Sections with the most news attention among {scored} scored, from {count(A.articles, "article")} via {via}
-        {A.outletListVersion ? `, outlet list ${A.outletListVersion}` : ""}
-        {A.window ? ` (${day(A.window[0])} to ${day(A.window[1])})` : ""}.
+        {scored
+          ? `Sections with the most news attention among ${scored} ranked`
+          : "Too few articles to rank sections; only raw counts are shown"}
+        , from {count(A.articles, "article")} via {via}
+        {A.outletListVersion ? (
+          <>
+            ,{" "}
+            <a href={OUTLETS_URL} target="_blank" rel="noopener">
+              outlet list {A.outletListVersion}
+            </a>
+          </>
+        ) : null}
+        {A.window ? ` (${day(A.window[0])} to ${day(A.window[1])})` : ""}. News rank runs 0 to 100; 100 is the most
+        covered section of the bill.
       </p>
       <Gap m={m} kind="attention_partial" />
       <ul className="rows">
@@ -238,12 +274,12 @@ export function HeadlineCard({ m }: { m: BillModel }) {
               <span className="t">
                 §{v.s.num} {v.s.heading}
               </span>
-              <span className="num">pct {pct(v.s.attention?.pct)}</span>
+              <span className="num">rank {rank(v.s.attention?.pct)}</span>
             </div>
             <div className="bar">
               <i style={{ width: `${(v.s.attention?.pct ?? 0) * 100}%` }} />
             </div>
-            <div className="row-meta">{count(v.s.attention?.hits ?? 0, "matched news unit")}</div>
+            <div className="row-meta">{count(v.s.attention?.hits ?? 0, "article")} matched this section</div>
             {v.s.attention && <AttentionSplit a={v.s.attention} />}
             <Sources
               ids={[v.s.attention?.claim, ...(v.s.attention?.examples.map((e) => e.claim) ?? []), v.s.claims[0]]}
@@ -259,7 +295,7 @@ export function HeadlineCard({ m }: { m: BillModel }) {
           <li {...row(m.billNode)}>
             <div className="row-top">
               <span className="t">The bill as a whole</span>
-              <span className="num">{A.general.hits} units</span>
+              <span className="num">{count(A.general.hits, "article")}</span>
             </div>
             <div className="row-meta">
               News that matched no single section better than the bill in general: often the loudest fight is about
@@ -295,10 +331,10 @@ function SectionFacts({ m, v }: { m: BillModel; v: SectionView }) {
       {sc && (
         <div className="subs">
           <span>
-            attention pct <b>{pct(sc.components.attentionPct)}</b>
+            news rank <b>{rank(sc.components.attentionPct)}</b>
           </span>
           <span>
-            late <b>{sc.components.late ? "yes" : "no"}</b>
+            late <b>{m.b.bill.lateUnavailable ? "unknown" : sc.components.late ? "yes" : "no"}</b>
           </span>
           <span>
             CBO $ <b>{sc.components.dollarsMusd == null ? "—" : musd(sc.components.dollarsMusd)}</b>
@@ -309,7 +345,7 @@ function SectionFacts({ m, v }: { m: BillModel; v: SectionView }) {
           </span>
           {sc.components.offTopic != null && (
             <span>
-              off-topic <b>{pct(sc.components.offTopic)}</b>
+              off-topic <b>{rank(sc.components.offTopic)}</b>
             </span>
           )}
         </div>
@@ -320,8 +356,9 @@ function SectionFacts({ m, v }: { m: BillModel; v: SectionView }) {
 
 export function BuriedCard({ m }: { m: BillModel }) {
   const row = useRowFocus();
-  const rule = m.b.rules.find((r) => r.id === "buried");
-  const late = m.sections.filter((v) => v.s.inFinal && v.s.late && v.kind !== "buried");
+  const rule = m.b.rules.find((r) => r.id === "buried-v1");
+  const lateUnknown = m.b.bill.lateUnavailable;
+  const late = lateUnknown ? [] : m.sections.filter((v) => v.s.inFinal && v.s.late && v.kind !== "buried");
   const removed = m.sections.filter((v) => !v.s.inFinal);
   return (
     <div className="card">
@@ -329,9 +366,20 @@ export function BuriedCard({ m }: { m: BillModel }) {
         Buried candidates <Inf />
       </h2>
       <p className="sub">
-        {rule ? `Rule: ${rule.text}` : "Rule: added late and quiet."} Lateness comes from the text versions (fact);
-        quietness from news attention.
+        Sections with big stakes (dollars or lobbying) and little news, that came in late or have little to do with the
+        rest of the bill. A place to look, not a verdict.{" "}
+        {rule?.url && (
+          <a className="src" href={rule.url} target="_blank" rel="noopener">
+            full rule
+          </a>
+        )}{" "}
+        Lateness comes from the text versions (fact); quietness from news attention.
       </p>
+      {lateUnknown && (
+        <div className="warn">
+          <span>Late flag unavailable: {lateUnknown}</span>
+        </div>
+      )}
       <ul className="rows">
         {m.buried.map((v) => (
           <li key={v.s.id} {...row(secId(v))}>
@@ -362,7 +410,7 @@ export function BuriedCard({ m }: { m: BillModel }) {
                   <span className="t" style={{ fontWeight: 500 }}>
                     §{v.s.num} {v.s.heading}
                   </span>
-                  <span className="num">pct {pct(v.s.attention?.pct)}</span>
+                  <span className="num">rank {rank(v.s.attention?.pct)}</span>
                 </div>
                 <div className="row-meta">
                   first in {v.stageName} <Src id={v.s.claims[0]!} />
@@ -374,7 +422,9 @@ export function BuriedCard({ m }: { m: BillModel }) {
       )}
       {m.quiet.length > 0 && (
         <details>
-          <summary>Quiet but not late ({m.quiet.length})</summary>
+          <summary>
+            Quiet {lateUnknown ? "" : "but not late "}({m.quiet.length})
+          </summary>
           <ul className="rows">
             {m.quiet.map((v) => (
               <li key={v.s.id} {...row(secId(v))}>
@@ -382,7 +432,7 @@ export function BuriedCard({ m }: { m: BillModel }) {
                   <span className="t" style={{ fontWeight: 500 }}>
                     §{v.s.num} {v.s.heading}
                   </span>
-                  <span className="num">pct {pct(v.s.attention?.pct)}</span>
+                  <span className="num">rank {rank(v.s.attention?.pct)}</span>
                 </div>
                 <Sources ids={[v.s.attention?.claim, v.s.claims[0]]} />
               </li>
@@ -392,7 +442,7 @@ export function BuriedCard({ m }: { m: BillModel }) {
       )}
       {removed.length > 0 && (
         <details>
-          <summary>Cut along the way ({removed.length})</summary>
+          <summary>Dropped before the final text ({removed.length})</summary>
           <ul className="rows">
             {removed.map((v) => (
               <li key={v.s.id} {...row(secId(v))}>
@@ -401,7 +451,7 @@ export function BuriedCard({ m }: { m: BillModel }) {
                     §{v.s.num} {v.s.heading}
                   </span>
                   <span className="pill removed">
-                    {v.s.mergedInto ? "merged" : v.s.splitInto.length ? "split" : "removed"}
+                    {v.s.mergedInto ? "merged" : v.s.splitInto.length ? "split" : "dropped"}
                   </span>
                 </div>
                 <div className="row-meta">
@@ -504,7 +554,10 @@ export function LobbyCard({ m }: { m: BillModel }) {
       )}
       {withPositions.length > 0 && (
         <details>
-          <summary>Former government staff lobbying on it ({withPositions.length})</summary>
+          <summary>Lobbyists who list a covered position ({withPositions.length})</summary>
+          <p className="row-meta">
+            Quoted as each filing wrote it; the position is the filer’s claim and is not checked.
+          </p>
           <ul className="rows">
             {withPositions.map((l) => (
               <li key={l.id}>
@@ -530,16 +583,15 @@ export function LobbyCard({ m }: { m: BillModel }) {
 export function BenefitsCard({ m }: { m: BillModel }) {
   const row = useRowFocus();
   const rule = m.b.rules.find((r) => r.id === "tied-stock");
-  const tied = m.actors
-    .filter((a) => a.benefits)
-    .sort((x, y) => y.traders.size - x.traders.size || y.reports - x.reports);
+  const tied = m.actors.filter((a) => a.benefits).sort((x, y) => nice(x.label).localeCompare(nice(y.label)));
   return (
     <div className="card">
       <h2>
-        Who benefits <Inf />
+        Companies tied to the bill <Inf />
       </h2>
       <p className="sub">
-        {rule ? `Rule: ${rule.text}` : "Companies tied to the bill."} A tie is not proof of gain; it is where to look.
+        {rule ? rule.text : "Companies that lobbied on the bill or are named in its text."} A tie is not proof of gain;
+        it is where to look. Listed alphabetically.
       </p>
       <Gap m={m} kind="entity_recall" />
       <ul className="rows">
@@ -555,7 +607,7 @@ export function BenefitsCard({ m }: { m: BillModel }) {
               {a.benefits?.props.rule === "named-in-text"
                 ? "named in the text"
                 : `lobbied: ${count(a.reports, "report")}`}
-              {a.traders.size > 0 && <> · {a.traders.size} members traded its stock</>}
+              {a.traders.size > 0 && <> · {count(a.traders.size, "member")} traded its stock</>}
               {a.pacUsd > 0 && <> · its PAC gave {usd(a.pacUsd)}</>}
             </div>
             <Sources ids={[...(a.benefits?.claims ?? []), ...a.node.claims]} />
@@ -586,6 +638,13 @@ export function BenefitsCard({ m }: { m: BillModel }) {
 
 const OWNER_WORD = { self: "own", spouse: "spouse", joint: "joint", dependent: "child" } as const;
 
+function tradeTiming(v: MemberView, voteOn: string | undefined) {
+  if (!voteOn) return null;
+  const dates = v.trades.flatMap((t) => t.props.events.map((e) => e.date));
+  const before = dates.filter((d) => d <= voteOn).length;
+  return `${count(before, "trade")} on or before the vote, ${dates.length - before} after`;
+}
+
 function MemberRow({ v, m }: { v: MemberView; m: BillModel }) {
   const row = useRowFocus();
   const p = v.node.props;
@@ -598,6 +657,8 @@ function MemberRow({ v, m }: { v: MemberView; m: BillModel }) {
     }
   const tk = [...tickers].sort((a, b) => b[1] - a[1]).slice(0, 6);
   const roll = v.vote ? m.b.votes.find((r) => r.id === v.vote!.props.rollId) : null;
+  const differs = v.trades.flatMap((t) => t.props.events).filter((e) => e.nameMatch === false).length;
+  const timing = tradeTiming(v, roll?.date);
   return (
     <li {...row(v.node.id)}>
       <div className="row-top">
@@ -623,6 +684,14 @@ function MemberRow({ v, m }: { v: MemberView; m: BillModel }) {
         {v.sponsor && " · sponsor"}
         {p.paperFilingsUnread && " · has unread paper filings"}
       </div>
+      {(timing || differs > 0) && (
+        <div className="row-meta">
+          {timing}
+          {timing && differs > 0 && " · "}
+          {differs > 0 &&
+            `${count(differs, "report")} name${differs === 1 ? "s" : ""} the company differently than the SEC does`}
+        </div>
+      )}
       <Sources ids={[...v.trades.flatMap((t) => t.claims), ...(v.vote?.claims ?? [])]} max={4} />
     </li>
   );
@@ -630,26 +699,33 @@ function MemberRow({ v, m }: { v: MemberView; m: BillModel }) {
 
 export function MembersCard({ m }: { m: BillModel }) {
   const row = useRowFocus();
-  const traders = m.members.filter((v) => v.tradeCount).sort((a, b) => b.tradeCount - a.tradeCount);
+  const byName = (a: MemberView, b: MemberView) => a.node.label.localeCompare(b.node.label);
+  const traders = m.members.filter((v) => v.tradeCount).sort(byName);
   const funded = m.members.filter((v) => v.fundedUsd > 0).sort((a, b) => b.fundedUsd - a.fundedUsd);
   const byParty = (list: MemberView[], party: "R" | "D" | "I") => list.filter((v) => v.node.props.party === party);
-  const sum = (list: MemberView[]) => list.reduce((a, v) => a + v.fundedUsd, 0);
+  const before = (v: MemberView) => v.funded.reduce((a, f) => a + f.edge.props.beforeUsd, 0);
+  const after = (v: MemberView) => v.funded.reduce((a, f) => a + f.edge.props.afterUsd, 0);
+  const sum = (list: MemberView[]) => list.reduce((a, v) => a + before(v), 0);
   const spouse = traders.filter((v) => [...v.owners].some((o) => o !== "self")).length;
   return (
     <div className="card">
-      <h2>Members with stakes</h2>
+      <h2>Members who traded those companies’ stock</h2>
       <p className="sub">
-        Members who traded stock in a company tied to the bill, or took PAC money from one. Spouse, joint and child
-        trades are listed under the member with the owner shown{spouse ? ` (${spouse} members have some)` : ""}.
+        Routine disclosures; no link to any vote is claimed. Members who traded stock in a company tied to the bill, or
+        took PAC money from one, listed alphabetically. Spouse, joint and child trades are listed under the member with
+        the owner shown{spouse ? ` (${spouse} members have some)` : ""}.
       </p>
       <Gap m={m} kind="paper_filings_unread" />
       <div className="cap" style={{ marginTop: 4 }}>
-        Traded stock of a tied company
+        Traded stock of a tied company, of those {m.members.some((v) => v.vote) ? "who voted" : "on the map"}
       </div>
       <div className="split">
-        <span>R {byParty(traders, "R").length}</span>
-        <span>D {byParty(traders, "D").length}</span>
-        <span>I {byParty(traders, "I").length}</span>
+        {(["R", "D", "I"] as const).map((p) => (
+          <span key={p}>
+            {p} {byParty(traders, p).length} of {m.voters[p]}
+            {m.unread[p] > 0 && <span className="dim"> (+{m.unread[p]} unread)</span>}
+          </span>
+        ))}
       </div>
       <ul className="rows">
         {traders.slice(0, 7).map((v) => (
@@ -674,12 +750,12 @@ export function MembersCard({ m }: { m: BillModel }) {
       {funded.length > 0 && (
         <>
           <div className="cap" style={{ marginTop: 16 }}>
-            PAC money from tied organizations <Inf />
+            PAC money from tied organizations, given before the member’s vote <Inf />
           </div>
           <div className="split">
             {(["R", "D", "I"] as const).map((p) => (
               <span key={p}>
-                {p} {usd(sum(byParty(funded, p)))} → {byParty(funded, p).length}
+                {p} {usd(sum(byParty(funded, p)))} → {byParty(funded, p).length} of {m.voters[p]}
               </span>
             ))}
           </div>
@@ -698,7 +774,8 @@ export function MembersCard({ m }: { m: BillModel }) {
                     <span className="num">{usd(v.fundedUsd)}</span>
                   </div>
                   <div className="row-meta">
-                    top: {top.map((f) => nice(m.actorById.get(f.actor)?.label ?? f.actor)).join(", ")}
+                    {usd(before(v))} before {v.vote ? "the vote" : "enactment"}, {usd(after(v))} after · top:{" "}
+                    {top.map((f) => nice(m.actorById.get(f.actor)?.label ?? f.actor)).join(", ")}
                     {v.committees.length > 0 && <> · {v.committees.map((c) => c.committee.label).join(", ")}</>}
                   </div>
                   <Sources ids={top.flatMap((f) => f.edge.claims)} />

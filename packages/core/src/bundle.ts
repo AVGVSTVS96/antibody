@@ -14,7 +14,7 @@ const Party = z.enum(["R", "D", "I"]);
 const Chamber = z.enum(["House", "Senate"]);
 export const Baseline = z.enum(["current-law", "current-policy"]);
 export const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit"]);
-export const OutletGroup = z.enum(["left", "center-left", "center", "center-right", "right", "wire", "tv"]);
+export const OutletGroup = z.enum(["left", "center-left", "center", "center-right", "right"]);
 
 export const BillCard = z.object({
   id: z.string(),
@@ -289,7 +289,13 @@ export const BillStats = z.object({
   sections: z.number().int(),
   headline: z.number().int(),
   buried: z.number().int(),
-  late: z.number().int(),
+  /** Null when the bill began as a shell, so "added late" cannot be told. */
+  late: z.number().int().nullable(),
+  /** The last roll call members' votes are drawn for, so the card can say how it ended. */
+  tally: z
+    .object({ chamber: z.string(), date, yeas: z.number().int(), nays: z.number().int(), result: z.string() })
+    .nullable()
+    .default(null),
   lobbyingReports: z.number().int(),
   companies: z.number().int(),
   membersTraded: z.number().int(),
@@ -388,6 +394,19 @@ export function headlineDeficit(b: Bundle, baseline: Dollar["baseline"]): Dollar
 }
 
 /** The index card counts for one bundle; store calls this when it writes index.json. */
+function finalVote(b: Bundle) {
+  const voted = new Set(
+    b.edges.filter((e) => e.kind === "voted").map((e) => (e.kind === "voted" ? e.props.rollId : "")),
+  );
+  const roll = b.votes
+    .filter((v) => voted.has(v.id))
+    .sort((x, y) => x.date.localeCompare(y.date) || x.number - y.number)
+    .at(-1);
+  return roll
+    ? { chamber: roll.chamber, date: roll.date, yeas: roll.yeas, nays: roll.nays, result: roll.result }
+    : null;
+}
+
 export function billStats(b: Bundle): z.infer<typeof BillStats> {
   const final = b.sections.filter((s) => s.inFinal);
   const deficit = headlineDeficit(b, "current-law");
@@ -395,7 +414,8 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     sections: final.length,
     headline: final.filter((s) => s.score?.label === "headline").length,
     buried: final.filter((s) => s.score?.label === "buried").length,
-    late: final.filter((s) => s.late).length,
+    late: b.bill.lateUnavailable ? null : final.filter((s) => s.late).length,
+    tally: finalVote(b),
     lobbyingReports: b.lobbying.reports,
     companies: b.nodes.filter((n) => n.kind === "company").length,
     membersTraded: new Set(b.edges.filter((e) => e.kind === "traded").map((e) => e.src)).size,

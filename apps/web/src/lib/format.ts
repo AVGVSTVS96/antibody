@@ -43,7 +43,8 @@ export function musd(m: number): string {
   return m > 0 ? `+${s}` : m < 0 ? `−${s}` : s;
 }
 
-export const pct = (p: number | null | undefined) => (p == null ? "—" : `${Math.round(p * 100)}`);
+/** A 0-1 rank as 0-100: where the section stands among the bill's sections (100 = most covered). */
+export const rank = (p: number | null | undefined) => (p == null ? "—" : `${Math.round(p * 100)}`);
 
 export const count = (n: number, one: string, many = `${one}s`) =>
   `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
@@ -55,12 +56,9 @@ export function day(iso: string | null | undefined): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
-export function ago(iso: string, now = Date.now()): string {
-  const h = (now - Date.parse(iso)) / 36e5;
-  if (h < 1) return "just now";
-  if (h < 24) return `${Math.floor(h)}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
+/** The moment something was recorded, in the reader's time zone. */
+export const stamp = (iso: string) =>
+  new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 /** Short name for a source chip, from the record's host. */
 export function sourceName(url: string): string {

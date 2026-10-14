@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { useMedia } from "../lib/media.ts";
 import type { BillModel, DisplayKind } from "../lib/model.ts";
 import type { View } from "../lib/router.ts";
 import { ThemeButton } from "../ui/ThemeButton.tsx";
@@ -45,6 +46,9 @@ export function Stage({ m, built, view, setView }: Props) {
     map: new Set(["funded", "voted"]),
     money: new Set(),
   });
+  const phone = useMedia("(max-width: 560px)");
+  const [folded, setFolded] = useState(true);
+  const hideMap = view === "list" || (phone && folded);
   const mapView = view === "money" ? "money" : "map";
   const toggle = (k: DisplayKind) =>
     setHidden((h) => {
@@ -72,11 +76,16 @@ export function Stage({ m, built, view, setView }: Props) {
         <div className="s">{sub}</div>
       </div>
       <ThemeButton className="iconbtn theme" />
-      <div className={`mapwrap${view === "list" ? " off" : ""}`}>
-        <MapCanvas m={m} built={built} view={mapView} hidden={hidden[mapView]} active={view !== "list"} />
+      {phone && view !== "list" && (
+        <button type="button" className="seemap" aria-expanded={!folded} onClick={() => setFolded(!folded)}>
+          {folded ? "See the map" : "Hide the map"}
+        </button>
+      )}
+      <div className={`mapwrap${hideMap ? " off" : ""}`}>
+        <MapCanvas m={m} built={built} view={mapView} hidden={hidden[mapView]} active={!hideMap} />
       </div>
       {view === "list" && <XrayList m={m} />}
-      <div className={`legend${view === "list" ? " off" : ""}`}>
+      <div className={`legend${hideMap ? " off" : ""}`}>
         <div className="cap">Edges · click to toggle</div>
         <div className="items">
           {LEGEND[mapView]

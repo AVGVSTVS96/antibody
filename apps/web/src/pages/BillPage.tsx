@@ -9,6 +9,7 @@ import {
   LobbyCard,
   MembersCard,
   MissingCard,
+  Verdict,
 } from "../bill/cards.tsx";
 import { type Focus, FocusCtx } from "../bill/focus.ts";
 import { buildGraph } from "../bill/graph.ts";
@@ -53,6 +54,7 @@ function BillView({ b, route }: { b: Bundle; route: BillRoute }) {
     <ClaimProvider claims={b.claims}>
       <FocusCtx.Provider value={focus}>
         <Top crumb={b.bill.shortTitle ?? b.bill.display} right={b.bill.law ?? b.bill.display} theme={false} />
+        <Verdict m={m} />
         <div className="app">
           <aside className="side" aria-label="Findings">
             <BillCard m={m} />

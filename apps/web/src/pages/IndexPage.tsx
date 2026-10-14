@@ -2,7 +2,7 @@ import type { BundleIndex } from "@antibody/core";
 import { type BillId, billDisplay, congressGovUrl, parseBillId } from "@antibody/core/ids";
 import { type FormEvent, use, useEffect, useState } from "react";
 import { loadIndex, prefetchBundle } from "../lib/data.ts";
-import { ago, count, day, musd } from "../lib/format.ts";
+import { count, day, musd, stamp } from "../lib/format.ts";
 import { billHref, navigate, onLink } from "../lib/router.ts";
 import { Search } from "../ui/icons.tsx";
 import { Top } from "../ui/Top.tsx";
@@ -126,10 +126,11 @@ export function IndexPage() {
                     <span className={`kind${w.kind === "hot" ? " hot" : ""}`}>{w.kind.replace("_", " ")}</span>
                     <span>
                       <b className="mono">{w.display}</b> {w.title}
+                      {w.sponsorParty && <span className="row-meta"> · {PARTY[w.sponsorParty]} sponsor</span>}
                       {w.reason && <div className="row-meta">{w.reason}</div>}
                     </span>
                     <span className="row-top">
-                      <span className="num">{ago(w.seenAt)}</span>
+                      <span className="num">{stamp(w.seenAt)}</span>
                       {w.file ? (
                         <a className="src" href={billHref(w.billId)} onClick={onLink}>
                           x-ray
@@ -209,6 +210,7 @@ function BillCard({ b }: { b: Entry }) {
       <div>
         <div className="cap">
           {b.display}
+          {b.sponsorParty ? ` · ${b.sponsorParty} sponsor` : ""}
           {b.law ? ` · ${b.law}` : ""}
           {b.latestActionOn ? ` · ${day(b.latestActionOn)}` : ""}
         </div>
@@ -228,8 +230,16 @@ function BillCard({ b }: { b: Entry }) {
               <b>{s.lobbyingReports.toLocaleString("en-US")}</b> lobbying reports
             </span>
             {s.membersTraded > 0 && (
+              <span title="Members of Congress with a filed stock trade in a company tied to the bill, inside its trade window. Routine disclosures; no link to any vote is claimed.">
+                <b>{s.membersTraded}</b> members traded tied stock
+              </span>
+            )}
+            {s.tally && (
               <span>
-                <b>{s.membersTraded}</b> members traded
+                {s.tally.chamber} vote{" "}
+                <b>
+                  {s.tally.yeas}-{s.tally.nays}
+                </b>
               </span>
             )}
             {s.deficitMusd != null && (

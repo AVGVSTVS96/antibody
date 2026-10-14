@@ -93,8 +93,10 @@ export interface BillModel {
   edges: DisplayEdge[];
   sponsor: NodeOf<"member"> | null;
   lobbyists: NodeOf<"lobbyist">[];
-  party: Record<"R" | "D" | "I", number>;
-  paperUnread: Bundle["gaps"];
+  /** Members by party who cast a passage vote on the bill (all drawn members when none did), the size traders are counted against. */
+  voters: Record<"R" | "D" | "I", number>;
+  /** Members by party whose paper filings we have not read, so their trades cannot be counted. */
+  unread: Record<"R" | "D" | "I", number>;
   perSectionDollars: boolean;
 }
 
@@ -350,8 +352,13 @@ export function buildModel(b: Bundle): BillModel {
     .sort((x, y) => (x.s.attention?.pct ?? 0) - (y.s.attention?.pct ?? 0));
 
   const members = [...memberById.values()];
-  const party = { R: 0, D: 0, I: 0 };
-  for (const m of members) if (m.tradeCount || m.fundedUsd) party[m.node.props.party]++;
+  const voters = { R: 0, D: 0, I: 0 };
+  const unread = { R: 0, D: 0, I: 0 };
+  const voted = members.some((m) => m.vote);
+  for (const m of members) {
+    if (!voted || m.vote) voters[m.node.props.party]++;
+    if (m.node.props.paperFilingsUnread) unread[m.node.props.party]++;
+  }
 
   const sponsorNode = b.bill.sponsor ? nodeById.get(b.bill.sponsor) : undefined;
   return {
@@ -372,8 +379,8 @@ export function buildModel(b: Bundle): BillModel {
     edges,
     sponsor: isNode(sponsorNode, "member") ? sponsorNode : null,
     lobbyists: b.nodes.filter((n): n is NodeOf<"lobbyist"> => n.kind === "lobbyist"),
-    party,
-    paperUnread: b.gaps.filter((g) => g.kind === "paper_filings_unread"),
+    voters,
+    unread,
     perSectionDollars: b.dollars.estimates.some((e) => e.perSection),
   };
 }

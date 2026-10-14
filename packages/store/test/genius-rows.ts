@@ -521,7 +521,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       filing_id: "9beeca5f-74bd-4012-8957-7053df57e67a",
       lobbyist_id: "900002",
       name: "Test Lobbyist Two",
-      covered_position: null,
+      covered_position: "N/A",
       bill_ids: [BILL],
       named_members: [],
       ...fact("https://lda.gov/filings/public/filing/9beeca5f-74bd-4012-8957-7053df57e67a/print/", "lobbyists"),

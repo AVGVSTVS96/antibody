@@ -1,5 +1,5 @@
 import { type RefObject, useLayoutEffect, useRef } from "react";
-import { count, day, musd, nice, pct, usd } from "../lib/format.ts";
+import { count, day, musd, nice, rank, usd } from "../lib/format.ts";
 import type { BillModel } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
 import { useFocus } from "./focus.ts";
@@ -119,12 +119,12 @@ function TipBody({ id, m }: { id: string; m: BillModel }) {
             : " · unchanged since"}
         </div>
         <div className="ln">
-          Attention:{" "}
+          News rank:{" "}
           {s.attention?.pct == null ? (
             <span className="miss">not scored</span>
           ) : (
             <>
-              pct {pct(s.attention.pct)} · {s.attention.hits} units
+              {rank(s.attention.pct)} of 100 · {count(s.attention.hits, "article")}
             </>
           )}
         </div>
