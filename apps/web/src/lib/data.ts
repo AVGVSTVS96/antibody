@@ -39,8 +39,10 @@ export function loadBundle(id: string): Promise<Bundle | null> {
 
 export const prefetchBundle = (id: string) => void loadBundle(id).catch(() => {});
 
-export async function loadClaims(id: string): Promise<Record<string, Claim> | null> {
+/** The claims sidecar of one bill, or the claims inside its bundle when it has no sidecar. */
+export async function loadClaims(id: string): Promise<Record<string, Claim>> {
   const index = await loadIndex();
   const entry = index.bills.find((b) => b.id === id);
-  return entry?.claimsFile ? load<Record<string, Claim>>(`/bundles/${entry.claimsFile}`) : null;
+  if (entry?.claimsFile) return load<Record<string, Claim>>(`/bundles/${entry.claimsFile}`);
+  return (await loadBundle(id))?.claims ?? {};
 }

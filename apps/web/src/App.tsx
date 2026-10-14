@@ -1,76 +1,69 @@
-import type { BundleIndex } from "@antibody/core";
-import { parseBillId } from "@antibody/core/ids";
-import { Component, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
-import { loadIndex } from "./lib/data.ts";
-import { useRoute } from "./lib/router.ts";
-import { IndexPage } from "./pages/IndexPage.tsx";
+import { Component, lazy, type ReactNode, Suspense, useEffect } from "react";
+import { type BillRoute, navigate, type Route, routeHref, useRoute } from "./lib/router.ts";
+import { BillGate } from "./ui/BillGate.tsx";
+import { NotFound } from "./ui/NotFound.tsx";
+import { PageSkeleton } from "./ui/Skeleton.tsx";
 import { Top } from "./ui/Top.tsx";
 
-const BillPage = lazy(() => import("./pages/BillPage.tsx"));
+const LandPage = lazy(() => import("./pages/LandPage.tsx"));
+const XrayPage = lazy(() => import("./pages/XrayPage.tsx"));
+const StoryPage = lazy(() => import("./pages/StoryPage.tsx"));
+const MoneyPage = lazy(() => import("./pages/MoneyPage.tsx"));
+const MemberPage = lazy(() => import("./pages/MemberPage.tsx"));
+
+const LANDING_TITLE = "antibody · X-ray any bill in Congress";
+
+function Page({ route }: { route: BillRoute }) {
+  switch (route.page) {
+    case "xray":
+      return <XrayPage />;
+    case "story":
+      return <StoryPage route={route} />;
+    case "money":
+      return <MoneyPage route={route} />;
+    case "member":
+      return <MemberPage route={route} />;
+  }
+}
+
+function Screen({ route }: { route: Route }) {
+  if (route.page === "missing") return <NotFound />;
+  if (route.page === "land") return <LandPage />;
+  return (
+    <BillGate id={route.id}>
+      <Page route={route} />
+    </BillGate>
+  );
+}
 
 export function App() {
   const route = useRoute();
-  return (
-    <Catch key={route.page === "bill" ? route.id : "index"}>
-      <Suspense fallback={route.page === "bill" ? <BillSkeleton id={route.id} /> : <Loading />}>
-        {route.page === "bill" ? <BillPage route={route} /> : <IndexPage />}
-      </Suspense>
-    </Catch>
-  );
-}
+  const canonical = routeHref(route);
+  const billId = route.page === "land" || route.page === "missing" ? undefined : route.id;
 
-function BillSkeleton({ id }: { id: string }) {
-  const [entry, setEntry] = useState<BundleIndex["bills"][number] | null>(null);
   useEffect(() => {
-    let live = true;
-    let want = id;
-    try {
-      want = parseBillId(id);
-    } catch {}
-    loadIndex()
-      .then((i) => live && setEntry(i.bills.find((b) => b.id === want) ?? null))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [id]);
+    if (route.page === "land" || route.page === "missing") document.title = LANDING_TITLE;
+  }, [route.page]);
+
+  useEffect(() => {
+    const here = location.pathname + location.search;
+    if (route.page !== "missing" && here.split("#")[0] !== canonical) navigate(canonical, { replace: true });
+  }, [route.page, canonical]);
+
   return (
     <>
-      <Top crumb={entry?.shortTitle ?? entry?.display} />
-      <div className="skel" role="status" aria-label="Loading the x-ray">
-        <div className="skelhead">
-          <h1>
-            {entry ? (entry.shortTitle ?? entry.title) : <span className="bone line" />}{" "}
-            {entry && <span className="mono">{entry.display}</span>}
-          </h1>
-        </div>
-        <div className="story">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="beat bone" />
-          ))}
-        </div>
-        <div className="app">
-          <aside className="side">
-            <div className="card bone tall" />
-          </aside>
-          <section className="stage">
-            <svg viewBox="-512 -512 1024 1024" className="ringskel" aria-hidden="true">
-              <circle r="440" />
-              <circle r="320" />
-              <circle r="180" />
-            </svg>
-          </section>
-        </div>
-      </div>
+      <a className="skip" href="#main">
+        Skip to the page
+      </a>
+      <Top />
+      <main id="main">
+        <Catch key={billId ?? route.page}>
+          <Suspense fallback={<PageSkeleton id={billId} />}>
+            <Screen route={route} />
+          </Suspense>
+        </Catch>
+      </main>
     </>
-  );
-}
-
-export function Loading({ what = "Loading" }: { what?: string }) {
-  return (
-    <div className="loading">
-      <span className="cap">{what}</span>
-    </div>
   );
 }
 
@@ -82,18 +75,16 @@ class Catch extends Component<{ children: ReactNode }, { error: Error | null }> 
   override render() {
     if (!this.state.error) return this.props.children;
     return (
-      <>
-        <Top />
-        <div className="home">
-          <div className="hero">
-            <h1>Something broke loading this page.</h1>
-            <p className="mono">{this.state.error.message}</p>
-            <p>
-              <a href="/">Back to all bills</a>
-            </p>
-          </div>
-        </div>
-      </>
+      <div className="wrap page">
+        <p className="kicker">SOMETHING BROKE</p>
+        <h1>This page did not load.</h1>
+        <p className="lead">
+          <code>{this.state.error.message}</code>
+        </p>
+        <p>
+          <a href="/">Back to all bills</a>
+        </p>
+      </div>
     );
   }
 }
