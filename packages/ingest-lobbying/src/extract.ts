@@ -205,12 +205,17 @@ export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
     const hit = text.match(n.re);
     if (!hit) continue;
     const early = n.since && p.end < n.since;
-    refs.push({
-      how: "name",
-      text: hit[0],
-      level: early ? "low" : n.level,
-      why: early ? `period ends ${p.end}, before any bill carried the name (${n.since}): it meant an agenda` : n.why,
-    });
+    const labeledBy = billNumbers(text.slice(0, hit.index!))
+      .filter((x) => !m.numbers.has(`${x.type}${x.number}`))
+      .map((x) => ({ ...x, between: text.slice(x.index + x.text.length, hit.index!) }))
+      .at(-1);
+    const other = labeledBy && labeledBy.between.length <= 50 && !/[.;]\s|\n|\band\b/i.test(labeledBy.between);
+    const [level, why] = early
+      ? ["low", `period ends ${p.end}, before any bill carried the name (${n.since}): it meant an agenda`]
+      : other
+        ? ["low", `the name is the title of another bill: "${labeledBy.text.trim()}"`]
+        : [n.level, n.why];
+    refs.push({ how: "name", text: hit[0], level: level as Level, why });
   }
 
   let lawCited = false;

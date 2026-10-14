@@ -10,6 +10,10 @@ import { upsert } from "./shards.ts";
 import { spendRows } from "./spend.ts";
 import { namedMembers } from "./staff.ts";
 
+/** A bill introduced this long after ours is a different bill, even with the same short title (companions come within weeks). */
+const COMPANION_DAYS = 45;
+const addDays = (date: string, days: number) => new Date(Date.parse(date) + days * 864e5).toISOString().slice(0, 10);
+
 /** Aliases, then a pull; numbers that filings cite next to the bill's name are confirmed and pulled too. */
 export async function resolveAliases(bill: BillId, ctx: Pick<StageContext, "refresh" | "signal" | "log">) {
   let aliases = await buildAliases(bill, [], ctx.signal);
@@ -17,7 +21,14 @@ export async function resolveAliases(bill: BillId, ctx: Pick<StageContext, "refr
   const confirmed: BillId[] = [];
   for (const id of coCited(filings, matcher(aliases))) {
     const s = await billStatus(id, ctx.signal);
-    if (s && sameTitle(aliases, s)) confirmed.push(id);
+    if (
+      s &&
+      sameTitle(aliases, s) &&
+      s.introduced &&
+      aliases.introduced &&
+      s.introduced <= addDays(aliases.introduced, COMPANION_DAYS)
+    )
+      confirmed.push(id);
   }
   if (confirmed.length) {
     ctx.log(`same short title: ${confirmed.join(", ")}`);

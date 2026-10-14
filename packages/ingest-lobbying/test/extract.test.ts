@@ -153,3 +153,16 @@ test("search terms cover number spellings, names, typos and the law", () => {
   for (const s of ['"S. 394"', '"S.1582"', '"GENIUS Act"', '"GENUIS Act"', '"119-27"']) expect(t).toContain(s);
   expect(searchTerms(obbba)).toContain('"OBBBA"');
 });
+
+test("a short title sitting next to another bill's number is held out", () => {
+  const p = period(2025, "third_quarter");
+  const level = (t: string) => best(findRefs(t, p, matcher(genius)))?.level;
+  expect(level("H.R. 3178, Save Healthcare Workers Act; GENIUS Act")).toBe("high");
+  expect(level("H.R. 2392, the GENIUS Act, regulating payment stablecoins")).toBe("low");
+  expect(level("H.R.3849/S.1803, STABLE GENIUS Act, Entirety")).toBe("low");
+  expect(level("rulemaking to implement GENIUS Act. H.R.3633 - Digital Asset Market Clarity Act of 2025.")).toBe(
+    "high",
+  );
+  expect(level("H.R. 3633, Digital Asset Market Clarity Act, and the GENIUS Act")).toBe("high");
+  expect(level("S. 394, the GENIUS Act")).toBe("high");
+});
