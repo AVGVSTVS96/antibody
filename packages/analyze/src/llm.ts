@@ -1,3 +1,10 @@
+import { mkdirSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+const emptyDir = join(homedir(), ".cache", "claude-empty");
+mkdirSync(emptyDir, { recursive: true });
+
 /**
  * One `claude -p` call with no tools and no user settings, returning the model's text. The server has no API key;
  * Claude Code's own login pays for it.
@@ -21,7 +28,7 @@ export async function claude(
       "--system-prompt",
       opts.system,
     ],
-    { stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe", cwd: "/tmp", signal: opts.signal },
+    { stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe", cwd: emptyDir, signal: opts.signal },
   );
   const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
   if ((await proc.exited) !== 0) throw new Error(`claude -p failed: ${err.slice(0, 300) || out.slice(0, 300)}`);
