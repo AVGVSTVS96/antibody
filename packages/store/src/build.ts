@@ -112,10 +112,10 @@ class Builder {
     },
     lobbyingList: (key) => {
       const node = key ? this.nodes.get(`client:${key}`) : null;
-      const id = node?.kind === "client" ? node.props.ldaClientIds[0] : null;
-      if (key && !id) return undefined;
+      const name = node?.kind === "client" ? node.props.names[0] : null;
+      if (key && !name) return undefined;
       const q = new URLSearchParams({
-        ...(id && { client_id: String(id) }),
+        ...(name && { client_name: name }),
         filing_specific_lobbying_issues: lobbyingQuery(this.bill),
       });
       return `https://lda.gov/api/v1/filings/?${q}`;

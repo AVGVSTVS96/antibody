@@ -302,3 +302,11 @@ test("a bill listed only by a description takes the name its first section gives
   const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
   expect(bundle.bill.shortTitle).toBe("One Big Beautiful Bill Act");
 });
+
+test("a lobbying total cites an lda.gov list of the client's filings that name the bill, not one filing", () => {
+  const total = b.claims["lda_spend/119-s-1582:coinbase#total"]!;
+  expect(total.sourceUrl).toStartWith("https://lda.gov/api/v1/filings/?");
+  expect(total.sourceUrl).toContain("client_name=");
+  expect(total.sourceUrl).toContain("filing_specific_lobbying_issues=");
+  expect(total.sourceLocator).toContain("filings naming the bill");
+});
