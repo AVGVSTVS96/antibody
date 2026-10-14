@@ -89,3 +89,44 @@ test("lobbying: topic-only refs are inference rows, spend rows carry both facets
   expect(Object.fromEntries(columns("lda_filings")).period_end).toBe("DATE NOT NULL");
   expect(Object.fromEntries(columns("lda_lobbyists")).named_members).toBe("VARCHAR[] NOT NULL");
 });
+
+test("members carry dated terms; FEC money splits contributions, outside spending and employer sums", () => {
+  const cols = Object.fromEntries(columns("members"));
+  expect(cols.terms).toBe("JSON[] NOT NULL");
+  const member = {
+    id: "S001191",
+    name: "Kyrsten Sinema",
+    party: "I",
+    state: "AZ",
+    district: null,
+    chamber: "Senate",
+    fec_candidate_ids: ["S8AZ00197"],
+    lis_id: "S404",
+    terms: [
+      {
+        chamber: "Senate",
+        start: "2019-01-03",
+        end: "2022-12-08",
+        state: "AZ",
+        district: null,
+        party: "Democrat",
+        caucus: null,
+      },
+      {
+        chamber: "Senate",
+        start: "2022-12-09",
+        end: "2025-01-03",
+        state: "AZ",
+        district: null,
+        party: "Independent",
+        caucus: "Democrat",
+      },
+    ],
+    source_url: "https://bioguide.congress.gov/search/bio/S001191",
+    source_locator: null,
+  };
+  expect(TABLES.members.schema.safeParse(member).success).toBe(true);
+  expect(Object.fromEntries(columns("employer_contributions")).committee_ids).toBe("VARCHAR[] NOT NULL");
+  expect(TABLES.independent_expenditures.owner).toBe("@antibody/ingest-fec");
+  expect(TABLES.employer_contributions.owner).toBe("@antibody/ingest-fec");
+});

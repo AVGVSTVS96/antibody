@@ -329,6 +329,20 @@ export const TABLES = {
     chamber: Chamber,
     fec_candidate_ids: z.array(z.string()),
     lis_id: z.string().nullable(),
+    /** Every term, oldest first, so a bill can show the party, state and chamber a member had at the time. */
+    terms: z.array(
+      z.strictObject({
+        chamber: Chamber,
+        start: date,
+        end: date,
+        state: z.string(),
+        district: z.number().int().nullable(),
+        /** As congress-legislators spells it: "Democrat", "Republican", "Independent", "Libertarian". */
+        party: z.string(),
+        /** The party an independent caucuses with, when the record says. */
+        caucus: z.string().nullable(),
+      }),
+    ),
     ...fact,
   }),
   committees: table("@antibody/ingest-members", {
@@ -374,14 +388,50 @@ export const TABLES = {
     designation: z.string().nullable(),
     ...fact,
   }),
+  /** Direct PAC money to a member's campaign: FEC transaction types 24K (cash) and 24Z (in-kind). One row per transaction. */
   contributions: table("@antibody/ingest-fec", {
     pac_id: z.string(),
     bioguide: z.string().nullable(),
     candidate_id: z.string(),
+    /** The campaign committee that received it (FEC OTHER_ID); with pac_id it makes the fec.gov link to every such payment. */
+    recipient_committee_id: z.string().nullable(),
     amount_usd: z.number(),
     date: date,
     cycle: z.number().int(),
     transaction_type: z.string(),
+    ...fact,
+  }),
+  /** Outside money: a committee's independent expenditure for (24E) or against (24A) a member. Not a contribution. */
+  independent_expenditures: table("@antibody/ingest-fec", {
+    pac_id: z.string(),
+    bioguide: z.string(),
+    candidate_id: z.string(),
+    support: z.enum(["support", "oppose"]),
+    amount_usd: z.number(),
+    /** About 1 in 10 independent expenditures in the bulk file carry no date. */
+    date: date.nullable(),
+    cycle: z.number().int(),
+    ...fact,
+  }),
+  /**
+   * Itemized individual contributions to a member's campaign committees, summed per cycle and employer
+   * (employer as filed, grouped by a normalized key). Source: FEC bulk indiv file; the URL reproduces the sum on fec.gov.
+   */
+  employer_contributions: table("@antibody/ingest-fec", {
+    bioguide: z.string(),
+    cycle: z.number().int(),
+    committee_ids: z.array(z.string()).min(1),
+    /** The spelling filed most often; `spellings` lists up to 5 by amount. */
+    employer: z.string(),
+    employer_key: z.string(),
+    spellings: z.array(z.string()),
+    amount_usd: z.number(),
+    contributions: z.number().int(),
+    first: date,
+    last: date,
+    largest_usd: z.number(),
+    /** The filing image of the largest single contribution. */
+    largest_url: z.url(),
     ...fact,
   }),
 
