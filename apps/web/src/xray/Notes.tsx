@@ -87,7 +87,7 @@ function Articles({ id, row }: { id: string; row: TapeRow }) {
   return (
     <>
       <button type="button" className="linkbtn" aria-expanded={on} onClick={() => setOn(!on)}>
-        {on ? "HIDE" : "SHOW"} THE {att.hits} ARTICLES {on ? "▴" : "▾"}
+        {on ? "HIDE" : "SHOW"} THE {count(att.hits, "article").toUpperCase()} {on ? "▴" : "▾"}
       </button>
       {on && list === undefined && <p className="x-fine">Loading the list…</p>}
       {on && list !== undefined && (
@@ -131,7 +131,7 @@ function News({ row, ctx }: { row: TapeRow; ctx: Ctx }) {
         ))}
       </div>
       <p className="x-fine x-ink">
-        {att.hits} OF {read.toLocaleString("en-US")} ARTICLES READ
+        {att.hits} OF {count(read, "article").toUpperCase()} READ
         {window && ` · ${months(window).toUpperCase()}`} <Src ids={att.claim} label="COUNT" />{" "}
         <a href={OUTLETS_URL} target="_blank" rel="noopener noreferrer">
           OUTLET LIST ↗

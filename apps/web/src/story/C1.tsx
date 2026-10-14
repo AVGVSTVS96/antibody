@@ -104,7 +104,7 @@ function Rows({ c, m }: { c: Ch1Data; m: BillModel }) {
       </ul>
       {c.mentions > 0 && (
         <section className="outlets" aria-label="Where the mentions came from">
-          <Cap>Where the {c.mentions.toLocaleString("en-US")} mentions came from</Cap>
+          <Cap>Where the {count(c.mentions, "mention")} came from</Cap>
           <div className="outlet-bar" role="toolbar" aria-label="Filter the squares by outlet group">
             {c.groups.map(({ group: g, hits }, i) =>
               hits ? (
@@ -159,7 +159,11 @@ export default function Ch1({ m }: { m: BillModel }) {
       }
       ledger={
         data.ranked && m.headline.length
-          ? { label: `All ${m.headline.length} loud sections in the ledger`, tag: "X-RAY", href: billHref(b.bill.id) }
+          ? {
+              label: `All ${count(m.headline.length, "loud section")} in the ledger`,
+              tag: "X-RAY",
+              href: billHref(b.bill.id),
+            }
           : { label: "All sections in the ledger", tag: "X-RAY", href: billHref(b.bill.id) }
       }
     >

@@ -1,6 +1,6 @@
 import { BIG_STAKES } from "@antibody/core";
 import { memo, type ReactNode, useEffect, useRef, useState } from "react";
-import { RULES_URL, usd } from "../lib/format.ts";
+import { capital, count, RULES_URL, usd } from "../lib/format.ts";
 import { geometry, logHeight, quietRun, type TapeRow } from "../lib/tape.ts";
 import { Tag } from "../ui/primitives.tsx";
 import { Src } from "../ui/receipt.tsx";
@@ -114,7 +114,12 @@ const Row = memo(function Row({
           </button>
         </h3>
         <p className="x-sum">
-          {[row.label, cost(row), `${row.articles ?? "?"} ARTICLES`, row.lobbying ? `${row.lobbying} REPORTS` : null]
+          {[
+            row.label,
+            cost(row),
+            row.articles == null ? "? ARTICLES" : count(row.articles, "article").toUpperCase(),
+            row.lobbying ? count(row.lobbying, "report").toUpperCase() : null,
+          ]
             .filter(Boolean)
             .join(" · ")}
         </p>
@@ -184,7 +189,7 @@ function Panel({ r, ctx, why }: { r: Reader; ctx: Ctx; why: string | null }) {
       {why && (
         <div className="x-how">
           <b>ON THIS BILL</b>
-          <p>{why}.</p>
+          <p>{capital(why)}.</p>
         </div>
       )}
       <div className="x-how">

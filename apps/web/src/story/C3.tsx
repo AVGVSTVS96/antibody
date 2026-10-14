@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
+import { count } from "../lib/format.ts";
 import type { BillModel } from "../lib/model.ts";
 import { billHref, sectionHref } from "../lib/router.ts";
 import { Note, Stat, StatRow } from "../ui/primitives.tsx";
 import { Src } from "../ui/receipt.tsx";
 import { DollarRow } from "./Bars.tsx";
 import { ChapterPage } from "./ChapterPage.tsx";
-import { bigUsd, ch3, ch3Head, figure } from "./data.ts";
+import { bigUsd, bigUsdSum, ch3, ch3Head, figure } from "./data.ts";
 import { Cap } from "./parts.tsx";
 import { useTween } from "./tween.ts";
 
@@ -34,8 +35,8 @@ export default function Ch3({ m }: { m: BillModel }) {
         {Math.abs(data.sectionSum) <= Math.abs(data.billTotal)
           ? `The ${bigUsd(data.gap)} gap is dollars CBO did not pin to one section.`
           : `The two differ by ${bigUsd(data.gap)}: CBO prints some dollars only for the whole bill or for a group of sections.`}{" "}
-        {data.noFigure.toLocaleString("en-US")} sections have no CBO figure at all, and {data.evenSplit} show an even
-        share of a shared line.
+        {count(data.noFigure, "section")} {data.noFigure === 1 ? "has" : "have"} no CBO figure at all, and{" "}
+        {data.evenSplit} {data.evenSplit === 1 ? "shows" : "show"} an even share of a shared line.
       </Note>
     ) : data.gaps.length && !mv && m.b.dollars.estimates.length ? (
       <Note title="GAP SHOWN · NO DOLLARS PER SECTION" tone="dashed">
@@ -87,9 +88,9 @@ export default function Ch3({ m }: { m: BillModel }) {
         <section className="moves">
           <Cap>Where the dollars move</Cap>
           <p>
-            Sections add {bigUsd(data.added)} and cut {bigUsd(data.cut)}. Gross movement, {bigUsd(total)}, counts adds
-            and cuts alike: it is not net cost. Quiet is about coverage and timing, not size: it can sit on a small
-            dollar figure or a big one.
+            Sections add {bigUsd(data.added)} and cut {bigUsd(data.cut)}. Gross movement,{" "}
+            {bigUsdSum(data.added, data.cut)}, counts adds and cuts alike: it is not net cost. Quiet is about coverage
+            and timing, not size: it can sit on a small dollar figure or a big one.
           </p>
           <div className="move-bar" role="toolbar" aria-label="Gross movement by kind of section">
             {(["other", "loud", "quiet"] as const).map(

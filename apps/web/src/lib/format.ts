@@ -4,6 +4,7 @@ const MIXED_CASE: [RegExp, string][] = [
   [/\bAmazon Com\b/g, "Amazon.com"],
   [/\bFedex\b/g, "FedEx"],
   [/\bModernatx\b/g, "ModernaTX"],
+  [/\bNbcuniversal\b/g, "NBCUniversal"],
 ];
 
 /** Initialisms with a vowel in them; the ones without (CMS, PNC, CSX) are found by shape. */
@@ -23,8 +24,12 @@ const isAcronym = (w: string) =>
 
 const SMALL = new Set(["OF", "AND", "THE", "FOR"]);
 
-const capitalise = (w: string, at: number) =>
-  isAcronym(w) ? w : at > 0 && SMALL.has(w) ? w.toLowerCase() : w[0] + w.slice(1).toLowerCase();
+const capitalise = (w: string, at: number) => {
+  if (isAcronym(w)) return w;
+  if (at > 0 && SMALL.has(w)) return w.toLowerCase();
+  const lower = w[0] + w.slice(1).toLowerCase();
+  return /^MC[A-Z]{2,}/.test(w) ? `Mc${lower[2]!.toUpperCase()}${lower.slice(3)}` : lower;
+};
 
 /** SEC, FEC and LDA names arrive in caps with suffixes like "/DE/"; show them the way the company writes itself. */
 export function nice(name: string): string {
@@ -65,6 +70,11 @@ export function musd(m: number): string {
 
 /** A 0-1 rank as 0-100: where the section stands among the bill's sections (100 = most covered). */
 export const rank = (p: number | null | undefined) => (p == null ? "—" : `${Math.round(p * 100)}`);
+
+export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+export const ordinal = (n: number) =>
+  `${n}${["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? "th"}`;
 
 export const count = (n: number, one: string, many = `${one}s`) =>
   `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;

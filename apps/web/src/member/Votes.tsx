@@ -1,6 +1,6 @@
 import type { NodeOf } from "@antibody/core";
 import { count, day } from "../lib/format.ts";
-import { lastName } from "../money/Members.tsx";
+import { formerNote, lastName } from "../money/Members.tsx";
 import { useModel } from "../ui/BillGate.tsx";
 import { Src } from "../ui/receipt.tsx";
 import { type CastVote, votesOf } from "./votes.ts";
@@ -47,7 +47,9 @@ export function Votes({ member }: { member: NodeOf<"member"> }) {
           <p className="votes-none">
             {all.length
               ? "No passage vote of this bill is recorded for this member."
-              : "No roll-call vote on this bill is recorded for this member. A member not yet in office, or a chamber that passed the bill by consent, has none."}
+              : formerNote(member, m.b.bill.congress)
+                ? "Not in office when this bill was voted."
+                : "No roll-call vote on this bill is recorded for this member. A member not yet in office, or a chamber that passed the bill by consent, has none."}
           </p>
         )}
       </div>

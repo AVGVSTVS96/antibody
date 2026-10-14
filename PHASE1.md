@@ -4,7 +4,7 @@
 
 Phase 1 is the real v1: a site that x-rays 12 real bills (6 led by each party), a CLI that x-rays any bill, and a daily watcher. All ten build parts are merged into `main`. `bun run ci` passes: Biome, tsc 7, 197 tests.
 
-Screenshots of the live site (index, GENIUS, one Democratic-led bill, 1440 and 390 wide, dark and light) are in `docs/shots/`.
+Screenshots of the design-v2 site (landing, x-ray, a story chapter, a section's money, a member, and the receipt drawer on a fact and on an inference; 1440 and 390 wide, light and dark) are in `docs/shots/`, made by `apps/web/scripts/shots.ts`.
 
 ## What works
 

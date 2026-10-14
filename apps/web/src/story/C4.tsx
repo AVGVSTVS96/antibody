@@ -5,7 +5,7 @@ import { billHref, sectionHref } from "../lib/router.ts";
 import { Note, Stat, StatRow, Tag } from "../ui/primitives.tsx";
 import { Src, useReceipt } from "../ui/receipt.tsx";
 import { ChapterPage } from "./ChapterPage.tsx";
-import { type Ch4Data, ch4, glue, landedOf, spend } from "./data.ts";
+import { type Ch4Data, ch4, glue, landedOf, mostNamed, spend } from "./data.ts";
 import { Cap, Num } from "./parts.tsx";
 
 type Phase = keyof Ch4Data["phases"];
@@ -108,7 +108,7 @@ export default function Ch4({ m }: { m: BillModel }) {
           {data.clients.length > 0 && (
             <section>
               <Cap aside={<span className="axis">REPORTS · $ ALL ISSUES</span>}>
-                {data.clients.length === 10 ? "Ten busiest clients" : `${data.clients.length} busiest clients`} · 1
+                {data.clients.length === 10 ? "Ten busiest clients" : count(data.clients.length, "busiest client")} · 1
                 square = 1 report
               </Cap>
               <ul className="legend" aria-hidden="true">
@@ -161,10 +161,8 @@ export default function Ch4({ m }: { m: BillModel }) {
             )}
             {data.unmentioned > 0 && (
               <p className="punch">
-                {data.unmentioned === data.topCount
-                  ? `All ${data.unmentioned}`
-                  : `${data.unmentioned} of the ${data.topCount}`}{" "}
-                most-named sections drew no mentions in the {count(data.articles, "article")} read.
+                {mostNamed(data.unmentioned, data.topCount)} drew no mentions in the {count(data.articles, "article")}{" "}
+                read.
               </p>
             )}
           </section>

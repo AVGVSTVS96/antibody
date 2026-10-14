@@ -115,7 +115,8 @@ async function layoutShift(page: Page) {
 
   const { page, errors } = await open("/");
   const requested: string[] = [];
-  page.on("request", (r) => requested.push(new URL(r.url()).pathname));
+  // Against Vercel, a reload also shows Chrome's own stale-while-revalidate refresh of index.json (type "other"): not the app.
+  page.on("request", (r) => r.resourceType() === "fetch" && requested.push(new URL(r.url()).pathname));
   await page.reload({ waitUntil: "load" });
   await page.waitForSelector(".tape-stage", { timeout: 60000 });
   await page.waitForSelector(".exhibit .ex-title", { timeout: 60000 });

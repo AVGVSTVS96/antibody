@@ -12,7 +12,7 @@ export interface Scope {
   /** Tape rows in bill order; empty for `bill`. */
   rows: TapeRow[];
   /** `quiet sections`, `sections a client named`, `companies that lobbied the bill`. */
-  noun: string;
+  noun: readonly [one: string, many: string];
   /** Listed companies tied to any of the rows' sections (or to the bill). */
   companies: Set<NodeId>;
   /** Per section id, the companies tied to it. */
@@ -25,10 +25,10 @@ export function scopeOf(m: BillModel): Scope {
   const named = rows.filter((r) => r.lobbying > 0);
   const [kind, picked, noun] =
     quiet.length > 0
-      ? (["quiet", quiet, "quiet sections"] as const)
+      ? (["quiet", quiet, ["quiet section", "quiet sections"]] as const)
       : named.length > 0
-        ? (["named", named, "sections a lobbying client named"] as const)
-        : (["bill", [], "companies that lobbied the bill"] as const);
+        ? (["named", named, ["section a lobbying client named", "sections a lobbying client named"]] as const)
+        : (["bill", [], ["company that lobbied the bill", "companies that lobbied the bill"]] as const);
   const bySection = new Map(picked.map((r) => [r.id, companiesTiedTo(m, [r.id])]));
   const companies =
     kind === "bill"

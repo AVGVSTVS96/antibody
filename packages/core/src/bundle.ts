@@ -196,6 +196,8 @@ export const NODE_PROPS = {
     state: z.string(),
     district: z.number().int().nullable(),
     chamber: Chamber,
+    /** The term the other fields come from: the one that covers the bill's law date, else the last before it. */
+    term: z.object({ start: date, end: date }).nullish(),
     /** Shown next to every member list until the vision step has read this member's paper filings. */
     paperFilingsUnread: z.boolean(),
   }),

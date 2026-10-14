@@ -1,4 +1,5 @@
 import { useMemo, useRef } from "react";
+import { count } from "../lib/format.ts";
 import { useWidth } from "./useWidth.ts";
 import "./tape.css";
 
@@ -53,7 +54,7 @@ export function MiniTape({
       className="mini"
       style={{ height }}
       role="img"
-      aria-label={`${label ? `${label}: ` : ""}${fingerprint.length} sections in order, ${headline} headline, ${quiet} quiet and costly`}
+      aria-label={`${label ? `${label}: ` : ""}${count(fingerprint.length, "section")} in order, ${headline} headline, ${quiet} quiet and costly`}
     >
       {width > 0 && (
         <svg width={width} height={height} aria-hidden="true">

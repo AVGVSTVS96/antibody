@@ -111,3 +111,8 @@ test("the closest section to quiet-and-costly has a score above zero and names w
   expect(near.missed.some((w) => /not added late/.test(w))).toBe(true);
   expect(near.missed.some((w) => /stakes/.test(w))).toBe(true);
 });
+
+test("Mc- and NBC names are cased as their owners write them", () => {
+  expect(nice("MCKESSON CORP")).toBe("McKesson Corp");
+  expect(nice("COMCAST CORPORATION & NBCUNIVERSAL POLITICAL ACTION COMMITTEE - FEDERAL")).toContain("NBCUniversal");
+});

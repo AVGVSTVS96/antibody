@@ -42,6 +42,9 @@ function trim(x: number): string {
   return Number(x.toFixed(digits)).toLocaleString("en-US");
 }
 
+/** "Mcguire" is "McGuire": the heading casing in the pipeline lowercases the rest of a Mc- name. */
+export const mcCase = (s: string) => s.replace(/\bMc([a-z])(?=[a-z])/g, (_m, c: string) => `Mc${c.toUpperCase()}`);
+
 export const count = (n: number, one: string, many = `${one}s`) =>
   `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 

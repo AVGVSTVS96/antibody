@@ -15,7 +15,7 @@ interface Item {
 /** Bills of the library, and the sections of the open bill, by number or words. `hero` is the big one with the submit button. */
 export function SearchBox({
   size = "bar",
-  placeholder = "Find another bill or a section…",
+  placeholder = "Find a bill or section",
   autoFocus,
   renderBill,
   onDone,
