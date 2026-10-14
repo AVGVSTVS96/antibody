@@ -70,7 +70,7 @@ const canCap = Bun.which("systemd-run") !== null && process.env.CI === undefined
  */
 export async function heavy(cmd: string[], opts: { memoryMax?: string; cwd?: string } = {}): Promise<string> {
   const full = canCap
-    ? ["systemd-run", "--user", "--scope", "-q", "-p", `MemoryMax=${opts.memoryMax ?? "4G"}`, ...cmd]
+    ? ["systemd-run", "--user", "--scope", "-q", "-p", `MemoryMax=${opts.memoryMax ?? "4G"}`, "-p", "CPUWeight=20", ...cmd]
     : cmd;
   const proc = Bun.spawn(full, { cwd: opts.cwd ?? ROOT, stdout: "pipe", stderr: "inherit" });
   const out = await new Response(proc.stdout).text();
