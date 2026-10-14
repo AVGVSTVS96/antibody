@@ -142,6 +142,11 @@ def parse_sheet(ws, years, lines):
                          "included_in": re.findall(r"\d{4,6}", text(r[YEAR_COL0]))})
             continue
 
+        if current and c and not has_data and current["kind"] == "section" and current["has_rows"] and classify_line(c) == "interaction":
+            current = {"line": next(lines), "kind": "interaction", "section_raw": None, "section_title": c, "component": None, "row0": i, "has_rows": False,
+                       "context": {k: v for k, v in ctx.items() if k != "block"}}
+            continue
+
         if current and c and not has_data:
             if current["has_rows"]:
                 current["component"] = c

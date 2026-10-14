@@ -283,7 +283,7 @@ export const TEMPLATES: Record<string, Template> = {
     const to = who(n, r.bioguide, `candidate ${r.candidate_id}`);
     const text =
       r.amount_usd < 0
-        ? `${to}'s campaign got back ${usd(r.amount_usd)} from ${n.pac(r.pac_id)} on ${day(r.date)}.`
+        ? `${to}'s campaign returned ${usd(r.amount_usd)} to ${n.pac(r.pac_id)} on ${day(r.date)}.`
         : `${n.pac(r.pac_id)} gave ${usd(r.amount_usd)} to ${to} on ${day(r.date)}.`;
     return { text: text.replace(/^./, (c) => c.toUpperCase()) };
   },

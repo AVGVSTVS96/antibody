@@ -109,9 +109,16 @@ class Builder {
 
   // ── rows and claims ──
 
-  private async select(table: string, where = "true", params?: Record<string, Param>): Promise<AnyRow[]> {
+  /** Rows come back in a total order (`order`, then id) because DuckDB's own order is unspecified and bundles must rebuild byte for byte. */
+  private async select(
+    table: string,
+    where = "true",
+    params?: Record<string, Param>,
+    order?: string,
+  ): Promise<AnyRow[]> {
     if (!this.tables.has(table)) return [];
-    const rows = await query<AnyRow>(this.db, `SELECT * FROM ${table} WHERE ${where}`, params);
+    const by = order ? `${order}, id` : "id";
+    const rows = await query<AnyRow>(this.db, `SELECT * FROM ${table} WHERE ${where} ORDER BY ${by}`, params);
     for (const r of rows) this.rows.set(`${table}/${r.id}`, r);
     return rows;
   }
@@ -281,7 +288,7 @@ class Builder {
   }
 
   private async buildVersions(): Promise<Bundle["versions"]> {
-    const rows = await this.select("versions", "bill_id = $b ORDER BY date NULLS LAST, code", { b: this.bill });
+    const rows = await this.select("versions", "bill_id = $b", { b: this.bill }, "date NULLS LAST, code");
     const out: Bundle["versions"] = [];
     for (const v of rows) {
       this.versionNames.set(v.code, `"${v.name}"`);
@@ -370,9 +377,7 @@ class Builder {
 
   private async buildDollars(): Promise<Bundle["dollars"]> {
     const estimates: Bundle["dollars"]["estimates"] = [];
-    for (const e of await this.select("cbo_estimates", "bill_id = $b ORDER BY published_on NULLS LAST", {
-      b: this.bill,
-    })) {
+    for (const e of await this.select("cbo_estimates", "bill_id = $b", { b: this.bill }, "published_on NULLS LAST")) {
       this.labels.estimate.set(e.id, e);
       const claim = await this.cite("cbo_estimates", e);
       if (!claim) continue;
@@ -416,6 +421,7 @@ class Builder {
         if (claim) wholeBill.push({ ...base, amountMusd: l.total_musd, split: "exact", claim });
         continue;
       }
+      if (l.line_kind !== "section") continue;
       const targets = (l.section_ids as string[]).filter((s) => this.sections.has(s));
       if (!targets.length) continue;
       const fact = await this.cite("cbo_lines", l);
@@ -439,7 +445,7 @@ class Builder {
 
   private async buildVotes(): Promise<Bundle["votes"]> {
     const votes: Bundle["votes"] = [];
-    const rolls = await this.select("roll_calls", "bill_id = $b ORDER BY date, number", { b: this.bill });
+    const rolls = await this.select("roll_calls", "bill_id = $b", { b: this.bill }, "date, number");
     for (const r of rolls) {
       this.labels.roll.set(r.id, `${r.chamber} roll call ${r.number} of ${day(r.date)}`);
       const claim = await this.cite("roll_calls", r);
@@ -616,7 +622,7 @@ class Builder {
       ? await query<AnyRow>(
           this.db,
           `SELECT r.* FROM lda_bill_refs r JOIN lda_filings f ON f.id = r.filing_id
-           WHERE r.bill_id = $b AND r.match IN ('high', 'medium') AND ${live}`,
+           WHERE r.bill_id = $b AND r.match IN ('high', 'medium') AND ${live} ORDER BY r.id`,
           { b: this.bill },
         )
       : [];
@@ -841,12 +847,13 @@ class Builder {
     this.rulesUsed.add("trade-window");
     const trades = await this.select(
       "trades",
-      "list_contains($t, upper(ticker)) AND traded_on BETWEEN $from AND $to ORDER BY traded_on",
+      "list_contains($t, upper(ticker)) AND traded_on BETWEEN $from AND $to",
       {
         t: [...tied.keys()],
         from: w.tradeFrom,
         to: w.tradeTo,
       },
+      "traded_on",
     );
     const known = trades.filter((t) => t.bioguide && this.members.has(t.bioguide));
     if (known.length < trades.length)
@@ -916,11 +923,12 @@ class Builder {
     this.rulesUsed.add("donor-window");
     const gifts = await this.select(
       "contributions",
-      "list_contains($p, pac_id) AND bioguide IS NOT NULL AND list_contains($c, cycle) ORDER BY date",
+      "list_contains($p, pac_id) AND bioguide IS NOT NULL AND list_contains($c, cycle)",
       {
         p: pacs.map((p) => p.id),
         c: w.cycles,
       },
+      "date",
     );
     for (const [pair, gs] of groupBy(
       gifts.filter((g) => this.members.has(g.bioguide)),
@@ -953,7 +961,7 @@ class Builder {
       ? await query<AnyRow>(
           this.db,
           `SELECT a.*, o.name AS outlet_name, o."group" AS outlet_group, o.list_version
-           FROM articles a LEFT JOIN outlets o ON o.id = a.outlet_id WHERE a.bill_id = $b`,
+           FROM articles a LEFT JOIN outlets o ON o.id = a.outlet_id WHERE a.bill_id = $b ORDER BY a.id`,
           { b: this.bill },
         )
       : [];

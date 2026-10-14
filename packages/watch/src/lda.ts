@@ -18,12 +18,14 @@ const SPELLINGS: Record<string, string[]> = {
 /** The congress's two calendar years: the 119th sat in 2025 and 2026. */
 export const congressYears = (congress: number) => [1789 + 2 * (congress - 1), 1790 + 2 * (congress - 1)];
 
-/** The lda.gov full-text query for filings that name the bill by number or short title. */
-export function lobbyingQuery(id: BillId, shortTitle: string | null): string {
+/**
+ * The lda.gov full-text query for filings that name the bill by number. The short title is left out on purpose: titles
+ * repeat across chambers and congresses (H.R.9772's "Foreign Funding Transparency Act" brought in 40 filings about
+ * other bills, none naming H.R.9772), while a number inside the congress's two years names this bill.
+ */
+export function lobbyingQuery(id: BillId): string {
   const { type, number } = billRef(id);
-  const terms = (SPELLINGS[type] ?? []).map((s) => `"${s.replace("#", String(number))}"`);
-  if (shortTitle && shortTitle.length >= 8) terms.push(`"${shortTitle.replace(/"/g, "")}"`);
-  return terms.join(" OR ");
+  return (SPELLINGS[type] ?? []).map((s) => `"${s.replace("#", String(number))}"`).join(" OR ");
 }
 
 export const lobbyingUrl = (query: string, year: number) =>
@@ -33,8 +35,8 @@ export const lobbyingUrl = (query: string, year: number) =>
  * LD-2/LD-1 filings in the bill's congress whose lobbying issues name it. An upper bound: the x-ray's lobbying
  * stage disambiguates each mention and replaces this count when it has run.
  */
-export async function lobbyingFilings(id: BillId, shortTitle: string | null, signal?: AbortSignal) {
-  const query = lobbyingQuery(id, shortTitle);
+export async function lobbyingFilings(id: BillId, signal?: AbortSignal) {
+  const query = lobbyingQuery(id);
   let count = 0;
   const urls: string[] = [];
   for (const year of congressYears(billRef(id).congress)) {

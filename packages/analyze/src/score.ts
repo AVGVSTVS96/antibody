@@ -1,4 +1,4 @@
-import type { BillId, Row } from "@antibody/core";
+import { type BillId, figureOrder, type Row, sectionFigure } from "@antibody/core";
 
 /**
  * The buried score, one formula for every bill and party. Every constant is here and in SCORE_TEXT.
@@ -23,11 +23,12 @@ export const SCORE = {
 } as const;
 
 export const SCORE_TEXT = [
-  "Stakes: how much the section matters, from 0 to 1. It is the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale, where $1 million is 0, $1 billion is 0.5 and $1 trillion is 1 (cuts and costs count the same). Lobbying: the number of lobbying reports that name the section, on a log scale where 1 report is 0.15, 10 is 0.52 and 100 is 1.",
+  "Stakes: how much the section matters, from 0 to 1. It is the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale, where $1 million is 0, $1 billion is 0.5 and $1 trillion is 1 (cuts and costs count the same; a dollar figure that is only an even share of a line CBO printed for several sections is shown but not counted). Lobbying: the number of lobbying reports that name the section, on a log scale where 1 report is 0.15, 10 is 0.52 and 100 is 1.",
   "Quiet: 1 minus the section's attention percentile within its bill, so the least-covered section is close to 1 and the most-covered is 0.",
   "Sneak: 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill (from the bill's version history), plus 0.25 times how unlike the rest of the bill it is (0 to 1). The late bonus shrinks by the share of the bill that arrived late: when most of a bill is rewritten late, being late says little about any one section.",
   "Buried score = stakes × quiet × sneak, from 0 to 1.5.",
   "Label: 'headline' when a section is in the top tenth of its bill by attention and at least 3 articles discussed it. 'Buried' when the score is at least 0.45, stakes are at least 0.667 ($10 billion, or about 20 lobbying reports), and the section is either late or in the most off-topic quarter of the bill. Everything else is 'normal'.",
+  "The rule is not symmetric on purpose, and the page says so: a section with no CBO figure can still qualify through lobbying alone, and being late or being off-topic alone is enough to count as a sneak signal. A big dollar figure with a loud news cycle is never labeled buried, whatever it does.",
   "All three parts are shown next to the label. The formula never looks at party, sponsor or outlet lean; the thresholds are the same for every bill.",
 ];
 
@@ -36,6 +37,8 @@ export const SCORE_RULE = `${SCORE.version}: ${SCORE_TEXT.join(" ")}`;
 const log01 = (x: number, full: number) => Math.min(1, Math.max(0, Math.log10(1 + Math.abs(x)) / Math.log10(1 + full)));
 
 export interface Components {
+  /** Dollars from an even split of a grouped CBO line are shown but do not count toward stakes: CBO never gave that section a number. */
+  dollarsSplit?: "exact" | "even_split" | null;
   /** Share of the bill's final sections that arrived late; scales the late bonus. */
   lateShare?: number;
   dollarsMusd: number | null;
@@ -45,9 +48,9 @@ export interface Components {
   lobbyingReports: number;
 }
 
-export function stakes(c: Pick<Components, "dollarsMusd" | "lobbyingReports">): number {
+export function stakes(c: Pick<Components, "dollarsMusd" | "dollarsSplit" | "lobbyingReports">): number {
   return Math.max(
-    c.dollarsMusd === null ? 0 : log01(c.dollarsMusd, SCORE.dollarsFullAt),
+    c.dollarsMusd === null || c.dollarsSplit === "even_split" ? 0 : log01(c.dollarsMusd, SCORE.dollarsFullAt),
     log01(c.lobbyingReports, SCORE.reportsFullAt),
   );
 }
@@ -77,42 +80,38 @@ export interface SectionDollars {
 }
 
 /**
- * Dollars per section from one CBO estimate: the latest current-law estimate with per-section lines. Signed as a
- * deficit effect (positive adds to the deficit): CBO's deficit line when there is one, else outlays minus revenues,
- * else budget authority.
+ * Dollars per section from one CBO estimate: the latest current-law estimate with per-section lines (see
+ * `sectionFigure` in core, which the site uses too). Signed as a deficit effect (positive adds to the deficit). Group
+ * lines are left out: their even shares are already section lines that rest on them.
  */
 export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cbo_lines">[]) {
   const out = new Map<string, SectionDollars>();
-  const est = estimates
-    .filter((e) => e.per_section && e.baseline === "current-law")
-    .sort((a, b) => (b.published_on ?? "").localeCompare(a.published_on ?? ""))[0];
-  if (!est) return { estimate: null, bySection: out };
+  const known = estimates.map((e) => ({
+    id: e.id,
+    publishedOn: e.published_on,
+    perSection: e.per_section,
+    baseline: e.baseline,
+  }));
+  const est = figureOrder(known)[0];
   const bySection = new Map<string, Row<"cbo_lines">[]>();
   for (const l of lines)
-    if (l.estimate_id === est.id && l.line_kind !== "whole-bill")
+    if (l.line_kind === "section")
       for (const sid of l.section_ids) bySection.set(sid, [...(bySection.get(sid) ?? []), l]);
   for (const [sid, ls] of bySection) {
-    const sum = (m: string) => ls.filter((l) => l.measure === m);
-    const total = (xs: Row<"cbo_lines">[]) => xs.reduce((a, l) => a + l.total_musd, 0);
-    const deficit = sum("deficit");
-    const outlays = sum("outlays");
-    const revenues = sum("revenues");
-    const ba = sum("budget_authority");
-    const [used, musd, measure] = deficit.length
-      ? [deficit, total(deficit), "deficit"]
-      : outlays.length || revenues.length
-        ? [[...outlays, ...revenues], total(outlays) - total(revenues), "outlays - revenues"]
-        : [ba, total(ba), "budget_authority"];
-    if (!used.length) continue;
-    out.set(sid, {
-      musd,
-      split: used.some((l) => l.split === "even_split") ? "even_split" : "exact",
-      lineIds: used.map((l) => l.id),
-      measure,
-      estimateId: est.id,
-    });
+    const f = sectionFigure(
+      ls.map((l) => ({
+        estimateId: l.estimate_id,
+        measure: l.measure,
+        amountMusd: l.total_musd,
+        split: l.split,
+        claim: l.id,
+      })),
+      known,
+    );
+    if (f?.fromLatest)
+      out.set(sid, { musd: f.musd, split: f.split, lineIds: f.claims, measure: f.measure, estimateId: f.estimateId });
   }
-  return { estimate: est, bySection: out };
+  return { estimate: est ? (estimates.find((e) => e.id === est.id) ?? null) : null, bySection: out };
 }
 
 /** Lobbying reports (distinct filings) whose bill reference names the section's number. */
@@ -149,6 +148,7 @@ export function scoreRows(
     const { filings, refs } = reports.get(s.id) ?? { filings: [], refs: [] };
     const c: Components = {
       dollarsMusd: d ? Number(d.musd.toFixed(1)) : null,
+      dollarsSplit: d?.split ?? null,
       attentionPct: a?.pct ?? null,
       late: s.late,
       lateShare,

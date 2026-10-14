@@ -1,4 +1,15 @@
-import type { Bundle, Claim, Edge, EdgeOf, Node, NodeId, NodeOf, Section } from "@antibody/core";
+import {
+  type Bundle,
+  type Claim,
+  type Edge,
+  type EdgeOf,
+  type Figure,
+  type Node,
+  type NodeId,
+  type NodeOf,
+  type Section,
+  sectionFigure,
+} from "@antibody/core";
 
 export type SectionKind = "headline" | "buried" | "normal" | "unscored";
 
@@ -11,6 +22,8 @@ export interface SectionView {
   /** Lobbying reports that cite this section by number. */
   lobbied: number;
   dollarsMusd: number | null;
+  /** The one CBO estimate the section's dollars come from, with the estimate's own wording (null when none lists it). */
+  figure: (Figure & { estimate: Bundle["dollars"]["estimates"][number] }) | null;
 }
 
 /**
@@ -100,15 +113,21 @@ export function buildModel(b: Bundle): BillModel {
     if (e.dst.startsWith("section:"))
       sectionLobbying.set(e.dst.slice(8), (sectionLobbying.get(e.dst.slice(8)) ?? 0) + e.props.reports);
 
+  const estimateById = new Map(b.dollars.estimates.map((e) => [e.id, e]));
   const sections: SectionView[] = b.sections.map((s) => {
-    const current = s.dollars.filter((d) => d.baseline === "current-law" && d.measure === "deficit");
+    const f = sectionFigure(
+      s.dollars.filter((d) => d.baseline === "current-law"),
+      b.dollars.estimates,
+    );
+    const shown = f && (f.fromLatest || !s.inFinal) ? f : null;
     return {
       s,
       kind: s.score ? s.score.label : "unscored",
       stage: stageOf.get(s.firstVersion) ?? 0,
       stageName: versions.find((v) => v.code === s.firstVersion)?.name ?? s.firstVersion,
       lobbied: sectionLobbying.get(s.id) ?? 0,
-      dollarsMusd: current.length ? current.reduce((a, d) => a + d.amountMusd, 0) : null,
+      dollarsMusd: shown?.musd ?? null,
+      figure: shown && { ...shown, estimate: estimateById.get(shown.estimateId)! },
     };
   });
   const sectionById = new Map(sections.map((v) => [v.s.id, v]));

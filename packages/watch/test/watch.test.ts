@@ -144,9 +144,9 @@ test("text shape skips sections quoted into existing law; renumbering is not a n
   expect(newSections(before, toc)).toEqual([]);
 });
 
-test("lobbying search names every spelling of the number and the short title", () => {
-  expect(lobbyingQuery("119-s-1582", "GENIUS Act")).toBe('"S. 1582" OR "S.1582" OR "GENIUS Act"');
-  expect(lobbyingQuery("119-hr-1", null)).toBe('"H.R. 1" OR "H.R.1" OR "HR 1" OR "HR1" OR "H. R. 1"');
+test("lobbying search names every spelling of the number and never the short title", () => {
+  expect(lobbyingQuery("119-s-1582")).toBe('"S. 1582" OR "S.1582"');
+  expect(lobbyingQuery("119-hr-1")).toBe('"H.R. 1" OR "H.R.1" OR "HR 1" OR "HR1" OR "H. R. 1"');
 });
 
 test("window starts at the last digest, never more than 14 days back, 3 days on a first run", async () => {

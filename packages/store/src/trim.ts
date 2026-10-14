@@ -6,13 +6,15 @@ export const EDGE_CLAIM_CAP = 6;
  * Keeps a bounded set of claims on each edge and drops every claim nothing points at. A lobbying edge can rest on
  * hundreds of filings and a funding edge on thousands of contributions; the edge's props carry the totals,
  * `moreClaims` says how many are not listed, and the kept claims link to the source records.
- * Inference claims come first, so an inference edge always shows its rule.
+ * Inference claims come first, so an inference edge always shows its rule; within each group claims go by id, so
+ * the kept set is the same on every build.
  */
 export function trimEvidence(b: Bundle, cap = EDGE_CLAIM_CAP): Bundle {
   for (const e of b.edges) {
     if (e.claims.length <= cap) continue;
-    const inference = e.claims.filter((c) => b.claims[c]?.kind === "inference").slice(0, 2);
-    const rest = e.claims.filter((c) => !inference.includes(c));
+    const sorted = e.claims.toSorted();
+    const inference = sorted.filter((c) => b.claims[c]?.kind === "inference").slice(0, 2);
+    const rest = sorted.filter((c) => !inference.includes(c));
     const kept = [...inference, ...rest].slice(0, cap);
     e.moreClaims = e.claims.length - kept.length;
     e.claims = kept;

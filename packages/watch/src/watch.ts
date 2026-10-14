@@ -144,7 +144,7 @@ export async function enrich(c: Candidate, cache: string, signal?: AbortSignal):
     problems.push(`${billDisplay(id)} text: ${(e as Error).message}`),
   );
   try {
-    const { count, urls } = await lobbyingFilings(id, c.status.shortTitle, signal);
+    const { count, urls } = await lobbyingFilings(id, signal);
     c.facts.lobbyingFilings = count;
     c.evidence.lobbyingFrom = "lda-search";
     c.evidence.lobbyingUrls = urls;

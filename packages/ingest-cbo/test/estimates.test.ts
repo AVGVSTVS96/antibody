@@ -43,18 +43,51 @@ test("CBO's description maps to a GovInfo version code", () => {
   expect(versionCode("As passed by the Senate on June 17, 2025", "119-s-1582", ["is", "rs", "enr"])).toBe(null);
 });
 
+const section = (id: string, history: Record<string, { path: string; heading: string }>) =>
+  ({ id, history }) as unknown as Row<"sections">;
+
+const bill = [
+  section("s-direct-file", {
+    rh: { path: "title:XI/sec:112207", heading: "Task force on the termination of Direct File" },
+    eh: { path: "title:XI/sec:112206", heading: "Task force on the termination of Direct File" },
+  }),
+  section("s-penalties", {
+    rh: {
+      path: "title:XI/sec:112210",
+      heading: "Increase in penalties for unauthorized disclosures of taxpayer information",
+    },
+    eh: {
+      path: "title:XI/sec:112207",
+      heading: "Increase in penalties for unauthorized disclosures of taxpayer information",
+    },
+  }),
+];
+
 test("CBO section numbers join through the scored version's path, not the final number", () => {
-  const section = (id: string, history: Record<string, { path: string }>) =>
-    ({ id, history }) as unknown as Row<"sections">;
   const map = sectionMap(
     [
-      section("119-hr-1@rh:title:XI/sec:110001", {
-        eh: { path: "title:XI/subtitle:A/sec:110001" },
-        enr: { path: "title:VII/subtitle:A/chapter:1/sec:70101" },
+      section("s1", {
+        eh: { path: "title:XI/subtitle:A/sec:110001", heading: "Medicaid work requirements" },
+        enr: { path: "title:VII/subtitle:A/chapter:1/sec:70101", heading: "Medicaid work requirements" },
       }),
     ],
     "enr",
   );
-  expect(map("70101")).toBe("119-hr-1@rh:title:XI/sec:110001");
-  expect(map("110001")).toBeUndefined();
+  expect(map("70101", "Medicaid work requirements")).toBe("s1");
+  expect(map("110001", "Medicaid work requirements")).toBe("s1");
+  expect(map("999", "Medicaid work requirements")).toBeUndefined();
+});
+
+test("a number whose section has a different heading stays unjoined (CBO 112207 is Direct File, not the penalties section numbered 112207 in eh)", () => {
+  const map = sectionMap(bill, "eh", [{ num: "112207", title: "Task force on the termination of Direct File" }]);
+  expect(map("112207", "Task force on the termination of Direct File")).toBe("s-direct-file");
+  expect(map("112207", "Inspector General")).toBeUndefined();
+});
+
+test("a group's members join by number only when the estimate's numbering is verified by its one-section rows", () => {
+  const rows = [{ num: "112207", title: "Task force on the termination of Direct File" }];
+  expect(sectionMap(bill, "eh", rows)("112210", "Some paraphrase of a whole group", true)).toBe("s-penalties");
+  expect(
+    sectionMap(bill, "eh", [{ num: "112207", title: "Unrelated" }])("112210", "Some paraphrase", true),
+  ).toBeUndefined();
 });

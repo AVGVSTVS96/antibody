@@ -180,32 +180,50 @@ describe("GENIUS bundle from contract rows", () => {
   });
 });
 
-test("an even split of a CBO group line is an inference that keeps the sign", async () => {
+test("an even split of a CBO group line is an inference that keeps the sign, and the group's own total is not added on top", async () => {
   const bill = GENIUS_ROWS.bills!;
   const secs = GENIUS_ROWS.sections!;
   const est = { ...GENIUS_ROWS.cbo_estimates![0]!, per_section: true };
+  const base = { ...GENIUS_ROWS.cbo_lines![0]!, measure: "outlays", split: "exact" };
   const group = {
-    ...GENIUS_ROWS.cbo_lines![0]!,
+    ...base,
     id: "s1582-es:group",
     line_kind: "group",
     section_nums: ["1", "4"],
     section_ids: [secs[0]!.id, secs[1]!.id],
-    measure: "outlays",
     total_musd: -149,
-    split: "even_split",
   };
+  const share = (i: number) => ({
+    ...base,
+    id: `s1582-es:s${i}`,
+    line_kind: "section",
+    section_nums: [String(i)],
+    section_ids: [secs[i === 1 ? 0 : 1]!.id],
+    total_musd: -74.5,
+    split: "even_split",
+    rests_on: ["cbo_lines/s1582-es:group"],
+  });
   const { bundle } = await buildBundle(
-    await load({ bills: bill, sections: secs, cbo_estimates: [est], cbo_lines: [group] }),
+    await load({ bills: bill, sections: secs, cbo_estimates: [est], cbo_lines: [group, share(1), share(4)] }),
     "119-s-1582",
     { now: NOW },
   );
-  const d = bundle.sections.find((s) => s.num === "4")!.dollars[0]!;
+  const dollars = bundle.sections.find((s) => s.num === "4")!.dollars;
+  expect(dollars).toHaveLength(1);
+  const d = dollars[0]!;
   expect(d).toMatchObject({ amountMusd: -74.5, split: "even_split" });
   const c = bundle.claims[d.claim]!;
   expect(c.kind).toBe("inference");
-  expect(c.restsOn).toEqual(["cbo_lines/s1582-es:group"]);
+  expect(c.restsOn).toEqual(["cbo_lines/s1582-es:s4"]);
+  expect(bundle.claims["cbo_lines/s1582-es:s4"]!.restsOn).toEqual(["cbo_lines/s1582-es:group"]);
   expect(c.text).toContain("decreases outlays by $74.5 million");
   expect(checkBundle(bundle)).toEqual([]);
+});
+
+test("a bundle rebuilds byte for byte, however the rows were loaded", async () => {
+  const reversed = Object.fromEntries(Object.entries(GENIUS_ROWS).map(([t, rs]) => [t, [...rs!].reverse()]));
+  const again = await buildBundle(await load(reversed), "119-s-1582", { now: NOW });
+  expect(JSON.stringify(again.bundle)).toBe(JSON.stringify(b));
 });
 
 test("a member shows the party and chamber of the term that covers the bill", async () => {

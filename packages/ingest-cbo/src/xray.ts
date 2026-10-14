@@ -5,7 +5,7 @@ import { baselineOf, type Listing, parseListings, versionCode } from "./estimate
 import { billstatus, type Fetched, publicationFiles } from "./fetch.ts";
 import { baseNum, buildLines } from "./lines.ts";
 import type { Glance, Parsed } from "./parsed.ts";
-import { closestVersion, sectionMap } from "./sections.ts";
+import { closestVersion, type Labelled, sectionMap } from "./sections.ts";
 
 const PKG = resolve(import.meta.dir, "..");
 
@@ -15,6 +15,17 @@ export async function parse<T>(command: "xlsx" | "pdf" | "table1" | "glance", fi
   } catch {
     return null;
   }
+}
+
+/** One-section rows of CBO's tables with their printed labels: the evidence for which numbering CBO used. */
+function labelled(main: Parsed | null): Labelled[] {
+  return (main?.sheets ?? []).flatMap((s) =>
+    s.rows.flatMap((r) =>
+      r.line_kind === "section" && r.sections.length === 1
+        ? [{ num: baseNum(r.sections[0]!), title: r.section_title }]
+        : [],
+    ),
+  );
 }
 
 export const estimateId = (bill: BillId, l: Listing) => `${bill}.cbo-${l.pubId}`;
@@ -107,7 +118,7 @@ export async function xray(ctx: StageContext) {
       },
       main,
       glance,
-      sectionMap(sections, code ?? close?.code ?? null),
+      sectionMap(sections, code ?? close?.code ?? null, labelled(main)),
     );
     lines.push(...built.lines);
     estimates.push({

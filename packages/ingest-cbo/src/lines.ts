@@ -1,5 +1,6 @@
 import type { Row } from "@antibody/core";
 import type { Glance, Parsed, ParsedRow, ParsedSheet, SourceFile, Summary, Values } from "./parsed.ts";
+import type { SectionJoin } from "./sections.ts";
 
 type Line = Row<"cbo_lines">;
 type Measure = Line["measure"];
@@ -102,21 +103,16 @@ interface Part extends Amount {
   restsOn: string[];
 }
 
-export function buildLines(
-  src: Source,
-  parsed: Parsed | null,
-  glance: Glance | null,
-  sectionId: (num: string) => string | undefined,
-): Built {
+export function buildLines(src: Source, parsed: Parsed | null, glance: Glance | null, sectionId: SectionJoin): Built {
   const sheets = parsed?.format === "table1" ? [] : (parsed?.sheets ?? []);
   const check = reconcile(sheets);
   const failing = new Set(check.failing);
   const out: Line[] = [];
   const unmapped = new Set<string>();
   const fileOf = (x: { file?: SourceFile }) => x.file ?? { url: src.fileUrl, archiveUrl: src.archiveUrl };
-  const ids = (nums: string[]) =>
+  const ids = (nums: string[], title: string | null, group = false) =>
     nums.flatMap((n) => {
-      const id = sectionId(n);
+      const id = sectionId(n, title, group);
       if (!id) unmapped.add(n);
       return id ? [id] : [];
     });
@@ -157,7 +153,7 @@ export function buildLines(
           id: `${src.estimateId}:t${i}:${flow}`,
           line_kind: "group",
           section_nums: [...new Set(nums)],
-          section_ids: ids([...new Set(nums)]),
+          section_ids: [],
           title: `${sheet.sheet}: ${total.measure} (section rows don't add up to this total, so they are not shown)`,
           measure: flow,
           amount: { values: total.values, ranges: [total.range], file: fileOf(sheet) },
@@ -182,7 +178,7 @@ export function buildLines(
         id,
         line_kind: "group",
         section_nums: it.nums,
-        section_ids: ids(it.nums),
+        section_ids: ids(it.nums, it.title, true),
         title: it.title,
         measure: it.flow,
         amount: it.amount,
@@ -211,7 +207,7 @@ export function buildLines(
       id: `${src.estimateId}:s${num}:${flow}`,
       line_kind: "section",
       section_nums: [num],
-      section_ids: ids([num]),
+      section_ids: ids([num], ps[0]!.title),
       title: ps[0]!.title,
       measure: flow,
       amount: { values: addValues(ps.map((p) => p.values)), ranges: ps.flatMap((p) => p.ranges), file: ps[0]!.file },
