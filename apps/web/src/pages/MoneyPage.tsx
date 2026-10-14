@@ -217,9 +217,9 @@ function Follow({ v }: { v: SectionView }) {
                 <p className="behind-n">
                   <strong>{ranked.length}</strong>
                   <span>
-                    {ranked.length === 1 ? "member traded" : "members traded"} at least one of these{" "}
-                    {count(companies.size, "stock")} in the data. {inWindow.length} did it inside the window (
-                    {party(inWindow)}). {party(ranked)} overall.
+                    {ranked.length === 1 ? "member traded" : "members traded"}{" "}
+                    {companies.size === 1 ? "this stock" : `at least one of these ${companies.size} stocks`} in the
+                    data. {inWindow.length} did it inside the window ({party(inWindow)}). {party(ranked)} overall.
                   </span>
                 </p>
                 <MemberChips ranked={all ? ranked : ranked.slice(0, SHOWN)} />
@@ -229,8 +229,9 @@ function Follow({ v }: { v: SectionView }) {
                   </button>
                 )}
                 <p className="kicker">
-                  Ordered by one rule for everyone: how many of these {count(companies.size, "company", "companies")} a
-                  member traded, then by name. The number beside a name is that count. Not by party, not by dollars.
+                  {companies.size === 1
+                    ? "Ordered by name, one rule for everyone. Not by party, not by dollars."
+                    : `Ordered by one rule for everyone: how many of these ${companies.size} companies a member traded, then by name. The number beside a name is that count. Not by party, not by dollars.`}
                 </p>
               </div>
             ) : (
@@ -264,7 +265,7 @@ function Follow({ v }: { v: SectionView }) {
         <Section kicker="How common is this" title="Every tie, beside how common it is">
           <Common
             rate={rate}
-            noun={`these ${count(companies.size, "company", "companies")}`}
+            noun={companies.size === 1 ? "this company" : `one of these ${companies.size} companies`}
             window={windowShare(book)}
           />
         </Section>

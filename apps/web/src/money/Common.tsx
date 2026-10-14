@@ -38,9 +38,9 @@ export function Common({ rate, noun, window }: { rate: BaseRate; noun: string; w
       </table>
       <p>
         Being in this table is common. Of the {count(rate.members, "member")} the bundle draws, {rate.gifted}{" "}
-        {rate.gifted === 1 ? "has" : "have"} a PAC gift from one of {noun} (counting only each member's 5 largest tied
-        donors), {rate.traded} traded one of the stocks, and {rate.both} did both. The records show dates and amounts,
-        not motive, or that any trade or vote followed from any gift.
+        {rate.gifted === 1 ? "has" : "have"} a PAC gift from {noun} (counting only each member's 5 largest tied donors),{" "}
+        {rate.traded} traded one of the stocks, and {rate.both} did both. The records show dates and amounts, not
+        motive, or that any trade or vote followed from any gift.
       </p>
       {window && (
         <p>

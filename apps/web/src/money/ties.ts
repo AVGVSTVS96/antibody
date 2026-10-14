@@ -164,7 +164,7 @@ export function matchSummary(ties: Tie[]): string {
   const first = named.filter(([n]) => n > 0);
   if (first.length)
     parts.push(
-      `${first.map(([n, how], i) => `${n}${i ? "" : ` of these ${ties.length}`} matched ${how}`).join(", ")}.`,
+      `${first.map(([n, how], i) => `${n}${i || ties.length === 1 ? "" : ` of these ${ties.length}`} matched ${how}`).join(", ")}.`,
     );
   if (model) {
     const kinds = [
@@ -173,7 +173,7 @@ export function matchSummary(ties: Tie[]): string {
       [by("llm_parent"), "parent"],
     ] as const;
     parts.push(
-      `${model} ${first.length ? "needed" : `of these ${ties.length} needed`} a model's judgment (${kinds
+      `${model} ${first.length || ties.length === 1 ? "needed" : `of these ${ties.length} needed`} a model's judgment (${kinds
         .filter(([n]) => n > 0)
         .map(([n, k]) => `${n} ${k}`)
         .join(", ")}), shown on every row.`,

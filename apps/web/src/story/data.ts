@@ -35,6 +35,14 @@ export function bigUsd(m: number): string {
   return Math.round(a) === 0 ? "$0" : `$${Math.round(a)}M`;
 }
 
+/** "The most-named section", "All 3 most-named sections", "2 of the 3 most-named sections": the subject of a sentence. */
+export const mostNamed = (unmentioned: number, top: number) =>
+  unmentioned !== top
+    ? `${unmentioned} of the ${count(top, "most-named section")}`
+    : top === 1
+      ? "The most-named section"
+      : `All ${top} most-named sections`;
+
 /** A figure's size as `bigUsd` prints it, in $ millions. */
 const shown = (m: number) => {
   const a = Math.abs(m);
@@ -528,7 +536,7 @@ export function ch4(m: BillModel): Chapter<Ch4Data> {
     ? `Filings named a section number ${count(mentions, "time")}; a report that names two sections counts twice. Those mentions land on ${landedOf(named.length, fin.length)}. Every other mention names only the bill.`
     : "No filing names a section number: every mention names only the bill.";
   const near = unmentioned
-    ? `${unmentioned === topThree.length ? (unmentioned === 1 ? "The most-named section" : `All ${unmentioned} most-named sections`) : `${unmentioned} of the ${count(topThree.length, "most-named section")}`} drew no mentions in the ${articles.toLocaleString("en-US")} articles read.`
+    ? `${mostNamed(unmentioned, topThree.length)} drew no mentions in the ${articles.toLocaleString("en-US")} articles read.`
     : undefined;
   return chapter(
     [
