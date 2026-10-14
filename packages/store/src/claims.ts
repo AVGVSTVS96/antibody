@@ -168,9 +168,8 @@ export const TEMPLATES: Record<string, Template> = {
       return {
         text: `CBO found private-sector mandates: ${r.mandate_private ?? "not stated"}; intergovernmental mandates: ${r.mandate_intergovernmental ?? "not stated"}.`,
       };
-    return {
-      text: `CBO scored ${n.bill} (${r.version_scored}) against its ${r.baseline} baseline (${r.baseline_label}).`,
-    };
+    const label = /current.law|current.policy/i.test(r.baseline_label) ? "" : ` (${r.baseline_label})`;
+    return { text: `CBO scored ${n.display} (${r.version_scored}) against its ${r.baseline} baseline${label}.` };
   },
 
   cbo_lines: (r, facet, n) => {
