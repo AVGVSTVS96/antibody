@@ -315,6 +315,8 @@ export const TABLES = {
     pac_id: z.string(),
     bioguide: z.string().nullable(),
     candidate_id: z.string(),
+    /** The campaign committee that received it (FEC OTHER_ID); with pac_id it makes the fec.gov link to every such payment. */
+    recipient_committee_id: z.string().nullable(),
     amount_usd: z.number(),
     date: date,
     cycle: z.number().int(),
@@ -328,7 +330,8 @@ export const TABLES = {
     candidate_id: z.string(),
     support: z.enum(["support", "oppose"]),
     amount_usd: z.number(),
-    date: date,
+    /** About 1 in 10 independent expenditures in the bulk file carry no date. */
+    date: date.nullable(),
     cycle: z.number().int(),
     ...fact,
   }),
