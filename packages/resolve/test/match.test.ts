@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
+import type { Row } from "@antibody/core";
 import type { Company } from "../src/edgar.ts";
 import { ratio, tokenSet, tokenSort } from "../src/fuzzy.ts";
 import { CompanyIndex, type Mention, resolveMention } from "../src/match.ts";
-import { pacMentions, tradeMentions } from "../src/mentions.ts";
+import { employerMentions, pacMentions, tradeMentions } from "../src/mentions.ts";
 import { assetName, norm, tickerInAsset } from "../src/normalize.ts";
 
 const co = (cik: number, name: string, ...tickers: string[]): Company => ({
@@ -142,4 +143,18 @@ test("only stock and option trades are resolved", () => {
     { ...base, id: "2", asset: "DELL INTL LLC/EMC CORP", asset_type: "Corporate Bond", ticker: null },
   ]);
   expect(ms.map((x) => x.src)).toEqual(["trade:1"]);
+});
+
+test("donor employers merge across members; small ones skip review and keep only deterministic matches", () => {
+  const row = (id: string, employer: string, key: string, usd: number) =>
+    ({ id, employer, employer_key: key, amount_usd: usd }) as Row<"employer_contributions">;
+  const [big, small] = employerMentions([
+    row("a", "Occidental Petroleum Corp.", "OCCIDENTAL PETROLEUM", 20_000),
+    row("b", "OCCIDENTAL PETROLEUM CORPORATION", "OCCIDENTAL PETROLEUM", 9_000),
+    row("c", "Compass", "COMPASS", 2_000),
+  ]);
+  expect(big!.name).toBe("Occidental Petroleum Corp.");
+  expect(big!.reviewable).toBe(true);
+  expect(resolveMention(big!, index).kind).toBe("match");
+  expect(resolveMention(small!, index).kind).toBe("none");
 });

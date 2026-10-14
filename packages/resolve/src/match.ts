@@ -4,9 +4,9 @@ import { assetName, CORPORATE, NON_COMPANY, norm, normTicker, tickerInAsset, tok
 
 /** One organization name found in a record, to be resolved to an SEC company. */
 export interface Mention {
-  /** What is being resolved: client:<key>, pac:<FEC id>, trade:<trades row id>. Also the resolution row id. */
+  /** What is being resolved: client:<key>, pac:<FEC id>, employer:<employer key>, trade:<trades row id>. Also the resolution row id. */
   src: string;
-  source: "client" | "pac" | "trade";
+  source: "client" | "pac" | "employer" | "trade";
   name: string;
   /** Only PTR lines carry a ticker; lobbying and PAC names never do ("(EPC)" there is an acronym). */
   ticker: string | null;
@@ -14,6 +14,8 @@ export interface Mention {
   context: string | null;
   /** Claim ids of the record the name comes from. */
   restsOn: string[];
+  /** False keeps a name out of model review (small donor employers): only deterministic matches count for it. */
+  reviewable?: boolean;
 }
 
 export type Method = "ticker" | "name_exact" | "fuzzy" | "llm_same" | "llm_subsidiary" | "llm_parent";
@@ -176,7 +178,9 @@ export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
 
 /** A lobbying client or PAC sponsor whose name is plainly a business may be a subsidiary of a public parent. */
 function canPropose(m: Mention): boolean {
-  return m.source !== "trade" && CORPORATE.test(m.name) && !NON_COMPANY.test(m.name.toUpperCase());
+  return (
+    (m.source === "client" || m.source === "pac") && CORPORATE.test(m.name) && !NON_COMPANY.test(m.name.toUpperCase())
+  );
 }
 
 function toCandidate(c: Company, normalized: string): Candidate {
@@ -201,13 +205,14 @@ const match = (
   match: { mention, cik, method, confidence, evidence },
 });
 
-const queue = (
+function queue(
   mention: Mention,
   normalized: string,
   candidates: Candidate[],
   mayProposeParent: boolean,
   why: string,
-): Outcome => ({
-  kind: "queue",
-  queued: { mention, normalized, candidates, mayProposeParent, why },
-});
+): Outcome {
+  if (mention.reviewable === false)
+    return { kind: "none", why: `not reviewed (${why})`, normalized, best: candidates[0] ?? null };
+  return { kind: "queue", queued: { mention, normalized, candidates, mayProposeParent, why } };
+}

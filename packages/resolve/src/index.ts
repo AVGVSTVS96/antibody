@@ -3,7 +3,7 @@ import { readRows, writeRows } from "@antibody/core/node";
 import { lobbiedBenefits } from "./benefits.ts";
 import { cachedSic, companyRows, fetchSubmissions, loadEdgar } from "./edgar.ts";
 import { CompanyIndex } from "./match.ts";
-import { clientMentions, pacMentions, tradeMentions } from "./mentions.ts";
+import { clientMentions, employerMentions, pacMentions, tradeMentions } from "./mentions.ts";
 import { namedBenefits } from "./named.ts";
 import { resolveAll } from "./resolve.ts";
 
@@ -11,7 +11,7 @@ export { RULES } from "./rules.ts";
 
 /**
  * companies: SEC's ticker list as `companies` rows (id = CIK).
- * resolve: every lobbying client, PAC sponsor and stock trade → a company, as `resolutions` rows (id = the src).
+ * resolve: every lobbying client, PAC sponsor, donors' employer and stock trade → a company, as `resolutions` rows (id = the src).
  *   Runs per bill so new clients get resolved, but resolves everything incrementally: the model only sees new names.
  * benefits: companies tied to the bill (decision tied-stock): lobbied on it, or named in its text.
  */
@@ -38,6 +38,7 @@ export const stages: Stage[] = [
       for (const [shard, mentions] of [
         ["clients", clientMentions(await readRows("lda_clients"))],
         ["pacs", pacMentions(await readRows("pacs"))],
+        ["employers", employerMentions(await readRows("employer_contributions"))],
         ["trades", tradeMentions(await readRows("trades"))],
       ] as const) {
         const r = await resolveAll(mentions, index, { log: ctx.log, signal: ctx.signal });

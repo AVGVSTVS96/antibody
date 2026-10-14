@@ -122,7 +122,9 @@ export async function review(
     const items = batch.map(({ q, key }) => ({
       key,
       name: q.mention.name,
-      kind: { client: "lobbying client", pac: "PAC sponsor", trade: "stock-trade asset" }[q.mention.source],
+      kind: { client: "lobbying client", pac: "PAC sponsor", employer: "donors' employer", trade: "stock-trade asset" }[
+        q.mention.source
+      ],
       context: q.mention.context,
       may_propose_parent: q.mayProposeParent,
       candidates: q.candidates.map((c) => ({ cik: c.cik, name: c.name, tickers: c.tickers.slice(0, 3) })),

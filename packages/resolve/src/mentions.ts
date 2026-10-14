@@ -44,6 +44,40 @@ export function pacMentions(pacs: Row<"pacs">[]): Mention[] {
     });
 }
 
+/** Employers whose donors gave at least this much in all get model review; smaller ones match deterministically only. */
+export const EMPLOYER_REVIEW_USD = 25_000;
+
+/**
+ * Individual donors' employers, one mention per employer key across members and cycles, named by the spelling
+ * that carried the most money.
+ */
+export function employerMentions(rows: Row<"employer_contributions">[]): Mention[] {
+  type Employer = { usd: number; spellings: Map<string, number>; ids: string[] };
+  const by = new Map<string, Employer>();
+  for (const r of rows) {
+    const e: Employer = by.get(r.employer_key) ?? { usd: 0, spellings: new Map(), ids: [] };
+    e.usd += r.amount_usd;
+    e.spellings.set(r.employer, (e.spellings.get(r.employer) ?? 0) + r.amount_usd);
+    e.ids.push(r.id);
+    by.set(r.employer_key, e);
+  }
+  return [...by].map(([key, e]) => {
+    const names = [...e.spellings].sort((a, b) => b[1] - a[1]).map(([n]) => n);
+    return {
+      src: `employer:${key}`,
+      source: "employer" as const,
+      name: names[0]!,
+      ticker: null,
+      context:
+        names.length > 1
+          ? `employer of individual donors, also written: ${names.slice(1, 5).join("; ")}`
+          : "employer of individual donors",
+      restsOn: e.ids.slice(0, 5).map((id) => `employer_contributions/${id}`),
+      reviewable: e.usd >= EMPLOYER_REVIEW_USD,
+    };
+  });
+}
+
 /** Stock and options only; bonds, funds and notes stay out of the headline (decision weak-tier-assets). */
 export const STOCK_TYPES = new Set(["ST", "OP", "Stock", "Stock Option"]);
 

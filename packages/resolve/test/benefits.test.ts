@@ -31,27 +31,27 @@ test("names are found only as capitalized whole names, one-word names only with 
   expect(hits.map((h) => `${h.num}:${h.matched}`)).toEqual(["2:Tesla", "2:General Motors", "2:General Motors"]);
 });
 
-test("lobbied: one whole-bill row per company plus one per cited section; topic-only refs don't count", () => {
+test("lobbied: one whole-bill row per company plus one per cited section; low refs and superseded filings don't count", () => {
   const bill = "119-s-1582" as const;
-  const ref = (
-    id: string,
-    filing: string,
-    how: Row<"lda_bill_refs">["how"],
-    nums: string[] = [],
-  ): Row<"lda_bill_refs"> => ({
-    id,
-    filing_id: filing,
-    bill_id: bill,
-    section_nums: nums,
-    issue_code: "FIN",
-    quote: "S. 1582, GENIUS Act",
-    how,
-    match: "high",
-    phase: "bill",
-    source_url: `https://lda.gov/filings/public/filing/${filing}/print/`,
-    source_locator: null,
-  });
-  const filing = (id: string, client: string) => ({ id, client_key: client }) as Row<"lda_filings">;
+  const ref = (id: string, filing: string, match: Row<"lda_bill_refs">["match"], nums: string[] = []) =>
+    ({
+      id,
+      filing_id: filing,
+      bill_id: bill,
+      line: 1,
+      section_nums: nums,
+      issue_code: "FIN",
+      quote: "S. 1582, GENIUS Act",
+      matched: "S. 1582",
+      how: "number",
+      match,
+      why: "bill number with the right Congress",
+      phase: "bill",
+      source_url: `https://lda.gov/filings/public/filing/${filing}/print/`,
+      source_locator: null,
+    }) satisfies Row<"lda_bill_refs">;
+  const filing = (id: string, client: string, superseded = false) =>
+    ({ id, client_key: client, superseded }) as Row<"lda_filings">;
   const res: Row<"resolutions"> = {
     id: "client:coinbase",
     src: "client:coinbase",
@@ -65,11 +65,12 @@ test("lobbied: one whole-bill row per company plus one per cited section; topic-
   const section = { id: "119-s-1582@s394-is:sec:4", bill_id: bill, num: "4", in_final: true } as Row<"sections">;
   const rows = lobbiedBenefits(
     bill,
-    [ref("r1", "f1", "number", ["4"]), ref("r2", "f2", "name"), ref("r3", "f3", "topic")],
+    [ref("r1", "f1", "high", ["4"]), ref("r2", "f2", "medium"), ref("r3", "f3", "low"), ref("r4", "f4", "high")],
     new Map([
       ["f1", filing("f1", "coinbase")],
       ["f2", filing("f2", "coinbase")],
       ["f3", filing("f3", "coinbase")],
+      ["f4", filing("f4", "coinbase", true)],
     ]),
     new Map([[res.id, res]]),
     [section],

@@ -1,13 +1,14 @@
 import type { BillId, Row } from "@antibody/core";
 import type { Company } from "./edgar.ts";
 
-const REF_CONFIDENCE = { high: 0.95, medium: 0.85, low: 0.7 } as const;
+const REF_CONFIDENCE = { high: 0.95, medium: 0.85, low: 0 } as const;
 const MAX_RESTS_ON = 25;
 
 /**
  * Rule "lobbied" (decision tied-stock): a company is tied to the bill when a lobbying client that resolves to it
- * filed an LD-2 naming the bill. One whole-bill row per company, plus one per section the filings cite by number.
- * Topic-only references never name the bill, so they don't count here (decision topic-only-lobbying).
+ * filed an LD-1 or LD-2 naming the bill. One whole-bill row per company, plus one per section the filings cite by
+ * number. Low-confidence references (held out by ingest-lobbying) and filings replaced by an amendment don't count;
+ * topic-only lines live in lda_topic_refs and never count here (decision topic-only-lobbying).
  */
 export function lobbiedBenefits(
   bill: BillId,
@@ -39,9 +40,9 @@ export function lobbiedBenefits(
     acc.set(k, a);
   };
   for (const ref of refs) {
-    if (ref.bill_id !== bill || ref.how === "topic") continue;
     const filing = filings.get(ref.filing_id);
-    const res = filing && resolutions.get(`client:${filing.client_key}`);
+    if (ref.bill_id !== bill || ref.match === "low" || !filing || filing.superseded) continue;
+    const res = resolutions.get(`client:${filing.client_key}`);
     if (!res) continue;
     add(res.company_id, null, ref, res);
     for (const num of ref.section_nums) {
