@@ -18,8 +18,8 @@ export const bulkUrl = (file: BulkFile, cycle: number) =>
   `https://www.fec.gov/files/bulk-downloads/${cycle}/${file}${String(cycle).slice(2)}.zip`;
 
 /** Downloads a bulk zip into data/fec/ once (resumable; indiv files are 2-6 GB). */
-export async function bulkZip(file: BulkFile, cycle: number, refresh = false): Promise<string> {
-  const zip = join(paths.raw("fec"), `${file}${String(cycle).slice(2)}.zip`);
+export async function bulkZip(file: BulkFile, cycle: number, dir = paths.raw("fec"), refresh = false): Promise<string> {
+  const zip = join(dir, `${file}${String(cycle).slice(2)}.zip`);
   if (!refresh && (await Bun.file(zip).exists())) return zip;
   const part = `${zip}.part`;
   await heavy(["curl", "-sSfL", "-C", "-", "-o", part, bulkUrl(file, cycle)], { memoryMax: "1G" });
@@ -31,8 +31,12 @@ export async function bulkZip(file: BulkFile, cycle: number, refresh = false): P
  * Streams a bulk file straight out of its zip as `|`-split fields, never holding the file in memory. With `firstField`,
  * a line is decoded only when its first field is in the set: indiv files are 30-70M lines, and we keep a few million.
  */
-export async function* rows(file: BulkFile, cycle: number, firstField?: Set<string>): AsyncGenerator<string[]> {
-  const zip = await bulkZip(file, cycle);
+export async function* rows(
+  file: BulkFile,
+  cycle: number,
+  { firstField, dir }: { firstField?: Set<string>; dir?: string } = {},
+): AsyncGenerator<string[]> {
+  const zip = await bulkZip(file, cycle, dir);
   const proc = Bun.spawn(["unzip", "-p", zip, MEMBER[file]], { stdout: "pipe", stderr: "inherit" });
   const decoder = new TextDecoder();
   let carry = new Uint8Array(0);

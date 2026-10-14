@@ -27,9 +27,9 @@ export interface Pas2Result {
 }
 
 /** Every pas2 transaction aimed at a member of Congress (by their FEC candidate ids) in one cycle. */
-export async function readPas2(cycle: number, byFec: Map<string, string>): Promise<Pas2Result> {
+export async function readPas2(cycle: number, byFec: Map<string, string>, dir?: string): Promise<Pas2Result> {
   const out: Pas2Result = { contributions: [], independent: [], skipped: { memo: 0, badDate: 0 } };
-  for await (const f of rows("pas2", cycle)) {
+  for await (const f of rows("pas2", cycle, { dir })) {
     const candidate = f[C.CAND_ID] ?? "";
     const bioguide = byFec.get(candidate);
     const type = f[C.TRANSACTION_TP]!;
@@ -61,10 +61,10 @@ export async function readPas2(cycle: number, byFec: Map<string, string>): Promi
 const CM = { CMTE_ID: 0, CMTE_NM: 1, CMTE_DSGN: 8, CMTE_TP: 9, CONNECTED_ORG_NM: 13 } as const;
 
 /** Committee master rows for the given ids, the latest cycle's record winning. */
-export async function readPacs(cycles: number[], ids: Set<string>): Promise<Row<"pacs">[]> {
+export async function readPacs(cycles: number[], ids: Set<string>, dir?: string): Promise<Row<"pacs">[]> {
   const out = new Map<string, Row<"pacs">>();
   for (const cycle of [...cycles].sort((a, b) => b - a))
-    for await (const f of rows("cm", cycle)) {
+    for await (const f of rows("cm", cycle, { dir })) {
       const id = f[CM.CMTE_ID]!;
       if (!ids.has(id) || out.has(id)) continue;
       out.set(id, {

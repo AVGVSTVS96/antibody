@@ -73,13 +73,17 @@ interface Group {
 }
 
 /** Candidate committees (principal and authorized) of members, for one cycle, from ccl + cn's principal committee. */
-export async function memberCommittees(cycle: number, byFec: Map<string, string>): Promise<Map<string, string>> {
+export async function memberCommittees(
+  cycle: number,
+  byFec: Map<string, string>,
+  dir?: string,
+): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  for await (const f of rows("ccl", cycle)) {
+  for await (const f of rows("ccl", cycle, { dir })) {
     const bioguide = byFec.get(f[0]!);
     if (bioguide && (f[5] === "P" || f[5] === "A")) out.set(f[3]!, bioguide);
   }
-  for await (const f of rows("cn", cycle)) {
+  for await (const f of rows("cn", cycle, { dir })) {
     const bioguide = byFec.get(f[0]!);
     if (bioguide && f[9]) out.set(f[9], bioguide);
   }
@@ -99,10 +103,11 @@ export async function aggregateEmployers(
   cycle: number,
   committees: Map<string, string>,
   minUsd: number,
+  dir?: string,
 ): Promise<EmployerResult> {
   const groups = new Map<string, Group>();
   const stats = { kept: 0, noEmployer: 0, noEmployerUsd: 0, groups: 0, belowMin: 0 };
-  for await (const f of rows("indiv", cycle, new Set(committees.keys()))) {
+  for await (const f of rows("indiv", cycle, { firstField: new Set(committees.keys()), dir })) {
     if (!INDIVIDUAL_TYPES.has(f[I.TRANSACTION_TP]!) || f[I.MEMO_CD] === "X") continue;
     const date = fecDate(f[I.TRANSACTION_DT]);
     const amount = Number(f[I.TRANSACTION_AMT]);
