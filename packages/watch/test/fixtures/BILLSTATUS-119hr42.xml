@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<billStatus>
+  <version>3.0.0</version>
+  <bill>
+    <number>42</number>
+    <updateDate>2026-10-10T08:00:00Z</updateDate>
+    <type>HR</type>
+    <introducedDate>2026-09-01</introducedDate>
+    <congress>119</congress>
+    <actions>
+      <item>
+        <actionDate>2026-10-09</actionDate>
+        <text>Became Public Law No: 119-99.</text>
+        <type>BecameLaw</type>
+        <actionCode>36000</actionCode>
+      </item>
+      <item>
+        <actionDate>2026-10-08</actionDate>
+        <text>Presented to President.</text>
+        <type>President</type>
+        <actionCode>28000</actionCode>
+      </item>
+      <item>
+        <actionDate>2026-10-07</actionDate>
+        <text>Passed/agreed to in Senate: Passed Senate with an amendment by Yea-Nay Vote. 51 - 49. Record Vote Number: 300.</text>
+        <type>Floor</type>
+        <actionCode>17000</actionCode>
+        <recordedVotes>
+          <recordedVote>
+            <rollNumber>300</rollNumber>
+            <url>https://www.senate.gov/legislative/LIS/roll_call_votes/vote1192/vote_119_2_00300.xml</url>
+            <chamber>Senate</chamber>
+            <congress>119</congress>
+            <date>2026-10-07T20:00:00Z</date>
+            <sessionNumber>2</sessionNumber>
+          </recordedVote>
+        </recordedVotes>
+      </item>
+      <item>
+        <actionDate>2026-10-07</actionDate>
+        <text>Passed Senate with an amendment by Yea-Nay Vote. 51 - 49. Record Vote Number: 300.</text>
+        <type>Floor</type>
+        <actionCode>S32500</actionCode>
+      </item>
+      <item>
+        <actionDate>2026-09-10</actionDate>
+        <text>Passed/agreed to in House: On passage Passed by the Yeas and Nays: 216 - 214 (Roll no. 250).</text>
+        <type>Floor</type>
+        <actionCode>8000</actionCode>
+        <recordedVotes>
+          <recordedVote>
+            <rollNumber>250</rollNumber>
+            <url>https://clerk.house.gov/evs/2026/roll250.xml</url>
+            <chamber>House</chamber>
+            <congress>119</congress>
+            <date>2026-09-10T18:00:00Z</date>
+            <sessionNumber>2</sessionNumber>
+          </recordedVote>
+        </recordedVotes>
+      </item>
+      <item>
+        <actionDate>2026-09-09</actionDate>
+        <text>Rule provides for consideration of H.R. 41 and H.R. 42. The resolution provides for consideration of H.R. 41 under a structured rule, and H.R. 42 under a closed rule, with one hour of general debate.</text>
+        <type>Floor</type>
+        <actionCode>H1L220</actionCode>
+      </item>
+      <item>
+        <actionDate>2026-09-05</actionDate>
+        <text>Reported (Amended) by the Committee on Ways and Means. H. Rept. 119-500.</text>
+        <type>Committee</type>
+        <actionCode>5000</actionCode>
+      </item>
+      <item>
+        <actionDate>2026-09-01</actionDate>
+        <text>Introduced in House</text>
+        <type>IntroReferral</type>
+        <actionCode>Intro-H</actionCode>
+      </item>
+    </actions>
+    <sponsors>
+      <item>
+        <bioguideId>X000001</bioguideId>
+        <fullName>Rep. Example, Pat [I-ZZ-1]</fullName>
+        <party>I</party>
+        <state>ZZ</state>
+      </item>
+    </sponsors>
+    <amendments>
+      <amendment>
+        <number>3000</number>
+        <congress>119</congress>
+        <type>SAMDT</type>
+        <purpose>In the nature of a substitute.</purpose>
+        <submittedDate>2026-10-06T04:00:00Z</submittedDate>
+        <chamber>Senate</chamber>
+      </amendment>
+    </amendments>
+    <cboCostEstimates>
+      <item>
+        <pubDate>2026-09-04T14:00:00Z</pubDate>
+        <title>H.R. 42, Example Act</title>
+        <url>https://www.cbo.gov/publication/99999</url>
+        <description>As ordered reported by the House Committee on Ways and Means</description>
+      </item>
+    </cboCostEstimates>
+    <policyArea>
+      <name>Taxation</name>
+    </policyArea>
+    <titles>
+      <item>
+        <titleType>Display Title</titleType>
+        <title>Example Act</title>
+      </item>
+      <item>
+        <titleType>Short Titles as Introduced</titleType>
+        <title>Example Act</title>
+      </item>
+    </titles>
+    <title>Example Act</title>
+    <textVersions>
+      <item>
+        <type>Enrolled Bill</type>
+        <formats>
+          <item>
+            <url>https://www.govinfo.gov/content/pkg/BILLS-119hr42enr/xml/BILLS-119hr42enr.xml</url>
+            <type>Formatted XML</type>
+          </item>
+        </formats>
+      </item>
+      <item>
+        <type>Engrossed Amendment Senate</type>
+        <date>2026-10-07T04:00:00Z</date>
+        <formats>
+          <item>
+            <url>https://www.govinfo.gov/content/pkg/BILLS-119hr42eas/xml/BILLS-119hr42eas.xml</url>
+            <type>Formatted XML</type>
+          </item>
+        </formats>
+      </item>
+      <item>
+        <type>Engrossed in House</type>
+        <date>2026-09-10T04:00:00Z</date>
+        <formats>
+          <item>
+            <url>https://www.govinfo.gov/content/pkg/BILLS-119hr42eh/xml/BILLS-119hr42eh.xml</url>
+            <type>Formatted XML</type>
+          </item>
+        </formats>
+      </item>
+      <item>
+        <type>Introduced in House</type>
+        <date>2026-09-01T04:00:00Z</date>
+        <formats>
+          <item>
+            <url>https://www.govinfo.gov/content/pkg/BILLS-119hr42ih/xml/BILLS-119hr42ih.xml</url>
+            <type>Formatted XML</type>
+          </item>
+        </formats>
+      </item>
+    </textVersions>
+    <laws>
+      <item>
+        <type>Public Law</type>
+        <number>119-99</number>
+      </item>
+    </laws>
+  </bill>
+</billStatus>

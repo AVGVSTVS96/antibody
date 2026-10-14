@@ -121,9 +121,10 @@ export function billEvents(s: BillStatus, since: string, published: Map<string, 
         url: c.url,
         tally: null,
       });
-  return [...byKey.values()].sort(
-    (a, b) => b.date.localeCompare(a.date) || STEPS[b.step].weight - STEPS[a.step].weight,
-  );
+  const rolled = new Set([...byKey.values()].filter((e) => e.kind === "floor_vote").map(voteKey));
+  return [...byKey.values()]
+    .filter((e) => e.kind !== "action" || !e.tally || !rolled.has(voteKey(e)))
+    .sort((a, b) => b.date.localeCompare(a.date) || STEPS[b.step].weight - STEPS[a.step].weight);
 }
 
 const INTRODUCED = new Set(["ih", "is", "iph", "ips"]);
@@ -133,6 +134,8 @@ export function passedVersion(s: BillStatus): TextVersion | null {
   const code = s.id.split("-")[1]!.startsWith("h") ? "eh" : "es";
   return s.versions.find((v) => v.code === code) ?? null;
 }
+
+const voteKey = (e: BillEvent) => `${e.date}/${e.tally?.yeas}-${e.tally?.nays}`;
 
 export const packageStem = (id: BillId) => id.replace(/-/g, "");
 
