@@ -29,7 +29,9 @@ interface Scanned {
 /** Filings by members who sponsored or cosponsored a bill already ingested come first: those are the trades the bill pages show. */
 async function priorityDocs(): Promise<Set<string>> {
   const involved = new Set((await readRows("sponsorships")).map((s) => s.bioguide));
-  return new Set((await readRows("ptr_documents")).filter((d) => d.bioguide && involved.has(d.bioguide)).map((d) => d.id));
+  return new Set(
+    (await readRows("ptr_documents")).filter((d) => d.bioguide && involved.has(d.bioguide)).map((d) => d.id),
+  );
 }
 
 /** Every page of every scanned filing not yet read: priority members' filings first, then newest first. */
