@@ -114,7 +114,7 @@ h1.hero {
 }
 
 h2 {
-  font: 800 clamp(28px, calc(0.4vw + 26px), 32px) / 1.2 var(--display);
+  font: 800 clamp(28px, calc(0.5vw + 25px), 32px) / 1.2 var(--display);
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
@@ -344,6 +344,14 @@ main:focus {
   animation: drop 160ms var(--ease) both;
 }
 
+.top-sheet .results {
+  position: static;
+  width: auto;
+  max-height: none;
+  margin-top: 12px;
+  box-shadow: none;
+}
+
 .top-sheet .box-btn {
   align-self: flex-start;
 }
@@ -360,7 +368,7 @@ main:focus {
     display: none;
   }
 
-  .top-search .search {
+  .top-search .search-wrap {
     width: 220px;
   }
 }
@@ -433,8 +441,20 @@ main:focus {
 
 /* Search */
 
-.search {
+.search-wrap {
+  display: block;
   position: relative;
+}
+
+.search-wrap[data-size="bar"] {
+  width: 300px;
+}
+
+.search-wrap[data-size="hero"] {
+  width: min(700px, 100%);
+}
+
+.search {
   display: flex;
   align-items: center;
   background: var(--paper);
@@ -464,7 +484,6 @@ main:focus {
 }
 
 .search[data-size="bar"] {
-  width: 300px;
   height: 36px;
   padding-inline: 14px;
   border: 2px solid var(--ink);
@@ -480,7 +499,6 @@ main:focus {
 }
 
 .search[data-size="hero"] {
-  width: min(700px, 100%);
   height: 68px;
   padding: 0 10px 0 22px;
   border: 2px solid var(--ink);
@@ -522,7 +540,7 @@ main:focus {
   animation: drop 120ms var(--ease) both;
 }
 
-.search[data-size="hero"] .results {
+.search-wrap[data-size="hero"] .results {
   left: -2px;
   right: auto;
   width: calc(100% + 4px);
@@ -574,7 +592,7 @@ main:focus {
 }
 
 @media (max-width: 720px) {
-  .search[data-size="bar"] {
+  .search-wrap[data-size="bar"] {
     width: 100%;
   }
 
@@ -810,6 +828,12 @@ main:focus {
   padding: 16px 16px 0;
 }
 
+@media (min-width: 1001px) {
+  .stats[data-size="md"] .stat:first-child {
+    padding-left: 0;
+  }
+}
+
 .stats[data-size="md"] .stat strong {
   font-size: 40px;
   line-height: 48px;
@@ -821,6 +845,10 @@ main:focus {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     overflow: clip;
+  }
+
+  .stats .stat:last-child {
+    grid-column: auto / -1;
   }
 
   .stats .stat,

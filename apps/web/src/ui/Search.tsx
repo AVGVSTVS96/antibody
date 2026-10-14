@@ -34,7 +34,7 @@ export function SearchBox({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [model, setModel] = useState<{ id: string; m: BillModel } | null>(null);
-  const root = useRef<HTMLFormElement>(null);
+  const root = useRef<HTMLElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
 
@@ -119,39 +119,44 @@ export function SearchBox({
   };
 
   return (
-    <form
+    <search
       ref={root}
-      className="search"
+      className="search-wrap"
       data-size={size}
-      onSubmit={(e) => {
-        e.preventDefault();
-        go(items[active]);
-      }}
       onBlur={(e) => !root.current?.contains(e.relatedTarget) && setOpen(false)}
     >
-      <input
-        ref={input}
-        type="search"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls={listId}
-        aria-activedescendant={open && items[active] ? `${listId}-${active}` : undefined}
-        aria-label={placeholder}
-        autoComplete="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        enterKeyHint="go"
-        placeholder={placeholder}
-        value={q}
-        onChange={(e) => {
-          setQ(e.target.value);
-          setActive(0);
-          setOpen(true);
+      <form
+        className="search"
+        data-size={size}
+        onSubmit={(e) => {
+          e.preventDefault();
+          go(items[active]);
         }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKey}
-      />
-      {size === "hero" && <button type="submit">X-RAY IT</button>}
+      >
+        <input
+          ref={input}
+          type="search"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-activedescendant={open && items[active] ? `${listId}-${active}` : undefined}
+          aria-label={placeholder}
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          enterKeyHint="go"
+          placeholder={placeholder}
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setActive(0);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKey}
+        />
+        {size === "hero" && <button type="submit">X-RAY IT</button>}
+      </form>
       {open && (items.length > 0 || missing) && (
         <div className="results" id={listId} role="listbox" aria-label="Results">
           {items.map((it, i) => (
@@ -181,6 +186,6 @@ export function SearchBox({
           )}
         </div>
       )}
-    </form>
+    </search>
   );
 }
