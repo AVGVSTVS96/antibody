@@ -38,8 +38,13 @@ for (const arg of Bun.argv.slice(2)) {
     );
     const rel = read.filter((a) => matches[a.id]!.about !== "unrelated");
     const main = read.filter((a) => matches[a.id]!.about === "bill");
+    const long = rel.filter((a) => (a.text_chars ?? 0) >= 5000);
     console.log(
-      `  ${side.padEnd(6)} read ${String(read.length).padStart(3)}  about-bill ${pct(main.length, read.length).padStart(4)}  sections/article ${mean(rel.map((a) => matches[a.id]!.sections.length))}  whole ${pct(rel.filter((a) => matches[a.id]!.whole).length, rel.length)}`,
+      `  ${side.padEnd(6)} avg chars ${mean(read.map((a) => a.text_chars ?? 0))
+        .replace(/\.\d+$/, "")
+        .padStart(
+          5,
+        )}  sections/article if 5000+ chars ${mean(long.map((a) => matches[a.id]!.sections.length))} (n ${long.length})\n  ${" ".repeat(6)} read ${String(read.length).padStart(3)}  about-bill ${pct(main.length, read.length).padStart(4)}  sections/article ${mean(rel.map((a) => matches[a.id]!.sections.length))}  whole ${pct(rel.filter((a) => matches[a.id]!.whole).length, rel.length)}`,
     );
   }
 

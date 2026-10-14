@@ -72,6 +72,7 @@ export async function shortlist(
   const input = join(dir, `${bill}.cand.in.json`);
   const output = join(dir, `${bill}.cand.json`);
   const payload = JSON.stringify({
+    shortlist: MATCHER,
     k: SHORTLIST,
     names,
     sections: sections.map((s) => ({ id: s.id, text: `${s.heading}. ${lead(s.preview, 30)}` })),
