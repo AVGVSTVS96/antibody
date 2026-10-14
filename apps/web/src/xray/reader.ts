@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { navigate, sectionHref } from "../lib/router.ts";
 import type { Tape } from "../lib/tape.ts";
 import { counts, type Filter, type Sort, select } from "./derive.ts";
-import { reading } from "./store.ts";
+import { jumped, reading } from "./store.ts";
 
 export const PAGE = 40;
 const FLASH_MS = 900;
+
+const SCROLL_KEYS = new Set(["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "]);
 
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -63,8 +65,7 @@ export function useReader(tape: Tape, billId: string) {
   const [shown, setShown] = useState(PAGE);
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set(first === "quiet" ? [list[0]!.id] : []));
   const [flash, setFlash] = useState<string | null>(null);
-  const [target, setTarget] = useState<string | null>(null);
-  const cursor = useRef<string | null>(null);
+  const [landing, setLanding] = useState<{ id: string } | null>(null);
   const tapeH = useTapeHeight();
   useReading(Math.min(shown, list.length), tapeH);
 
@@ -98,8 +99,8 @@ export function useReader(tape: Tape, billId: string) {
       const at = where.findIndex((r) => r.id === id);
       setShown((s) => Math.max(visible ? s : PAGE, at + 12));
       setOpen(new Set([id]));
-      setTarget(id);
-      cursor.current = id;
+      setLanding({ id });
+      jumped.set(id);
     },
     [list, rows],
   );
@@ -117,10 +118,7 @@ export function useReader(tape: Tape, billId: string) {
         id = decodeURIComponent(slug);
       } catch {}
       const row = rows.find((r) => r.routeId === id);
-      if (row) {
-        reading.set(row.id);
-        jump.current(row.id);
-      }
+      if (row) jump.current(row.id);
     };
     onHash();
     addEventListener("popstate", onHash);
@@ -128,17 +126,27 @@ export function useReader(tape: Tape, billId: string) {
   }, [rows]);
 
   useEffect(() => {
-    if (!target) return;
-    const el = document.querySelector(`[data-row="${CSS.escape(target)}"]`);
-    el?.scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "start" });
-    if (el && !calm()) {
-      // Rows the scroll passes over settle at their real heights, so the stop it aimed at has moved: align once more.
-      const settle = () => el.scrollIntoView({ block: "start" });
-      addEventListener("scrollend", settle, { once: true });
-    }
-    setFlash(target);
-    setTarget(null);
-  }, [target]);
+    if (!landing) return;
+    const { id } = landing;
+    const el = document.querySelector(`[data-row="${CSS.escape(id)}"]`);
+    if (!el) return;
+    const align = () => el.scrollIntoView({ block: "start" });
+    let settled = calm();
+    el.scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "start" });
+    const onEnd = () => {
+      settled = true;
+      align();
+    };
+    addEventListener("scrollend", onEnd, { once: true });
+    const list = el.closest(".x-list");
+    const ro = new ResizeObserver(() => settled && align());
+    if (list) ro.observe(list);
+    setFlash(id);
+    return () => {
+      removeEventListener("scrollend", onEnd);
+      ro.disconnect();
+    };
+  }, [landing]);
 
   useEffect(() => {
     if (!flash) return;
@@ -148,10 +156,11 @@ export function useReader(tape: Tape, billId: string) {
 
   useEffect(() => {
     const release = () => {
-      cursor.current = null;
+      jumped.set(null);
+      setLanding(null);
     };
     const step = (dir: 1 | -1) => {
-      const at = list.findIndex((r) => r.id === (cursor.current ?? reading.get()));
+      const at = list.findIndex((r) => r.id === (jumped.get() ?? reading.get()));
       const next = at < 0 ? 0 : Math.min(list.length - 1, Math.max(0, at + dir));
       if (list[next]) go(list[next].id);
     };
@@ -159,18 +168,22 @@ export function useReader(tape: Tape, billId: string) {
       if (e.metaKey || e.ctrlKey || e.altKey || document.getElementById("root")?.inert) return;
       if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable]")) return;
       if (e.key === "j" || e.key === "k") step(e.key === "j" ? 1 : -1);
+      else if (SCROLL_KEYS.has(e.key)) release();
       else if (e.key === "Enter" && document.activeElement === document.body) {
-        const row = rows.find((r) => r.id === (cursor.current ?? reading.get()));
+        const row = rows.find((r) => r.id === (jumped.get() ?? reading.get()));
         if (row) navigate(sectionHref(billId, row.routeId));
       }
     };
+    const onPointer = (e: PointerEvent) => e.target === document.documentElement && release();
     addEventListener("keydown", onKey);
     addEventListener("wheel", release, { passive: true });
     addEventListener("touchmove", release, { passive: true });
+    addEventListener("pointerdown", onPointer);
     return () => {
       removeEventListener("keydown", onKey);
       removeEventListener("wheel", release);
       removeEventListener("touchmove", release);
+      removeEventListener("pointerdown", onPointer);
     };
   }, [list, rows, go, billId]);
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { count, day, deficitWords } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { type BillRoute, billHref, navigate, onLink, sectionHref } from "../lib/router.ts";
@@ -276,6 +276,10 @@ function Follow({ v }: { v: SectionView }) {
 export default function MoneyPage({ route }: { route: Extract<BillRoute, { page: "money" }> }) {
   const m = useModel();
   const v = m.sectionBySlug(route.section);
+  const slug = v && m.sectionSlug(v);
+  useEffect(() => {
+    if (slug && slug !== route.section) navigate(sectionHref(route.id, slug), { replace: true });
+  }, [slug, route]);
   if (!v) return <NotFound title="That section is not in this bill." />;
   return <Follow key={v.s.id} v={v} />;
 }

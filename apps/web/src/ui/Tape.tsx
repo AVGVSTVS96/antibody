@@ -250,6 +250,9 @@ function Legend({ tape }: { tape: TapeData<TapeMark> }) {
 }
 
 const CHAR = 7.5;
+const LABEL_CHAR = 7.2;
+/** Room kept free at the right edge for the cost scale labels. */
+const AXIS_ROOM = 40;
 
 function axisLabels(tape: TapeData<TapeMark>, width: number) {
   const bw = slot(width, tape.rows.length);
@@ -378,6 +381,8 @@ export function Tape<R extends TapeMark>({
   const mark = shown && marks[shown.index]!;
   const centre = (m: Mark) => m.x + m.w / 2;
   const cur = currentIndex >= 0 ? marks[currentIndex]! : null;
+  const currentText = `§${tape.rows[currentIndex]?.num} · ${currentLabel}`;
+  const flipLabel = !!cur && cur.x + currentText.length * LABEL_CHAR + 12 > width - AXIS_ROOM;
   const runFrom = run && marks[run.from]!;
   const runTo = run && marks[run.to]!;
 
@@ -420,9 +425,9 @@ export function Tape<R extends TapeMark>({
             <i className="tape-current" style={{ left: cur.x - 3, width: cur.w + 6 }} />
             <span
               className="tape-current-label"
-              style={cur.x > width / 2 ? { right: width - cur.x - cur.w - 3 } : { left: cur.x - 3 }}
+              style={flipLabel ? { right: width - cur.x - cur.w - 3 } : { left: cur.x - 3 }}
             >
-              §{tape.rows[currentIndex]!.num} · {currentLabel}
+              {currentText}
             </span>
           </>
         )}

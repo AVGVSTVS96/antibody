@@ -13,12 +13,14 @@ import { Head } from "../xray/Head.tsx";
 import { ReadIt } from "../xray/ReadIt.tsx";
 import { useReader } from "../xray/reader.ts";
 import { Pair, Who } from "../xray/Side.tsx";
-import { hover, reading } from "../xray/store.ts";
+import { hover, jumped, reading } from "../xray/store.ts";
 import "../xray/xray.css";
 
 function LiveTape({ tape, onSelect, phone }: { tape: TapeData; onSelect: (r: TapeRow) => void; phone: boolean }) {
   const lit = hover.use();
-  const here = reading.use();
+  const jump = jumped.use();
+  const read = reading.use();
+  const here = jump ?? read;
   const highlight = useMemo(() => (lit ? new Set([lit]) : undefined), [lit]);
   return (
     <Tape
@@ -76,6 +78,7 @@ export default function XrayPage() {
     () => () => {
       hover.set(null);
       reading.set(null);
+      jumped.set(null);
     },
     [],
   );

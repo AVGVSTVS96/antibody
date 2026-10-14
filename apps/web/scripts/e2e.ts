@@ -575,7 +575,20 @@ async function xray(id: string) {
   const first = finals.find((s) => s.attention && s.attention.hits > 0 && s.inFinal)!;
   await page.goto(`${base}/bill/${id}#section-${encodeURIComponent(slug(first))}`);
   await page.waitForSelector(".x-row[data-open]", { timeout: 30000 });
-  await page.waitForTimeout(900);
+  const landed = (num: string) =>
+    page.waitForFunction(
+      (want) => {
+        const row = document.querySelector(".x-row[data-open]")?.getBoundingClientRect().top ?? 1e9;
+        const tape = document.querySelector(".xray > .tape")!;
+        return (
+          Math.abs(row - (tape.getBoundingClientRect().bottom + 12)) < 3 &&
+          tape.querySelector(".tape-current-label")?.textContent?.includes(want)
+        );
+      },
+      `§${num}`,
+      { timeout: 10000 },
+    );
+  await landed(first.num).catch(() => {});
   check(
     (await openRows().first().getAttribute("id")) === `section-${slug(first)}`,
     `${id} a #section-<slug> link opens and scrolls to that row`,
@@ -585,6 +598,13 @@ async function xray(id: string) {
     .innerText()
     .catch(() => "");
   check(reading.includes(`§${first.num}`), `${id} the tape marks it "${reading}"`);
+  const hashTop = await openRows()
+    .first()
+    .evaluate((el) => el.getBoundingClientRect().top);
+  check(
+    Math.abs(hashTop - ((await tapeBottom()) + 12)) < 3,
+    `${id} and the row waits just under the pinned tape (${Math.round(hashTop)})`,
+  );
 
   const other = finals.find((s) => s.id !== first.id && s.num !== first.num)!;
   await page.evaluate(
@@ -599,9 +619,19 @@ async function xray(id: string) {
       timeout: 8000,
     })
     .catch(() => {});
+  await landed(other.num).catch(() => {});
   check(
     (await openRows().first().getAttribute("id")) === `section-${slug(other)}`,
     `${id} a hash link followed inside the page opens that row too`,
+  );
+  check(
+    (
+      (await page
+        .locator(".xray > .tape .tape-current-label")
+        .innerText()
+        .catch(() => "")) || ""
+    ).includes(`§${other.num}`),
+    `${id} and the tape marks that row, not the one above it`,
   );
   await page.goto(`${base}/bill/${id}#section-${encodeURIComponent(slug(first))}`);
   await page.waitForSelector(".x-row[data-open]", { timeout: 30000 });
@@ -686,6 +716,15 @@ for (const id of ids) {
     page.url().endsWith(`/bill/${id}/member/H000601`),
     "old ?view=money&focus=member: link redirects to the member page",
   );
+  const omnibus = "117-hr-2617";
+  if (ids.includes(omnibus)) {
+    await page.goto(`${base}/bill/${omnibus}?view=money&focus=section:${omnibus}@enr:division:AA/title:I/sec:101`);
+    await page.waitForSelector("main h1");
+    check(
+      (await page.locator(".money-head").first().innerText()).includes("DIVISION AA"),
+      "an old link to a repeated section number lands on that section, not on not-found",
+    );
+  }
   await page.goto(`${base}/bill/${id}?view=list`);
   await page.waitForFunction(() => location.search === "");
   check(page.url().endsWith(`/bill/${id}`), "old ?view=list link redirects to the x-ray");

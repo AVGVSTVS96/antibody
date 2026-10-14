@@ -23,3 +23,5 @@ function value<T>(initial: T) {
 export const hover = value<string | null>(null);
 /** The section the reader's eye is at in the list. */
 export const reading = value<string | null>(null);
+/** The section a jump (tape click, dot, hash link, J/K) landed on: it owns the marker until the reader scrolls on their own. */
+export const jumped = value<string | null>(null);

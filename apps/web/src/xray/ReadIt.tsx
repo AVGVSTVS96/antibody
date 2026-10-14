@@ -181,6 +181,12 @@ function Panel({ r, ctx, why }: { r: Reader; ctx: Ctx; why: string | null }) {
           </button>
         ))}
       </fieldset>
+      {why && (
+        <div className="x-how">
+          <b>ON THIS BILL</b>
+          <p>{why}.</p>
+        </div>
+      )}
       <div className="x-how">
         <b>HOW A MARK TURNS YELLOW</b>
         <p>
@@ -189,7 +195,6 @@ function Panel({ r, ctx, why }: { r: Reader; ctx: Ctx; why: string | null }) {
           inputs, never just the verdict. Computed figures like off-topic distance are drawn dashed and tagged
           INFERENCE.
         </p>
-        {why && <p>On this bill: {why}.</p>}
         <a href={`${RULES_URL}#buried-v1`} target="_blank" rel="noopener noreferrer" className="x-fine">
           HOW WE SCORE ↗
         </a>
