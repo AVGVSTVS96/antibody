@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { type BillId, billDisplay, billstatusUrl, congressGovUrl } from "@antibody/core";
 import { paths, readRows, writeRows } from "@antibody/core/node";
 import { type BillStatus, parseBillStatus, type TextVersion } from "./billstatus.ts";
+import { links, reasons } from "./digest.ts";
 import { discover, type SourceReport } from "./discover.ts";
 import {
   type BillEvent,
@@ -123,12 +124,16 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
   };
 }
 
-/** A bill that moved on or after `since`, scored on what BILLSTATUS alone says; null when nothing moved. */
+/**
+ * A bill that moved on or after `since`, scored on what BILLSTATUS alone says about its events no earlier digest
+ * reported; null when nothing new happened.
+ */
 export function candidate(s: BillStatus, since: string, published?: Map<string, string>, seen = new Set<string>()) {
   const events = billEvents(s, since, published);
-  if (!events.length) return null;
-  const { facts, evidence } = baseFacts(s, events, since);
-  const fresh = new Set(events.filter((e) => !seen.has(e.id)).map((e) => e.id));
+  const unseen = events.filter((e) => !seen.has(e.id));
+  if (!unseen.length) return null;
+  const { facts, evidence } = baseFacts(s, unseen, since);
+  const fresh = new Set(unseen.map((e) => e.id));
   const c: Candidate = { status: s, events, fresh, facts, evidence, sub: subScores(facts), score: 0, xray: null };
   rescore(c);
   return c;
@@ -196,7 +201,7 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
     `${found.bills.size} bills touched (${found.sources.filter((s) => s.ok).length}/${found.sources.length} sources)`,
   );
 
-  const seen = new Set((await readRows("watch_events")).map((e) => e.id));
+  const seen = await reportedBefore(date);
   const failed: string[] = [];
   let unpublished = 0;
   const statuses = await pool([...found.bills], 6, async ([id, lastmod]) => {
@@ -222,9 +227,8 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
     if (!s) continue;
     for (const c of found.cbo.get(s.id) ?? []) if (!s.cbo.some((x) => x.url === c.url)) s.cbo.push(c);
     const c = candidate(s, actionsSince, found.published, seen);
-    if (!c) continue;
-    if (!c.fresh.size) alreadyReported++;
-    else candidates.push(c);
+    if (c) candidates.push(c);
+    else if (billEvents(s, actionsSince, found.published).length) alreadyReported++;
   }
   log(`${candidates.length} moved with new events (${alreadyReported} already reported)`);
 
@@ -285,8 +289,17 @@ async function textFacts(c: Candidate, cache: string, signal?: AbortSignal) {
   rescore(c);
 }
 
+/** Event ids an earlier day's digest reported. Today's own shard doesn't count, so a rerun rebuilds today's digest. */
+async function reportedBefore(date: string): Promise<Set<string>> {
+  const shards = (await readdir(paths.table("watch_events")).catch(() => [] as string[]))
+    .filter((f) => f.endsWith(".jsonl") && f !== `${date}.jsonl`)
+    .map((f) => f.slice(0, -".jsonl".length));
+  const rows = await Promise.all(shards.map((s) => readRows("watch_events", s)));
+  return new Set(rows.flat().map((e) => e.id));
+}
+
 /** Every new event, plus one "hot" event per bill the digest flags, appended to today's shard. */
-export async function recordEvents(r: WatchResult, flagged: Candidate[], pageUrl: (id: BillId) => string | null) {
+export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
   const seenAt = r.generatedAt;
   const rows = new Map((await readRows("watch_events", r.date)).map((e) => [e.id, e]));
   for (const c of r.candidates)
@@ -306,8 +319,21 @@ export async function recordEvents(r: WatchResult, flagged: Candidate[], pageUrl
       bill_id: c.status.id,
       kind: "hot",
       seen_at: seenAt,
-      url: pageUrl(c.status.id) ?? congressGovUrl(c.status.id),
-      detail: { score: c.score, sub: c.sub, facts: c.facts, xrayed: r.xrayed.includes(c.status.id) },
+      url: links(c).page ?? congressGovUrl(c.status.id),
+      detail: {
+        display: billDisplay(c.status.id),
+        title: c.status.shortTitle ?? c.status.title,
+        sponsorParty: c.status.sponsor?.party || null,
+        reason: reasons(c)
+          .slice(0, 2)
+          .map((x) => x.text)
+          .join("; "),
+        score: c.score,
+        sub: c.sub,
+        facts: c.facts,
+        xrayed: r.xrayed.includes(c.status.id),
+        bundle: c.evidence.xray?.bundle ?? null,
+      },
     });
   await writeRows("watch_events", r.date, [...rows.values()]);
 }

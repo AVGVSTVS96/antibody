@@ -71,6 +71,16 @@ test("candidate: strongest step, closest vote, late measured against the first-p
   expect(candidate(status(), "2026-12-01")).toBeNull();
 });
 
+test("a bill is scored on events no earlier digest reported", () => {
+  const law = "119-hr-42/action/2026-10-09/law";
+  const c = candidate(status(), "2026-10-01", undefined, new Set([law]))!;
+  expect(c.facts.step).toBe("presented");
+  expect(c.fresh.has(law)).toBe(false);
+  expect(reasons(c)[0]!.text).toBe("Went to the President on Oct 8, 2026");
+  const everything = billEvents(status(), "2026-10-01").map((e) => e.id);
+  expect(candidate(status(), "2026-10-01", undefined, new Set(everything))).toBeNull();
+});
+
 const facts: Facts = {
   step: "passed",
   words: 50_000,

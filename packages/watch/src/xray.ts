@@ -16,7 +16,8 @@ export async function runXray(bill: BillId, logDir: string, signal?: AbortSignal
   const log = join(logDir, `${bill}.log`);
   const minutes = Number(process.env.ANTIBODY_WATCH_XRAY_MINUTES ?? 60);
   const t0 = performance.now();
-  const proc = Bun.spawn(["bun", join(ROOT, "apps/cli/src/main.ts"), "xray", bill], {
+  const publish = process.env.ANTIBODY_WATCH_PUBLISH === "1" ? ["--publish"] : [];
+  const proc = Bun.spawn(["bun", join(ROOT, "apps/cli/src/main.ts"), "xray", bill, ...publish], {
     cwd: ROOT,
     stdout: Bun.file(log),
     stderr: "pipe",

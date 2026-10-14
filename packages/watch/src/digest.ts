@@ -30,7 +30,7 @@ export function money(musd: number): string {
 export function reasons(c: Candidate): Reason[] {
   const { facts: f, evidence: ev, status: s } = c;
   const out: Reason[] = [];
-  const top = c.events.find((e) => e.step === f.step)!;
+  const top = c.events.find((e) => e.step === f.step && c.fresh.has(e.id))!;
   out.push({
     signal: "moving",
     text: `${STEPS[f.step].label[0]!.toUpperCase()}${STEPS[f.step].label.slice(1)} on ${fmtDate(top.date)}${top.tally ? ` (${top.tally.yeas}-${top.tally.nays})` : ""}`,
@@ -169,7 +169,15 @@ export function digestJson(r: WatchResult) {
       reasons: reasons(c),
       events: c.events
         .slice(0, 8)
-        .map(({ kind, step, date, text, url, tally }) => ({ kind, step, date, text, url, tally })),
+        .map(({ id, kind, step, date, text, url, tally }) => ({
+          kind,
+          step,
+          date,
+          text,
+          url,
+          tally,
+          new: c.fresh.has(id),
+        })),
       xray: c.xray && {
         ...c.xray,
         bundle: c.evidence.xray?.bundle ?? null,
@@ -209,7 +217,7 @@ export function digestMarkdown(d: Digest): string {
     if (b.xray)
       L.push(
         b.xray.ok
-          ? `X-ray: done in ${b.xray.seconds}s${b.xray.bundle ? ` · bundle ${b.xray.bundle}` : " · no bundle yet"}`
+          ? `X-ray: done in ${b.xray.seconds}s${b.xray.headlineHits !== null ? ` · ${b.xray.headlineHits} news articles on the bill as a whole` : ""}${b.xray.bundle ? ` · bundle ${b.xray.bundle}` : " · no bundle yet"}`
           : `X-ray: failed (${b.xray.error}) · log ${b.xray.log}`,
       );
     const l = b.links;
