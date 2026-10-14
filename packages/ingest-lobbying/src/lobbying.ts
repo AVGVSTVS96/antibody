@@ -5,7 +5,7 @@ import { buildAliases, coCited, sameTitle } from "./aliases.ts";
 import { billStatus } from "./billstatus.ts";
 import { type Aliases, matcher } from "./extract.ts";
 import { pull, rawDir } from "./pull.ts";
-import { extract, markSuperseded } from "./rows.ts";
+import { extract, markSuperseded, mergeClient } from "./rows.ts";
 import { upsert } from "./shards.ts";
 import { spendRows } from "./spend.ts";
 
@@ -49,14 +49,7 @@ export async function runLobbying(ctx: StageContext) {
       rows.map((r) => ({ ...r, bill_ids: r.bill_ids.filter((b) => b !== bill) })).filter((r) => r.bill_ids.length),
     merge: (old, next) => ({ ...next, bill_ids: [...new Set([...old.bill_ids, ...next.bill_ids])].sort() }),
   });
-  await upsert("lda_clients", x.clients, () => "all", {
-    merge: (old, next) => ({
-      ...old,
-      lda_client_ids: [...new Set([...old.lda_client_ids, ...next.lda_client_ids])],
-      names: [...new Set([...old.names, ...next.names])],
-      description: old.description ?? next.description,
-    }),
-  });
+  await upsert("lda_clients", x.clients, () => "all", { merge: mergeClient });
   await writeRows("lda_bill_refs", bill, x.refs);
 
   const stored = new Map<string, Row<"lda_filings">>();

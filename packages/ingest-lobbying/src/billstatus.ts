@@ -16,6 +16,9 @@ export interface BillStatus {
   /** Public law numbers, e.g. "119-27". */
   laws: string[];
   enactedOn: string | null;
+  policyArea: string | null;
+  /** CRS's latest summary as plain text. */
+  summary: string | null;
 }
 
 const fileName = (id: BillId) => {
@@ -66,6 +69,8 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
     .map((x) => tag(x, "number"))
     .filter((n): n is string => !!n);
   const enacted = items(bill, "actions").find((x) => /Became (Public|Private) Law/i.test(tag(x, "text") ?? ""));
+  const summaries = [...bill.matchAll(/<summary>[\s\S]*?<text><!\[CDATA\[([\s\S]*?)\]\]><\/text>/g)];
+  const summary = summaries.at(-1)?.[1];
   return {
     id,
     url: billstatusUrl(id),
@@ -73,6 +78,8 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
     titles,
     laws,
     enactedOn: enacted ? (tag(enacted, "actionDate") ?? null) : null,
+    policyArea: bill.match(/<policyArea>\s*<name>([^<]*)<\/name>/)?.[1] ?? null,
+    summary: summary ? decode(summary.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ")).replace(/\s+/g, " ") : null,
   };
 }
 

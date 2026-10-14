@@ -84,7 +84,7 @@ export interface Extracted {
  */
 export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSections?: Set<string>): Extracted {
   const out: Extracted = { filings: [], refs: [], lobbyists: [], clients: [] };
-  const clients = new Map<string, Row<"lda_clients">>();
+  const namedFilings: LdaFiling[] = [];
   for (const f of all) {
     const p = period(f.filing_year, f.filing_period);
     const phase = phaseOf(p.start, p.end, m.aliases.enactedOn);
@@ -130,23 +130,35 @@ export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSection
       }
     }
     if (!named) continue;
-    const row = filingRow(f);
-    out.filings.push(row);
+    out.filings.push(filingRow(f));
     out.lobbyists.push(...lobbyists.values());
-    const c = clients.get(row.client_key) ?? {
-      id: row.client_key,
-      name: f.client.name,
-      lda_client_ids: [],
-      names: [],
-      description: row.client_description,
-    };
-    if (!c.lda_client_ids.includes(row.lda_client_id)) c.lda_client_ids.push(row.lda_client_id);
-    if (!c.names.includes(f.client.name)) c.names.push(f.client.name);
-    c.description ??= row.client_description;
-    clients.set(row.client_key, c);
+    namedFilings.push(f);
   }
-  out.clients = [...clients.values()];
+  out.clients = clientRows(namedFilings);
   return out;
+}
+
+/** One row per merged client key, with every lda.gov client id and name spelling seen. */
+export function clientRows(filings: LdaFiling[]): Row<"lda_clients">[] {
+  const out = new Map<string, Row<"lda_clients">>();
+  for (const f of filings) {
+    const key = clientKey(f.client.name, f.client.id);
+    const c = out.get(key) ?? { id: key, name: f.client.name, lda_client_ids: [], names: [], description: null };
+    if (!c.lda_client_ids.includes(String(f.client.id))) c.lda_client_ids.push(String(f.client.id));
+    if (!c.names.includes(f.client.name)) c.names.push(f.client.name);
+    c.description ??= f.client.general_description || null;
+    out.set(key, c);
+  }
+  return [...out.values()];
+}
+
+export function mergeClient(old: Row<"lda_clients">, next: Row<"lda_clients">): Row<"lda_clients"> {
+  return {
+    ...old,
+    lda_client_ids: [...new Set([...old.lda_client_ids, ...next.lda_client_ids])],
+    names: [...new Set([...old.names, ...next.names])],
+    description: old.description ?? next.description,
+  };
 }
 
 const posted = (r: Row<"lda_filings">) => (r.posted_at ? Date.parse(r.posted_at) : 0);

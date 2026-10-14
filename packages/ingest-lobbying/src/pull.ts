@@ -50,8 +50,8 @@ interface Manifest {
 
 export const rawDir = (bill: BillId) => join(paths.raw("lobbying"), bill);
 
-export async function readFilings(bill: BillId): Promise<LdaFiling[]> {
-  const file = Bun.file(join(rawDir(bill), "filings.jsonl"));
+export async function readFilings(bill: BillId, name = "filings"): Promise<LdaFiling[]> {
+  const file = Bun.file(join(rawDir(bill), `${name}.jsonl`));
   if (!(await file.exists())) return [];
   return (await file.text())
     .split("\n")
@@ -59,24 +59,41 @@ export async function readFilings(bill: BillId): Promise<LdaFiling[]> {
     .map((l) => JSON.parse(l));
 }
 
+interface PullOptions {
+  refresh: boolean;
+  signal?: AbortSignal;
+  log?: (m: string) => void;
+}
+
+/** Every filing that names the bill in any of its spellings, in the years it could be lobbied on. */
+export const pull = (a: Aliases, opts: PullOptions) => pullTerms(a.bill, "filings", searchTerms(a), a.years, opts);
+
 /**
  * Pulls every filing whose issue text matches one of the terms, per filing year, and merges them into
- * data/lobbying/<bill>/filings.jsonl. Queries already pulled are skipped unless `refresh`, which asks only
+ * data/lobbying/<bill>/<name>.jsonl. Queries already pulled are skipped unless `refresh`, which asks only
  * for filings posted since the last pull.
  */
-export async function pull(
-  a: Aliases,
-  opts: { refresh: boolean; signal?: AbortSignal; log?: (m: string) => void },
+export async function pullTerms(
+  bill: BillId,
+  name: string,
+  terms: string[],
+  years: number[],
+  opts: PullOptions,
 ): Promise<LdaFiling[]> {
-  const dir = rawDir(a.bill);
+  const dir = rawDir(bill);
   await mkdir(dir, { recursive: true });
-  const manifestFile = Bun.file(join(dir, "manifest.json"));
+  const manifestFile = Bun.file(join(dir, `${name}.manifest.json`));
   const manifest: Manifest = (await manifestFile.exists()) ? await manifestFile.json() : { done: {} };
-  const byUuid = new Map((await readFilings(a.bill)).map((f) => [f.filing_uuid, f]));
+  const byUuid = new Map((await readFilings(bill, name)).map((f) => [f.filing_uuid, f]));
   const before = byUuid.size;
+  const save = async () => {
+    const lines = [...byUuid.values()].map((f) => `${JSON.stringify(f)}\n`).join("");
+    await Bun.write(join(dir, `${name}.jsonl`), lines);
+    await Bun.write(manifestFile, JSON.stringify(manifest, null, 1));
+  };
 
-  for (const q of queries(searchTerms(a)))
-    for (const year of a.years) {
+  for (const q of queries(terms))
+    for (const year of years) {
       const key = `${q}|${year}`;
       const last = manifest.done[key];
       if (last !== undefined && !opts.refresh) continue;
@@ -89,12 +106,12 @@ export async function pull(
         n++;
       }
       manifest.done[key] = pulledAt;
+      await save();
       opts.log?.(`${year} ${q.slice(0, 50)}… ${n} hits`);
     }
 
   const all = [...byUuid.values()];
-  await Bun.write(join(dir, "filings.jsonl"), all.map((f) => JSON.stringify(f)).join("\n") + (all.length ? "\n" : ""));
-  await Bun.write(manifestFile, JSON.stringify(manifest, null, 1));
-  opts.log?.(`${all.length} filings (${all.length - before} new)`);
+  await save();
+  opts.log?.(`${all.length} ${name} (${all.length - before} new)`);
   return all;
 }
