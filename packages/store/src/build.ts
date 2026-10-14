@@ -734,7 +734,8 @@ class Builder {
     for (const f of await this.select("lda_filings", "list_contains($ids, id)", { ids: filingIds }))
       this.filings.set(f.id, f);
 
-    const clientKeys = [...new Set([...this.filings.values()].map((f) => f.client_key))];
+    // A lobbying client is one with a filing that names the bill; topic-only filers are not drawn, so every count agrees.
+    const clientKeys = [...new Set(refs.map((r) => this.filings.get(r.filing_id)!.client_key))];
     const clientRows = new Map(
       (await this.select("lda_clients", "list_contains($k, id)", { k: clientKeys })).map((c) => [c.id, c]),
     );
@@ -805,7 +806,7 @@ class Builder {
       }
     }
     for (const [key, rs] of groupBy(topicRefs, (r) => this.filings.get(r.filing_id)?.client_key ?? "")) {
-      if (!key) continue;
+      if (!byClient.has(key)) continue;
       const s = spendOf(key, true);
       const { total, share } = await spendClaims(s);
       const claims = [total, ...(await this.cites("lda_topic_refs", rs))].filter((c): c is ClaimId => !!c);

@@ -67,6 +67,10 @@ test("percentile ranks every uncovered section at the bottom, ties included", ()
   expect(percentile(0, [0, 1, 2])).toBe(0);
 });
 
+test("a value above its whole reference ranks at the top, never past it", () => {
+  expect(percentile(5, [0, 1, 2])).toBe(1);
+});
+
 test("boilerplate headings get no off-topic value", () => {
   for (const h of ["Short title", "Definitions", "Effective date", "Technical and conforming amendments"])
     expect(BOILERPLATE.test(h)).toBe(true);

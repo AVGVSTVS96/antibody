@@ -7,7 +7,7 @@ import { wordDiff } from "../src/diff.ts";
 import { isLate, trace } from "../src/lineage.ts";
 import { match } from "../src/match.ts";
 import { parseSections, type Sec } from "../src/sections.ts";
-import { canon, citations, normEnum } from "../src/text.ts";
+import { canon, capitalizeNames, citations, namesIn, normEnum } from "../src/text.ts";
 
 const bill = (body: string) => `<?xml version="1.0"?><bill><legis-body>${body}</legis-body></bill>`;
 const section = (num: string, heading: string, text: string, id = "") =>
@@ -194,4 +194,16 @@ describe("late: first appears after the first chamber-passed text", () => {
       ),
     ).toBe(false);
   });
+});
+
+test("a lowercase name in a heading takes its capitals from the names a title spells out", () => {
+  const titles = namesIn([
+    "To release the records the Department of Justice holds relating to Jeffrey Epstein, and for other purposes.",
+  ]);
+  expect([...titles.values()]).toEqual(["Department of Justice", "Jeffrey Epstein"]);
+  expect(capitalizeNames("Release of documents relating to jeffrey epstein", titles)).toBe(
+    "Release of documents relating to Jeffrey Epstein",
+  );
+  expect(capitalizeNames("Department of justice grants", titles)).toBe("Department of Justice grants");
+  expect(capitalizeNames("Epsteins and jeffreys", titles)).toBe("Epsteins and jeffreys");
 });

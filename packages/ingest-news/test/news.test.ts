@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { parseRss } from "../src/gnews.ts";
-import { sample } from "../src/news.ts";
+import { dedupeSyndicated, sample } from "../src/news.ts";
 import { COUNTED, midpoint, OUTLET_LIST, outletFor, outletRows, SIDES, sideOf, TRADE_LEGAL } from "../src/outlets.ts";
 
 test("a multi-quintile outlet takes the midpoint, rounded toward center, the same way on both sides", () => {
@@ -50,4 +50,30 @@ test("the sample is a fixed number per side, picked by hash, so re-runs read the
   const b = sample([...items].reverse()).map((x) => x.id);
   expect(new Set(a)).toEqual(new Set(b));
   expect(a.length).toBe(150 * 3 + 60);
+});
+
+test("a story an outlet runs on several regional sites counts once, keeping the copy already read", () => {
+  const cbs = outletFor("cbsnews.com");
+  const story = (
+    id: string,
+    url: string,
+    title = "ICE says many no longer qualify for bond hearings",
+    published = "2025-07-15",
+  ) => ({
+    id,
+    url,
+    title,
+    published,
+    outlet: cbs,
+  });
+  const items = [
+    story("a", "https://www.cbsnews.com/losangeles/news/x"),
+    story("b", "https://www.cbsnews.com/chicago/news/x"),
+    story("c", "https://www.cbsnews.com/chicago/news/y", "  ICE says many NO longer qualify for bond hearings "),
+    story("d", "https://www.cbsnews.com/news/x", undefined, "2025-07-16"),
+    story("e", "https://www.cbsnews.com/news/untitled-1", ""),
+    story("f", "https://www.cbsnews.com/news/untitled-2", ""),
+  ];
+  expect(dedupeSyndicated(items, new Set()).map((i) => i.id)).toEqual(["a", "d", "e", "f"]);
+  expect(dedupeSyndicated(items, new Set(["b"])).map((i) => i.id)).toEqual(["b", "d", "e", "f"]);
 });

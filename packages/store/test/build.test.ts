@@ -466,3 +466,46 @@ describe("committee seats", () => {
     expect(bundle.gaps.map((g) => g.id)).toContain("no-seats");
   });
 });
+
+describe("one definition of a lobbying client", () => {
+  test("a filer that only matches the bill's topic is not a client, so the counts and the gap text agree", async () => {
+    const [first] = GENIUS_ROWS.lda_filings!;
+    const topicOnly = {
+      ...first!,
+      id: "topic-only-filing",
+      client_key: "zeta",
+      client_name: "ZETA",
+      lda_client_id: "9",
+    };
+    const rows = {
+      ...GENIUS_ROWS,
+      lda_filings: [...GENIUS_ROWS.lda_filings!, topicOnly],
+      lda_topic_refs: [
+        {
+          id: `${topicOnly.id}#0#119-s-1582`,
+          filing_id: topicOnly.id,
+          bill_id: "119-s-1582",
+          line: 1,
+          issue_code: "FIN",
+          quote: "stablecoin legislation",
+          topic: "stablecoins",
+          phase: "bill",
+          source_url: `https://lda.gov/filings/public/filing/${topicOnly.id}/print/`,
+          source_locator: "lobbying activity 1",
+          rule: "lda-topic-only",
+          confidence: 0.6,
+          rests_on: [`lda_filings/${topicOnly.id}`],
+          evidence: {},
+        },
+      ],
+    };
+    const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+    const clients = bundle.nodes.filter((n) => n.kind === "client");
+    expect(clients.map((n) => n.id)).not.toContain("client:zeta");
+    expect(bundle.lobbying.clients).toBe(clients.length);
+    expect(bundle.gaps.find((g) => g.kind === "entity_recall")!.text).toContain(
+      `of ${clients.length} lobbying clients`,
+    );
+    expect(checkBundle(bundle)).toEqual([]);
+  });
+});
