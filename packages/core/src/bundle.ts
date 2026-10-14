@@ -47,6 +47,8 @@ export const Dollar = z.object({
   estimateId: z.string(),
   baseline: Baseline,
   measure: Measure,
+  /** direct (mandatory) or discretionary (subject to appropriation); absent for revenues and deficit. */
+  spending: z.enum(["direct", "discretionary"]).nullable().optional(),
   period: z.string(),
   /** $ millions, signed as CBO prints it; deficit positive = adds to the deficit. */
   amountMusd: z.number(),
