@@ -2,6 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 
 export const AUDIT_DAYS = 14;
+const MIN_FLAGGED = 10;
 
 export interface MovedBill {
   bill: string;
@@ -54,12 +55,15 @@ export function auditParties(days: MovedBill[][]): PartyAudit {
     const se = Math.sqrt(pooled * (1 - pooled) * (1 / a.moved + 1 / b.moved));
     z = se === 0 ? 0 : Math.round(((a.rate - b.rate) / se) * 100) / 100;
   }
+  const flagged = parties.reduce((n, p) => n + p.flagged, 0);
   const verdict =
-    z === null
-      ? "Only one party's bills moved, so there is nothing to compare."
-      : Math.abs(z) >= 2
-        ? `The flag rates differ more than chance would explain (z = ${z}); check the rules for a party tilt before trusting this digest.`
-        : `No flag-rate gap beyond chance (z = ${z}; |z| under 2).`;
+    flagged < MIN_FLAGGED
+      ? `Only ${flagged} bills were flagged, too few to test for a gap; the rates are shown for the record.`
+      : z === null
+        ? "Only one party's bills moved, so there is nothing to compare."
+        : Math.abs(z) >= 2
+          ? `The flag rates differ more than chance would explain (z = ${z}); check the rules for a party tilt before trusting this digest.`
+          : `No flag-rate gap beyond chance (z = ${z}; |z| under 2).`;
   return { days: days.length, bills: bills.size, parties, z, verdict };
 }
 

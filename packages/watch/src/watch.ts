@@ -305,7 +305,7 @@ async function reportedBefore(date: string): Promise<Set<string>> {
 /** Every new event, plus one "hot" event per bill the digest flags, appended to today's shard. */
 export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
   const seenAt = r.generatedAt;
-  const rows = new Map((await readRows("watch_events", r.date)).map((e) => [e.id, e]));
+  const rows = new Map((await readRows("watch_events", r.date)).filter((e) => e.kind !== "hot").map((e) => [e.id, e]));
   for (const c of r.candidates)
     for (const e of c.events)
       if (c.fresh.has(e.id) && !rows.has(e.id))

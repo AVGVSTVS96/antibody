@@ -205,11 +205,12 @@ test("party audit: a bill counts once across days, and equal flag rates show no 
   expect(a.parties.find((p) => p.party === "R")).toMatchObject({ moved: 2, flagged: 1, meanScore: 21.5 });
   expect(a.parties.find((p) => p.party === "D")).toMatchObject({ moved: 2, flagged: 1 });
   expect(a.z).toBe(0);
+  expect(a.verdict).toContain("too few");
 });
 
 test("only bills at the cutoff are flagged", async () => {
   const { flaggedOf } = await import("../src/digest.ts");
   const mk = (score: number) => ({ score }) as never;
-  expect(flaggedOf([mk(40), mk(15), mk(14.9)]).length).toBe(2);
+  expect(flaggedOf([mk(40), mk(25), mk(24.9), mk(19)]).length).toBe(2);
   expect(flaggedOf([mk(5)]).length).toBe(0);
 });

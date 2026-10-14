@@ -27,8 +27,12 @@ export type SubScores = Record<Signal, number | null>;
 
 export const RULES_VERSION = "watch-v2";
 
-/** A bill is flagged when its score reaches the cutoff, at most MAX_FLAGGED of them; a quiet week flags none. */
-export const FLAG_CUTOFF = 15;
+/**
+ * A bill is flagged when its score reaches the cutoff, at most MAX_FLAGGED of them; a quiet week flags none.
+ * Moving is worth at most 20 points, so a bill that only moved (an enrolled commemorative bill scores 19) never
+ * clears 25: it needs 5 points from size, money, lobbying, lateness, haste, burial or a close vote.
+ */
+export const FLAG_CUTOFF = 25;
 export const MAX_FLAGGED = 25;
 
 export const WEIGHTS: Record<Signal, number> = {
