@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { Bundle, checkBundle } from "@antibody/core";
 import genius from "../fixtures/119-s-1582.bundle.json";
 import { nice, plainName } from "../src/lib/format.ts";
-import { buildModel, memberShort } from "../src/lib/model.ts";
+import { buildModel, closestToQuiet, memberShort } from "../src/lib/model.ts";
 
 const b = Bundle.parse(genius);
 
@@ -63,4 +63,51 @@ test("short labels", () => {
   expect(memberShort(member("Rep. Frank Pallone, Jr. (D-NJ)", "D"))).toBe("Pallone D");
   expect(memberShort(member("Rep. Rudy Yakym III (R-IN)", "R"))).toBe("Yakym R");
   expect(memberShort(member("Rep. William R. Timmons IV (R-SC)", "R"))).toBe("Timmons R");
+});
+
+const withDropped = () => {
+  const x = Bundle.parse(structuredClone(genius));
+  const final = x.sections.find((s) => s.num === "4")!;
+  x.sections.push({
+    ...structuredClone(final),
+    id: `${final.id}-old`,
+    inFinal: false,
+    firstVersion: x.versions[0]!.code,
+  });
+  return buildModel(x);
+};
+
+test("a final section is a bare number; a dropped one that shares it says so, and the number names the final one", () => {
+  const m = withDropped();
+  const final = m.sections.find((v) => v.s.num === "4" && v.s.inFinal)!;
+  const dropped = m.sections.find((v) => v.s.num === "4" && !v.s.inFinal)!;
+  expect(m.secLabel(final)).toBe("§4");
+  expect(m.secLabel(dropped)).toBe("§4, dropped before passage");
+  expect(m.sectionSlug(final)).toBe("4");
+  expect(m.sectionSlug(dropped)).toBe(dropped.s.id);
+  expect(m.sectionBySlug("4")).toBe(final);
+  expect(m.sectionBySlug(dropped.s.id)).toBe(dropped);
+});
+
+test("a section's named count is its score's, and drawn is the part from drawn clients", () => {
+  const m = buildModel(b);
+  for (const v of m.sections.filter((x) => x.s.score)) {
+    expect(v.named).toBe(v.s.score!.components.lobbyingReports);
+    expect(v.drawn).toBeLessThanOrEqual(v.named);
+  }
+});
+
+test("the closest section to quiet-and-costly has a score above zero and names what it lacks", () => {
+  const x = Bundle.parse(structuredClone(genius));
+  expect(closestToQuiet(buildModel(x))).toBeUndefined();
+  const s = x.sections.find((v) => v.inFinal && v.score && v.score.label === "normal")!;
+  s.score!.buried = 0.85;
+  s.score!.components.late = false;
+  s.score!.components.lobbyingReports = 0;
+  s.score!.components.dollarsMusd = null;
+  const near = closestToQuiet(buildModel(x))!;
+  expect(near.v.s.id).toBe(s.id);
+  expect(near.score).toBe(0.85);
+  expect(near.missed.some((w) => /not added late/.test(w))).toBe(true);
+  expect(near.missed.some((w) => /stakes/.test(w))).toBe(true);
 });

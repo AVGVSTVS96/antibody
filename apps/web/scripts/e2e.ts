@@ -10,6 +10,9 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { activeSpan, type Bundle, type BundleIndex, type Claim, landingOrder } from "@antibody/core";
 import { chromium, type Page } from "playwright-core";
+import { modelOf } from "../src/lib/model.ts";
+import { buildTape } from "../src/lib/tape.ts";
+import { FILTERS, lobbyingOf } from "../src/xray/derive.ts";
 
 const base = process.argv[2] ?? "http://localhost:4870";
 const bundlesDir = join(import.meta.dir, "../public/bundles");
@@ -297,7 +300,7 @@ const claimsOf = async (id: string) =>
   ) as Record<string, Claim>;
 
 const slugOf = (b: Bundle, sec: Bundle["sections"][number]) =>
-  b.sections.filter((s) => s.num === sec.num).length > 1 ? sec.id : sec.num;
+  !sec.inFinal || b.sections.filter((s) => s.inFinal && s.num === sec.num).length > 1 ? sec.id : sec.num;
 
 for (const id of sample) {
   const bundle = (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
@@ -443,8 +446,7 @@ async function xray(id: string) {
   const bundle = (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
   const finals = bundle.sections.filter((s) => s.inFinal);
   const quiet = finals.filter((s) => s.score?.label === "buried").length;
-  const slug = (sec: Bundle["sections"][number]) =>
-    bundle.sections.filter((s) => s.num === sec.num).length > 1 ? sec.id : sec.num;
+  const slug = (sec: Bundle["sections"][number]) => slugOf(bundle, sec);
   const { page, errors } = await open(`/bill/${id}`);
   const tapeBottom = () => page.evaluate(() => document.querySelector(".xray > .tape")!.getBoundingClientRect().bottom);
   const openRows = () => page.locator(".x-row[data-open]");
@@ -472,6 +474,19 @@ async function xray(id: string) {
   const rowsDrawn = await page.locator(".x-row").count();
   check(rowsDrawn <= 40, `${id} the list pages: ${rowsDrawn} rows drawn of ${finals.length}`);
 
+  const shown = await page
+    .locator(".x-row")
+    .evaluateAll((rows) =>
+      rows.map((r) => [
+        (r as HTMLElement).dataset.row!,
+        r.querySelector(".x-stats > div:nth-child(3) strong")?.textContent,
+      ]),
+    );
+  check(
+    shown.every(([sid, n]) => +n! === (finals.find((s) => s.id === sid)?.score?.components.lobbyingReports ?? 0)),
+    `${id} every x-ray row shows its score's lobbying reports (${shown.length} rows)`,
+  );
+
   const chart = await page.locator(".x-chart svg").count();
   const hasCost = finals.some((s) => s.dollars.length > 0 && s.dollars.some((d) => d.baseline === "current-law"));
   check(chart === 1, `${id} the gap chart is drawn`);
@@ -492,8 +507,8 @@ async function xray(id: string) {
       );
       const labels = await toggles.allInnerTexts();
       check(
-        bundle.dollars.estimates.some((e) => labels[1]!.toLowerCase() === e.baselineLabel.toLowerCase()),
-        `${id} the toggle names the baseline as the bundle does`,
+        labels[1]!.toLowerCase() === "cbo · current policy",
+        `${id} the toggle says the baseline in short, the bundle's long name in its tooltip`,
       );
       await toggles.nth(0).click();
     }
@@ -631,6 +646,22 @@ async function xray(id: string) {
 }
 
 for (const id of ["119-hr-1", "119-s-1582", "119-hr-4405", "119-s-1071"]) if (ids.includes(id)) await xray(id);
+
+for (const id of ids) {
+  const bundle = (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
+  const m = modelOf(bundle);
+  const rows = buildTape(m).rows;
+  const scored = rows.filter((r) => r.view.s.score);
+  const named = (r: (typeof rows)[number]) => r.view.s.score!.components.lobbyingReports;
+  check(
+    scored.every((r) => r.lobbying === named(r) && lobbyingOf(m, r.view).named === named(r)),
+    `${id} x-ray row, card and filter all count the filings that name a section as its score does`,
+  );
+  check(
+    scored.filter(FILTERS.find((f) => f.id === "lobbied")!.test).length === scored.filter((r) => named(r) > 0).length,
+    `${id} the "Named by lobbyists" filter holds every section a filing names`,
+  );
+}
 
 {
   const id = "119-s-1582";

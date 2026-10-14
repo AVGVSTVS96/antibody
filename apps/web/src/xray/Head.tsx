@@ -7,7 +7,7 @@ import { Kicker } from "../ui/primitives.tsx";
 import { Src } from "../ui/receipt.tsx";
 import { type Baseline, baselines, type Passage, passageText, signed } from "./derive.ts";
 
-const NAMES = { "current-law": "CBO current law", "current-policy": "CBO current policy" } as const;
+const NAMES = { "current-law": "CBO · current law", "current-policy": "CBO · current policy" } as const;
 
 const dash = (period: string) => period.replace("-", "–");
 
@@ -31,10 +31,10 @@ function Toggle({
             type="button"
             aria-pressed={which === b}
             disabled={!found}
-            title={found ? undefined : `CBO published no ${b} estimate for this bill`}
+            title={found ? found.estimate.baselineLabel : `CBO published no ${b} estimate for this bill`}
             onClick={() => onPick(b)}
           >
-            {found?.estimate.baselineLabel ?? `${NAMES[b]}: none published`}
+            {found ? NAMES[b] : `${NAMES[b]}: none`}
           </button>
         );
       })}
@@ -46,6 +46,9 @@ function Cost({ m, all }: { m: BillModel; all: Baseline[] }) {
   const [which, setWhich] = useState<Baseline["baseline"]>(all[0]?.baseline ?? "current-law");
   const shown = all.find((b) => b.baseline === which);
   const other = all.find((b) => b.baseline !== which);
+  const appropriations = isAppropriations(m.b)
+    ? " Direct spending and revenue only: the bill's discretionary appropriations are not in this figure."
+    : "";
   const sectionBasis = m.sections.find((v) => v.figure)?.figure?.estimate.baselineLabel;
   if (!shown)
     return (
@@ -79,16 +82,22 @@ function Cost({ m, all }: { m: BillModel; all: Baseline[] }) {
           {verdict}, {dash(dollar.period)}
         </span>
       </div>
-      <p>
+      <p className="x-long">
         Measured against the {estimate.baselineLabel}. CBO's description of the text it scored: “
         {estimate.versionScored}”.
         {other &&
           ` On the ${other.estimate.baselineLabel} CBO's figure is ${signed(other.dollar.amountMusd)}, for “${other.estimate.versionScored}”. Both are CBO's.`}
-        {isAppropriations(m.b) &&
-          " Direct spending and revenue only: the bill's discretionary appropriations are not in this figure."}{" "}
+        {appropriations}{" "}
         {sectionBasis
           ? `Every section figure on this page is on the ${sectionBasis}, whichever baseline is chosen here.`
           : "CBO gave no per-section dollars for this bill, so no section carries a cost."}
+      </p>
+      <p className="x-short">
+        Against the {estimate.baselineLabel}.
+        {other &&
+          ` On the ${other.estimate.baselineLabel} ${other.estimate.versionScored === estimate.versionScored ? "the same law is" : "CBO's figure is"} ${signed(other.dollar.amountMusd)}.`}
+        {appropriations}
+        {sectionBasis && sectionBasis !== estimate.baselineLabel && ` Section figures stay on the ${sectionBasis}.`}
       </p>
       <p className="x-chips">
         <Src ids={[dollar.claim, estimate.claim]} label={`CBO ESTIMATE, ${day(estimate.publishedOn).toUpperCase()}`} />

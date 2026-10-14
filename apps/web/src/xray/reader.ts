@@ -29,7 +29,7 @@ function useTapeHeight(): number {
   return h;
 }
 
-/** Which row sits just under the pinned tape: a one-pixel band, so the browser does the watching. */
+/** Which row sits just under the pinned tape: a one-pixel band, so the browser does the watching. The last row read stays marked while the band is between rows. */
 function useReading(rowCount: number, tapeH: number) {
   useEffect(() => {
     if (!rowCount) return;
@@ -40,7 +40,7 @@ function useReading(rowCount: number, tapeH: number) {
         for (const e of entries) {
           const id = (e.target as HTMLElement).dataset.row!;
           if (e.isIntersecting) reading.set(id);
-          else if (reading.get() === id) reading.set(null);
+          else if (reading.get() === id && e.boundingClientRect.top > top) reading.set(null);
         }
       },
       { rootMargin: `-${top}px 0px -${Math.max(0, vh - top - 1)}px 0px` },

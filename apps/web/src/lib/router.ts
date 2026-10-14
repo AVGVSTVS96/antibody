@@ -42,11 +42,11 @@ export function routeHref(r: Route): string {
   }
 }
 
-/** `/bill/:id?view=money|list&focus=` from the radial map: a focused member or section has its own page now. */
+/** `/bill/:id?view=money|list&focus=` from the radial map: a focused member or section has its own page now. A full section id becomes its number, the name a final-text section has in a URL. */
 function legacy(id: string, q: URLSearchParams): Route {
   const [kind, key] = q.get("focus")?.split(/:(.*)/s) ?? [];
   if (kind === "member" && key) return { page: "member", id, bioguide: key };
-  if (kind === "section" && key) return { page: "money", id, section: key };
+  if (kind === "section" && key) return { page: "money", id, section: /[:/]sec:([^/]+)$/.exec(key)?.[1] ?? key };
   return { page: "xray", id };
 }
 

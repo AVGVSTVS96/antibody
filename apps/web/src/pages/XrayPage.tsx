@@ -7,7 +7,7 @@ import { buildTape, type Tape as TapeData, type TapeRow } from "../lib/tape.ts";
 import { useModel } from "../ui/BillGate.tsx";
 import { Note, Section } from "../ui/primitives.tsx";
 import { Tape } from "../ui/Tape.tsx";
-import { contrast, leanOf, passages } from "../xray/derive.ts";
+import { contrast, leanOf, nearly, passages } from "../xray/derive.ts";
 import { Chart, quietNote } from "../xray/Gap.tsx";
 import { Head } from "../xray/Head.tsx";
 import { ReadIt } from "../xray/ReadIt.tsx";
@@ -38,30 +38,25 @@ function LiveTape({ tape, onSelect, phone }: { tape: TapeData; onSelect: (r: Tap
 }
 
 function Legend({ tape }: { tape: TapeData }) {
+  const loud = tape.rows.filter((r) => r.kind === "headline");
+  const cuts = loud.some((r) => (r.musd ?? 0) < 0);
+  const adds = loud.some((r) => (r.musd ?? 0) >= 0);
+  const keys = [
+    ...(tape.flat && loud.length ? [{ mark: "loud", text: "LOUD", cut: false }] : []),
+    ...(!tape.flat && adds ? [{ mark: "loud", text: "LOUD · ADDS", cut: false }] : []),
+    ...(!tape.flat && cuts ? [{ mark: "loud", text: "LOUD · CUTS", cut: true }] : []),
+    ...(tape.quiet ? [{ mark: "quiet", text: "QUIET AND COSTLY", cut: false }] : []),
+    ...(tape.rows.some((r) => r.kind === "other") ? [{ mark: "other", text: "OTHER", cut: false }] : []),
+    ...(tape.evenSplit > 0 ? [{ mark: "split", text: "DASHED RING = EVEN SPLIT (INFERENCE)", cut: false }] : []),
+  ];
   return (
     <ul className="x-legend">
-      <li>
-        <i className="x-dot-key" data-mark="loud" />
-        LOUD · ADDS
-      </li>
-      <li>
-        <i className="x-dot-key" data-mark="loud" data-cut="" />
-        LOUD · CUTS
-      </li>
-      <li>
-        <i className="x-dot-key" data-mark="quiet" />
-        QUIET AND COSTLY
-      </li>
-      <li>
-        <i className="x-dot-key" data-mark="other" />
-        OTHER
-      </li>
-      {tape.evenSplit > 0 && (
-        <li>
-          <i className="x-dot-key" data-mark="split" />
-          DASHED RING = EVEN SPLIT (INFERENCE)
+      {keys.map((k) => (
+        <li key={k.text}>
+          <i className="x-dot-key" data-mark={k.mark} data-cut={k.cut || undefined} />
+          {k.text}
         </li>
-      )}
+      ))}
     </ul>
   );
 }
@@ -146,11 +141,7 @@ export default function XrayPage() {
                   ? `The quiet-and-costly rule could not be tested on this bill: ${test.why}.`
                   : tape.quiet
                     ? "No quiet-and-costly section has a headline section of similar cost on an exact CBO line, so there is no pair to show."
-                    : `No section met the quiet-and-costly rule.${
-                        closest?.s.score?.buried != null
-                          ? ` The closest was ${closest.s.heading} (${m.secLabel(closest)}), scored ${closest.s.score.buried.toFixed(2)} against the 0.45 the rule needs.`
-                          : ""
-                      }`}
+                    : `No section met the quiet-and-costly rule.${closest ? ` ${nearly(m, closest)}` : ""}`}
               </Note>
             )}
             <Who lean={lean} version={m.b.attention.outletListVersion} />

@@ -208,18 +208,24 @@ function Card({ row, tape, compact }: { row: TapeMark; tape: TapeData<TapeMark>;
 function Legend({ tape }: { tape: TapeData<TapeMark> }) {
   return (
     <ul className="tape-legend">
-      <li>
-        <i className="sw sw-loud" />
-        Headline
-      </li>
-      <li>
-        <i className="sw sw-quiet" />
-        Quiet and costly
-      </li>
-      <li>
-        <i className="sw sw-other" />
-        Other
-      </li>
+      {tape.headline > 0 && (
+        <li>
+          <i className="sw sw-loud" />
+          Headline
+        </li>
+      )}
+      {tape.quiet > 0 && (
+        <li>
+          <i className="sw sw-quiet" />
+          Quiet and costly
+        </li>
+      )}
+      {tape.headline + tape.quiet < tape.rows.length && (
+        <li>
+          <i className="sw sw-other" />
+          Other
+        </li>
+      )}
       {tape.rows.some((r) => r.late) && (
         <li>
           <i className="sw sw-late" />
@@ -280,7 +286,8 @@ export function Tape<R extends TapeMark>({
   const stage = useRef<HTMLDivElement>(null);
   const width = useWidth(stage);
   const compact = width > 0 && width < COMPACT_BELOW;
-  const g = useMemo(() => geometry(compact, tape.flat), [compact, tape.flat]);
+  const marked = tape.headline + tape.quiet > 0;
+  const g = useMemo(() => geometry(compact, tape.flat, marked), [compact, tape.flat, marked]);
   const marks = useMemo(() => layout(tape, width, g), [tape, width, g]);
   const [active, setActive] = useState<number | null>(null);
   const pressed = useRef(false);

@@ -1,6 +1,6 @@
 import { memo, useMemo, useRef, useState } from "react";
 import { count, usd } from "../lib/format.ts";
-import type { Tape, TapeRow } from "../lib/tape.ts";
+import { scaleLabel, type Tape, type TapeRow } from "../lib/tape.ts";
 import { useWidth } from "../ui/useWidth.ts";
 import { signed } from "./derive.ts";
 import { hover } from "./store.ts";
@@ -26,12 +26,11 @@ interface Plot {
 
 const kindOf = (r: TapeRow) => (r.kind === "headline" ? "loud" : r.kind === "quiet" ? "quiet" : "other");
 
-/** Article counts to label: all of them when few, else about six round ones ending on the largest. */
+/** Article counts to label: all of them when few, else the multiples of an even step (1, 2 or 5 times a power of ten) that give at most seven, ending on the largest. */
 export function xTicks(max: number): number[] {
   if (max <= 6) return Array.from({ length: max }, (_, i) => i + 1);
-  const raw = max / 6;
-  const base = 10 ** Math.floor(Math.log10(raw));
-  const step = [1, 2, 5, 10].map((k) => k * base).find((k) => k >= raw)!;
+  const base = 10 ** Math.floor(Math.log10(max / 7));
+  const step = [1, 2, 5, 10].map((k) => k * base).find((k) => max / k <= 7)!;
   const mid = Array.from({ length: Math.floor(max / step) }, (_, i) => (i + 1) * step).filter(
     (n) => n > 1 && n <= max - step / 2,
   );
@@ -68,7 +67,7 @@ function plotOf(tape: Tape, width: number, compact: boolean): Plot {
 
   const figured = measured.filter((m) => m.musd != null);
   if (tape.flat) {
-    const height = (need: number) => top + Math.max(150, need * d * 0.88 + 2 * r + 8);
+    const height = (need: number) => top + Math.max(56, need * d * 0.88 + 2 * r + 8);
     let h = 0;
     const dots = pileOf(measured, (need) => {
       h = height(need);
@@ -117,7 +116,7 @@ function plotOf(tape: Tape, width: number, compact: boolean): Plot {
   }
   const yTicks = Array.from({ length: hiExp - loExp + 1 }, (_, i) => {
     const m = 10 ** (loExp + i);
-    return { y: yOf(m), label: usd(m * 1e6) };
+    return { y: yOf(m), label: scaleLabel(m) };
   });
   return {
     dots,
