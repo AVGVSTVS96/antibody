@@ -1,10 +1,11 @@
 /**
- * Screenshots the site in the shapes people use it (desktop and phone, light and dark, each view) and reports
- * horizontal overflow, page errors and the tab title. `bun apps/web/scripts/shoot.ts <base url> <out dir> [only]`
+ * Screenshots every route in the shapes people use it (desktop and phone, light and dark), the receipt drawer open on
+ * a fact and on an inference, and reports horizontal overflow, page errors and the tab title.
+ * `bun apps/web/scripts/shoot.ts <base url> <out dir> [only]`
  */
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { chromium } from "playwright-core";
+import { chromium, type Page } from "playwright-core";
 
 const base = process.argv[2] ?? "http://localhost:4870";
 const out = process.argv[3] ?? "shots";
@@ -17,44 +18,65 @@ const browser = await chromium.launch({
 });
 
 const bill = "/bill/119-s-1582";
-const shots = [
-  { name: "index-dark", path: "/", w: 1440, h: 900, theme: "dark", full: true },
-  { name: "index-light-phone", path: "/", w: 390, h: 844, theme: "light", mobile: true, full: true },
-  { name: "bill-dark", path: bill, w: 1440, h: 900, theme: "dark" },
-  { name: "bill-light", path: bill, w: 1440, h: 900, theme: "light" },
-  { name: "bill-dark-pinned", path: `${bill}?focus=company:1403161`, w: 1440, h: 900, theme: "dark" },
-  { name: "bill-dark-member", path: `${bill}?focus=member:G000583`, w: 1440, h: 900, theme: "dark" },
-  { name: "bill-dark-money", path: `${bill}?view=money`, w: 1440, h: 900, theme: "dark" },
-  { name: "bill-dark-list", path: `${bill}?view=list`, w: 1440, h: 900, theme: "dark" },
-  { name: "bill-light-list", path: `${bill}?view=list`, w: 1440, h: 900, theme: "light" },
-  { name: "bill-dark-full", path: bill, w: 1440, h: 900, theme: "dark", full: true },
-  { name: "bill-phone-dark", path: bill, w: 390, h: 844, theme: "dark", mobile: true, full: true },
-  { name: "bill-phone-light-list", path: `${bill}?view=list`, w: 390, h: 844, theme: "light", mobile: true },
-  { name: "bill-tablet-dark", path: bill, w: 820, h: 1180, theme: "dark" },
+const openReceipt = (kind: "fact" | "inference") => async (page: Page) => {
+  await page.waitForFunction(() => document.querySelector("a.src:not(.ghost)"));
+  const chips = page.locator(kind === "inference" ? "a.src.inference" : "a.src:not(.inference)");
+  await chips.first().click();
+  await page.waitForSelector(".rcpt");
+  await page.waitForTimeout(450);
+};
+
+interface Shot {
+  name: string;
+  path: string;
+  desktop?: boolean;
+  phone?: boolean;
+  full?: boolean;
+  act?: (page: Page) => Promise<void>;
+}
+
+const routes: Shot[] = [
+  { name: "land", path: "/", desktop: true, phone: true },
+  { name: "xray", path: bill, desktop: true, phone: true },
+  { name: "story", path: `${bill}/story/2`, desktop: true, phone: true },
+  { name: "money", path: `${bill}/section/19`, desktop: true, phone: true },
+  { name: "member", path: `${bill}/member/H000601`, desktop: true, phone: true },
+  { name: "notfound", path: "/bill/nope", desktop: true, phone: true },
+  { name: "receipt-fact", path: bill, desktop: true, phone: true, act: openReceipt("fact") },
+  { name: "receipt-inference", path: `${bill}/section/19`, desktop: true, phone: true, act: openReceipt("inference") },
 ];
 
-for (const s of shots) {
-  if (only && !s.name.includes(only)) continue;
-  const page = await browser.newPage({
-    viewport: { width: s.w, height: s.h },
-    deviceScaleFactor: s.mobile ? 2 : 1,
-    isMobile: !!s.mobile,
-    hasTouch: !!s.mobile,
-    colorScheme: s.theme as "dark" | "light",
-  });
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-  const t0 = Date.now();
-  await page.goto(`${base}${s.path}${s.path.includes("?") ? "&" : "?"}theme=${s.theme}`, { waitUntil: "networkidle" });
-  if (s.path.startsWith("/bill"))
-    await page.waitForSelector(".sigma canvas", { state: "attached", timeout: 15000 }).catch(() => {});
-  await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(s.path.includes("money") ? 1100 : 500);
-  const ready = Date.now() - t0;
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  await page.screenshot({ path: `${out}/${s.name}.png`, fullPage: !!s.full });
-  console.log(s.name, JSON.stringify({ ready, overflow, errors, title: await page.title() }));
-  await page.close();
-}
+for (const s of routes)
+  for (const mobile of [false, true])
+    for (const theme of ["light", "dark"] as const) {
+      const name = `${s.name}-${mobile ? "phone" : "desktop"}-${theme}`;
+      if ((mobile ? !s.phone : !s.desktop) || (only && !name.includes(only))) continue;
+      const page = await browser.newPage({
+        viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 900 },
+        deviceScaleFactor: mobile ? 2 : 1,
+        isMobile: mobile,
+        hasTouch: mobile,
+        colorScheme: theme,
+      });
+      const errors: string[] = [];
+      page.on("pageerror", (e) => errors.push(e.message));
+      page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
+      await page.goto(`${base}${s.path}${s.path.includes("?") ? "&" : "?"}theme=${theme}`, {
+        waitUntil: "networkidle",
+      });
+      await page.waitForFunction(
+        () => document.querySelector("main h1") && !document.querySelector("main [role=status]"),
+        null,
+        {
+          timeout: 30000,
+        },
+      );
+      await page.evaluate(() => document.fonts.ready);
+      await s.act?.(page);
+      await page.waitForTimeout(300);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      await page.screenshot({ path: `${out}/${name}.png`, fullPage: !!s.full });
+      console.log(name, JSON.stringify({ overflow, errors, title: await page.title() }));
+      await page.close();
+    }
 await browser.close();

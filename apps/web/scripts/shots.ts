@@ -1,5 +1,5 @@
 /**
- * The Phase 1 screenshots: index, GENIUS (Republican-led) and the Inflation Reduction Act (Democratic-led), at 1440
+ * The README screenshots: the land page, GENIUS (Republican-led) and the Inflation Reduction Act (Democratic-led), at 1440
  * and 390 wide, dark and light. `bun apps/web/scripts/shots.ts <base url> <out dir>`
  */
 import { mkdirSync } from "node:fs";
@@ -32,8 +32,7 @@ for (const [name, path] of pages)
         colorScheme: theme,
       });
       await page.goto(`${base}${path}?theme=${theme}`, { waitUntil: "load" });
-      await page.waitForSelector(name === "index" ? ".bcard" : ".stage", { timeout: 30000 });
-      if (name !== "index") await page.waitForSelector(".sigma canvas", { state: "attached", timeout: 30000 });
+      await page.waitForSelector("main h1", { timeout: 30000 });
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(1500);
       await page.screenshot({ path: `${out}/${name}-${w}-${theme}.png` });

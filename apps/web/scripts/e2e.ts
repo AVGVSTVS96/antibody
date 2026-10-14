@@ -1,13 +1,15 @@
 /**
- * Headless end-to-end check of the built site: the index lists the published bills in both party columns, a bill
- * page renders its map, the view toggle works, chips link to real record URLs, and a sample of those URLs answers.
+ * Headless end-to-end check of the built site: every route renders for a few bills (including a vehicle bill), the
+ * old `?view=` links redirect, search finds bills and sections, the receipt drawer opens on a source chip, walks what
+ * it rests on, closes on ESC and the back button and hands focus back, nothing overflows at 1440, 768 and 390, and a
+ * sample of the source URLs the claims cite still answers.
  * `bun apps/web/scripts/e2e.ts <base url>` (default http://localhost:4870, a `vite preview` of apps/web/dist).
  */
 import { readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Bundle, BundleIndex } from "@antibody/core";
-import { chromium } from "playwright-core";
+import type { Bundle, BundleIndex, Claim } from "@antibody/core";
+import { chromium, type Page } from "playwright-core";
 
 const base = process.argv[2] ?? "http://localhost:4870";
 const bundlesDir = join(import.meta.dir, "../public/bundles");
@@ -29,36 +31,20 @@ async function open(path: string, width = 1440) {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await page.goto(`${base}${path}`, { waitUntil: "load" });
-  await page.waitForSelector(path === "/" ? ".bcard" : ".stage", { timeout: 30000 });
+  await page.waitForFunction(
+    () => document.querySelector("main h1") && !document.querySelector("main [role=status]"),
+    null,
+    {
+      timeout: 30000,
+    },
+  );
   return { page, errors };
 }
 
-{
-  const { page, errors } = await open("/");
-  check((await page.title()).toLowerCase().includes("antibody"), `index tab title: ${await page.title()}`);
-  const links = await page.$$eval("a[href^='/bill/']", (as) => [...new Set(as.map((a) => a.getAttribute("href")))]);
-  const published = index.bills.map((b) => `/bill/${b.id}`);
-  check(
-    published.every((p) => links.includes(p)),
-    `index links all ${published.length} published bills (${links.length} bill links on the page)`,
-  );
-  const parties = new Set(index.bills.map((b) => b.sponsorParty));
-  check(parties.has("R") && parties.has("D"), "both parties lead at least one published bill");
-  const box = page.locator(".search input");
-  await box.fill("GENIUS");
-  await page.waitForTimeout(300);
-  check((await page.locator("a[href='/bill/119-s-1582']").count()) > 0, "search 'GENIUS' keeps the GENIUS bill");
-  check(errors.length === 0, `index has no console errors ${errors.join(" | ")}`);
-  await page.close();
-}
+const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 
-const ids = index.bills.map((b) => b.id);
-const sample = ["119-s-1582", ids.find((i) => i === "117-hr-5376") ?? ids[1]].filter(Boolean) as string[];
-for (const id of sample) {
-  const { page, errors } = await open(`/bill/${id}`);
-  await page.waitForSelector(".sigma canvas", { state: "attached", timeout: 20000 });
-  check((await page.title()).length > 12, `${id} tab title: ${await page.title()}`);
-  const shift = await page.evaluate(
+async function layoutShift(page: Page) {
+  return page.evaluate(
     () =>
       new Promise<number>((resolve) => {
         let total = 0;
@@ -69,40 +55,192 @@ for (const id of sample) {
         setTimeout(() => resolve(total), 300);
       }),
   );
-  check(shift <= 0.1, `${id} layout shift ${shift.toFixed(3)} <= 0.1`);
-  check((await page.locator(".sigma canvas").count()) > 0, `${id} map canvas mounted`);
-  for (const view of ["money", "list", "map"]) {
-    await page.click(`[data-view="${view}"]`);
-    await page.waitForTimeout(1000);
-    check(
-      (await page.locator(`[data-view="${view}"]`).getAttribute("aria-pressed")) === "true" &&
-        page.url().includes(view === "map" ? id : `view=${view}`),
-      `${id} toggle -> ${view}`,
-    );
-    if (view === "list") check((await page.locator("table tbody tr").count()) > 0, `${id} X-ray list has section rows`);
-  }
-  for (const width of [1440, 768, 390]) {
-    await page.setViewportSize({ width, height: 900 });
-    for (const view of ["map", "money", "list"]) {
-      await page.click(`[data-view="${view}"]`).catch(() => {});
-      await page.waitForTimeout(400);
-      const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
-      check(over <= 0, `${id} ${view} at ${width}: no horizontal overflow (${over}px)`);
-    }
-  }
-  await page.setViewportSize({ width: 1440, height: 900 });
-  const hrefs = await page.$$eval("a.src[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href));
-  const bad = hrefs.filter((h) => !/^https:\/\/[^/]+\/./.test(h));
-  check(hrefs.length > 10 && bad.length === 0, `${id} ${hrefs.length} source chips, ${bad.length} malformed`);
-  check(errors.length === 0, `${id} no console errors ${errors.slice(0, 2).join(" | ")}`);
+}
+
+{
+  const { page, errors } = await open("/");
+  check((await page.title()).toLowerCase().includes("antibody"), `land tab title: ${await page.title()}`);
+  await page.locator(".search input").first().fill("GENIUS");
+  await page.waitForSelector(".results a[href='/bill/119-s-1582']", { timeout: 10000 }).catch(() => {});
+  check(
+    (await page.locator(".results a[href='/bill/119-s-1582']").count()) > 0,
+    "search 'GENIUS' finds the GENIUS bill",
+  );
+  await page.locator(".search input").first().fill("H.R. 1");
+  await page.waitForTimeout(200);
+  check((await page.locator(".results a[href='/bill/119-hr-1']").count()) > 0, "search 'H.R. 1' finds H.R.1");
+  check(errors.length === 0, `land has no console errors ${errors.join(" | ")}`);
   await page.close();
 }
 
-const phone = await open(`/bill/${sample[0]}`, 390);
-check(
-  (await phone.page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0,
-  "phone 390: no horizontal overflow",
-);
+{
+  const { page } = await open("/");
+  const before = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  await page.click("header button[aria-label^='Switch to']");
+  await page
+    .waitForFunction((was) => getComputedStyle(document.body).backgroundColor !== was, before, { timeout: 3000 })
+    .catch(() => {});
+  const after = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check(before !== after, `theme button changes the page background (${before} -> ${after})`);
+  await page.close();
+}
+
+for (const [path, want, label] of [
+  ["/nowhere", "/nowhere", "unknown path shows the not-found page"],
+  ["/bill/nope", "/bill/nope", "unknown bill shows the not-found page"],
+  ["/bill/119-s-1582/story/9", "/bill/119-s-1582/story/9", "unknown chapter shows the not-found page"],
+] as const) {
+  const { page } = await open(path);
+  check(
+    page.url().endsWith(want) &&
+      (await page.locator("main h1").innerText()).length > 0 &&
+      (await page.getByText("NOT FOUND").count()) > 0,
+    label,
+  );
+  await page.close();
+}
+
+const ids = index.bills.map((b) => b.id);
+const vehicle = index.bills.find((b) => b.stats?.vehicle)?.id;
+const sample = [...new Set(["119-s-1582", ids.find((i) => i === "117-hr-5376") ?? ids[1], vehicle])].filter(
+  Boolean,
+) as string[];
+
+const slugOf = (b: Bundle, sec: Bundle["sections"][number]) =>
+  b.sections.filter((s) => s.num === sec.num).length > 1 ? sec.id : sec.num;
+
+for (const id of sample) {
+  const bundle = (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
+  const claims = (await Bun.file(join(bundlesDir, `${id}.claims.json`)).json()) as Record<string, Claim>;
+  const texts = new Set(Object.values(claims).map((c) => c.text));
+  const section = bundle.sections.find((s) => s.inFinal);
+  const member = bundle.nodes.find((n) => n.kind === "member");
+  const routes = [
+    [`/bill/${id}`, "xray"],
+    [`/bill/${id}/story`, "story"],
+    [`/bill/${id}/story/3`, "story 3"],
+    ...(section ? [[`/bill/${id}/section/${encodeURIComponent(slugOf(bundle, section))}`, "section"]] : []),
+    ...(member ? [[`/bill/${id}/member/${member.id.slice(7)}`, "member"]] : []),
+  ] as [string, string][];
+
+  for (const [path, name] of routes) {
+    const { page, errors } = await open(path);
+    check((await page.title()).length > 12, `${id} ${name}: tab title "${await page.title()}"`);
+    if (name === "xray") check((await layoutShift(page)) <= 0.1, `${id} layout shift <= 0.1`);
+    for (const width of [1440, 768, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForTimeout(150);
+      const over = await overflow(page);
+      check(over <= 0, `${id} ${name} at ${width}: no horizontal overflow (${over}px)`);
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page
+      .waitForFunction(() => !document.querySelector("a.src.ghost, span.src.ghost"), null, { timeout: 60000 })
+      .catch(() => {});
+    const hrefs = await page.$$eval("a.src[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href));
+    const bad = hrefs.filter((h) => !/^https:\/\/[^/]+\/./.test(h));
+    check(hrefs.length > 0 && bad.length === 0, `${id} ${name}: ${hrefs.length} source chips, ${bad.length} malformed`);
+    check(errors.length === 0, `${id} ${name}: no console errors ${errors.slice(0, 2).join(" | ")}`);
+    await page.close();
+  }
+
+  {
+    const { page } = await open(`/bill/${id}/story`);
+    await page.waitForSelector("a.src:not(.ghost)", { timeout: 60000 });
+    const chip = page.locator("a.src:not(.ghost)").first();
+    const href = await chip.getAttribute("href");
+    await chip.focus();
+    await chip.click();
+    await page.waitForSelector("[role=dialog] #rcpt-claim");
+    const heading = () => page.locator("#rcpt-claim").innerText();
+    check(texts.has(await heading()), `${id} receipt states a claim that is in the bundle`);
+    check(
+      (await page.locator("[role=dialog] a.btn.go").getAttribute("href")) === href,
+      `${id} receipt opens the chip's record`,
+    );
+    check(
+      await page.evaluate(() => !!document.querySelector("[role=dialog]")?.contains(document.activeElement)),
+      `${id} focus moves into the receipt`,
+    );
+    check(
+      await page.evaluate(() => document.getElementById("root")?.hasAttribute("inert") ?? false),
+      `${id} page behind the receipt is inert`,
+    );
+
+    let walked = 0;
+    for (let depth = 0; depth < 4; depth++) {
+      const rest = page.locator(".rcpt-rests li button").first();
+      if (!(await rest.count())) break;
+      const from = await heading();
+      await rest.click();
+      await page.waitForFunction((t) => document.querySelector("#rcpt-claim")?.textContent !== t, from);
+      walked++;
+      if (!texts.has(await heading())) check(false, `${id} a rests-on record opens its own receipt`);
+    }
+    if (walked) {
+      check(true, `${id} rests-on records open their own receipts (${walked} deep)`);
+      for (let i = 0; i < walked; i++) await page.click(".rcpt-back");
+    }
+
+    const nav = page.locator(".rcpt-nav");
+    if (await nav.count()) {
+      const first = await heading();
+      await page.keyboard.press("ArrowRight");
+      await page.waitForTimeout(100);
+      check((await heading()) !== first, `${id} arrow keys walk to the next mark`);
+    }
+
+    await page.keyboard.press("Escape");
+    await page.waitForSelector("[role=dialog]", { state: "detached", timeout: 3000 });
+    check(true, `${id} ESC closes the receipt`);
+    check(await chip.evaluate((el) => el === document.activeElement), `${id} focus returns to the chip`);
+
+    await chip.click();
+    await page.waitForSelector("[role=dialog]");
+    await page.goBack();
+    await page.waitForSelector("[role=dialog]", { state: "detached", timeout: 3000 });
+    check(page.url().includes(`/bill/${id}/story`), `${id} the back button closes the receipt and stays on the page`);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await chip.click();
+    await page.waitForSelector("[role=dialog]");
+    await page.waitForTimeout(450);
+    const box = await page.locator("[role=dialog]").boundingBox();
+    check(
+      !!box && box.x === 0 && box.width > 360 && Math.abs(box.y + box.height - 844) < 2,
+      `${id} the receipt is a bottom sheet on a phone`,
+    );
+    await page.close();
+  }
+}
+
+{
+  const id = "119-s-1582";
+  const { page } = await open(`/bill/${id}?view=money&focus=member:H000601`);
+  await page.waitForFunction(() => location.pathname.includes("/member/"));
+  check(
+    page.url().endsWith(`/bill/${id}/member/H000601`),
+    "old ?view=money&focus=member: link redirects to the member page",
+  );
+  await page.goto(`${base}/bill/${id}?view=list`);
+  await page.waitForFunction(() => location.search === "");
+  check(page.url().endsWith(`/bill/${id}`), "old ?view=list link redirects to the x-ray");
+  await page.goto(`${base}/bill/S.1582`);
+  await page.waitForFunction(() => location.pathname === "/bill/119-s-1582");
+  check(true, "a bill written S.1582 redirects to its canonical link");
+
+  const input = page.locator("header .search input");
+  await input.fill("19");
+  await page.waitForSelector(".results a[href*='/section/']", { timeout: 15000 });
+  await input.press("Enter");
+  await page.waitForFunction(() => location.pathname.includes("/section/"));
+  check(page.url().includes("/section/19"), "search finds a section by number and opens its page");
+  await page.close();
+}
+
+const phone = await open("/bill/119-s-1582", 390);
+await phone.page.click(".top-find");
+check((await phone.page.locator("#top-sheet input").count()) === 1, "phone: the bill button opens the search");
 await phone.page.close();
 await browser.close();
 
