@@ -22,11 +22,11 @@ const { positionals, values } = parseArgs({
 const [command, arg, arg2] = positionals;
 const all = register(PACKAGES);
 
-async function run(stages: Registered[], bill: BillId | null) {
+async function run(stages: Registered[], bill: BillId | null, targets: string[] = []) {
   const controller = new AbortController();
   process.on("SIGINT", () => controller.abort());
   for (const s of stages) {
-    if (s.scope === "global" && !values.refresh) {
+    if (s.scope === "global" && !values.refresh && !targets.includes(s.name)) {
       const filled = await Promise.all(s.writes.map(async (t) => (await readRows(t)).length > 0));
       if (filled.every(Boolean) && s.writes.length) {
         console.log(`· ${s.name} (global, cached)`);
@@ -59,11 +59,11 @@ switch (command) {
   case "run": {
     if (!arg) throw new Error("usage: antibody run <stage> [<bill>]");
     const stages = values.only ? [all.get(arg)!].filter(Boolean) : order(all, [arg]);
-    await run(stages, arg2 ? parseBillId(arg2) : null);
+    await run(stages, arg2 ? parseBillId(arg2) : null, [arg]);
     break;
   }
   case "watch":
-    await run(order(all, ["watch"]), null);
+    await run(order(all, ["watch"]), null, ["watch"]);
     break;
   case "stages":
     for (const [pkg, stages] of Object.entries(PACKAGES))
