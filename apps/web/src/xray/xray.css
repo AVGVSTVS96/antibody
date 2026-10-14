@@ -1013,6 +1013,14 @@ fieldset.x-sorts {
   padding-right: 6px;
 }
 
+.x-articles .src {
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 12px;
+  line-height: 16px;
+}
+
 .x-articles li {
   display: flex;
   flex-direction: column;
@@ -1057,7 +1065,7 @@ fieldset.x-sorts {
   transform: translateX(-50%);
   border: 1.5px solid var(--ink);
   border-radius: 50%;
-  background: var(--paper);
+  background: var(--ink);
 }
 
 .x-line-dot[data-kind="quiet"] {
@@ -1072,6 +1080,9 @@ fieldset.x-sorts {
 .x-line-labels span {
   position: absolute;
   top: 0;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font: 500 9px / 11px var(--mono);
   letter-spacing: 0.04em;
   white-space: pre;
