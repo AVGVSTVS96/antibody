@@ -33,7 +33,24 @@ export function searchTerms(a: Aliases): string[] {
         for (const typo of transpositions(w)) terms.add([...words.slice(0, i), typo, ...words.slice(i + 1)].join(" "));
   }
   for (const law of a.laws) terms.add(law);
-  return [...terms].map((t) => `"${t.replaceAll('"', "")}"`);
+  return [...new Set([...terms].map(searchable).filter((t): t is string => !!t))].map(
+    (t) => `"${t.replaceAll('"', "")}"`,
+  );
+}
+
+/**
+ * lda.gov answers 403 to any query containing a word starting "Admin" (checked Oct 14 2026: "Space Administration", "Administrative",
+ * "Social Security Administration" and the bare word all fail; "Space" and "Authorization" alone pass). Such a name is
+ * searched by its longest stretch without the word; extraction still requires the full name in the filing text.
+ */
+export function searchable(term: string): string | null {
+  if (!/\badmin\w*/i.test(term)) return term;
+  const stretch = term
+    .split(/\badmin\w*/i)
+    .map((s) => s.trim())
+    .filter((s) => s.split(/\s+/).length >= 2)
+    .sort((a, b) => b.length - a.length)[0];
+  return stretch ?? null;
 }
 
 /** lda.gov handles long OR queries, but keep each one modest. */
