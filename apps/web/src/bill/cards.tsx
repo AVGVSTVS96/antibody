@@ -157,7 +157,7 @@ export function BillCard({ m }: { m: BillModel }) {
             <span>{byStatus("agreed")} agreed</span>
             <span>{byStatus("failed")} failed</span>
             <span>{byStatus("withdrawn")} withdrawn</span>
-            <span>{byStatus("no_action")} no floor action</span>
+            <span>{byStatus("no_action")} none recorded on congress.gov</span>
           </div>
           <ul className="rows">
             {amend.slice(0, 30).map((a) => {

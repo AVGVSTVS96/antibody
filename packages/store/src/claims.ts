@@ -105,7 +105,7 @@ const AMENDMENT_STATUS: Record<string, string> = {
   agreed: "was agreed to",
   failed: "failed",
   withdrawn: "was withdrawn",
-  no_action: "got no floor action",
+  no_action: "has no action recorded on congress.gov beyond being submitted",
 };
 
 export const TEMPLATES: Record<string, Template> = {
@@ -257,6 +257,9 @@ export const TEMPLATES: Record<string, Template> = {
     const by = r.read_by === "vision" ? " Read from a scanned page by a vision model." : "";
     return {
       text: `${OWNER[r.owner]!(label)} ${TRADE_VERB[r.type]} ${asset}${r.ticker && !asset.includes(`(${r.ticker})`) ? ` (${r.ticker})` : ""} worth ${r.amount} on ${day(r.traded_on)}.${by}`,
+      ...(String(r.source_url).includes("efdsearch.senate.gov") && {
+        sourceLocator: `${r.source_locator ?? "the report"}; the Senate site first asks you to accept its terms, then shows the report`,
+      }),
     };
   },
 
@@ -292,7 +295,10 @@ export const TEMPLATES: Record<string, Template> = {
       r.amount_usd < 0
         ? `${to}'s campaign returned ${usd(r.amount_usd)} to ${n.pac(r.pac_id)} on ${day(r.date)}.`
         : `${n.pac(r.pac_id)} gave ${usd(r.amount_usd)} to ${to} on ${day(r.date)}.`;
-    return { text: text.replace(/^./, (c) => c.toUpperCase()) };
+    return {
+      text: text.replace(/^./, (c) => c.toUpperCase()),
+      sourceLocator: `FEC filing image, transaction ${r.id}; fec.gov turns away scripts, so open it in a browser`,
+    };
   },
 
   articles: (r) => ({
@@ -303,6 +309,7 @@ export const TEMPLATES: Record<string, Template> = {
     text: r.tickers?.length
       ? `${r.name} trades as ${r.tickers.join(", ")} (SEC CIK ${r.id}).`
       : `${r.name} files with the SEC as CIK ${r.id}.`,
+    sourceLocator: `SEC EDGAR page for CIK ${r.id} (tickers from SEC's company_tickers_exchange.json); sec.gov turns away scripts, so open it in a browser`,
   }),
 
   resolutions: (r, _f, n) => {
