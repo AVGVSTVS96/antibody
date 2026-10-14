@@ -1,7 +1,6 @@
 import {
   activeSpan,
   type Bundle,
-  type Claim,
   type Edge,
   type EdgeOf,
   type Figure,
@@ -11,7 +10,7 @@ import {
   type Section,
   sectionFigure,
 } from "@antibody/core";
-import { plainName } from "./format.ts";
+import { count, deficitWords, plainName } from "./format.ts";
 
 export type SectionKind = "headline" | "buried" | "normal" | "unscored";
 
@@ -80,7 +79,6 @@ export interface DisplayEdge {
 export interface BillModel {
   b: Bundle;
   billNode: NodeId;
-  claim: (id: string) => Claim | undefined;
   versions: Bundle["versions"];
   sections: SectionView[];
   sectionById: Map<string, SectionView>;
@@ -110,6 +108,9 @@ export interface BillModel {
   span: [string, string] | null;
   /** `§30002`, with the version in brackets when another section of the bill has the same number. */
   secLabel: (v: SectionView) => string;
+  /** What a section is called in a URL: its number when no other section of the bill has it, else its full id. */
+  sectionSlug: (v: SectionView) => string;
+  sectionBySlug: (slug: string) => SectionView | undefined;
   /** Share of final sections that arrived late (null when the late flag is unavailable). */
   lateShare: number | null;
 }
@@ -117,6 +118,17 @@ export interface BillModel {
 const byKind = <K extends Edge["kind"]>(edges: Edge[], kind: K) => edges.filter((e): e is EdgeOf<K> => e.kind === kind);
 
 const isNode = <K extends Node["kind"]>(n: Node | undefined, kind: K): n is NodeOf<K> => n?.kind === kind;
+
+const models = new WeakMap<Bundle, BillModel>();
+
+/** One model per bundle, so every page and the search box share it. */
+export function modelOf(b: Bundle): BillModel {
+  const known = models.get(b);
+  if (known) return known;
+  const m = buildModel(b);
+  models.set(b, m);
+  return m;
+}
 
 export function buildModel(b: Bundle): BillModel {
   const billNode = `bill:${b.bill.id}` as NodeId;
@@ -393,7 +405,6 @@ export function buildModel(b: Bundle): BillModel {
   return {
     b,
     billNode,
-    claim: (id) => b.claims[id],
     versions,
     sections,
     sectionById,
@@ -417,6 +428,9 @@ export function buildModel(b: Bundle): BillModel {
     span,
     secLabel: (v) =>
       (numCount.get(v.s.num) ?? 0) > 1 ? `§${v.s.num} (${v.stageName.replace(/ \(.*\)$/, "")})` : `§${v.s.num}`,
+    sectionSlug: (v) => ((numCount.get(v.s.num) ?? 0) > 1 ? v.s.id : v.s.num),
+    sectionBySlug: (slug) =>
+      sectionById.get(slug) ?? sections.find((v) => v.s.num === slug && numCount.get(slug) === 1),
     lateShare:
       b.bill.lateUnavailable || !finalSections.length
         ? null
@@ -432,4 +446,21 @@ export function memberShort(m: NodeOf<"member">): string {
       .filter((w) => !/^[A-Z]\.$/.test(w) && !/^(Jr|Sr|II|III)\.?$/.test(w))
       .at(-1) ?? name;
   return `${last} ${m.props.party}`;
+}
+
+/** What makes a section's stakes big, in words: its CBO figure and its lobbying reports. */
+export function stakesWords(v: SectionView): string {
+  return [
+    v.dollarsMusd != null && v.s.score?.components.dollarsSplit !== "even_split" ? deficitWords(v.dollarsMusd) : null,
+    v.lobbied ? `${count(v.lobbied, "lobbying report")} name it` : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
+}
+
+/** The section closest to the quiet-and-costly rule that did not meet it, so "none" never reads as "not measured". */
+export function closestToQuiet(m: BillModel): SectionView | undefined {
+  return m.sections
+    .filter((v) => v.s.inFinal && v.kind !== "buried" && v.kind !== "headline" && v.s.score?.buried != null)
+    .sort((x, y) => y.s.score!.buried! - x.s.score!.buried!)[0];
 }

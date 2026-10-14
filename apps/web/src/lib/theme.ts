@@ -43,28 +43,3 @@ const subscribe = (fn: () => void) => {
   return () => listeners.delete(fn);
 };
 export const useTheme = () => useSyncExternalStore(subscribe, currentTheme, currentTheme);
-
-/** The CSS color tokens as values, for the WebGL map, which can't read CSS variables. */
-export function palette() {
-  const s = getComputedStyle(document.documentElement);
-  const v = (k: string) => s.getPropertyValue(`--${k}`).trim();
-  return {
-    bg: v("bg"),
-    panel: v("panel"),
-    card: v("card"),
-    card2: v("card-2"),
-    line: v("line"),
-    line2: v("line-2"),
-    text: v("text"),
-    muted: v("muted"),
-    dim: v("dim"),
-    violet: v("violet"),
-    red: v("red"),
-    gold: v("gold"),
-    teal: v("teal"),
-    steel: v("steel"),
-    grey: v("grey"),
-    seal: v("seal"),
-  };
-}
-export type Palette = ReturnType<typeof palette>;
