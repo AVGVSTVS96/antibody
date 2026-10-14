@@ -130,3 +130,17 @@ test("members carry dated terms; FEC money splits contributions, outside spendin
   expect(TABLES.independent_expenditures.owner).toBe("@antibody/ingest-fec");
   expect(TABLES.employer_contributions.owner).toBe("@antibody/ingest-fec");
 });
+
+test("watch events cover votes, major actions and new CBO estimates", () => {
+  const row = {
+    id: "119-hr-1/floor_vote/2025-05-22/h-145",
+    bill_id: "119-hr-1",
+    kind: "floor_vote",
+    seen_at: "2025-05-23T12:00:00Z",
+    url: "https://clerk.house.gov/evs/2025/roll145.xml",
+    detail: { yeas: 215, nays: 214 },
+  };
+  expect(TABLES.watch_events.schema.safeParse(row).success).toBe(true);
+  for (const kind of ["action", "cbo_estimate", "hot"])
+    expect(TABLES.watch_events.schema.safeParse({ ...row, kind }).success).toBe(true);
+});
