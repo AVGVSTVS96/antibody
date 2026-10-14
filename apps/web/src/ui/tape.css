@@ -104,9 +104,6 @@
   font-size: 10px;
   line-height: 12px;
 }
-.tape[data-compact]:not([data-pinned]) .tape-stage {
-  margin-bottom: 60px;
-}
 .tape-svg {
   display: block;
 }
@@ -122,9 +119,6 @@
   fill: var(--quiet);
   stroke: var(--ink);
   stroke-width: 0.8;
-}
-.tape-quiet-fill {
-  stroke: none;
 }
 .tape-stub {
   fill: var(--paper);
@@ -162,9 +156,14 @@
   stroke: var(--ink);
   stroke-width: 1;
 }
+@media (max-width: 1000px) {
+  .tape-quiet,
+  [data-lit] .tape-quiet {
+    stroke: none;
+  }
+}
 .tape-band {
-  fill: var(--quiet);
-  fill-opacity: 0.45;
+  fill: var(--window);
 }
 .tape-band-edge {
   fill: none;
@@ -213,6 +212,9 @@
   border-inline: 1px solid var(--ink);
   background: color-mix(in srgb, var(--ink) 9%, transparent);
   pointer-events: none;
+}
+.tape[data-compact] .tape-hover {
+  border-inline-color: var(--link);
 }
 .tape-current {
   position: absolute;
@@ -380,16 +382,6 @@
   gap: 4px;
   width: 260px;
   margin: 0 0 0 clamp(0px, calc(var(--stem) - 130px), calc(100% - 260px));
-}
-.tape[data-compact] .tape-run {
-  padding-top: 0;
-}
-.tape[data-compact] .tape-run-bracket {
-  display: none;
-}
-.tape[data-compact] .tape-run-text {
-  width: auto;
-  margin: 0;
 }
 .tape-run-text b {
   font: 700 11px / 14px var(--mono);

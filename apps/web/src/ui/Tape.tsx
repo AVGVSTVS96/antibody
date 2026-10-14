@@ -27,7 +27,7 @@ export interface TapeProps {
   /** Section id: draws the blue "you are here" marker on it. */
   current?: string;
   currentLabel?: string;
-  /** Section ids to light: every other mark fades to 18% and the lit ones sit on a yellow column. */
+  /** Section ids to light: every other mark fades to 18% and the lit ones sit on a neutral column. */
   highlight?: ReadonlySet<string>;
   /** Sticks under the top bar while the page scrolls (`--top-h` is the bar's height). */
   pinned?: boolean;
@@ -58,14 +58,12 @@ function Layer({
   rows,
   marks,
   g,
-  compact,
   dim,
   lit,
 }: {
   rows: TapeRow[];
   marks: Mark[];
   g: Geometry;
-  compact: boolean;
   dim?: boolean;
   lit?: boolean;
 }) {
@@ -79,7 +77,7 @@ function Layer({
         <path className="tape-loud" d={d.loud} />
       </g>
       <g className="tape-rise tape-rise-last" style={origin}>
-        <path className={compact ? "tape-quiet tape-quiet-fill" : "tape-quiet"} d={d.quiet} />
+        <path className="tape-quiet" d={d.quiet} />
         <path className="tape-split" d={d.split} />
       </g>
       <path className="tape-late" d={d.late} />
@@ -92,14 +90,12 @@ const Marks = memo(function Marks({
   marks,
   g,
   width,
-  compact,
   lit,
 }: {
   tape: TapeData;
   marks: Mark[];
   g: Geometry;
   width: number;
-  compact: boolean;
   lit: TapeRow[] | null;
 }) {
   const bands = useMemo(() => {
@@ -128,8 +124,8 @@ const Marks = memo(function Marks({
             .join("")}
         />
       )}
-      <Layer rows={tape.rows} marks={marks} g={g} compact={compact} dim={!!lit} />
-      {lit && <Layer rows={lit} marks={marks} g={g} compact={compact} lit />}
+      <Layer rows={tape.rows} marks={marks} g={g} dim={!!lit} />
+      {lit && <Layer rows={lit} marks={marks} g={g} lit />}
       <path className="tape-base" d={`M0 ${g.mid}.5H${width}`} />
       {!g.flat &&
         REFERENCES.map((ref, i) => (
@@ -406,7 +402,7 @@ export function Tape({
         onFocus={onFocus}
         onBlur={() => setActive(null)}
       >
-        {width > 0 && <Marks tape={tape} marks={marks} g={g} width={width} compact={compact} lit={lit} />}
+        {width > 0 && <Marks tape={tape} marks={marks} g={g} width={width} lit={lit} />}
         {!tape.lateKnown && (
           <p className="tape-late-note" style={{ top: g.lateY - 4 }} title={tape.lateReason ?? undefined}>
             Added-late flags unavailable for this bill
