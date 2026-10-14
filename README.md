@@ -4,4 +4,9 @@ Give it any US federal bill. It shows the headline fight, what got buried undern
 
 Every claim links to a public source. Inferences are labeled as inferences. The same rules apply to every party.
 
-Status: early research (Phase 0). See [PLAN.md](PLAN.md).
+```sh
+bun install
+bun run antibody xray S.1582
+```
+
+Status: Phase 1, building v1. See [PLAN.md](PLAN.md) and the [Phase 0 report](spikes/REPORT.md).
