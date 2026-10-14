@@ -5,7 +5,7 @@ import { paths } from "@antibody/core/node";
 import type { Lineage } from "./lineage.ts";
 import { headingWords, intersect } from "./text.ts";
 
-export const MODEL = "claude-opus-5-5";
+export const MODEL = "sonnet";
 const CACHE = join(paths.raw("bills"), "llm");
 const RULE =
   "llm-counterpart: a model read both sections and judged that the added one does the same job in law as the removed one, rewritten rather than copied";
