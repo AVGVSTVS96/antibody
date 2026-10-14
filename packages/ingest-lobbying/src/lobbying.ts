@@ -81,7 +81,7 @@ export async function runLobbying(ctx: StageContext) {
   const level = (l: string) => x.refs.filter((r) => r.match === l).length;
   ctx.log(
     `${x.filings.length} filings name it (lines: ${level("high")} high, ${level("medium")} medium, ${level("low")} low); ` +
-      `${whole?.reports ?? 0} LD-2 reports, ${spend.length - 1} clients, ` +
+      `${whole?.reports ?? 0} LD-2 reports, ${Math.max(0, spend.length - 1)} clients, ` +
       `$${Math.round((whole?.total_usd ?? 0) / 1e6)}M total, $${Math.round((whole?.share_usd ?? 0) / 1e6)}M share estimate`,
   );
 }
