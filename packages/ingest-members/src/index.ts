@@ -21,7 +21,7 @@ export const stages: Stage[] = [
       const members = await fetchMembers(refresh);
       await writeRows("members", "legislators", members);
       const committees = await committeeRows(refresh);
-      await writeRows("committees", "legislators", committees);
+      await upsertRows("committees", "legislators", committees);
       log(`${members.length} members since 1993, ${committees.length} committees and subcommittees`);
     },
   },
@@ -29,14 +29,15 @@ export const stages: Stage[] = [
     name: "committee-members",
     scope: "bill",
     needs: ["members"],
-    writes: ["committee_members"],
+    writes: ["committee_members", "committees"],
     async run({ bill, refresh, log }) {
       const { congress } = billRef(bill!);
       if (!refresh && (await readRows("committee_members", String(congress))).length)
         return log(`${congress}th Congress roster cached`);
-      const rows = await committeeMemberRows(congress);
-      await writeRows("committee_members", String(congress), rows);
-      log(`${rows.length} seats in the ${congress}th Congress`);
+      const { seats, committees } = await committeeMemberRows(congress);
+      await writeRows("committee_members", String(congress), seats);
+      if (committees.length) await upsertRows("committees", "legislators", committees);
+      log(`${seats.length} seats in the ${congress}th Congress; ${committees.length} retired subcommittees added`);
     },
   },
   {
