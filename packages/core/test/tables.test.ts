@@ -130,70 +130,17 @@ test("bills owns the LLM counterparts; amendment rows name a committee sponsor a
   expect(Object.fromEntries(columns("amendments")).sponsor_committee).toBe("VARCHAR");
   expect(Object.fromEntries(columns("amendment_sections")).effect).toBe("VARCHAR NOT NULL");
 });
-||||||| ab33241
 
-test("lobbying: topic-only refs are inference rows, spend rows carry both facets", () => {
-  const topic = {
-    id: "u#0#119-s-1582",
-    filing_id: "u",
-    bill_id: "119-s-1582",
-    line: 1,
-    issue_code: "BAN",
-    quote: "stablecoin legislation",
-    topic: "payment stablecoins",
-    phase: "bill",
-    source_url: "https://lda.gov/filings/public/filing/u/print/",
-    source_locator: "issue line 1 of 1",
-    rule: "topic-only",
-    confidence: 0.6,
-    rests_on: ["lda_filings/u"],
-    evidence: {},
+test("watch events cover votes, major actions and new CBO estimates", () => {
+  const row = {
+    id: "119-hr-1/floor_vote/2025-05-22/h-145",
+    bill_id: "119-hr-1",
+    kind: "floor_vote",
+    seen_at: "2025-05-23T12:00:00Z",
+    url: "https://clerk.house.gov/evs/2025/roll145.xml",
+    detail: { yeas: 215, nays: 214 },
   };
-  expect(TABLES.lda_topic_refs.schema.safeParse(topic).success).toBe(true);
-  expect(TABLES.lda_topic_refs.schema.safeParse({ ...topic, rests_on: [] }).success).toBe(false);
-  const cols = Object.fromEntries(columns("lda_spend"));
-  expect(cols.client_key).toBe("VARCHAR");
-  expect(cols.total_rests_on).toBe("VARCHAR[] NOT NULL");
-  expect(Object.fromEntries(columns("lda_filings")).period_end).toBe("DATE NOT NULL");
-});
-
-test("members carry dated terms; FEC money splits contributions, outside spending and employer sums", () => {
-  const cols = Object.fromEntries(columns("members"));
-  expect(cols.terms).toBe("JSON[] NOT NULL");
-  const member = {
-    id: "S001191",
-    name: "Kyrsten Sinema",
-    party: "I",
-    state: "AZ",
-    district: null,
-    chamber: "Senate",
-    fec_candidate_ids: ["S8AZ00197"],
-    lis_id: "S404",
-    terms: [
-      {
-        chamber: "Senate",
-        start: "2019-01-03",
-        end: "2022-12-08",
-        state: "AZ",
-        district: null,
-        party: "Democrat",
-        caucus: null,
-      },
-      {
-        chamber: "Senate",
-        start: "2022-12-09",
-        end: "2025-01-03",
-        state: "AZ",
-        district: null,
-        party: "Independent",
-        caucus: "Democrat",
-      },
-    ],
-    source_url: "https://bioguide.congress.gov/search/bio/S001191",
-    source_locator: null,
-  };
-  expect(TABLES.members.schema.safeParse(member).success).toBe(true);
-  expect(Object.fromEntries(columns("employer_contributions")).committee_ids).toBe("VARCHAR[] NOT NULL");
-  expect(TABLES.independent_expenditures.owner).toBe("@antibody/ingest-fec");
-  expect(TABLES.employer_contributions.owner).toBe("@antibody/ingest-fec");
+  expect(TABLES.watch_events.schema.safeParse(row).success).toBe(true);
+  for (const kind of ["action", "cbo_estimate", "hot"])
+    expect(TABLES.watch_events.schema.safeParse({ ...row, kind }).success).toBe(true);
 });
