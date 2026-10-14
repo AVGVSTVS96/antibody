@@ -1,3 +1,4 @@
+import { aliasFor } from "./aliases.ts";
 import type { Company } from "./edgar.ts";
 import { tokenSet, tokenSort, typoClose } from "./fuzzy.ts";
 import { CORPORATE, NON_COMPANY, norm, normTicker, parseAsset, tokens } from "./normalize.ts";
@@ -18,7 +19,7 @@ export interface Mention {
   reviewable?: boolean;
 }
 
-export type Method = "ticker" | "name_exact" | "fuzzy" | "llm_same" | "llm_subsidiary" | "llm_parent";
+export type Method = "ticker" | "name_exact" | "fuzzy" | "alias" | "llm_same" | "llm_subsidiary" | "llm_parent";
 
 export interface Match {
   mention: Mention;
@@ -143,6 +144,9 @@ export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
   }
   if (!normalized)
     return { kind: "none", why: "nothing left after removing legal and filler words", normalized, best: null };
+
+  const alias = m.source === "trade" ? undefined : aliasFor(normalized);
+  if (alias && index.byCik.has(alias.cik)) return match(m, alias.cik, "alias", 0.95, { normalized, reason: alias.why });
 
   const exact = index.exact(normalized);
   const single = tokens(normalized).length === 1;

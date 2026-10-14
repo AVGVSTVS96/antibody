@@ -77,6 +77,17 @@ function itemKey(q: Queued): string {
   return h.digest("hex").slice(0, 16);
 }
 
+const squash = (s: string) => norm(s).replaceAll(" ", "");
+
+/** A proposed parent's name against SEC's: "Exxon Mobil Corporation" is "ExxonMobil Holdings Corp" once the spaces go. */
+export function sameCompanyName(proposed: string, sec: string): boolean {
+  const a = squash(proposed);
+  const b = squash(sec);
+  return (
+    tokenSet(norm(proposed), norm(sec)) >= 80 || (a.length > 3 && b.length > 3 && (a.startsWith(b) || b.startsWith(a)))
+  );
+}
+
 /** Accept a verdict only at this confidence or above; the spike's 0.6 "TALOS → Talos Energy" fell below it. */
 export const ACCEPT = 0.8;
 
@@ -194,12 +205,9 @@ export async function review(
       });
       continue;
     }
-    const parent =
-      v.relation === "subsidiary" && q.mayProposeParent && v.parent_ticker
-        ? index.byTicker.get(normTicker(v.parent_ticker))
-        : undefined;
-    const agrees = parent && v.parent_name ? tokenSet(norm(v.parent_name), norm(parent.name)) >= 80 : false;
-    if (parent && agrees && v.confidence >= 0.85) {
+    const parent = q.mayProposeParent && v.parent_ticker ? index.byTicker.get(normTicker(v.parent_ticker)) : undefined;
+    const agrees = parent && v.parent_name ? sameCompanyName(v.parent_name, parent.name) : false;
+    if (parent && agrees) {
       matches.push({
         mention: q.mention,
         cik: parent.cik,

@@ -31,19 +31,21 @@ test("labels use one set of thresholds", () => {
   expect(label({ ...quiet, attentionPct: 0.95 }, SCORE.headlineMinHits - 1)).not.toBe("headline");
 });
 
-test("the late bonus shrinks as more of the bill arrives late, and is gone once half of it did", () => {
+test("the late bonus shrinks smoothly as more of the bill arrives late, with no cutoff", () => {
   const base = { dollarsMusd: 10_000, attentionPct: 0, late: true, offTopic: 0, lobbyingReports: 0 };
   const s = stakes(base);
   expect(buried({ ...base, lateShare: 0 })).toBeCloseTo(s * 1.25, 3);
   expect(buried({ ...base, lateShare: 0.4 })).toBeCloseTo(s * 1.15, 3);
-  expect(buried({ ...base, lateShare: 0.5 })).toBeCloseTo(s, 3);
+  expect(buried({ ...base, lateShare: 0.5 })).toBeCloseTo(s * 1.125, 3);
   expect(buried({ ...base, lateShare: 1 })).toBeCloseTo(s, 3);
 });
 
-test("late is not a sneak signal in a bill that was mostly rewritten late", () => {
+test("the same sections get the same label in a bill that is 49% late and one that is 51% late", () => {
   const c = { dollarsMusd: 100_000, attentionPct: 0.05, late: true, offTopic: null, lobbyingReports: 0 };
-  expect(label({ ...c, lateShare: 0.3 }, 0)).toBe("buried");
-  expect(label({ ...c, lateShare: 0.53 }, 0)).toBe("normal");
+  expect(label({ ...c, lateShare: 0.49 }, 0)).toBe("buried");
+  expect(label({ ...c, lateShare: 0.51 }, 0)).toBe("buried");
+  const gap = Math.abs(buried({ ...c, lateShare: 0.49 })! - buried({ ...c, lateShare: 0.51 })!);
+  expect(gap).toBeLessThan(0.01);
 });
 
 test("off-topic distance counts only in a bill with one committee title", () => {

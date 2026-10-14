@@ -19,12 +19,13 @@ import {
   OutletGroup,
   type Section,
 } from "@antibody/core";
+import { norm, ownedOn, ownedSince, tokens } from "@antibody/resolve";
 import { type AnyRow, mintClaim, type Names, restsOnOf } from "./claims.ts";
 import { type Db, type Param, query, tableNames } from "./db.ts";
 import { limitGraph } from "./limit.ts";
 import { ruleFor } from "./rules.ts";
 import { count, day, lawNumber, memberLabel, quarter } from "./text.ts";
-import { nameMatches, reusedTicker } from "./trades.ts";
+import { nameMatches, reusedTicker, securityOf } from "./trades.ts";
 import { trimEvidence } from "./trim.ts";
 
 export interface BuildResult {
@@ -41,6 +42,17 @@ const NO_POSITION = /^(?:n\/?a|none|no|yes|nil|see form ld-?1.*|[-.\s]*)\.?$/i;
 export class BuildError extends Error {}
 
 const YEAR = 365 * 24 * 3600 * 1000;
+/** A section the bill leaves unnamed is listed by its opening words, so no row reads as an empty heading. */
+const firstWords = (text: string | null | undefined) => {
+  const words = (text ?? "")
+    .replace(/^\s*(?:SEC(?:TION)?\.?\s*\d+[A-Za-z]?\.?\s*)/i, "")
+    .split(/\s+/)
+    .filter(Boolean);
+  return words.length ? `${words.slice(0, 10).join(" ")}${words.length > 10 ? "…" : ""}` : "(no heading)";
+};
+/** PACs of the company itself; any other PAC counts only when a subsidiary of the same name lobbied on the bill. */
+const OWN_PAC = new Set(["ticker", "name_exact", "fuzzy", "llm_same"]);
+const headOf = (name: string) => tokens(norm(name))[0] ?? "";
 const isoDay = (t: number) => new Date(t).toISOString().slice(0, 10);
 const PASSAGE = /pass|concur|conference report|veto/i;
 /** Thomas committee ids: BILLSTATUS writes `ssbk00`, congress-legislators `SSBK`; subcommittees keep their suffix. */
@@ -81,6 +93,9 @@ class Builder {
   /** The date of each member's first recorded passage vote (not "Not Voting"). */
   private votedOn = new Map<string, string>();
   private lateUnavailable: string | null = null;
+  private heldOutEarlier = 0;
+  /** Trades in a tied company's options, bonds and other securities: listed in the gaps, not counted as stock trades. */
+  private nonStock = { option: 0, bond: 0, other: 0 };
   private display: string;
 
   constructor(
@@ -238,7 +253,9 @@ class Builder {
     const versions = await this.buildVersions();
     await this.buildSections();
     const window = this.window(bill, versions);
-    for (const m of await this.select("members")) this.members.set(m.id, asOf(m, bill.law_on ?? window.end));
+    const congress = billRef(this.bill).congress;
+    for (const m of await this.select("members"))
+      if (servedIn(m, congress)) this.members.set(m.id, asOf(m, bill.law_on ?? window.end));
     const dollars = await this.buildDollars();
     const votes = await this.buildVotes();
     await this.buildSponsors();
@@ -338,7 +355,7 @@ class Builder {
       this.sections.set(s.id, {
         id: s.id,
         num: s.num,
-        heading: s.heading,
+        heading: s.heading?.trim() || firstWords(s.preview),
         path: s.path,
         firstVersion: s.first_version,
         inFinal: s.in_final,
@@ -665,6 +682,14 @@ class Builder {
         )
       : [];
     for (const r of refs) this.rows.set(`lda_bill_refs/${r.id}`, r);
+    if (this.tables.has("lda_bill_refs"))
+      this.heldOutEarlier = (
+        await query<{ n: number }>(
+          this.db,
+          "SELECT count(*)::INTEGER AS n FROM lda_bill_refs WHERE bill_id = $b AND match = 'low' AND why LIKE 'Held out: %'",
+          { b: this.bill },
+        )
+      )[0]!.n;
     const topicRefs = await this.select("lda_topic_refs", "bill_id = $b", { b: this.bill });
     const filingIds = [...new Set([...refs, ...topicRefs].map((r) => r.filing_id))];
     for (const f of await this.select("lda_filings", "list_contains($ids, id)", { ids: filingIds }))
@@ -692,10 +717,17 @@ class Builder {
       });
     }
 
-    const spend = (await this.select("lda_spend", "bill_id = $b", { b: this.bill })).map(
+    const spendRows = await this.select("lda_spend", "bill_id = $b", { b: this.bill });
+    const counted = (s: AnyRow) => (s.evidence?.counted as unknown[] | undefined)?.length ?? 0;
+    const spend = spendRows.map(
       (s): AnyRow => ({
         ...s,
         share_usd: null,
+        amounts: s.client_key
+          ? counted(s)
+          : spendRows
+              .filter((x) => x.client_key && !!x.topic_only === !!s.topic_only)
+              .reduce((n, x) => n + counted(x), 0),
       }),
     );
     const spendClaims = async (s: AnyRow | undefined) => ({
@@ -844,7 +876,9 @@ class Builder {
   private async buildCompanies(): Promise<Map<string, string>> {
     const benefits = await this.select("benefits", "bill_id = $b", { b: this.bill });
     const clientSrcs = [...this.nodes.keys()].filter((k) => k.startsWith("client:"));
-    const resolutions = await this.select("resolutions", "list_contains($s, src)", { s: clientSrcs });
+    const resolutions = (await this.select("resolutions", "list_contains($s, src)", { s: clientSrcs })).filter((r) =>
+      this.ownedWhenFiled(r),
+    );
     await this.addCompanies([...benefits, ...resolutions].map((r) => r.company_id));
     for (const r of resolutions) {
       if (!this.nodes.has(`company:${r.company_id}`)) continue;
@@ -870,6 +904,27 @@ class Builder {
     }
     if (benefits.length) this.rulesUsed.add("tied-stock");
     return tied;
+  }
+
+  /** For each tied company, the first words of the subsidiaries that lobbied on this bill and resolve to it. */
+  private lobbyingHeads(): Map<string, Set<string>> {
+    const heads = new Map<string, Set<string>>();
+    for (const e of this.edges.values()) {
+      if (e.kind !== "resolves_to" || !e.src.startsWith("client:")) continue;
+      const company = e.dst.slice(8);
+      const set = heads.get(company) ?? heads.set(company, new Set()).get(company)!;
+      const head = headOf(this.labels.client.get(e.src.slice(7)) ?? "");
+      if (head) set.add(head);
+    }
+    return heads;
+  }
+
+  /** A client resolves to its parent only if one of its filings on this bill came after the parent owned it. */
+  private ownedWhenFiled(r: AnyRow): boolean {
+    const since = ownedSince(r.evidence?.reason);
+    if (!since || !String(r.src).startsWith("client:")) return true;
+    const key = String(r.src).slice(7);
+    return [...this.filings.values()].some((f) => f.client_key === key && ownedOn(since, f.period_end));
   }
 
   private async addCompanies(ids: string[]) {
@@ -901,9 +956,16 @@ class Builder {
       },
       "traded_on",
     );
-    const fits = trades.filter((t) => !reusedTicker(t.ticker, t.asset));
-    if (fits.length < trades.length)
-      this.warnings.push(`${trades.length - fits.length} trades left out: the ticker belonged to a different company`);
+    const matching = trades.filter((t) => !reusedTicker(t.ticker, t.asset));
+    if (matching.length < trades.length)
+      this.warnings.push(
+        `${trades.length - matching.length} trades left out: the ticker belonged to a different company`,
+      );
+    const fits = matching.filter((t) => securityOf(t.asset_type, t.asset) === "stock");
+    for (const t of matching) {
+      const kind = securityOf(t.asset_type, t.asset);
+      if (kind !== "stock") this.nonStock[kind]++;
+    }
     const known = fits.filter((t) => t.bioguide && this.members.has(t.bioguide));
     if (known.length < fits.length)
       this.warnings.push(`${fits.length - known.length} trades in tied stocks are from filers not matched to a member`);
@@ -941,11 +1003,22 @@ class Builder {
   private async buildMoney(tied: Map<string, string>, w: { cycles: number[]; end: string }) {
     const companies = [...new Set(tied.values())];
     if (!companies.length) return;
-    const res = await this.select("resolutions", "src LIKE 'pac:%' AND list_contains($c, company_id)", {
+    const found = await this.select("resolutions", "src LIKE 'pac:%' AND list_contains($c, company_id)", {
       c: companies,
     });
-    const pacIds = [...new Set(res.map((r) => r.src.slice(4)))];
-    const pacs = await this.select("pacs", "list_contains($ids, id)", { ids: pacIds });
+    const allPacs = await this.select("pacs", "list_contains($ids, id)", {
+      ids: [...new Set(found.map((r) => r.src.slice(4)))],
+    });
+    const pacName = new Map(allPacs.map((p) => [p.id, p.name as string]));
+    const lobbyingHeads = this.lobbyingHeads();
+    const res = found.filter((r) => {
+      if (OWN_PAC.has(r.method)) return true;
+      const head = headOf(pacName.get(r.src.slice(4)) ?? "");
+      return !!head && (lobbyingHeads.get(r.company_id)?.has(head) ?? false);
+    });
+    const subsidiaryOf = new Map(res.filter((r) => !OWN_PAC.has(r.method)).map((r) => [r.src.slice(4), r.company_id]));
+    const since = new Map(res.map((r) => [r.src.slice(4), ownedSince(r.evidence?.reason)]));
+    const pacs = allPacs.filter((p) => res.some((r) => r.src === `pac:${p.id}`));
     for (const p of pacs) {
       this.labels.pac.set(p.id, p.name);
       const claim = await this.cite("pacs", p);
@@ -954,7 +1027,7 @@ class Builder {
         kind: "pac",
         label: p.name,
         claims: claim ? [claim] : [],
-        props: { fecId: p.id, connectedOrg: p.connected_org },
+        props: { fecId: p.id, connectedOrg: p.connected_org, subsidiaryOf: subsidiaryOf.get(p.id) ?? null },
       });
     }
     for (const r of res) {
@@ -967,7 +1040,7 @@ class Builder {
         });
     }
     if (!pacs.length) return;
-    this.rulesUsed.add("affected-donors");
+    this.rulesUsed.add("tied-donors");
     this.rulesUsed.add("donor-window");
     const gifts = await this.select(
       "contributions",
@@ -979,7 +1052,7 @@ class Builder {
       "date",
     );
     for (const [pair, gs] of groupBy(
-      gifts.filter((g) => this.members.has(g.bioguide)),
+      gifts.filter((g) => this.members.has(g.bioguide) && ownedOn(since.get(g.pac_id) ?? null, g.date)),
       (g) => `${g.pac_id}|${g.bioguide}`,
     )) {
       const [pac, bioguide] = pair.split("|") as [string, string];
@@ -1184,17 +1257,47 @@ class Builder {
       gap("no-lobbying", "other", "Lobbying filings aren't loaded yet, so no lobbying shows here.");
     else if (x.lobbying.clients) {
       const clients = [...this.nodes.keys()].filter((k) => k.startsWith("client:"));
-      const resolved = clients.filter((c) => this.edges.has(`resolves_to:${c}`)).length;
+      const resolved = clients.filter((c) => this.edges.has(`resolves_to:${c}`));
+      const reports = (c: string) => {
+        const e = this.edges.get(`lobbied:${c.slice(7)}`);
+        return e?.kind === "lobbied" ? e.props.reports : 0;
+      };
+      const loose = clients
+        .filter((c) => !this.edges.has(`resolves_to:${c}`))
+        .sort((a, b) => reports(b) - reports(a) || a.localeCompare(b))
+        .slice(0, 12)
+        .map((c) => `${this.labels.client.get(c.slice(7)) ?? c.slice(7)} (${reports(c)})`);
       gap(
         "entity-recall",
         "entity_recall",
-        `${resolved} of ${count(clients.length, "lobbying client")} resolve to a public company; the rest (trade groups, nonprofits, private firms) have no stock to trade.`,
+        `${resolved.length} of ${count(clients.length, "lobbying client")} were matched to an SEC-listed company. The rest were not matched: many are trade groups, nonprofits and private firms, but some may be listed companies the matcher missed, and members' trades in those are not marked as tied. Unmatched with the most reports: ${loose.join("; ")}.`,
       );
     }
+    const optionsAndBonds = this.nonStock.option + this.nonStock.bond + this.nonStock.other;
+    if (optionsAndBonds)
+      gap(
+        "non-stock-trades",
+        "other",
+        `${optionsAndBonds.toLocaleString("en-US")} trades in tied companies were options (${this.nonStock.option}), bonds (${this.nonStock.bond}) or other securities (${this.nonStock.other}). An option or a bond is not a share of the company, so they are not counted as stock trades.`,
+      );
+    if (this.heldOutEarlier)
+      gap(
+        "earlier-bill",
+        "other",
+        `${count(this.heldOutEarlier, "lobbying line")} on this bill number were held out because they are about the Build Back Better Act, which used the number until the Senate replaced its text on 2022-07-27: filings for earlier periods and lines that call it Build Back Better.`,
+      );
     const removed = this.warnings.filter((w) => w.includes("not matched to a member"));
     if (removed.length) gap("unmatched-filers", "entity_recall", removed.join("; "));
     return gaps;
   }
+}
+
+/** Whether a member held a seat at any point in a Congress (it runs from January 3 of its first year to January 2 of the next odd year). */
+export function servedIn(m: AnyRow, congress: number): boolean {
+  const from = `${1789 + 2 * (congress - 1)}-01-03`;
+  const to = `${1789 + 2 * congress}-01-02`;
+  const terms = (m.terms ?? []) as AnyRow[];
+  return !terms.length || terms.some((t) => t.start <= to && t.end >= from);
 }
 
 const PARTY_LETTER: Record<string, "R" | "D" | "I"> = { Republican: "R", Democrat: "D", Democratic: "D" };

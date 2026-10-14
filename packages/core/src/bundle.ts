@@ -206,7 +206,12 @@ export const NODE_PROPS = {
   /** Former government positions quoted exactly from the filing. */
   lobbyist: z.object({ ldaId: z.string(), coveredPositions: z.array(Quote) }),
   committee: z.object({ chamber: z.enum(["House", "Senate", "Joint"]) }),
-  pac: z.object({ fecId: z.string(), connectedOrg: z.string().nullable() }),
+  /** `subsidiary` is the company (CIK) whose subsidiary's committee this is, when it is not the company's own PAC. */
+  pac: z.object({
+    fecId: z.string(),
+    connectedOrg: z.string().nullable(),
+    subsidiaryOf: z.string().nullable().default(null),
+  }),
 } as const;
 export type EntityKind = keyof typeof NODE_PROPS;
 
@@ -317,10 +322,26 @@ export const BillStats = z.object({
   membersTraded: z.number().int(),
   /** Of those, members with a trade dated from the first text through signing (or the last dated action). */
   membersTradedDuring: z.number().int().default(0),
-  /** Whether the buried label could be tested on this bill, and how many sections had stakes big enough to qualify. */
+  /**
+   * Whether the buried label could be tested on this bill, and how many sections had stakes big enough to qualify.
+   * `tested` is false when the rule cannot fire (too few articles to rank sections, or no late flag and several committee
+   * titles, so neither late nor off-topic can count). `dollarsMeasured` is false when CBO gave no section its own figure,
+   * so only lobbying can show big stakes and "none have big stakes" would only mean "not measured".
+   */
   buriedTest: z
-    .object({ tested: z.boolean(), why: z.string().nullable(), bigStakes: z.number().int() })
-    .default({ tested: true, why: null, bigStakes: 0 }),
+    .object({
+      tested: z.boolean(),
+      why: z.string().nullable(),
+      bigStakes: z.number().int(),
+      dollarsMeasured: z.boolean().default(true),
+    })
+    .default({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true }),
+  /** CBO published at least one estimate for the bill (a whole-bill deficit may still be unread). */
+  cboPublished: z.boolean().default(false),
+  /** The headline deficit covers only direct spending and revenue; the bill's discretionary appropriations are not in it. */
+  deficitDirectOnly: z.boolean().default(false),
+  /** Trade dates counted in `membersTradedDuring`: first text through signing. */
+  tradeSpan: z.tuple([date, date]).nullable().default(null),
   /** Share of final sections that arrived late; late counts for nothing at or above the score's late cutoff. */
   lateShare: z.number().nullable().default(null),
   vehicle: z.boolean().default(false),
@@ -470,6 +491,9 @@ export function activeSpan(b: Bundle): [string, string] | null {
   return start && end ? [start, end] : null;
 }
 
+/** An annual appropriations act: CBO's estimate of it covers only the direct spending and revenue provisions. */
+export const isAppropriations = (b: Bundle) => /appropriations/i.test(`${b.bill.title} ${b.bill.shortTitle ?? ""}`);
+
 export function billStats(b: Bundle): z.infer<typeof BillStats> {
   const final = b.sections.filter((s) => s.inFinal);
   const deficit = headlineDeficit(b, "current-law");
@@ -483,11 +507,15 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
       : [],
   );
   const ranked = final.some((s) => s.attention?.pct != null);
+  const titles = new Set(final.map((s) => s.path.split("/")[0]).filter((p) => /^(title|division):/.test(p!))).size;
+  const cannotFire = !!b.bill.lateUnavailable && titles > 1;
   const why = !ranked
     ? "too few news articles to rank this bill's sections"
-    : b.bill.lateUnavailable
-      ? "the late flag is unavailable on this bill, so only being off-topic can count"
-      : null;
+    : cannotFire
+      ? "the late flag is unavailable and the bill has several committee titles, so neither can count"
+      : b.bill.lateUnavailable
+        ? "the late flag is unavailable on this bill, so only being off-topic can count"
+        : null;
   return {
     sections: final.length,
     headline: final.filter((s) => s.score?.label === "headline").length,
@@ -499,10 +527,16 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     membersTraded: new Set(traders.map((e) => e.src)).size,
     membersTradedDuring: during.size,
     buriedTest: {
-      tested: ranked,
+      tested: ranked && !cannotFire,
       why,
       bigStakes: final.filter((s) => s.score && bigStakes(s.score.components)).length,
+      dollarsMeasured: final.some(
+        (s) => s.score?.components.dollarsMusd != null && s.score.components.dollarsSplit !== "even_split",
+      ),
     },
+    cboPublished: b.dollars.estimates.length > 0,
+    deficitDirectOnly: isAppropriations(b) && !!deficit,
+    tradeSpan: span,
     lateShare: b.bill.lateUnavailable || !final.length ? null : final.filter((s) => s.late).length / final.length,
     vehicle: !!b.bill.vehicle,
     deficitMusd: deficit?.amountMusd ?? null,

@@ -1,5 +1,6 @@
 import type { BillId, Row } from "@antibody/core";
 import type { Company } from "./edgar.ts";
+import { ownedOn, ownedSince } from "./since.ts";
 
 const REF_CONFIDENCE = { high: 0.95, medium: 0.85, low: 0 } as const;
 const MAX_RESTS_ON = 25;
@@ -7,7 +8,7 @@ const MAX_RESTS_ON = 25;
 /**
  * Rule "lobbied" (decision tied-stock): a company is tied to the bill when a lobbying client that resolves to it
  * filed an LD-1 or LD-2 naming the bill. One whole-bill row per company, plus one per section the filings cite by
- * number. Low-confidence references (held out by ingest-lobbying) and filings replaced by an amendment don't count;
+ * number. Low-confidence references (held out by ingest-lobbying), filings replaced by an amendment, and filings from before a subsidiary came under its parent don't count;
  * topic-only lines live in lda_topic_refs and never count here (decision topic-only-lobbying).
  */
 export function lobbiedBenefits(
@@ -43,7 +44,7 @@ export function lobbiedBenefits(
     const filing = filings.get(ref.filing_id);
     if (ref.bill_id !== bill || ref.match === "low" || !filing || filing.superseded) continue;
     const res = resolutions.get(`client:${filing.client_key}`);
-    if (!res) continue;
+    if (!res || !ownedOn(ownedSince((res.evidence as { reason?: string }).reason), filing.period_end)) continue;
     add(res.company_id, null, ref, res);
     for (const num of ref.section_nums) {
       const id = sectionFor(num);

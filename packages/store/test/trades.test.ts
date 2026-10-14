@@ -1,15 +1,14 @@
 import { expect, test } from "bun:test";
-import { nameMatches, reusedTicker } from "../src/trades.ts";
+import { securityOf } from "../src/trades.ts";
 
-test("COR as CoreSite or CNR as Cornerstone is not Cencora or Core Natural Resources", () => {
-  expect(reusedTicker("COR", "CoreSite Realty Corporation Common Stock")).toBe(true);
-  expect(reusedTicker("CNR", "Cornerstone Building Brands, Inc.")).toBe(true);
-  expect(reusedTicker("COR", "Cencora, Inc. Common Stock (COR) [ST]")).toBe(false);
-});
-
-test("names match across suffixes and spellings, and differ for another company", () => {
-  expect(nameMatches("Apple Inc. - Common Stock (AAPL) [ST]", "Apple Inc.")).toBe(true);
-  expect(nameMatches("Exxon Mobil Corporation (XOM) [ST]", "ExxonMobil Holdings Corp")).toBe(false);
-  expect(nameMatches("CoreSite Realty Corporation Common Stock", "Cencora, Inc.")).toBe(false);
-  expect(nameMatches("MU CALL", "Micron Technology, Inc.")).toBe(true);
+test("only shares count as stock; options and bonds are kept apart, whichever way the filing writes the type", () => {
+  expect(securityOf("ST", "Visa Inc. (V) [ST]")).toBe("stock");
+  expect(securityOf("Stock", "Visa Inc.")).toBe("stock");
+  expect(securityOf(null, "Visa Inc. (V)")).toBe("stock");
+  expect(securityOf("OP", "generac Holdlings Inc. (gNRC) [OP]")).toBe("option");
+  expect(securityOf("Stock Option", "Visa Inc.")).toBe("option");
+  expect(securityOf(null, "Zillow (Z) [OP]")).toBe("option");
+  expect(securityOf("CS", "Ford 4.5% 2030")).toBe("bond");
+  expect(securityOf("Corporate Bond", "Ford")).toBe("bond");
+  expect(securityOf("Municipal Security", "City of X")).toBe("other");
 });

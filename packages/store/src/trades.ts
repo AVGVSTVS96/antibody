@@ -20,3 +20,22 @@ export function nameMatches(asset: string, company: string): boolean {
   const a = new Set(tokens(norm(parseAsset(asset.replaceAll("&#x27;", "'")).name)));
   return !a.size || tokens(norm(company)).some((t) => a.has(t));
 }
+
+export type Security = "stock" | "option" | "bond" | "other";
+
+const CODE = /\[([A-Z]{2})\]\s*$/;
+const KIND: Record<string, Security> = {
+  st: "stock",
+  ps: "stock",
+  stock: "stock",
+  op: "option",
+  "stock option": "option",
+  cs: "bond",
+  "corporate bond": "bond",
+};
+
+/** What a disclosure line is: a share of the company, an option on it, a bond, or something else. Only shares are stock trades. */
+export function securityOf(assetType: string | null, asset: string): Security {
+  const code = assetType ?? CODE.exec(asset)?.[1] ?? null;
+  return code ? (KIND[code.toLowerCase()] ?? "other") : "stock";
+}

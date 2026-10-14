@@ -10,7 +10,7 @@ How the "buried" label is decided for a bill section. Stakes x quiet x sneak, fr
 
 - **Stakes** (0 to 1): the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale ($1 million is 0, $1 billion is 0.5, $1 trillion is 1; cuts and costs count the same). A dollar figure that is only an even share of a line CBO printed for several sections is shown but not counted. Lobbying: the number of lobbying reports that name the section, on a log scale (1 report is 0.15, 10 is 0.52, 100 is 1).
 - **Quiet**: 1 minus the section's news-attention percentile within its bill. The least-covered section is close to 1, the most-covered is 0.
-- **Late or off-topic** (the "sneak" factor in the code): 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill, plus 0.25 times how unlike the rest of the bill it is. The late bonus shrinks by the share of the bill that arrived late, and **counts for nothing once half the bill or more arrived late** (a cliff at 50%): in a bill that was mostly rewritten late, being late says little about one section. The page prints the bill's late share and says when late was switched off. When a bill began as a shell (its first text was almost nothing), the late flag is not computed and the page says so.
+- **Late or off-topic** (the "sneak" factor in the code): 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill, plus 0.25 times how unlike the rest of the bill it is. The late bonus shrinks smoothly with the share of the bill that arrived late (bonus x (1 - late share)): in a bill that was mostly rewritten late, being late says less about one section, but there is no cutoff, so two bills with 49% and 51% late sections score the same sections the same way. The page prints the bill's late share. When a bill began as a shell (its first text was almost nothing), the late flag is not computed and the page says so.
 - **Off-topic distance** is how unlike the rest of the bill a section is (0 to 1, ranked within the bill). It counts only in a bill with a single committee title or division; a bill assembled from several titles has a minority title by construction. Boilerplate headings (short title, definitions, effective dates and the like) get no off-topic value.
 - **Label**: "headline" when a section is in the top tenth by attention with at least 3 articles. "Buried" when the score is at least 0.45, stakes are at least 0.667 ($10 billion, or about 20 lobbying reports), and the section is late or in the most off-topic quarter of the bill. Everything else is "normal".
 
@@ -46,15 +46,15 @@ An issue line that describes a bill's subject without naming any bill is taken t
 
 ## tied-stock
 
-A company is tied to a bill if it lobbied on the bill (an LD-2 issue line names it) or the bill's text names it. A trade is joined to the company by SEC ticker and the asset name on the disclosure; a ticker that belongs to a different company than the asset name is excluded.
+A company is tied to a bill if it lobbied on the bill (an LD-2 issue line names it). A subsidiary's lobbying counts for its parent only for filings made after the parent owned it (the date comes from the reviewer's stated reason; a bare year counts from the end of that year). A trade is joined to the company by SEC ticker and the asset name on the disclosure. Only stock counts as a stock trade: options, bonds and other securities are left out of the counts and noted on the page. A ticker that belongs to a different company than the asset name is excluded.
 
 ## trade-window
 
 Trades in a tied company's stock count from one year before the bill was introduced to one year after it became law (or its last dated action). Routine disclosures; no link to any vote is claimed. Members trade the shares of large companies all the time, so a count of members who traded a tied company's stock says more about how many large companies are tied than about the bill. The pages therefore count separately the members with a trade dated from the bill's first text through its signing, and show the count against all 535 members.
 
-## affected-donors
+## tied-donors
 
-A political committee counts as an affected donor when it resolves to a company tied to the bill.
+A political committee counts as a tied donor when it is the tied company's own PAC, or the PAC of a subsidiary that itself lobbied on the bill; a conglomerate's unrelated subsidiaries' PACs are not counted. A subsidiary's gifts count only from the date the parent owned it. Amounts rolled up from subsidiary PACs are labeled as such and the PACs are named.
 
 ## donor-window
 
@@ -72,13 +72,17 @@ An organization whose name equals exactly one SEC-listed company's name, after r
 
 An organization whose name is nearly identical to one SEC-listed company's name (token-sort score of 94 or more, 4 points clear of the next, same first word) is taken to be that company.
 
+## entity-alias
+
+A few listed companies are filed under a different name than SEC lists them by (a renamed company, or a holding company that took over the listing). A hand-checked table in `packages/resolve/src/aliases.ts` maps the name to the SEC filer, with the reason.
+
 ## entity-review
 
 When names differ, a language model picks the company from SEC candidates and gives its reason. Only answers at 0.8 confidence or higher count.
 
 ## subsidiary-parent
 
-A subsidiary's lobbying, PAC or stock counts toward its public parent. The subsidiary is named and the reason given.
+A subsidiary's lobbying or PAC counts toward its public parent from the date the parent owned it (read from the reviewer's stated reason; a filing before that date does not tie the parent). The subsidiary is named and the reason given. A subsidiary's PAC counts only when that subsidiary itself lobbied on the bill, so a conglomerate's unrelated companies' PACs do not roll up.
 
 ## amendment-text
 

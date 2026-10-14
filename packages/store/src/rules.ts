@@ -8,15 +8,15 @@ export const DOCS = "https://github.com/AVGVSTVS96/antibody/blob/main/docs/rules
 export const RULES: Record<string, { version: string; text: string }> = {
   "tied-stock": {
     version: "1",
-    text: "A company is tied to a bill if it lobbied on the bill (an LD-2 issue line names it) or the bill's text names it.",
+    text: "A company is tied to a bill if it lobbied on the bill (an LD-2 issue line names it). A subsidiary's lobbying counts for its parent only from the date the parent owned it.",
   },
   "trade-window": {
     version: "1",
     text: "Trades in a tied company's stock count from one year before the bill was introduced to one year after it became law (or its last dated action). Routine disclosures; no link to any vote is claimed, and large companies' shares are traded all the time.",
   },
-  "affected-donors": {
+  "tied-donors": {
     version: "1",
-    text: "A political committee counts as an affected donor when it resolves to a company tied to the bill.",
+    text: "A political committee counts as a tied donor when it is the tied company's own PAC, or the PAC of a subsidiary that itself lobbied on the bill. A subsidiary's gifts count only from the date the parent owned it.",
   },
   "donor-window": {
     version: "1",
@@ -54,13 +54,17 @@ export const RULES: Record<string, { version: string; text: string }> = {
     version: "1",
     text: "An organization whose name is nearly identical to one SEC-listed company's name (token-sort score of 94 or more, 4 points clear of the next, same first word) is taken to be that company.",
   },
+  "entity-alias": {
+    version: "1",
+    text: "A few listed companies are filed under a different name than SEC lists them by (a renamed company, or a holding company that took over the listing). A hand-checked table maps the name to the SEC filer, with the reason.",
+  },
   "entity-review": {
     version: "1",
     text: "When names differ, a language model picks the company from SEC candidates and gives its reason; only answers at 0.8 confidence or higher count.",
   },
   "subsidiary-parent": {
     version: "1",
-    text: "A subsidiary's lobbying, PAC or stock counts toward its public parent; the subsidiary is named and the reason given.",
+    text: "A subsidiary's lobbying or PAC counts toward its public parent from the date the parent owned it; the subsidiary is named and the reason given. A subsidiary's PAC counts only when that subsidiary itself lobbied on the bill.",
   },
   "amendment-text": {
     version: "1",

@@ -129,14 +129,13 @@ export async function committeeMemberRows(congress: number) {
     for (const s of list ?? []) {
       const id = `${congress}:${committee}:${s.bioguide}`;
       if (!s.bioguide || seats.has(id)) continue;
-      const official = congress >= CURRENT_CONGRESS ? committees.get(committee)?.url : null;
       seats.set(id, {
         id,
         committee_id: committee,
         bioguide: s.bioguide,
         role: s.title ?? null,
         congress,
-        source_url: official?.match(/clerk\.house\.gov|senate\.gov/) ? official : blob,
+        source_url: blob,
         source_locator: `${committee}, ${s.name}${s.rank ? `, rank ${s.rank}` : ""}; roster as of ${date} (congress-legislators ${sha.slice(0, 7)})`,
       });
     }

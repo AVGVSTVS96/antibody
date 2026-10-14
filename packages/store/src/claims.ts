@@ -67,7 +67,7 @@ const who = (n: Names, bioguide: string | null | undefined, fallback = "A member
 };
 const sec = (n: Names, id: string | null | undefined) => {
   const s = n.section(id);
-  return s ? `section ${s.num} (${quote(s.heading, 80)})` : `section ${id}`;
+  return s ? `section ${s.num} (${s.heading ? quote(s.heading, 80) : "no heading"})` : `section ${id}`;
 };
 const lobbied = (n: Names, filingId: string) => {
   const f = n.filing(filingId);
@@ -149,7 +149,7 @@ export const TEMPLATES: Record<string, Template> = {
 
   sections: (r, _f, n) => {
     const parts = [
-      `Section ${r.num} (${quote(r.heading, 80)}) first appears in the ${n.version(r.first_version)} text`,
+      `Section ${r.num} (${r.heading ? quote(r.heading, 80) : "no heading"}) first appears in the ${n.version(r.first_version)} text`,
     ];
     if (r.split_from) parts.push(`, split out of ${sec(n, r.split_from)}`);
     parts.push(".");
@@ -250,8 +250,12 @@ export const TEMPLATES: Record<string, Template> = {
 
   lda_spend: (r, _facet, n) => {
     const whom = r.client_key ? n.client(r.client_key) : "All clients";
+    const amounts =
+      r.amounts != null && r.amounts < r.reports
+        ? ` ${count(r.reports, "report")} named it and ${r.amounts} gave a dollar amount that is in this total; the other ${r.reports - r.amounts} add $0.`
+        : "";
     return {
-      text: `${whom} reported ${usd(r.total_usd ?? 0)} in lobbying spending in the ${count(r.quarters, "quarter")} whose filings named ${n.bill}${r.topic_only ? " by topic only" : ""}. That is the filing's total for every issue it lists, not what was spent on this bill.`,
+      text: `${whom} reported ${usd(r.total_usd ?? 0)} in lobbying spending in the ${count(r.quarters, "quarter")} whose filings named ${n.bill}${r.topic_only ? " by topic only" : ""}. That is the filing's total for every issue it lists, not what was spent on this bill.${amounts}`,
       kind: "fact",
       rule: null,
       restsOn: r.total_rests_on ?? [],

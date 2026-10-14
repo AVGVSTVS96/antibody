@@ -21,6 +21,12 @@ export const RULES = [
     url: null,
   },
   {
+    id: "entity-alias",
+    version: "1",
+    text: "A few listed companies are filed under a different name than SEC lists them by (a renamed company, or a holding company that took over the listing). A hand-checked table maps the name to the SEC filer, with the reason.",
+    url: null,
+  },
+  {
     id: "entity-review",
     version: "1",
     text: "When names differ, a language model picks the company from SEC candidates and gives its reason; only answers at 0.8 confidence or higher count.",
@@ -29,13 +35,13 @@ export const RULES = [
   {
     id: "subsidiary-parent",
     version: "1",
-    text: "A subsidiary's lobbying, PAC or stock counts toward its public parent; the subsidiary is named and the reason given.",
+    text: "A subsidiary's lobbying or PAC counts toward its public parent from the date the parent owned it; the subsidiary is named and the reason given. A subsidiary's PAC counts only when that subsidiary itself lobbied on the bill.",
     url: null,
   },
   {
     id: "tied-stock",
     version: "1",
-    text: "A stock is tied to a bill if the company lobbied on it (LD-2) or is named in its text.",
+    text: "A stock is tied to a bill if the company lobbied on it (LD-2). A subsidiary's lobbying counts only for filings made after the parent owned it.",
     url: null,
   },
 ] as const;
@@ -46,6 +52,7 @@ export const RULE_FOR: Record<Method, RuleId> = {
   ticker: "entity-ticker",
   name_exact: "entity-name",
   fuzzy: "entity-fuzzy",
+  alias: "entity-alias",
   llm_same: "entity-review",
   llm_subsidiary: "subsidiary-parent",
   llm_parent: "subsidiary-parent",

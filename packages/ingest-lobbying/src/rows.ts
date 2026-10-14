@@ -1,4 +1,5 @@
 import type { BillId, Row } from "@antibody/core";
+import { earlierBill } from "./eras.ts";
 import { best, findRefs, type Matcher, period, sectionNums } from "./extract.ts";
 import type { LdaFiling, LdaLobbyist } from "./lda.ts";
 import { namedMembers } from "./staff.ts";
@@ -94,8 +95,10 @@ export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSection
     let named = false;
     for (const [i, a] of lines.entries()) {
       const text = a.description ?? "";
-      const ref = best(findRefs(text, p, m));
-      if (!ref) continue;
+      const found = best(findRefs(text, p, m));
+      if (!found) continue;
+      const earlier = earlierBill(bill, p.end, text);
+      const ref = earlier ? { ...found, level: "low" as const, why: `Held out: ${earlier}.` } : found;
       named = true;
       const sections = sectionNums(text, m).filter((s) => !knownSections?.size || knownSections.has(s));
       out.refs.push({

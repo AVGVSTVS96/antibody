@@ -49,7 +49,15 @@ test("billStats counts the index card numbers", () => {
     companies: 1,
     membersTraded: 2,
     membersTradedDuring: expect.any(Number),
-    buriedTest: { tested: false, why: "too few news articles to rank this bill's sections", bigStakes: 0 },
+    buriedTest: {
+      tested: false,
+      why: "too few news articles to rank this bill's sections",
+      bigStakes: 0,
+      dollarsMeasured: false,
+    },
+    cboPublished: true,
+    deficitDirectOnly: false,
+    tradeSpan: expect.anything(),
     lateShare: expect.any(Number),
     vehicle: false,
     deficitMusd: 120,
@@ -96,4 +104,35 @@ test("checkBundle also follows *Claim props, like a lobbied edge's shareClaim", 
     },
   });
   expect(checkBundle(broken)).toEqual([".edges[4].props.shareClaim: unknown claim lda_spend/missing#share"]);
+});
+
+test("the buried test cannot fire on a multi-title bill with no late flag, and says dollars were not measured", () => {
+  const b = structuredClone(Bundle.parse(fixture));
+  const [only] = b.sections;
+  b.sections = [
+    { ...only!, id: "a", path: "title:I/sec:1", inFinal: true },
+    { ...only!, id: "b", path: "title:II/sec:2", inFinal: true },
+  ].map((s) => ({
+    ...s,
+    attention: {
+      hits: 1,
+      pct: 0.5,
+      hitsByGroup: {},
+      tradeLegalHits: 0,
+      examples: [],
+      claim: Object.keys(b.claims)[0]!,
+    },
+  }));
+  b.bill.lateUnavailable = "began as a shell";
+  const t = billStats(b).buriedTest;
+  expect(t.tested).toBe(false);
+  expect(t.why).toContain("several committee titles");
+  expect(t.dollarsMeasured).toBe(false);
+});
+
+test("an appropriations act's deficit is marked as direct spending and revenue only", () => {
+  const b = structuredClone(Bundle.parse(fixture));
+  b.bill.title = "Consolidated Appropriations Act, 2023";
+  b.bill.shortTitle = null;
+  expect(billStats(b).deficitDirectOnly).toBe(true);
 });

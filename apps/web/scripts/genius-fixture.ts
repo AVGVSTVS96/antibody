@@ -738,7 +738,7 @@ for (const m of G.members as Member[]) {
         kind: "pac",
         label: titleCase(f.pac),
         claims: [pacClaim],
-        props: { fecId, connectedOrg: null },
+        props: { fecId, connectedOrg: null, subsidiaryOf: null },
       });
       const target =
         f.company.startsWith("company:") && companyNodes.has(f.company as `company:${string}`)
