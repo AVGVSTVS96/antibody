@@ -258,6 +258,10 @@
     align-self: end;
   }
 
+  .ch:not(:has(.ch-notes)) .ch-body {
+    grid-column: 1 / -1;
+  }
+
   .ch-notes {
     position: sticky;
     top: calc(var(--head-h) + 24px);
@@ -946,6 +950,7 @@
 }
 
 .ch .stats {
+  margin-bottom: 20px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border-block: 0;
@@ -1302,7 +1307,7 @@
 
 .day-axis .gray {
   padding-inline: 4px;
-  background: var(--window);
+  background: color-mix(in srgb, var(--mid) 42%, transparent);
 }
 
 .day-read {
@@ -1342,7 +1347,7 @@
 }
 
 .month-chart .win {
-  fill: var(--window);
+  fill: color-mix(in srgb, var(--mid) 42%, transparent);
 }
 
 .lead-rows > li {
