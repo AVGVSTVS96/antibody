@@ -11,7 +11,7 @@ import { scopeOf } from "../member/scope.ts";
 import { Touch } from "../member/Touch.tsx";
 import { Trail } from "../member/Trail.tsx";
 import { Votes } from "../member/Votes.tsx";
-import { lastName, memberName } from "../money/Members.tsx";
+import { formerNote, lastName, memberName } from "../money/Members.tsx";
 import { useModel } from "../ui/BillGate.tsx";
 import { NotFound } from "../ui/NotFound.tsx";
 import { Kicker, Note, Section, Wrap } from "../ui/primitives.tsx";
@@ -42,6 +42,7 @@ function Member({ member }: { member: NodeOf<"member"> }) {
   const chamber = member.props.chamber === "House" ? "Representative" : "Senator";
   const seat = member.props.district != null ? `${member.props.state}-${member.props.district}` : member.props.state;
   const bill = m.b.bill.display;
+  const former = formerNote(member, m.b.bill.congress);
   const bare = scope.kind === "bill";
   const where =
     scope.kind === "quiet"
@@ -60,6 +61,7 @@ function Member({ member }: { member: NodeOf<"member"> }) {
         <div className="member-top">
           <div className="member-who">
             <h1>{memberName(member)}</h1>
+            {former && <p className="member-former">{former}</p>}
             <p className="member-tags">
               <b>
                 {member.props.party} · {seat}
@@ -82,7 +84,8 @@ function Member({ member }: { member: NodeOf<"member"> }) {
               Shown here only for what the public record ties to {bill}.{" "}
               {tied.length ? (
                 <>
-                  {count(stocks.size, "company", "companies")} whose lobbyists named {named} appear as trades on {last}
+                  {count(stocks.size, "company", "companies")} whose lobbyists named {named}{" "}
+                  {stocks.size === 1 ? "appears" : "appear"} as trades on {last}
                   's disclosure forms
                   {owners.length === 1 ? `, all in the ${ownerWords(owners[0]!.owner)}` : ""}.
                 </>
@@ -127,12 +130,12 @@ function Member({ member }: { member: NodeOf<"member"> }) {
         kicker={
           bare
             ? `${last}'s tape · no section is named in a lobbying filing, so ties are to the bill as a whole`
-            : `${last}'s tape · the ${scope.rows.length} ${scope.noun} are tested; the ones tied to stock on ${last}'s forms are lit`
+            : `${last}'s tape · the ${count(scope.rows.length, ...scope.noun)} ${scope.rows.length === 1 ? "is" : "are"} tested; the ones tied to stock on ${last}'s forms are lit`
         }
         title={
           bare
-            ? `${stocks.size} of the ${scope.companies.size} companies that lobbied ${bill} ${stocks.size === 1 ? "is" : "are"} on ${last}'s forms.`
-            : `${touched.length} of the ${scope.rows.length} ${scope.noun} ${touched.length === 1 ? "touches" : "touch"} stock on ${last}'s forms.`
+            ? `${stocks.size} of the ${count(scope.companies.size, "company", "companies")} that lobbied ${bill} ${stocks.size === 1 ? "is" : "are"} on ${last}'s forms.`
+            : `${touched.length} of the ${count(scope.rows.length, ...scope.noun)} ${touched.length === 1 ? "touches" : "touch"} stock on ${last}'s forms.`
         }
         aside={
           <p className="kicker member-rule">
@@ -145,7 +148,7 @@ function Member({ member }: { member: NodeOf<"member"> }) {
           {mine.length > 0 ? (
             <>
               Context: {last}'s filings list {count(mine.length, "trade")} in{" "}
-              {count(new Set(mine.map((t) => t.company)).size, "company that lobbied on " + bill, lobbied)}; the median
+              {count(new Set(mine.map((t) => t.company)).size, `company that lobbied on ${bill}`, lobbied)}; the median
               member who traded filed {medianPerTrader(book)}.{" "}
             </>
           ) : (
@@ -187,7 +190,7 @@ function Member({ member }: { member: NodeOf<"member"> }) {
 
       {tied.length > 0 && (
         <Section
-          kicker={`${last}'s trades in those ${stocks.size} stocks · fact · filings`}
+          kicker={`${last}'s trades in ${stocks.size === 1 ? "that 1 stock" : `those ${stocks.size} stocks`} · fact · filings`}
           title={`${last}'s trades in ${stocks.size === 1 ? "this stock" : `these ${stocks.size} stocks`}, by date.`}
         >
           <Trail trades={tied} scope={scope} />

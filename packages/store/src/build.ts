@@ -26,7 +26,7 @@ import { type AnyRow, mintClaim, type Names, restsOnOf } from "./claims.ts";
 import { type Db, type Param, query, tableNames } from "./db.ts";
 import { limitGraph } from "./limit.ts";
 import { ruleFor } from "./rules.ts";
-import { count, day, lawNumber, memberLabel, quarter } from "./text.ts";
+import { count, day, lawNumber, mcCase, memberLabel, quarter } from "./text.ts";
 import { nameMatches, reusedTicker, securityOf } from "./trades.ts";
 import { trimEvidence } from "./trim.ts";
 
@@ -366,7 +366,7 @@ class Builder {
       this.sections.set(s.id, {
         id: s.id,
         num: s.num,
-        heading: s.heading?.trim() || firstWords(s.preview),
+        heading: mcCase(s.heading?.trim() || firstWords(s.preview)),
         path: s.path,
         firstVersion: s.first_version,
         inFinal: s.in_final,
@@ -999,7 +999,7 @@ class Builder {
     const matching = trades.filter((t) => !reusedTicker(t.ticker, t.asset));
     if (matching.length < trades.length)
       this.warnings.push(
-        `${trades.length - matching.length} trades left out: the ticker belonged to a different company`,
+        `${count(trades.length - matching.length, "trade")} left out: the ticker belonged to a different company`,
       );
     const fits = matching.filter((t) => securityOf(t.asset_type, t.asset) === "stock");
     for (const t of matching) {
@@ -1007,8 +1007,12 @@ class Builder {
       if (kind !== "stock") this.nonStock[kind]++;
     }
     const known = fits.filter((t) => t.bioguide && this.members.has(t.bioguide));
-    if (known.length < fits.length)
-      this.warnings.push(`${fits.length - known.length} trades in tied stocks are from filers not matched to a member`);
+    if (known.length < fits.length) {
+      const n = fits.length - known.length;
+      this.warnings.push(
+        `${count(n, "trade")} in tied stocks ${n === 1 ? "is from a filer" : "are from filers"} not matched to a member`,
+      );
+    }
     for (const [pair, ts] of groupBy(known, (t) => `${t.bioguide}|${tied.get(t.ticker.toUpperCase())}`)) {
       const [bioguide, company] = pair.split("|") as [string, string];
       const events: EdgeOf<"traded">["props"]["events"] = [];
@@ -1265,6 +1269,7 @@ class Builder {
           state: m.state,
           district: m.district,
           chamber: m.chamber,
+          term: m.term ? { start: m.term.start, end: m.term.end } : null,
           paperFilingsUnread: unreadIds.has(id),
         },
       });
@@ -1367,7 +1372,7 @@ class Builder {
       gap(
         "non-stock-trades",
         "other",
-        `${optionsAndBonds.toLocaleString("en-US")} trades in tied companies were options (${this.nonStock.option}), bonds (${this.nonStock.bond}) or other securities (${this.nonStock.other}). An option or a bond is not a share of the company, so they are not counted as stock trades.`,
+        `${count(optionsAndBonds, "trade")} in tied companies ${optionsAndBonds === 1 ? "was" : "were"} options (${this.nonStock.option}), bonds (${this.nonStock.bond}) or other securities (${this.nonStock.other}). An option or a bond is not a share of the company, so they are not counted as stock trades.`,
       );
     if (this.heldOutEarlier)
       gap(

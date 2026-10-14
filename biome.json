@@ -7,6 +7,12 @@
     "enabled": true,
     "rules": { "preset": "recommended", "style": { "noNonNullAssertion": "off" } }
   },
+  "overrides": [
+    {
+      "includes": ["apps/web/src/styles.css"],
+      "linter": { "rules": { "complexity": { "noImportantStyles": "off" } } }
+    }
+  ],
   "javascript": { "formatter": { "quoteStyle": "double" } },
   "assist": { "enabled": true, "actions": { "source": { "organizeImports": "on" } } }
 }

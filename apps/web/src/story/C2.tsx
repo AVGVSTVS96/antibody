@@ -29,7 +29,7 @@ function Filings({ m, row }: { m: BillModel; row: QuietRow }) {
             ? `${count(drawn, "report")} of ${named} listed: only the busiest clients are drawn. `
             : `${count(named, "report")} name it. None is from the busiest clients drawn here. `
           : ""}
-        {row.v.s.score && <Src ids={row.v.s.score.claim} label={`${named} REPORTS COUNTED`} />}
+        {row.v.s.score && <Src ids={row.v.s.score.claim} label={`${count(named, "report").toUpperCase()} COUNTED`} />}
       </p>
     </div>
   );

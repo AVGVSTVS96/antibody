@@ -108,7 +108,7 @@ export default function Ch4({ m }: { m: BillModel }) {
           {data.clients.length > 0 && (
             <section>
               <Cap aside={<span className="axis">REPORTS · $ ALL ISSUES</span>}>
-                {data.clients.length === 10 ? "Ten busiest clients" : `${data.clients.length} busiest clients`} · 1
+                {data.clients.length === 10 ? "Ten busiest clients" : count(data.clients.length, "busiest client")} · 1
                 square = 1 report
               </Cap>
               <ul className="legend" aria-hidden="true">

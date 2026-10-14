@@ -124,10 +124,10 @@ function Follow({ v }: { v: SectionView }) {
                 </>
               ) : (
                 <>
-                  {filingsName(v.named)} {m.secLabel(v)}; the {v.drawn.toLocaleString("en-US")} from these{" "}
-                  {count(own.length, "client")} {own.length === 1 ? "is" : "are"} drawn. Each row is one company: the
-                  clients that merge into it, the dates members of Congress traded its stock, and what its PAC gave (a
-                  floor).
+                  {filingsName(v.named)} {m.secLabel(v)}; the {v.drawn.toLocaleString("en-US")} from{" "}
+                  {own.length === 1 ? "this client" : `these ${own.length} clients`} {v.drawn === 1 ? "is" : "are"}{" "}
+                  drawn. Each row is one company: the clients that merge into it, the dates members of Congress traded
+                  its stock, and what its PAC gave (a floor).
                 </>
               )}
             </p>

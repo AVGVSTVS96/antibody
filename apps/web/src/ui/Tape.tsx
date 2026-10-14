@@ -151,7 +151,7 @@ const dollars = (r: TapeMark) =>
       : `${musd(r.musd)} ${r.musd < 0 ? "cuts the deficit" : "adds to the deficit"}`;
 
 const coverage = (r: TapeMark, tape: TapeData<TapeMark>) =>
-  r.articles == null ? "coverage not measured" : `${r.articles} of ${tape.read.toLocaleString("en-US")} articles read`;
+  r.articles == null ? "coverage not measured" : `${r.articles} of ${count(tape.read, "article")} read`;
 
 const describe = (r: TapeMark, tape: TapeData<TapeMark>) =>
   [
@@ -176,7 +176,7 @@ function Card({ row, tape, compact }: { row: TapeMark; tape: TapeData<TapeMark>;
           {" · "}
           {row.musd == null ? "No CBO figure" : musd(row.musd)}
           {" · "}
-          {row.articles ?? "?"} articles
+          {row.articles == null ? "? articles" : count(row.articles, "article")}
         </p>
         <p className="tape-card-title">{row.heading}</p>
       </>

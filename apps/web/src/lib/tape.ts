@@ -1,5 +1,5 @@
 import { inBillOrder } from "@antibody/core";
-import { count } from "./format.ts";
+import { capital, count } from "./format.ts";
 import type { BillModel, SectionView } from "./model.ts";
 
 export type TapeKind = "headline" | "quiet" | "other";
@@ -70,8 +70,6 @@ const KIND: Record<SectionView["kind"], TapeKind> = {
   normal: "other",
   unscored: "other",
 };
-
-const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function placeOf(path: string) {
   const segs = path.split("/").map((p) => p.split(":") as [string, string]);
@@ -289,8 +287,8 @@ export function runNote(run: TapeRun<TapeMark>, tape: Tape<TapeMark>): string {
   if (measured.length === n)
     parts.push(
       hits
-        ? `${count(hits, "article match", "article matches")} in the ${tape.read} articles read`
-        : `none in the ${tape.read} articles read`,
+        ? `${count(hits, "article match", "article matches")} in the ${count(tape.read, "article")} read`
+        : `none in the ${count(tape.read, "article")} read`,
     );
   else parts.push(`coverage not measured for ${count(n - measured.length, "of them")}`);
   const lead = n < WORDS.length ? capital(WORDS[n]!) : n.toLocaleString("en-US");

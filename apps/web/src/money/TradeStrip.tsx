@@ -1,5 +1,5 @@
 import { type KeyboardEvent, type PointerEvent, useEffect, useMemo, useRef, useState } from "react";
-import { day } from "../lib/format.ts";
+import { count, day } from "../lib/format.ts";
 import { memberHref, onLink } from "../lib/router.ts";
 import { ownerWords, type Trade, tradeVerb } from "../lib/trades.ts";
 import { useModel } from "../ui/BillGate.tsx";
@@ -217,7 +217,7 @@ export function TradeStrip({ trades, domain, window, label, fade, size = "row", 
       className="strip"
       data-size={size}
       style={{ height: g.h }}
-      aria-label={`${label}: ${total} trades. Left and right arrows step through them, Enter opens one.`}
+      aria-label={`${label}: ${count(total, "trade")}. Left and right arrows step through them, Enter opens one.`}
       tabIndex={stacks.length ? 0 : -1}
       onKeyDown={onKeyDown}
       onBlur={() => setHover(null)}

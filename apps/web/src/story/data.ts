@@ -2,6 +2,7 @@ import { type Bundle, billStats, type Dollar, headlineDeficit, type NodeId, type
 import { count, day, deficitWords, nice, plainName, usd } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { daysBetween, medianPerTrader, tradeBook, windowShare } from "../lib/trades.ts";
+import { decides } from "../member/votes.ts";
 
 export const GROUPS = ["left", "center-left", "center", "center-right", "right"] as const;
 export type Group = (typeof GROUPS)[number];
@@ -31,8 +32,23 @@ export function bigUsd(m: number): string {
   const a = Math.abs(m);
   if (a >= 1e6) return `$${(a / 1e6).toFixed(2)}T`;
   if (a >= 1e3) return `$${a < 1e5 ? (a / 1e3).toFixed(1) : Math.round(a / 1e3).toLocaleString("en-US")}B`;
-  return `$${Math.round(a)}M`;
+  return Math.round(a) === 0 ? "$0" : `$${Math.round(a)}M`;
 }
+
+/** A figure's size as `bigUsd` prints it, in $ millions. */
+const shown = (m: number) => {
+  const a = Math.abs(m);
+  return a >= 1e6
+    ? Math.round(a / 1e4) * 1e4
+    : a >= 1e5
+      ? Math.round(a / 1e3) * 1e3
+      : a >= 1e3
+        ? Math.round(a / 100) * 100
+        : Math.round(a);
+};
+
+/** The parts rounded as `bigUsd` shows them, then added, so a sentence's parts always add up to its total. */
+export const bigUsdSum = (...parts: number[]) => bigUsd(parts.reduce((n, m) => n + shown(m), 0));
 
 /** `+$3.39T`, `−$12.5B`: the same size with its sign always spelled out. */
 export const figure = (m: number) => `${m < 0 ? "−" : "+"}${bigUsd(m)}`;
@@ -147,7 +163,7 @@ export function ch1(m: BillModel): Chapter<Ch1Data> {
         { text: count(headline.length, "section"), tone: "label" },
         { text: `took ${share}%.` },
       ],
-      `We read ${articles.toLocaleString("en-US")} articles about the bill. Together they named a section ${mentions.toLocaleString("en-US")} times. ${stats.mentions!.headline.toLocaleString("en-US")} of those mentions landed on ${headline.length} of the ${fin.length} sections in the final law.`,
+      `We read ${articles.toLocaleString("en-US")} articles about the bill. Together they named a section ${count(mentions, "time")}. ${stats.mentions!.headline.toLocaleString("en-US")} of those mentions landed on ${headline.length} of the ${count(fin.length, "section")} in the final law.`,
     ];
   }
 
@@ -157,7 +173,7 @@ export function ch1(m: BillModel): Chapter<Ch1Data> {
     : m.buried.length
       ? {
           value: String(quietHits),
-          text: `${quietHits === 1 ? "mention" : "mentions"} reached the ${m.buried.length} sections that went through quietly. Next chapter.`,
+          text: `${quietHits === 1 ? "mention" : "mentions"} reached the ${count(m.buried.length, "section")} that went through quietly. Next chapter.`,
         }
       : { value: "0", text: "No section met the quiet-and-costly rule. Next chapter says what came closest." };
 
@@ -274,7 +290,7 @@ export function ch2(m: BillModel): Chapter<Ch2Data> {
     const near = closest ? ` Closest: ${m.secLabel(closest)} ${closest.s.heading}, which ${quietWord(closest)}.` : "";
     return chapter(
       [{ text: "No section" }, { text: "went through", tone: "label" }, { text: "quietly." }],
-      `None of the ${stats.sections} sections had big stakes, little coverage and a late or off-topic arrival all at once.${near}${dollars}`,
+      `None of the ${count(stats.sections, "section")} had big stakes, little coverage and a late or off-topic arrival all at once.${near}${dollars}`,
       data,
     );
   }
@@ -509,10 +525,10 @@ export function ch4(m: BillModel): Chapter<Ch4Data> {
     ? ` Their filings report ${usd(L.spendTotalUsd)} of spending. That total covers every issue on each filing, not just this bill.`
     : "";
   const where = mentions
-    ? `Filings named a section number ${mentions.toLocaleString("en-US")} times; a report that names two sections counts twice. Those mentions land on ${landedOf(named.length, fin.length)}. Every other mention names only the bill.`
+    ? `Filings named a section number ${count(mentions, "time")}; a report that names two sections counts twice. Those mentions land on ${landedOf(named.length, fin.length)}. Every other mention names only the bill.`
     : "No filing names a section number: every mention names only the bill.";
   const near = unmentioned
-    ? `${unmentioned === topThree.length ? `All ${unmentioned}` : `${unmentioned} of the ${topThree.length}`} most-named sections drew no mentions in the ${articles.toLocaleString("en-US")} articles read.`
+    ? `${unmentioned === topThree.length ? (unmentioned === 1 ? "The most-named section" : `All ${unmentioned} most-named sections`) : `${unmentioned} of the ${count(topThree.length, "most-named section")}`} drew no mentions in the ${articles.toLocaleString("en-US")} articles read.`
     : undefined;
   return chapter(
     [
@@ -634,7 +650,7 @@ export function ch5(m: BillModel): Chapter<Ch5Data> {
     return chapter(
       [{ text: "No listed company" }, { text: "named a quiet section.", tone: "label" }],
       m.buried.length
-        ? `${count(listed, "listed company", "listed companies")} ${listed === 1 ? "is" : "are"} tied to the bill because ${listed === 1 ? "it" : "they"} lobbied on it, but none named one of the ${m.buried.length} quiet sections in its own filings.`
+        ? `${count(listed, "listed company", "listed companies")} ${listed === 1 ? "is" : "are"} tied to the bill because ${listed === 1 ? "it" : "they"} lobbied on it, but none named ${m.buried.length === 1 ? "the quiet section" : `one of the ${m.buried.length} quiet sections`} in its own filings.`
         : `The bill has no quiet sections, so no company can be tied to one. ${tiedWhole(listed)}`,
       data,
     );
@@ -729,7 +745,7 @@ export function ch6(m: BillModel): Chapter<Ch6Data> {
     .map((v) => ({
       letter: "",
       date: v.date,
-      text: `${v.chamber === "House" ? "House" : "Senate"} ${v.result.replace(/ \(.*$/, "").toLowerCase()} ${v.yeas}-${v.nays}${/tie broken/i.test(v.result) ? ", VP breaks tie" : ""}`,
+      text: `${v.chamber} ${decides(v) ? (/concur/i.test(v.question) ? "concurred" : "passed") : v.result.replace(/ \(.*$/, "").toLowerCase()} ${v.yeas}-${v.nays}${/tie broken/i.test(v.result) ? ", VP breaks tie" : ""}`,
       url: v.url,
       claim: v.claim,
     }));

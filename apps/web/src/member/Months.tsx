@@ -112,10 +112,11 @@ export function Months({ member }: { member: NodeOf<"member"> }) {
             {last} filed {count(mine.length, "trade")} in{" "}
             {count(
               new Set(mine.map((t) => t.company)).size,
-              "company that lobbied on " + bill,
+              `company that lobbied on ${bill}`,
               `companies that lobbied on ${bill}`,
             )}{" "}
-            across the full span. {inside} fall in the {ws.windowDays} days the bill moved
+            across the full span. {inside === 1 ? "1 falls" : `${inside} fall`} in the {ws.windowDays} days the bill
+            moved
             {peak.trades > inside ? `; ${monthLabel(peak.month)} alone has ${peak.trades}` : ""}.{" "}
           </>
         )}

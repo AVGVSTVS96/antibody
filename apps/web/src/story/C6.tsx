@@ -82,7 +82,7 @@ function DayChart({ c }: { c: Ch6Data }) {
               y={PAD_TOP + H - Math.round(H - 16) - 6}
               textAnchor={tail(peakAt)}
             >
-              {c.peak.trades} TRADES · {shortDay(c.peak.date).toUpperCase()}
+              {count(c.peak.trades, "trade").toUpperCase()} · {shortDay(c.peak.date).toUpperCase()}
             </text>
           )}
         </svg>
