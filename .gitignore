@@ -8,3 +8,4 @@ __pycache__/
 .venv/
 .vercel/
 !packages/*/data/
+apps/web/shots/
