@@ -7,21 +7,32 @@ import {
   BundleIndex,
   billDisplay,
   billStats,
+  claimShardFile,
   indexTotals,
   type Row,
+  shardClaims,
 } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 
 const STAMP = /"generatedAt":"[^"]*"/;
 
-const claimsFile = (id: string) => `${id}.claims.json`;
 const articlesFile = (id: string) => `${id}.articles.json`;
+
+/** The published files of a bundle: the bundle without its claims, then the shards they went into. */
+function shardedParts(bundle: Bundle): [string, string][] {
+  const { manifest, shards } = shardClaims(bundle.claims);
+  return [
+    [`${bundle.bill.id}.json`, JSON.stringify({ ...bundle, claims: {}, claimShards: manifest })],
+    ...shards.map((s, i): [string, string] => [claimShardFile(bundle.bill.id, i), JSON.stringify(s)]),
+  ];
+}
 
 /**
  * Writes `data/bundles/<bill>.json`, and the published copy the site serves when `publish` is set. The published
- * copy keeps its claims in a sidecar, `<bill>.claims.json`, so the page can paint before the largest part of the
- * bundle arrives. A published file that differs only in `generatedAt` stays as it is, so a daily rebuild commits
- * only what changed. `articles` goes beside it as `<bill>.articles.json` (and is removed when the bill has none).
+ * copy keeps its claims in shards, `<bill>.claims.<n>.json`, described by the bundle's `claimShards`, so the page
+ * paints without them and a reader fetches only the ones a receipt needs. A published file that differs only in
+ * `generatedAt` stays as it is, so a daily rebuild commits only what changed. `articles` goes beside it as
+ * `<bill>.articles.json` (and is removed when the bill has none).
  */
 export async function writeBundle(
   bundle: Bundle,
@@ -33,11 +44,13 @@ export async function writeBundle(
     await mkdir(dir, { recursive: true });
     const split = dir === published;
     const parts: [string, string][] = split
-      ? [
-          [`${bundle.bill.id}.json`, JSON.stringify({ ...bundle, claims: {} })],
-          [claimsFile(bundle.bill.id), JSON.stringify(bundle.claims)],
-        ]
+      ? shardedParts(bundle)
       : [[`${bundle.bill.id}.json`, JSON.stringify(bundle)]];
+    if (split) {
+      const keep = new Set(parts.map(([name]) => name));
+      for (const f of await readdir(dir))
+        if (f.startsWith(`${bundle.bill.id}.claims.`) && !keep.has(f)) await rm(join(dir, f));
+    }
     if (articles?.articles.length) parts.push([articlesFile(bundle.bill.id), JSON.stringify(articles)]);
     else await rm(join(dir, articlesFile(bundle.bill.id)), { force: true });
     for (const [name, json] of parts) {
@@ -81,7 +94,6 @@ export function indexEntry(b: Bundle, { articles = false } = {}): BundleIndex["b
     congress: b.bill.congress,
     latestActionOn: latestActionOn(b),
     file: `${b.bill.id}.json`,
-    claimsFile: claimsFile(b.bill.id),
     articlesFile: articles ? articlesFile(b.bill.id) : null,
     stats: billStats(b),
   };
@@ -129,7 +141,7 @@ export async function writeIndex(
 ): Promise<BundleIndex> {
   const all = await readdir(dir).catch(() => [] as string[]);
   const files = all.filter(
-    (f) => f.endsWith(".json") && f !== "index.json" && !f.endsWith(".claims.json") && !f.endsWith(".articles.json"),
+    (f) => f.endsWith(".json") && f !== "index.json" && !/\.(claims\.\d+|articles)\.json$/.test(f),
   );
   const bundles = new Map<string, Bundle>();
   for (const f of files) {

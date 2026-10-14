@@ -315,6 +315,7 @@ class Builder {
       nodes: [...this.nodes.values()],
       edges: [...this.edges.values()],
       claims: {},
+      claimShards: null,
       gaps: await this.buildGaps({ dollars, attention, lobbying, unread, sections }),
       rules: [],
     };

@@ -1,6 +1,7 @@
 export * from "./articles.ts";
 export * from "./bundle.ts";
 export * from "./claim.ts";
+export * from "./claim-shards.ts";
 export * from "./ddl.ts";
 export * from "./dollars.ts";
 export * from "./graph.ts";

@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Bundle, indexTotals } from "@antibody/core";
+import { type Bundle, claimShardFile, claimShardOf, indexTotals } from "@antibody/core";
 import fixture from "../../core/fixtures/genius-mini.bundle.json";
 import { indexEntry, writeBundle, writeIndex } from "../src/publish.ts";
 
@@ -19,6 +19,25 @@ test("a published copy that differs only in generatedAt is left alone", async ()
   expect((await stat(pub!)).mtimeMs).toBe(first);
   await writeBundle({ ...bundle, bill: { ...bundle.bill, title: "Changed" } }, { publish: true, ...where });
   expect((await stat(pub!)).mtimeMs).toBeGreaterThan(first);
+});
+
+test("the published bundle holds no claims, its shards hold all of them, and shards of an older build are removed", async () => {
+  const published = await mkdtemp(join(dir, "shards-"));
+  const id = bundle.bill.id;
+  const stale = [`${id}.claims.json`, claimShardFile(id, 9)];
+  for (const f of stale) await Bun.write(join(published, f), "{}");
+  await writeBundle(bundle, { publish: true, local: join(published, "local"), published });
+  const slim = (await Bun.file(join(published, `${id}.json`)).json()) as Bundle;
+  expect(slim.claims).toEqual({});
+  const shards = await Promise.all(
+    slim.claimShards!.starts.map((_, i) => Bun.file(join(published, claimShardFile(id, i))).json()),
+  );
+  expect(Object.assign({}, ...shards)).toEqual(bundle.claims);
+  for (const claim of Object.keys(bundle.claims))
+    expect(shards[claimShardOf(slim.claimShards!, claim)]).toHaveProperty([claim]);
+  for (const f of stale) expect(await Bun.file(join(published, f)).exists()).toBe(false);
+  expect((await Bun.file(join(published, "local", `${id}.json`)).json()).claims).toEqual(bundle.claims);
+  expect((await writeIndex(published, [], [])).bills.map((b) => b.id)).toEqual([id]);
 });
 
 test("the index lists the published bundles, curated ids first", async () => {
