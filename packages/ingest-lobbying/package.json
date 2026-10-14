@@ -1,0 +1,7 @@
+{
+  "name": "@antibody/ingest-lobbying",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@antibody/core": "workspace:*" }
+}

@@ -10,15 +10,126 @@
         "typescript": "7.0.2",
       },
     },
+    "apps/cli": {
+      "name": "@antibody/cli",
+      "bin": {
+        "antibody": "./src/main.ts",
+      },
+      "dependencies": {
+        "@antibody/analyze": "workspace:*",
+        "@antibody/core": "workspace:*",
+        "@antibody/ingest-bills": "workspace:*",
+        "@antibody/ingest-cbo": "workspace:*",
+        "@antibody/ingest-fec": "workspace:*",
+        "@antibody/ingest-lobbying": "workspace:*",
+        "@antibody/ingest-members": "workspace:*",
+        "@antibody/ingest-news": "workspace:*",
+        "@antibody/ingest-trades": "workspace:*",
+        "@antibody/resolve": "workspace:*",
+        "@antibody/store": "workspace:*",
+        "@antibody/watch": "workspace:*",
+      },
+    },
+    "packages/analyze": {
+      "name": "@antibody/analyze",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
     "packages/core": {
       "name": "@antibody/core",
       "dependencies": {
         "zod": "4.6.7",
       },
     },
+    "packages/ingest-bills": {
+      "name": "@antibody/ingest-bills",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
+    "packages/ingest-cbo": {
+      "name": "@antibody/ingest-cbo",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
+    "packages/ingest-fec": {
+      "name": "@antibody/ingest-fec",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
+    "packages/ingest-lobbying": {
+      "name": "@antibody/ingest-lobbying",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
+    "packages/ingest-members": {
+      "name": "@antibody/ingest-members",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
+    "packages/ingest-news": {
+      "name": "@antibody/ingest-news",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
+    "packages/ingest-trades": {
+      "name": "@antibody/ingest-trades",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
+    "packages/resolve": {
+      "name": "@antibody/resolve",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
+    "packages/store": {
+      "name": "@antibody/store",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+        "@duckdb/node-api": "1.5.6-r.1",
+      },
+    },
+    "packages/watch": {
+      "name": "@antibody/watch",
+      "dependencies": {
+        "@antibody/core": "workspace:*",
+      },
+    },
   },
   "packages": {
+    "@antibody/analyze": ["@antibody/analyze@workspace:packages/analyze"],
+
+    "@antibody/cli": ["@antibody/cli@workspace:apps/cli"],
+
     "@antibody/core": ["@antibody/core@workspace:packages/core"],
+
+    "@antibody/ingest-bills": ["@antibody/ingest-bills@workspace:packages/ingest-bills"],
+
+    "@antibody/ingest-cbo": ["@antibody/ingest-cbo@workspace:packages/ingest-cbo"],
+
+    "@antibody/ingest-fec": ["@antibody/ingest-fec@workspace:packages/ingest-fec"],
+
+    "@antibody/ingest-lobbying": ["@antibody/ingest-lobbying@workspace:packages/ingest-lobbying"],
+
+    "@antibody/ingest-members": ["@antibody/ingest-members@workspace:packages/ingest-members"],
+
+    "@antibody/ingest-news": ["@antibody/ingest-news@workspace:packages/ingest-news"],
+
+    "@antibody/ingest-trades": ["@antibody/ingest-trades@workspace:packages/ingest-trades"],
+
+    "@antibody/resolve": ["@antibody/resolve@workspace:packages/resolve"],
+
+    "@antibody/store": ["@antibody/store@workspace:packages/store"],
+
+    "@antibody/watch": ["@antibody/watch@workspace:packages/watch"],
 
     "@biomejs/biome": ["@biomejs/biome@2.5.15", "", { "optionalDependencies": { "@biomejs/cli-darwin-arm64": "2.5.15", "@biomejs/cli-darwin-x64": "2.5.15", "@biomejs/cli-linux-arm64": "2.5.15", "@biomejs/cli-linux-arm64-musl": "2.5.15", "@biomejs/cli-linux-x64": "2.5.15", "@biomejs/cli-linux-x64-musl": "2.5.15", "@biomejs/cli-win32-arm64": "2.5.15", "@biomejs/cli-win32-x64": "2.5.15" }, "bin": { "biome": "bin/biome" } }, "sha512-WZTW4slm/pdkh92K6t/3aEN++44JD1PQ7squ7RCMLI1flHGl43DVOIGXvCjHiZgBMO1V4uYxoFNtqrIA4qGuIQ=="],
 
@@ -37,6 +148,26 @@
     "@biomejs/cli-win32-arm64": ["@biomejs/cli-win32-arm64@2.5.15", "", { "os": "win32", "cpu": "arm64" }, "sha512-2kPKzhNlm8C+Ru3GcO0Me2ODkCBLrVOUNuyi84RJyWDVKAA4+Kjj3jMjL938lF6BRfvltC4vB2nPY9SvN51Ovg=="],
 
     "@biomejs/cli-win32-x64": ["@biomejs/cli-win32-x64@2.5.15", "", { "os": "win32", "cpu": "x64" }, "sha512-yAzh4UqEImV6Hcy0zjUqNfJAsUhoD64FBQCdTG8Md/Z2wQeVP/ZmJ3XRYAs1g8J9fjTFyl2fCtc5FB5til47+g=="],
+
+    "@duckdb/node-api": ["@duckdb/node-api@1.5.6-r.1", "", { "dependencies": { "@duckdb/node-bindings": "1.5.6-r.1" } }, "sha512-yIPol6P4EQmsAUsb27donJf7iADrM31Ei/WkvhkZpSscjhEErYsuF19lsJ/qz5mUWxsKFQpLdjvrlhPQnMTBqw=="],
+
+    "@duckdb/node-bindings": ["@duckdb/node-bindings@1.5.6-r.1", "", { "dependencies": { "detect-libc": "^2.1.2" }, "optionalDependencies": { "@duckdb/node-bindings-darwin-arm64": "1.5.6-r.1", "@duckdb/node-bindings-darwin-x64": "1.5.6-r.1", "@duckdb/node-bindings-linux-arm64": "1.5.6-r.1", "@duckdb/node-bindings-linux-arm64-musl": "1.5.6-r.1", "@duckdb/node-bindings-linux-x64": "1.5.6-r.1", "@duckdb/node-bindings-linux-x64-musl": "1.5.6-r.1", "@duckdb/node-bindings-win32-arm64": "1.5.6-r.1", "@duckdb/node-bindings-win32-x64": "1.5.6-r.1" } }, "sha512-/pWlTyvKC1d16iSMJCBAPwlmzoeXRs5Y9cqG+TpKd/YAW6Ke05FJg099v/Im2bkS9BgznNyNcAK1NxA1eQhSUw=="],
+
+    "@duckdb/node-bindings-darwin-arm64": ["@duckdb/node-bindings-darwin-arm64@1.5.6-r.1", "", { "os": "darwin", "cpu": "arm64" }, "sha512-KFT/J/pyouuAD1jftAIfcWVRdorg+c/yVR/BJL8LJKrST+mYC4d7QSuQ+iXSYbFpHENUAeZUagXrMPtZT8Xzsg=="],
+
+    "@duckdb/node-bindings-darwin-x64": ["@duckdb/node-bindings-darwin-x64@1.5.6-r.1", "", { "os": "darwin", "cpu": "x64" }, "sha512-tVwUZNvdQoaPJhrh3q2e6jxm1MhahNHJQK/pvCyco46NX0mEuGzlw9i0n2MArgsyzccdCwScOK9ctbyr+3oMbQ=="],
+
+    "@duckdb/node-bindings-linux-arm64": ["@duckdb/node-bindings-linux-arm64@1.5.6-r.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-3jnUaDil1BrF/6vAZwVaInJ1xoBaWGHB4PDiUnzJWKCo8a8TLx9j7/gPyPl/UGRBftrYIuTihRZSfF4mWMgtWA=="],
+
+    "@duckdb/node-bindings-linux-arm64-musl": ["@duckdb/node-bindings-linux-arm64-musl@1.5.6-r.1", "", { "os": "linux", "cpu": "arm64" }, "sha512-j6dcNLWnFvlQyKMtl36HyeDsOaetXFoj0dH21Q9MbLjABNuJs5ekDV6zMSEda/g5+z1Tm6r2KFOS8j3tGUCRiw=="],
+
+    "@duckdb/node-bindings-linux-x64": ["@duckdb/node-bindings-linux-x64@1.5.6-r.1", "", { "os": "linux", "cpu": "x64" }, "sha512-IXcrZJE6kEqM0Z4wwdVnGBHX/frOS33VPNAwDXQ/Q+Fs84b058Qe94chrCCIcNJlG8Y3UHIUU4eBeCQxW5mN1Q=="],
+
+    "@duckdb/node-bindings-linux-x64-musl": ["@duckdb/node-bindings-linux-x64-musl@1.5.6-r.1", "", { "os": "linux", "cpu": "x64" }, "sha512-PVzIEZqp7QN07WBgjmIH0cK2GKXR735KmL6wnghTzRnhHWrePxx3MjZB9zZHI8tB73wdF8luarBm4EgqSjGyVA=="],
+
+    "@duckdb/node-bindings-win32-arm64": ["@duckdb/node-bindings-win32-arm64@1.5.6-r.1", "", { "os": "win32", "cpu": "arm64" }, "sha512-nzNTZx9rus5QpuX+KH6UOPNeZp8yF25TxV6DiUly4RKgR5mu6xo8c7a7lS80AqxTJfJ9BwUIiqlCuYKWztRM5A=="],
+
+    "@duckdb/node-bindings-win32-x64": ["@duckdb/node-bindings-win32-x64@1.5.6-r.1", "", { "os": "win32", "cpu": "x64" }, "sha512-5Rpn5WXEG5gY/u7Keh+c4kuwG/LiE31pCP9CoCohv+u0aFensk/yRIQVW/CXuIoITky9xFhdRzaWUtAnGTYxJQ=="],
 
     "@types/bun": ["@types/bun@1.4.3", "", { "dependencies": { "bun-types": "1.4.3" } }, "sha512-N67Pqy8JXbAY/j0tNraS3V5mubGvc6rrrNDmDCtZLlFzccbUJPDb0tvgUBC5q4m8ybkP93Jcn1QB+RYQ6PvBhw=="],
 
@@ -83,6 +214,8 @@
     "@typescript/typescript-win32-x64": ["@typescript/typescript-win32-x64@7.0.2", "", { "os": "win32", "cpu": "x64" }, "sha512-0BQ3HkAHHlKLSp1qRvf3SUhGpGsDuhB/jgFw75guyqbxJqEaS0Cw/VFO8i2nHglJUzQCRtMMR/IBAKE3ETMC4g=="],
 
     "bun-types": ["bun-types@1.4.3", "", { "dependencies": { "@types/node": "*", "undici-types": "*" } }, "sha512-tinRJNGOmUN+tEAsn2y2e942n9JHRHR42iUYzDH75NmhJqVBokGSQkkfSFdNWwsANIdrK6ACH9t01M452YyTwg=="],
+
+    "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
     "typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 

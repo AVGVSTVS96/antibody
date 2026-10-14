@@ -49,6 +49,6 @@ export function columns(table: TableName): [string, string][] {
 }
 
 export function ddl(table: TableName): string {
-  const cols = columns(table).map(([n, t]) => `  ${n} ${t}${n === "id" ? " PRIMARY KEY" : ""}`);
+  const cols = columns(table).map(([n, t]) => `  "${n}" ${t}${n === "id" ? " PRIMARY KEY" : ""}`);
   return `CREATE TABLE IF NOT EXISTS ${table} (\n${cols.join(",\n")}\n);`;
 }

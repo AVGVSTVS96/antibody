@@ -1,0 +1,12 @@
+{
+  "name": "@antibody/store",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@antibody/core": "workspace:*",
+    "@duckdb/node-api": "1.5.6-r.1"
+  }
+}
