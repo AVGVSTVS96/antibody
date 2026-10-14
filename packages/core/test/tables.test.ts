@@ -32,3 +32,9 @@ test("rows are strict: an unknown column fails", () => {
   expect(TABLES.pacs.schema.safeParse(ok).success).toBe(true);
   expect(TABLES.pacs.schema.safeParse({ ...ok, extra: 1 }).success).toBe(false);
 });
+
+test("bills owns the LLM counterparts; amendment rows name a committee sponsor and each section's effect", () => {
+  expect(TABLES.counterparts.owner).toBe("@antibody/ingest-bills");
+  expect(Object.fromEntries(columns("amendments")).sponsor_committee).toBe("VARCHAR");
+  expect(Object.fromEntries(columns("amendment_sections")).effect).toBe("VARCHAR NOT NULL");
+});

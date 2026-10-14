@@ -89,7 +89,7 @@ export function billstatusUrl(id: BillId): string {
   return `https://www.govinfo.gov/bulkdata/BILLSTATUS/${congress}/${type}/BILLSTATUS-${congress}${type}${number}.xml`;
 }
 
-function ordinal(n: number): string {
+export function ordinal(n: number): string {
   if (n % 100 >= 11 && n % 100 <= 13) return "th";
   return ["th", "st", "nd", "rd"][n % 10] ?? "th";
 }
