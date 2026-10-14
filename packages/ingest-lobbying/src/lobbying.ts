@@ -8,6 +8,7 @@ import { pull, rawDir } from "./pull.ts";
 import { extract, markSuperseded, mergeClient } from "./rows.ts";
 import { upsert } from "./shards.ts";
 import { spendRows } from "./spend.ts";
+import { namedMembers } from "./staff.ts";
 
 /** Aliases, then a pull; numbers that filings cite next to the bill's name are confirmed and pulled too. */
 export async function resolveAliases(bill: BillId, ctx: Pick<StageContext, "refresh" | "signal" | "log">) {
@@ -46,7 +47,13 @@ export async function runLobbying(ctx: StageContext) {
   await upsert("lda_lobbyists", x.lobbyists, (l) => yearOf(l.filing_id, byId), {
     alsoShards: years,
     prepare: (rows) =>
-      rows.map((r) => ({ ...r, bill_ids: r.bill_ids.filter((b) => b !== bill) })).filter((r) => r.bill_ids.length),
+      rows
+        .map((r) => ({
+          ...r,
+          named_members: r.covered_position ? namedMembers(r.covered_position) : [],
+          bill_ids: r.bill_ids.filter((b) => b !== bill),
+        }))
+        .filter((r) => r.bill_ids.length),
     merge: (old, next) => ({ ...next, bill_ids: [...new Set([...old.bill_ids, ...next.bill_ids])].sort() }),
   });
   await upsert("lda_clients", x.clients, () => "all", { merge: mergeClient });

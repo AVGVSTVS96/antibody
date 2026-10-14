@@ -95,6 +95,23 @@ test("acronyms: full is high, without Act medium; reconciliation supports a bare
   expect(level("H.R. 1", O, period(2025, "third_quarter"))).toBe("medium");
 });
 
+test("a filer's 'companion bill' of another named Act is held out; hyphenated names still match", () => {
+  const laken = matcher({
+    ...genius,
+    bill: "119-s-5",
+    numbers: [{ id: "119-s-5", introduced: "2025-01-06", why: "own" }],
+    names: [
+      { text: "Laken Riley Act", title: "Laken Riley Act", level: "high", since: "2025-01-03", why: "short title" },
+    ],
+    laws: ["119-1"],
+    rivals: [],
+  });
+  const p = period(2025, "first_quarter");
+  expect(level("H.R. 471, Fix Our Forests Act (and companion bill S. 5); all provisions", laken, p)).toBe("low");
+  expect(level("NETWORK opposed S. 5, the Laken-Riley Act.", laken, p)).toBe("high");
+  expect(level("NETWORK opposed S. 5, the Laken-Riley Bill.", laken, p)).toBe("medium");
+});
+
 test("a possessive s is not a Senate bill", () => {
   expect(findRefs("America's 1582 farms", period(2025, "third_quarter"), G)).toEqual([]);
 });

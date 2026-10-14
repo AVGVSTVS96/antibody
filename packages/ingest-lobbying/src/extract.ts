@@ -53,6 +53,7 @@ export const congressOf = (year: number) => Math.floor((year - 1789) / 2) + 1;
 const TYPE = String.raw`(H\.?\s?J\.?\s?Res|S\.?\s?J\.?\s?Res|H\.?\s?Con\.?\s?Res|S\.?\s?Con\.?\s?Res|H\.?\s?Res|S\.?\s?Res|H\.?\s?R|S)`;
 const NUMBER = new RegExp(String.raw`(?<![A-Za-z.'’])${TYPE}[.,]?\s?(\d{1,5})(?!\d|-\d)`, "gi");
 const LAW = /\b(?:P\.?\s?L\.?|Pub(?:lic|\.)?\s+L(?:aw|\.)?)\s*(?:No[.:]?\s*)?(\d{2,3})\s*[-–]\s*(\d{1,3})\b/gi;
+const OTHER_ACT = /\b[A-Z][\w'’-]*(?:\s+(?:[A-Z][\w'’-]*|of|the|and|for|to|in|on))*\s+Act\b/;
 const CONGRESS = /\b(1\d\d)(?:th|st|nd|rd)\s+Congress/i;
 const SECTION =
   /\bSec(?:tion)?s?\.?\s*(\d{1,6}[A-Za-z]?)((?:\s*(?:,|and|&|through|to|-|–)\s*(?:Sec(?:tion)?s?\.?\s*)?\d{1,6}[A-Za-z]?)*)/gi;
@@ -96,7 +97,7 @@ export function nameRegex(name: string): RegExp {
     const forms = isAcronymWord(bare) ? [bare, ...transpositions(bare)] : [bare];
     return `(?:${forms.map(escapeRe).join("|")})[.,:]?`;
   });
-  return new RegExp(String.raw`(?<![A-Za-z])${words.join(String.raw`[\s,.\-–]*\s`)}(?![A-Za-z])`, "i");
+  return new RegExp(String.raw`(?<![A-Za-z])${words.join(String.raw`[\s,.\-–]+`)}(?![A-Za-z])`, "i");
 }
 
 /** "One Big Beautiful Bill Act" → OBBBA (and OBBB): only for 4+ capitalized words, so IRA never collides. */
@@ -190,6 +191,8 @@ export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
         explicit ? `text says ${explicit[0]}` : `filed in the ${congress}th Congress, the bill is ${a.congress}th`,
       ];
     else if (rival && !named) [level, why] = ["low", `the clause names another bill with this number: "${rival[0]}"`];
+    else if (!named && /companion/i.test(c) && OTHER_ACT.test(c))
+      [level, why] = ["low", `the clause calls it the companion of another bill: "${c.match(OTHER_ACT)![0]}"`];
     else if (hit.introduced && p.end < hit.introduced)
       [level, why] = ["low", `period ends ${p.end}, before ${n.text.trim()} was introduced ${hit.introduced}`];
     else if (named) [level, why] = ["high", "the number sits next to the bill's name or public law"];
