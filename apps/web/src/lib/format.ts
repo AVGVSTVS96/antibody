@@ -97,7 +97,7 @@ export function sourceName(url: string): string {
 export const deficitWords = (m: number) =>
   `${m < 0 ? "cuts" : "adds"} ${usd(Math.abs(m) * 1e6)} ${m < 0 ? "from" : "to"} the deficit`;
 
-export const RULES_URL = "https://github.com/AVGVSTVS96/antibody/blob/main/docs/rules.md";
+export const RULES_URL = "https://github.com/AVGVSTVS96/antibody/blob/design-v2/docs/rules.md";
 
 /** Who held Congress and the White House, so a card's era is visible next to its sponsor's party. */
 export const CONGRESS_TAG: Record<number, string> = {

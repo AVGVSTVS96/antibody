@@ -2,7 +2,7 @@ import type { Bundle } from "@antibody/core";
 
 type Rule = Bundle["rules"][number];
 
-export const DOCS = "https://github.com/AVGVSTVS96/antibody/blob/main/docs/rules.md";
+export const DOCS = "https://github.com/AVGVSTVS96/antibody/blob/design-v2/docs/rules.md";
 
 /** Rules the bundle builder applies itself. Same text, same thresholds, for every bill and party. */
 export const RULES: Record<string, { version: string; text: string }> = {
