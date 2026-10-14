@@ -160,13 +160,18 @@ export const TABLES = {
     ...inference,
   }),
 
-  // ── @antibody/ingest-lobbying: lda.gov LD-2 filings that name a bill ──
+  // ── @antibody/ingest-lobbying: lda.gov LD-1/LD-2 filings that name a bill ──
+  /** One row per filing, shared by every bill it names (sharded by filing year). */
   lda_filings: table("@antibody/ingest-lobbying", {
     url: z.url(),
     api_url: z.url(),
+    /** LD-1 registration or LD-2 quarterly report; spend and counts use LD-2 only. */
+    form: z.enum(["LD-1", "LD-2"]),
     type: z.string(),
     year: z.number().int(),
     period: z.string(),
+    period_start: date,
+    period_end: date,
     posted_at: z.iso.datetime({ offset: true }).nullable(),
     registrant_id: z.string(),
     registrant_name: z.string(),
@@ -176,6 +181,10 @@ export const TABLES = {
     client_description: z.string().nullable(),
     amount_usd: z.number().nullable(),
     amount_kind: z.enum(["income", "expenses"]).nullable(),
+    /** Issue lines on the whole filing; the bill-share estimate divides by it. */
+    issue_lines: z.number().int(),
+    /** A later amendment for the same registrant, client and period replaced it. */
+    superseded: z.boolean(),
     ...fact,
   }),
   lda_clients: table("@antibody/ingest-lobbying", {
@@ -184,25 +193,69 @@ export const TABLES = {
     names: z.array(z.string()),
     description: z.string().nullable(),
   }),
+  /** One row per issue line that names the bill: `<filing uuid>#<0-based line index>#<bill id>`. */
   lda_bill_refs: table("@antibody/ingest-lobbying", {
     filing_id: z.string(),
     bill_id: billId,
+    /** 1-based issue line on the filing. */
+    line: z.number().int(),
     section_nums: z.array(z.string()),
     issue_code: z.string(),
+    /** The whole issue line, as filed. */
     quote: z.string(),
-    how: z.enum(["number", "name", "section", "topic"]),
+    /** The words that named the bill, e.g. "S.1582" or "GENIUS Act". */
+    matched: z.string(),
+    how: z.enum(["number", "name", "public-law"]),
+    /** high + medium count as naming the bill; low is held out (another Congress, another bill, before it existed). */
     match: z.enum(["high", "medium", "low"]),
+    why: z.string(),
     phase: z.enum(["bill", "enactment-quarter", "law"]),
     ...fact,
   }),
+  /** Issue lines that describe the bill's subject without naming any bill: drawn dashed, off by default. */
+  lda_topic_refs: table("@antibody/ingest-lobbying", {
+    filing_id: z.string(),
+    bill_id: billId,
+    line: z.number().int(),
+    issue_code: z.string(),
+    quote: z.string(),
+    topic: z.string(),
+    phase: z.enum(["bill", "enactment-quarter", "law"]),
+    ...fact,
+    ...inference,
+  }),
+  /** One row per filing and lobbyist, quoting the covered (former government) position as filed. */
   lda_lobbyists: table("@antibody/ingest-lobbying", {
     filing_id: z.string(),
     lobbyist_id: z.string(),
     name: z.string(),
     /** Quoted exactly as filed. */
     covered_position: z.string().nullable(),
+    /** Bills named on the issue lines this lobbyist is listed on. */
     bill_ids: z.array(billId),
     ...fact,
+  }),
+  /**
+   * Spend per bill and client (`<bill id>:<client key>`), plus the whole bill (`<bill id>:*`, client_key null).
+   * `#total` is a derived fact: the client's reported spend in quarters whose filings named the bill, summed from
+   * `total_rests_on`. `#share` is an inference: that total times the share of issue lines naming the bill.
+   */
+  lda_spend: table("@antibody/ingest-lobbying", {
+    bill_id: billId,
+    client_key: z.string().nullable(),
+    topic_only: z.boolean(),
+    reports: z.number().int(),
+    quarters: z.number().int(),
+    reports_bill: z.number().int(),
+    reports_enactment_quarter: z.number().int(),
+    reports_law: z.number().int(),
+    total_usd: z.number().nullable(),
+    share_usd: z.number().nullable(),
+    total_rests_on: z.array(z.string()),
+    /** The issue line that names the bill most specifically (sections first), for the edge label. */
+    issue_quote: z.string().nullable(),
+    section_nums: z.array(z.string()),
+    ...inference,
   }),
 
   // ── @antibody/ingest-trades: House Clerk PTRs + Senate eFD, vision for paper filings ──
