@@ -2,4 +2,8 @@
 name = "antibody-ingest-trades"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["pdfplumber==0.11.7", "pymupdf==1.26.4"]
+dependencies = [
+    "pdfplumber==0.11.7",
+    "pillow==11.3.0",
+    "pymupdf==1.26.4",
+]

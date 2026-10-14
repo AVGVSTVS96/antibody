@@ -50,6 +50,7 @@ describe("normalize", () => {
 
   test("amount ranges, open-ended and exact amounts", () => {
     expect(amountRange("$15,001 - $50,000")).toEqual({ min: 15001, max: 50000 });
+    expect(amountRange("$1,000 - $15,000")).toEqual({ min: 1001, max: 15000 });
     expect(amountRange("Over $50,000,000")).toEqual({ min: 50000001, max: null });
     expect(amountRange("Spouse/DC Over $1,000,000")).toEqual({ min: 1000001, max: null });
     expect(amountRange("$360.00")).toEqual({ min: 360, max: 360 });
@@ -137,8 +138,9 @@ describe("vision rows", () => {
   const page = (cells: { row: number; field: "date"; value: string; readable: boolean }[]): PageResult => ({
     doc: "h-8220906",
     page: 2,
-    model: "claude-opus-5-5",
-    read: { page_kind: "form", filer_name: null, rows: [row] },
+    model: "claude-sonnet-5-5",
+    rotated: null,
+    read: { rotation: 0, page_kind: "form", filer_name: null, rows: [row] },
     recheck: { cells },
     calls: [],
   });

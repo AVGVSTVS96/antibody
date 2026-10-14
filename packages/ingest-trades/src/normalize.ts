@@ -55,14 +55,17 @@ export function isoDate(raw: string | null | undefined): string | null {
 
 const dollars = (s: string) => Number(s.replace(/[$,\s]/g, ""));
 
-/** Disclosure ranges ("$1,001 - $15,000", "Over $50,000,000", "Spouse/DC Over $1,000,000") or an exact amount as filed. */
+/** Disclosure ranges (a few paper forms print the lowest as "$1,000 - $15,000"; the statutory range starts at $1,001) ("$1,001 - $15,000", "Over $50,000,000", "Spouse/DC Over $1,000,000") or an exact amount as filed. */
 export function amountRange(raw: string): { min: number | null; max: number | null } {
   const s = raw
     .replace(/[\u00ad\u2010-\u2014]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
   const range = s.match(/\$\s?([\d,]+(?:\.\d+)?)\s?-+\s?\$\s?([\d,]+(?:\.\d+)?)/);
-  if (range) return { min: dollars(range[1]!), max: dollars(range[2]!) };
+  if (range) {
+    const min = dollars(range[1]!);
+    return { min: min === 1000 ? 1001 : min, max: dollars(range[2]!) };
+  }
   const over = s.match(/over \$\s?([\d,]+)/i);
   if (over) return { min: dollars(over[1]!) + 1, max: null };
   const exact = s.match(/^\$\s?([\d,]*(?:\.\d+)?)$/);

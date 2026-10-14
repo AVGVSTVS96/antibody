@@ -28,6 +28,8 @@ const VisionRow = z.object({
 export type VisionRow = z.infer<typeof VisionRow>;
 
 const PageRead = z.object({
+  /** Degrees the page's text is turned clockwise from upright. Scanned forms often sit sideways. */
+  rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).catch(0),
   page_kind: z.enum(["form", "statement", "cover", "other"]),
   filer_name: z.string().nullable(),
   rows: z.array(VisionRow),
@@ -51,6 +53,8 @@ export interface PageResult {
   doc: string;
   page: number;
   model: string;
+  /** Set when the page image was turned upright before this read. */
+  rotated?: number | null;
   read: PageRead;
   recheck: Recheck | null;
   calls: Call[];
@@ -70,9 +74,11 @@ Transcribe every transaction row on the page, top to bottom, exactly as written:
 
 Skip the form's printed example rows (like "IBM Corp." or "(DC) Microsoft") and blank rows. A row that only says "see attachment" is not a transaction. On a brokerage statement, a transaction is a buy, sell or exchange of a security; skip dividends, interest, fees, sweeps and transfers.
 
+rotation: how far the page's text is turned clockwise from upright: 0 when it reads left to right along the top, 90 when text lines run top to bottom (the top of the page is on the right), 180 when upside down, 270 when lines run bottom to top. Form pages are often scanned sideways; read the rows in their real order and keep every mark in the column it sits under.
+
 page_kind: "form" for a transaction form page, "statement" for an attached brokerage or account statement, "cover" for a cover letter or signature page with no rows, "other" otherwise. filer_name: the filer's name if it is printed or written on this page, else null.
 
-Answer with one JSON object and nothing else: {"page_kind": ..., "filer_name": ..., "rows": [{"owner", "asset", "ticker", "type", "date", "notified", "amount", "uncertain", "note"}]}`;
+Answer with one JSON object and nothing else: {"rotation": ..., "page_kind": ..., "filer_name": ..., "rows": [{"owner", "asset", "ticker", "type", "date", "notified", "amount", "uncertain", "note"}]}`;
 
 const RECHECK_PROMPT = `You are checking specific cells of a transcription of this scanned congressional Periodic Transaction Report page. Look at the image fresh for each listed cell (the first reading is given only so you can find the row; do not assume it is right). For each cell, give the value exactly as written on the page, and readable: false if the page itself does not let anyone read it with certainty. Use "_" for characters that cannot be read.
 
@@ -170,15 +176,37 @@ async function retry<T>(fn: () => Promise<T>, tries = 2): Promise<T> {
   }
 }
 
-/** Reads one page image; rows with uncertain cells get a second, cell-by-cell read of just those cells. */
+/** Reads one page image, turned upright first when the model says it was scanned sideways; uncertain cells get a second read. */
 export async function readPage(doc: string, page: number): Promise<PageResult> {
-  const image = imagePath(doc, page);
+  let image = imagePath(doc, page);
   const calls: Call[] = [];
-  const read = await retry(async () => {
-    const { answer, call } = await ask(image, READ_PROMPT, "Transcribe this page.");
-    calls.push(call);
-    return PageRead.parse(answer);
-  });
+  const transcribe = () =>
+    retry(async () => {
+      const { answer, call } = await ask(image, READ_PROMPT, "Transcribe this page.");
+      calls.push(call);
+      return PageRead.parse(answer);
+    });
+  let read = await transcribe();
+  let rotated: number | null = null;
+  if (read.rotation) {
+    rotated = read.rotation;
+    const upright = image.replace(/\.png$/, `.r${rotated}.png`);
+    await heavy([
+      "uv",
+      "run",
+      "-q",
+      "--project",
+      PKG,
+      "python",
+      "-I",
+      join(PKG, "py/rotate_image.py"),
+      image,
+      upright,
+      String(rotated),
+    ]);
+    image = upright;
+    read = await transcribe();
+  }
   const cells = read.rows.flatMap((r, row) => r.uncertain.map((field) => ({ row, field, firstReading: r[field] })));
   let recheck: Recheck | null = null;
   if (cells.length) {
@@ -193,7 +221,7 @@ export async function readPage(doc: string, page: number): Promise<PageResult> {
       return Recheck.parse(answer);
     });
   }
-  const result: PageResult = { doc, page, model: VISION_MODEL, read, recheck, calls };
+  const result: PageResult = { doc, page, model: VISION_MODEL, rotated, read, recheck, calls };
   await mkdir(join(visionRoot(), "reads", doc), { recursive: true });
   await Bun.write(readPath(doc, page), JSON.stringify(result, null, 1));
   return result;
