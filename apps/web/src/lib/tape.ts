@@ -4,9 +4,9 @@ import type { BillModel, SectionView } from "./model.ts";
 
 export type TapeKind = "headline" | "quiet" | "other";
 
-export interface TapeRow {
+/** What the tape draws and says about a section; the bundle's model adds `view`, the index's featured block does not. */
+export interface TapeMark {
   index: number;
-  view: SectionView;
   id: string;
   /** The section's number when no other section of the bill has it, else its full id. Not URL-encoded. */
   routeId: string;
@@ -28,8 +28,12 @@ export interface TapeRow {
   place: string[];
   /** News articles that match the section; null when coverage was not measured for it. */
   articles: number | null;
-  /** Lobbying reports that cite the section. */
+  /** Lobbying filings that name the section. */
   lobbying: number;
+}
+
+export interface TapeRow extends TapeMark {
+  view: SectionView;
 }
 
 export interface TapeGroup {
@@ -44,8 +48,8 @@ export interface TapeGroup {
   quiet: number;
 }
 
-export interface Tape {
-  rows: TapeRow[];
+export interface Tape<R extends TapeMark = TapeRow> {
+  rows: R[];
   groups: TapeGroup[];
   /** No section has its own CBO figure, so height cannot show cost and carries the section's kind instead. */
   flat: boolean;
@@ -69,12 +73,52 @@ const KIND: Record<SectionView["kind"], TapeKind> = {
 
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-function placeOf(path: string) {
+export function placeOf(path: string) {
   const segs = path.split("/").map((p) => p.split(":") as [string, string]);
   const [kind, value] = segs[0]!;
   return {
     place: segs.filter(([k]) => k !== "sec").map(([k, v]) => `${capital(k)} ${v}`),
-    group: kind === "sec" ? null : { key: `${kind}:${value}`, label: `${capital(kind)} ${value}`, short: value },
+    group: kind === "sec" ? null : `${kind}:${value}`,
+  };
+}
+
+/** The tape around rows already in bill order: the title or division groups they fall in, and the counts the legend and notes read. */
+export function assemble<R extends TapeMark>(
+  rows: R[],
+  { lateKnown, lateReason, read }: Pick<Tape, "lateKnown" | "lateReason" | "read">,
+): Tape<R> {
+  const groups: TapeGroup[] = [];
+  for (const r of rows) {
+    if (!r.group) continue;
+    const last = groups.at(-1);
+    if (last?.key === r.group) {
+      last.to = r.index;
+      last.count++;
+      if (r.kind === "quiet") last.quiet++;
+    } else {
+      const [kind, value] = r.group.split(":") as [string, string];
+      groups.push({
+        key: r.group,
+        label: `${capital(kind)} ${value}`,
+        short: value,
+        from: r.index,
+        to: r.index,
+        count: 1,
+        quiet: r.kind === "quiet" ? 1 : 0,
+      });
+    }
+  }
+  return {
+    rows,
+    groups,
+    flat: rows.every((r) => r.musd == null),
+    lateKnown,
+    lateReason,
+    read,
+    headline: rows.filter((r) => r.kind === "headline").length,
+    quiet: rows.filter((r) => r.kind === "quiet").length,
+    noFigure: rows.filter((r) => r.musd == null).length,
+    evenSplit: rows.filter((r) => r.evenSplit).length,
   };
 }
 
@@ -82,52 +126,29 @@ export function buildTape(m: BillModel): Tape {
   const numCount = new Map<string, number>();
   for (const v of m.sections) numCount.set(v.s.num, (numCount.get(v.s.num) ?? 0) + 1);
   const lateKnown = !m.b.bill.lateUnavailable;
-
-  const groups: TapeGroup[] = [];
   const rows = inBillOrder(m.sections.filter((v) => v.s.inFinal).map((v) => ({ path: v.s.path, v }))).map(
-    ({ v }, index): TapeRow => {
-      const { place, group } = placeOf(v.s.path);
-      const kind = KIND[v.kind];
-      if (group) {
-        const last = groups.at(-1);
-        if (last?.key === group.key) {
-          last.to = index;
-          last.count++;
-          if (kind === "quiet") last.quiet++;
-        } else groups.push({ ...group, from: index, to: index, count: 1, quiet: kind === "quiet" ? 1 : 0 });
-      }
-      return {
-        index,
-        view: v,
-        id: v.s.id,
-        routeId: numCount.get(v.s.num) === 1 ? v.s.num : v.s.id,
-        num: v.s.num,
-        label: m.secLabel(v),
-        heading: v.s.heading,
-        kind,
-        musd: v.dollarsMusd,
-        evenSplit: v.figure?.split === "even_split",
-        late: lateKnown && v.s.late,
-        group: group?.key ?? null,
-        place,
-        articles: v.s.attention?.hits ?? null,
-        lobbying: v.named,
-      };
-    },
+    ({ v }, index): TapeRow => ({
+      index,
+      view: v,
+      id: v.s.id,
+      routeId: numCount.get(v.s.num) === 1 ? v.s.num : v.s.id,
+      num: v.s.num,
+      label: m.secLabel(v),
+      heading: v.s.heading,
+      kind: KIND[v.kind],
+      musd: v.dollarsMusd,
+      evenSplit: v.figure?.split === "even_split",
+      late: lateKnown && v.s.late,
+      ...placeOf(v.s.path),
+      articles: v.s.attention?.hits ?? null,
+      lobbying: v.named,
+    }),
   );
-
-  return {
-    rows,
-    groups,
-    flat: rows.every((r) => r.musd == null),
+  return assemble(rows, {
     lateKnown,
     lateReason: m.b.bill.lateUnavailable,
     read: m.b.attention.sample?.relevant ?? m.b.attention.articles,
-    headline: rows.filter((r) => r.kind === "headline").length,
-    quiet: rows.filter((r) => r.kind === "quiet").length,
-    noFigure: rows.filter((r) => r.musd == null).length,
-    evenSplit: rows.filter((r) => r.evenSplit).length,
-  };
+  });
 }
 
 /** The log scale tops out near $4T: the largest bill-level figures stay on it, and every bill shares the one key. */
@@ -178,7 +199,7 @@ const MAX_W = 32;
 export const slot = (width: number, n: number) => width / Math.max(n, 1);
 
 /** Where each row's mark sits in a tape `width` px wide, by the designer's rule: pitch `width / n`, 1px gap, 2px floor. */
-export function layout(tape: Tape, width: number, g: Geometry): Mark[] {
+export function layout(tape: Tape<TapeMark>, width: number, g: Geometry): Mark[] {
   const bw = slot(width, tape.rows.length);
   const w = Math.min(MAX_W, Math.max(Math.round(bw - GAP), 2));
   const inset = bw - GAP > MAX_W ? (bw - MAX_W) / 2 : 0;
@@ -198,17 +219,17 @@ export function layout(tape: Tape, width: number, g: Geometry): Mark[] {
 export const indexAt = (x: number, width: number, n: number) =>
   Math.min(n - 1, Math.max(0, Math.floor(x / slot(width, n))));
 
-export interface TapeRun {
+export interface TapeRun<R extends TapeMark = TapeRow> {
   from: number;
   to: number;
-  rows: TapeRow[];
+  rows: R[];
 }
 
 /**
  * The densest stretch of quiet and costly marks: it starts and ends on one and at least half of its sections are
  * quiet, with at least three of them. Null when the bill has no such stretch.
  */
-export function quietRun(tape: Tape): TapeRun | null {
+export function quietRun<R extends TapeMark>(tape: Tape<R>): TapeRun<R> | null {
   const at = tape.rows.filter((r) => r.kind === "quiet").map((r) => r.index);
   let best: [number, number] | null = null;
   for (let i = 0; i < at.length; i++)
@@ -245,7 +266,7 @@ const WORDS = [
 ];
 
 /** "Eight quiet and costly marks in one run: 5 add, 3 cut, $6.6B to $29.7B each, none in the 287 articles read." */
-export function runNote(run: TapeRun, tape: Tape): string {
+export function runNote(run: TapeRun<TapeMark>, tape: Tape<TapeMark>): string {
   const n = run.rows.length;
   const figured = run.rows.filter((r) => r.musd != null);
   const abs = figured.map((r) => Math.abs(r.musd!));

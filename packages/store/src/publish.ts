@@ -8,7 +8,9 @@ import {
   billDisplay,
   billStats,
   claimShardFile,
+  featuredOf,
   indexTotals,
+  landingOrder,
   type Row,
   shardClaims,
 } from "@antibody/core";
@@ -132,7 +134,7 @@ async function watchPicks(bundles: Map<string, Bundle>, events: Row<"watch_event
 
 /**
  * Rebuilds `index.json` from every bundle in `dir`: the ids in `order` first (the curated list), then the rest
- * newest first, plus the watcher's latest picks.
+ * newest first, plus the watcher's latest picks and the front page's block for the first bill of the landing order.
  */
 export async function writeIndex(
   dir = paths.published,
@@ -151,13 +153,15 @@ export async function writeIndex(
   const bills = [...bundles.values()].map((b) => indexEntry(b, { articles: all.includes(articlesFile(b.bill.id)) }));
   const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length);
   bills.sort((a, b) => rank(a.id) - rank(b.id) || (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""));
+  const first = landingOrder(bills)[0];
   const index = BundleIndex.parse({
     generatedAt: new Date().toISOString(),
     bills,
     watch: await watchPicks(bundles, events ?? (await readRows("watch_events"))),
     totals: indexTotals([...bundles.values()]),
+    featured: first ? featuredOf(bundles.get(first.id)!, first.stats.deficitMusd) : null,
   });
   await mkdir(dir, { recursive: true });
-  await Bun.write(join(dir, "index.json"), `${JSON.stringify(index, null, 1)}\n`);
+  await Bun.write(join(dir, "index.json"), `${JSON.stringify(index)}\n`);
   return index;
 }

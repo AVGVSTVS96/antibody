@@ -1,73 +1,74 @@
-import type { BillModel, SectionView } from "../lib/model.ts";
+import type { Featured } from "@antibody/core";
 import { onLink, sectionHref } from "../lib/router.ts";
 import { Stat, StatRow } from "../ui/primitives.tsx";
 import { Src } from "../ui/receipt.tsx";
 import { deficitVerb, signed } from "./format.ts";
-import { type Entry, exhibitOf, lineageOf, storyOf } from "./rules.ts";
+import { type Entry, lineageOf, storyOf } from "./rules.ts";
 
-const cite = (ids: readonly string[]) => (ids.length ? <Src ids={ids} /> : null);
+const cite = (ids: readonly (string | null)[]) => {
+  const found = ids.filter((id): id is string => !!id);
+  return found.length ? <Src ids={found} /> : null;
+};
 
-const KIND = { headline: "HEADLINE", buried: "QUIET AND COSTLY", normal: "", unscored: "" } as const;
-
-function Cost({ v }: { v: SectionView }) {
-  if (v.dollarsMusd == null) return <Stat value="—" label="No CBO figure for this section" />;
-  const period = v.s.dollars.find((d) => d.estimateId === v.figure?.estimateId && d.baseline === "current-law")?.period;
-  const even = v.figure?.split === "even_split";
-  return (
-    <Stat
-      value={signed(v.dollarsMusd)}
-      label={
-        <>
-          CBO: {deficitVerb(v.dollarsMusd)}
-          {period && `, ${period.replace("-", "–")}`}
-          {even && " · even split, an inference"} {cite(v.figure?.claims ?? [])}
-        </>
-      }
-    />
-  );
-}
-
-function Filled({ model, v, phone }: { model: BillModel; v: SectionView; phone: boolean }) {
-  const lineage = lineageOf(model, v);
-  const read = model.b.attention.sample?.relevant ?? model.b.attention.articles;
-  const hits = v.s.attention?.hits;
-  const lobbyClaims = model.b.edges
-    .filter((e) => e.kind === "lobbied" && e.dst === `section:${v.s.id}`)
-    .flatMap((e) => e.claims);
-  const href = sectionHref(model.b.bill.id, model.sectionSlug(v));
+function Filled({
+  bill,
+  featured,
+  ex,
+  phone,
+}: {
+  bill: Entry;
+  featured: Featured;
+  ex: NonNullable<Featured["exhibit"]>;
+  phone: boolean;
+}) {
+  const row = featured.rows[ex.row]!;
+  const lineage = lineageOf(featured);
+  const href = sectionHref(bill.id, row.slug);
   return (
     <>
       <div className="ex-top">
         <p className="ex-kicker">
-          EXHIBIT · {model.b.bill.display} · {model.secLabel(v)}
+          EXHIBIT · {bill.display} · §{row.num}
         </p>
-        <p className="ex-kind">{KIND[v.kind]}</p>
+        <p className="ex-kind">QUIET AND COSTLY</p>
       </div>
       <h3 className="ex-title">
         <a className="plain" href={href} onClick={onLink}>
-          {v.s.heading}
+          {row.heading}
         </a>
       </h3>
       <StatRow size="md">
-        <Cost v={v} />
+        {row.musd == null ? (
+          <Stat value="—" label="No CBO figure for this section" />
+        ) : (
+          <Stat
+            value={signed(row.musd)}
+            label={
+              <>
+                CBO: {deficitVerb(row.musd)}
+                {ex.period && `, ${ex.period.replace("-", "–")}`}
+                {row.evenSplit && " · even split, an inference"} {cite(ex.figureClaims)}
+              </>
+            }
+          />
+        )}
         <Stat
-          value={hits ?? "—"}
+          value={row.articles ?? "—"}
           label={
-            hits == null ? (
+            row.articles == null ? (
               "Coverage not measured"
             ) : (
               <>
-                of {read.toLocaleString("en-US")} articles read mention it{" "}
-                {cite(v.s.attention ? [v.s.attention.claim] : [])}
+                of {featured.read.toLocaleString("en-US")} articles read mention it {cite([row.attentionClaim])}
               </>
             )
           }
         />
         <Stat
-          value={v.named}
+          value={row.named}
           label={
             <>
-              Lobbying {v.named === 1 ? "report names" : "reports name"} it {cite(lobbyClaims)}
+              Lobbying {row.named === 1 ? "report names" : "reports name"} it {cite([row.scoreClaim])}
             </>
           }
         />
@@ -86,7 +87,7 @@ function Filled({ model, v, phone }: { model: BillModel; v: SectionView; phone: 
   );
 }
 
-function NothingBuried({ bill }: { bill: Entry }) {
+function NoExhibit({ bill }: { bill: Entry }) {
   const story = storyOf(bill);
   return (
     <>
@@ -97,23 +98,12 @@ function NothingBuried({ bill }: { bill: Entry }) {
   );
 }
 
-/** The card beside the headline: one quiet and costly section picked by `exhibitOf`, with its three numbers and when it appeared. */
-export function Exhibit({ bill, model, phone }: { bill: Entry; model: BillModel | null; phone: boolean }) {
-  const v = model && exhibitOf(model);
+/** The card beside the headline: the featured bill's quiet and costly section picked by the landing-exhibit rule, with its three numbers and when it appeared. */
+export function Exhibit({ bill, featured, phone }: { bill: Entry; featured: Featured; phone: boolean }) {
+  const ex = featured.exhibit;
   return (
-    <aside className="exhibit" aria-label="Exhibit" aria-busy={!model}>
-      {!model ? (
-        <>
-          <div className="ex-top">
-            <p className="ex-kicker">EXHIBIT · {bill.display}</p>
-          </div>
-          <div className="bone ex-bone" />
-        </>
-      ) : v ? (
-        <Filled model={model} v={v} phone={phone} />
-      ) : (
-        <NothingBuried bill={bill} />
-      )}
+    <aside className="exhibit" aria-label="Exhibit">
+      {ex ? <Filled bill={bill} featured={featured} ex={ex} phone={phone} /> : <NoExhibit bill={bill} />}
     </aside>
   );
 }

@@ -2,7 +2,8 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Bundle, claimShardFile, claimShardOf, indexTotals } from "@antibody/core";
+import { Bundle, claimShardFile, claimShardOf, inBillOrder, indexTotals, landingOrder } from "@antibody/core";
+import genius from "../../../apps/web/fixtures/119-s-1582.bundle.json";
 import fixture from "../../core/fixtures/genius-mini.bundle.json";
 import { indexEntry, writeBundle, writeIndex } from "../src/publish.ts";
 
@@ -74,4 +75,38 @@ test("the article list is published beside the bundle, referenced from the index
   expect((await writeIndex(published, [], [])).bills[0]!.articlesFile).toBe(`${bundle.bill.id}.articles.json`);
   await writeBundle(bundle, { publish: true, articles: { ...list, articles: [], general: [] }, ...where });
   expect((await writeIndex(published, [], [])).bills[0]!.articlesFile).toBeNull();
+});
+
+test("the index carries the first bill of the landing order with its tape rows and exhibit, and stays small", async () => {
+  const published = await mkdtemp(join(dir, "featured-"));
+  const full = Bundle.parse(genius);
+  await writeBundle(full, { publish: true, local: join(published, "local"), published });
+  const other: Bundle = { ...bundle, bill: { ...bundle.bill, id: "117-hr-5376", display: "H.R.5376" } };
+  await writeBundle(other, { publish: true, local: join(published, "local"), published });
+  const index = await writeIndex(published, [], []);
+  const featured = index.featured!;
+  const first = landingOrder(index.bills)[0]!;
+  expect(featured.billId).toBe(first.id);
+  expect(featured.billId).toBe(full.bill.id);
+
+  const final = inBillOrder(full.sections.filter((s) => s.inFinal));
+  expect(featured.rows.map((r) => r.id)).toEqual(final.map((s) => s.id));
+  expect(featured.rows.map((r) => ({ headline: "h", quiet: "b", other: "n" })[r.kind])).toEqual(
+    [...first.stats.fingerprint].map((c) => (c === "u" ? "n" : c)),
+  );
+  expect(featured.rows.map((r) => (r.late ? "l" : ".")).join("")).toBe(first.stats.tape.late);
+  expect(
+    featured.rows.every((r) => r.named === (final.find((s) => s.id === r.id)!.score?.components.lobbyingReports ?? 0)),
+  ).toBe(true);
+
+  const quiet = featured.rows.filter((r) => r.kind === "quiet");
+  expect(quiet).not.toHaveLength(0);
+  expect(featured.exhibit).not.toBeNull();
+  expect(featured.rows[featured.exhibit!.row]!.named).toBe(Math.max(...quiet.map((r) => r.named)));
+  expect(featured.claimShards).toEqual(
+    JSON.parse(await Bun.file(join(published, `${full.bill.id}.json`)).text()).claimShards,
+  );
+
+  const raw = await Bun.file(join(published, "index.json")).arrayBuffer();
+  expect(Bun.gzipSync(raw).length).toBeLessThan(30_000);
 });

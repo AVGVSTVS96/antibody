@@ -131,10 +131,6 @@
   line-height: 25px;
 }
 
-.ex-bone {
-  height: 250px;
-}
-
 .ex-go {
   display: flex;
   align-items: center;
@@ -180,10 +176,6 @@
   flex: 0 1 420px;
 }
 
-.land-hold {
-  position: relative;
-}
-
 .land-feature > .wrap > .stats {
   margin-top: 24px;
 }
@@ -191,12 +183,6 @@
 .land-feature > .wrap > .land-slot {
   margin-top: 28px;
   padding: 0;
-}
-
-.land-bone {
-  display: block;
-  width: 3ch;
-  height: 40px;
 }
 
 .land .stat[data-tone="quiet"] a.src {

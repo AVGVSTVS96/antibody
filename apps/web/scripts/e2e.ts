@@ -8,9 +8,8 @@
 import { readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { activeSpan, type Bundle, type BundleIndex, type Claim } from "@antibody/core";
+import { activeSpan, type Bundle, type BundleIndex, type Claim, landingOrder } from "@antibody/core";
 import { chromium, type Page } from "playwright-core";
-import { libraryOf } from "../src/land/rules.ts";
 
 const base = process.argv[2] ?? "http://localhost:4870";
 const bundlesDir = join(import.meta.dir, "../public/bundles");
@@ -75,7 +74,7 @@ async function layoutShift(page: Page) {
 }
 
 {
-  const library = libraryOf(index);
+  const library = landingOrder(index.bills);
   const featured = library[0]!;
   const bundle = (await Bun.file(join(bundlesDir, `${featured.id}.json`)).json()) as Bundle;
 
@@ -85,18 +84,31 @@ async function layoutShift(page: Page) {
   await blocked.route(/\/bundles\/(?!index\.json)/, (r) => r.abort());
   await blocked.goto(`${base}/`, { waitUntil: "load" });
   await blocked.waitForSelector(".lib-row", { timeout: 30000 });
+  await blocked.waitForSelector(".tape-stage", { timeout: 30000 });
   check(
     (await blocked.locator(".lib-row .mini").count()) > 0 &&
-      (await blocked.locator(".land-hold .mini").count()) === 1 &&
-      (await blocked.locator(".stats .stat").count()) === 5,
-    "land paints the library, the featured mini tape and the stat row from index.json alone",
+      (await blocked.locator(".tape-stage").count()) === 1 &&
+      (await blocked.locator(".exhibit .ex-title").count()) === 1 &&
+      (await blocked.locator(".land-feature > .wrap > .stats .stat").count()) === 5,
+    "land paints the library, the featured tape, the exhibit and the stat row from index.json alone",
   );
   check(blockedErrors.length === 0, `land with no bundles has no page errors ${blockedErrors.join(" | ")}`);
   await blocked.close();
 
   const { page, errors } = await open("/");
+  const requested: string[] = [];
+  page.on("request", (r) => requested.push(new URL(r.url()).pathname));
+  await page.reload({ waitUntil: "load" });
   await page.waitForSelector(".tape-stage", { timeout: 60000 });
-  await page.waitForSelector(".exhibit:not([aria-busy=true])", { timeout: 60000 });
+  await page.waitForSelector(".exhibit .ex-title", { timeout: 60000 });
+  await page.waitForTimeout(500);
+  const bundleFiles = requested.filter(
+    (p) => /^\/bundles\/[^/]+\.json$/.test(p) && !/\.(claims\.\d+|articles)\.json$/.test(p),
+  );
+  check(
+    bundleFiles.length === 1 && bundleFiles[0] === "/bundles/index.json",
+    `land loads index.json and no bill's bundle (${bundleFiles.join(", ")})`,
+  );
   const rowHrefs = () =>
     page.$$eval(".lib-row .lib-name a", (as) => as.map((a) => new URL((a as HTMLAnchorElement).href).pathname));
 
@@ -137,14 +149,12 @@ async function layoutShift(page: Page) {
       `/bill/${featured.id}/section/${encodeURIComponent(s.num)}` === exhibitHref ||
       exhibitHref?.endsWith(encodeURIComponent(s.id)),
   );
-  const lobbied = bundle.edges
-    .filter((e) => e.kind === "lobbied" && e.dst === `section:${exhibitSection?.id}`)
-    .reduce((n, e) => n + (e.kind === "lobbied" ? e.props.reports : 0), 0);
   check(
     !!exhibitSection &&
       exhibitSection.score?.label === "buried" &&
-      (await page.locator(".exhibit .stat strong").nth(2).innerText()) === String(lobbied),
-    `the exhibit is a quiet and costly section of ${featured.display} and its lobbying count matches the bundle`,
+      (await page.locator(".exhibit .stat strong").nth(2).innerText()) ===
+        String(exhibitSection.score.components.lobbyingReports),
+    `the exhibit is a quiet and costly section of ${featured.display} and its count of filings that name it matches the bundle's score`,
   );
   check((await page.locator(".exhibit a.src:not(.ghost)").count()) > 0, "the exhibit's numbers carry source chips");
 
@@ -222,7 +232,7 @@ async function layoutShift(page: Page) {
   const shift = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await shift.goto(`${base}/`, { waitUntil: "load" });
   await shift.waitForSelector(".tape-stage", { timeout: 60000 });
-  await shift.waitForSelector(".exhibit:not([aria-busy=true])");
+  await shift.waitForSelector(".exhibit .ex-title");
   check((await layoutShift(shift)) <= 0.1, "land layout shift <= 0.1 while the featured bill loads");
   await shift.close();
 

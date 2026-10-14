@@ -1,7 +1,7 @@
 import type { Bundle, Claim } from "@antibody/core";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { loadClaims } from "../lib/data.ts";
+import { type ClaimSource, loadClaims } from "../lib/data.ts";
 import { sourceName } from "../lib/format.ts";
 import { claimTable } from "../lib/receipt-copy.ts";
 import { ReceiptDrawer } from "./ReceiptDrawer.tsx";
@@ -45,7 +45,13 @@ interface Session {
 const EXIT_MS = 220;
 
 /** Wraps one bill's pages: loads claims as chips and receipts ask for them, and owns the drawer every chip and mark opens. */
-export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children: ReactNode }) {
+export function ReceiptProvider({
+  bundle,
+  children,
+}: {
+  bundle: ClaimSource & Pick<Bundle, "rules">;
+  children: ReactNode;
+}) {
   const [claims, setClaims] = useState<Known>(bundle.claims);
   const current = useRef({ bundle, claims });
   current.current = { bundle, claims };

@@ -1,11 +1,12 @@
+import { landingOrder } from "@antibody/core";
 import { useMemo } from "react";
 import { Exhibit } from "../land/Exhibit.tsx";
 import { FeaturedStats, FeaturedTape } from "../land/FeaturedTape.tsx";
 import { Also, JustIn, Lede, RulesNote } from "../land/Front.tsx";
-import { type Featured, useFeatured, usePhone } from "../land/hooks.ts";
+import { sourceOf, tapeOfFeatured } from "../land/featured.ts";
+import { usePhone } from "../land/hooks.ts";
 import { Library } from "../land/Library.tsx";
-import { type IndexBill, libraryOf } from "../land/rules.ts";
-import { buildTape } from "../lib/tape.ts";
+import type { IndexBill } from "../land/rules.ts";
 import { useIndex } from "../lib/useIndex.ts";
 import { MiniTape } from "../ui/MiniTape.tsx";
 import { Kicker, Section, Wrap } from "../ui/primitives.tsx";
@@ -20,17 +21,14 @@ const resultTape = (b: IndexBill) =>
     </span>
   );
 
-function Sourced({ featured, children }: { featured: Featured; children: React.ReactNode }) {
-  return featured.model ? <ReceiptProvider bundle={featured.model.b}>{children}</ReceiptProvider> : children;
-}
-
 export default function LandPage() {
   const index = useIndex();
   const phone = usePhone();
-  const bills = useMemo(() => (index ? libraryOf(index) : []), [index]);
+  const bills = useMemo(() => (index ? landingOrder(index.bills) : []), [index]);
   const bill = bills[0];
-  const featured = useFeatured(bill?.id);
-  const tape = useMemo(() => featured.model && buildTape(featured.model), [featured.model]);
+  const featured = index?.featured;
+  const tape = useMemo(() => featured && tapeOfFeatured(featured), [featured]);
+  const source = useMemo(() => featured && sourceOf(featured), [featured]);
 
   return (
     <div className="land">
@@ -49,31 +47,30 @@ export default function LandPage() {
           </p>
           <SearchBox size="hero" placeholder="S.1582, H.R. 1, GENIUS, or a congress.gov link" renderBill={resultTape} />
         </div>
-        {bill && !phone && (
+        {bill && featured && source && !phone && (
           <div className="land-slot">
-            <Sourced featured={featured}>
-              <Exhibit bill={bill} model={featured.model} phone={false} />
-            </Sourced>
+            <ReceiptProvider bundle={source}>
+              <Exhibit bill={bill} featured={featured} phone={false} />
+            </ReceiptProvider>
           </div>
         )}
       </Wrap>
       {bill && (
         <>
           {phone && <Lede bill={bill} />}
-          <Section className="land-feature">
-            <Sourced featured={featured}>
-              <FeaturedTape bill={bill} tape={tape} phone={phone} />
-              {featured.failed && (
-                <p className="land-note">The full tape did not load. Every bill still opens from the library below.</p>
-              )}
-              {phone && (
-                <div className="land-slot">
-                  <Exhibit bill={bill} model={featured.model} phone />
-                </div>
-              )}
-              <FeaturedStats bill={bill} model={featured.model} tape={tape} />
-            </Sourced>
-          </Section>
+          {featured && tape && source && (
+            <Section className="land-feature">
+              <ReceiptProvider bundle={source}>
+                <FeaturedTape bill={bill} tape={tape} phone={phone} />
+                {phone && (
+                  <div className="land-slot">
+                    <Exhibit bill={bill} featured={featured} phone />
+                  </div>
+                )}
+                <FeaturedStats bill={bill} featured={featured} />
+              </ReceiptProvider>
+            </Section>
+          )}
           {phone && <Also bills={bills.slice(1, 3)} />}
         </>
       )}
