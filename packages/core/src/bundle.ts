@@ -292,7 +292,7 @@ export const WatchPick = z.object({
   billId: z.string(),
   display: z.string(),
   title: z.string(),
-  kind: z.enum(["new_version", "enrolled", "new_bill", "hot"]),
+  kind: z.enum(["new_version", "enrolled", "new_bill", "floor_vote", "action", "cbo_estimate", "hot"]),
   seenAt: z.iso.datetime({ offset: true }),
   url: z.url(),
   /** One plain sentence: why the watcher picked it. */
