@@ -1,4 +1,5 @@
 import { Component, lazy, type ReactNode, Suspense, useEffect } from "react";
+import { receiptInUrl, withReceipt } from "./lib/receipt-url.ts";
 import { type BillRoute, navigate, type Route, routeHref, useRoute } from "./lib/router.ts";
 import { BillGate } from "./ui/BillGate.tsx";
 import { NotFound } from "./ui/NotFound.tsx";
@@ -46,8 +47,9 @@ export function App() {
   }, [route.page]);
 
   useEffect(() => {
-    const here = location.pathname + location.search;
-    if (route.page !== "missing" && here.split("#")[0] !== canonical) navigate(canonical, { replace: true });
+    const here = withReceipt(location.pathname + location.search, null);
+    if (route.page !== "missing" && here.split("#")[0] !== canonical)
+      navigate(withReceipt(canonical, receiptInUrl()), { replace: true });
   }, [route.page, canonical]);
 
   return (
@@ -55,7 +57,7 @@ export function App() {
       <a className="skip" href="#main">
         Skip to the page
       </a>
-      <Top />
+      {route.page !== "story" && <Top />}
       <main id="main">
         <Catch key={billId ?? route.page}>
           <Suspense fallback={<PageSkeleton id={billId} />}>

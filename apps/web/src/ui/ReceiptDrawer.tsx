@@ -51,8 +51,9 @@ export function ReceiptDrawer({
   const claim = lookup(id);
   const count = walk.ids.length;
 
-  const focusPanel = () => panel.current?.focus({ preventScroll: true });
-  useEffect(focusPanel, []);
+  useEffect(() => {
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus({ preventScroll: true });
+  });
   useEffect(() => request(walk.ids.slice(Math.max(walk.at - 1, 0), walk.at + 2)), [request, walk.ids, walk.at]);
 
   const onKey = (e: KeyboardEvent) => {
@@ -138,14 +139,7 @@ export function ReceiptDrawer({
         </div>
         <header className="rcpt-head" {...grab}>
           {nested ? (
-            <button
-              type="button"
-              className="rcpt-back"
-              onClick={() => {
-                onBack();
-                focusPanel();
-              }}
-            >
+            <button type="button" className="rcpt-back" onClick={onBack}>
               ← BACK
             </button>
           ) : (
@@ -160,17 +154,7 @@ export function ReceiptDrawer({
         </header>
         <div className="rcpt-scroll" key={id} {...body}>
           {claim ? (
-            <Record
-              claim={claim}
-              lookup={lookup}
-              request={request}
-              rules={rules}
-              label={label}
-              onRest={(i) => {
-                onRest(i);
-                focusPanel();
-              }}
-            />
+            <Record claim={claim} lookup={lookup} request={request} rules={rules} label={label} onRest={onRest} />
           ) : (
             <div className="rcpt-pad">
               <h2 id="rcpt-claim" className="rcpt-claim">

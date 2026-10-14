@@ -381,12 +381,33 @@ for (const id of sample) {
       await page.keyboard.press("ArrowRight");
       await page.waitForTimeout(100);
       check((await heading()) !== first, `${id} arrow keys walk to the next mark`);
+
+      const receipt = () => new URL(page.url()).searchParams.get("receipt");
+      const inside = () =>
+        page.evaluate(() => !!document.querySelector("[role=dialog]")?.contains(document.activeElement));
+      const at = receipt();
+      check(!!at, `${id} the open receipt is in the URL`);
+      for (let i = 0; i < 3; i++) await page.keyboard.press("Tab");
+      await page.keyboard.press("ArrowLeft");
+      await page.waitForTimeout(100);
+      check((await inside()) && (await heading()) === first, `${id} keys and focus survive stepping after tabbing in`);
+      check(receipt() !== at, `${id} stepping rewrites the receipt in the URL`);
+      const url = new URL(page.url());
+      const cold = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+      await cold.goto(`${base}${url.pathname}${url.search}`);
+      await cold.waitForSelector("[role=dialog] #rcpt-claim");
+      check(
+        (await cold.locator("#rcpt-claim").innerText()) === first,
+        `${id} a link with ?receipt= opens that receipt`,
+      );
+      await cold.close();
     }
 
     await page.keyboard.press("Escape");
     await page.waitForSelector("[role=dialog]", { state: "detached", timeout: 3000 });
     check(true, `${id} ESC closes the receipt`);
     check(await chip.evaluate((el) => el === document.activeElement), `${id} focus returns to the chip`);
+    check(!new URL(page.url()).searchParams.has("receipt"), `${id} closing the receipt takes it out of the URL`);
 
     await chip.click();
     await page.waitForSelector("[role=dialog]");

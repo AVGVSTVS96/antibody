@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { loadClaims } from "../lib/data.ts";
 import { sourceName } from "../lib/format.ts";
 import { claimTable } from "../lib/receipt-copy.ts";
+import { receiptInUrl, withReceipt } from "../lib/receipt-url.ts";
 import { ReceiptDrawer } from "./ReceiptDrawer.tsx";
 
 export interface OpenOptions {
@@ -44,12 +45,17 @@ interface Session {
 
 const EXIT_MS = 220;
 
+const fromUrl = (): Session | null => {
+  const id = receiptInUrl();
+  return id ? { walks: [{ ids: [id], at: 0 }], closing: false } : null;
+};
+
 /** Wraps one bill's pages: loads claims as chips and receipts ask for them, and owns the drawer every chip and mark opens. */
 export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children: ReactNode }) {
   const [claims, setClaims] = useState<Known>(bundle.claims);
   const current = useRef({ bundle, claims });
   current.current = { bundle, claims };
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<Session | null>(fromUrl);
   const opener = useRef<Element | null>(null);
   const isOpen = session !== null;
 
@@ -95,15 +101,25 @@ export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children
   const close = useCallback(() => {
     dismiss();
     if (history.state?.receipt) history.back();
+    else history.replaceState(history.state, "", withReceipt(location.href, null));
   }, [dismiss]);
+
+  useEffect(() => {
+    const follow = () => setSession((s) => (receiptInUrl() ? (s ?? fromUrl()) : s && { ...s, closing: true }));
+    addEventListener("popstate", follow);
+    return () => removeEventListener("popstate", follow);
+  }, []);
 
   const closing = session?.closing;
   useEffect(() => {
-    if (!isOpen) return;
-    history.pushState({ ...history.state, receipt: true }, "");
-    addEventListener("popstate", dismiss);
-    return () => removeEventListener("popstate", dismiss);
-  }, [isOpen, dismiss]);
+    if (isOpen && !receiptInUrl()) history.pushState({ ...history.state, receipt: true }, "");
+  }, [isOpen]);
+
+  const walk = session?.walks.at(-1);
+  const shownId = walk?.ids[walk.at];
+  useEffect(() => {
+    if (shownId && !closing) history.replaceState(history.state, "", withReceipt(location.href, shownId));
+  }, [shownId, closing]);
 
   useEffect(() => {
     if (!closing) return;
@@ -126,7 +142,6 @@ export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children
     () => ({ claim, inference, request, open, close }),
     [claim, inference, request, open, close],
   );
-  const walk = session?.walks.at(-1);
 
   const step = (delta: number) =>
     setSession((s) => {
