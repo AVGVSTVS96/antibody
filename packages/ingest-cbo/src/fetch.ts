@@ -92,26 +92,40 @@ const VALID: [RegExp, (b: Uint8Array) => boolean][] = [
   ],
 ];
 
-/** The newest real archived copy of a cbo.gov URL, saved under data/cbo/ with a sidecar naming the archive URL. */
-export async function archived(url: string, file: string, opts: Opts): Promise<Fetched | null> {
+/**
+ * A real archived copy of a cbo.gov URL, saved under data/cbo/ with a sidecar naming the archive URL.
+ * Replay redirects to the capture nearest a timestamp, so the capture nearest `near` (the publication date) and
+ * the newest are tried first; the CDX listing is slow (often 40s), so it is the fallback, then Save Page Now.
+ */
+export async function archived(url: string, file: string, opts: Opts & { near?: string }): Promise<Fetched | null> {
   const meta = Bun.file(`${file}.json`);
   if (!opts.refresh && (await meta.exists()) && (await Bun.file(file).exists()))
     return { ...((await meta.json()) as Omit<Fetched, "file">), file };
-  let stamps = await captures(url, opts.signal);
-  if (!stamps.length) {
-    await saveNow(url, opts.signal);
-    stamps = await captures(url, opts.signal);
-  }
   const valid = VALID.find(([re]) => re.test(file))?.[1] ?? (() => true);
-  for (const ts of stamps) {
-    const res = await get(`https://web.archive.org/web/${ts}id_/${url}`, opts.signal, 180_000);
-    if (!res.ok) continue;
+  const tried = new Set<string>();
+  const attempt = async (stamp: string): Promise<Fetched | null> => {
+    const res = await get(`https://web.archive.org/web/${stamp}id_/${url}`, opts.signal, 180_000);
+    const ts = res.url.match(/\/web\/(\d{14})id_\//)?.[1] ?? stamp;
+    if (tried.has(ts)) return null;
+    tried.add(ts);
+    if (!res.ok) return null;
     const bytes = new Uint8Array(await res.arrayBuffer());
-    if (!valid(bytes)) continue;
+    if (!valid(bytes)) return null;
     await save(file, bytes);
     const fetched = { url, archiveUrl: `https://web.archive.org/web/${ts}/${url}` };
     await save(`${file}.json`, JSON.stringify(fetched));
     return { ...fetched, file };
+  };
+  for (const stamp of [opts.near, "2099"].filter((x): x is string => !!x)) {
+    const got = await attempt(stamp);
+    if (got) return got;
+  }
+  for (const round of [0, 1]) {
+    if (round) await saveNow(url, opts.signal);
+    for (const ts of await captures(url, opts.signal)) {
+      const got = tried.has(ts) ? null : await attempt(ts);
+      if (got) return got;
+    }
   }
   return null;
 }
@@ -121,7 +135,8 @@ const FILE_LINK = /(?:https?:\/\/www\.cbo\.gov)?\/system\/files\/(\d{4}-\d{2})\/
 /** The PDF and Excel files of one CBO publication, read from its archived page (or the month's archived files). */
 export async function publicationFiles(listing: Listing, bill: BillId, opts: Opts): Promise<Fetched[]> {
   const dir = paths.raw("cbo");
-  const page = await archived(listing.url, join(dir, "pub", `${listing.pubId}.html`), opts);
+  const near = listing.pubDate.slice(0, 10).replaceAll("-", "");
+  const page = await archived(listing.url, join(dir, "pub", `${listing.pubId}.html`), { ...opts, near });
   let links: string[] = [];
   if (page) {
     const html = await Bun.file(page.file).text();
@@ -130,11 +145,16 @@ export async function publicationFiles(listing: Listing, bill: BillId, opts: Opt
   if (!links.length) links = await monthFiles(listing, bill, opts);
   const out: Fetched[] = [];
   for (const url of [...new Set(links)]) {
-    const [, month, name] = url.match(/files\/(\d{4}-\d{2})\/(.+)$/)!;
-    const got = await archived(url, join(dir, "files", month!, decodeURIComponent(name!)), opts);
+    const got = await archived(url, localFile(url), { ...opts, near });
     if (got) out.push(got);
   }
   return out;
+}
+
+/** Where a cbo.gov file lives on disk: data/cbo/files/<yyyy-mm>/<name>, the month keeping same-named files apart. */
+export function localFile(url: string): string {
+  const [, month, name] = url.match(/files\/(\d{4}-\d{2})\/(.+)$/)!;
+  return join(paths.raw("cbo"), "files", month!, decodeURIComponent(name!));
 }
 
 function fileUrl(month: string, name: string) {

@@ -9,7 +9,7 @@ import { sectionMap } from "./sections.ts";
 
 const PKG = resolve(import.meta.dir, "..");
 
-async function parse<T>(command: "xlsx" | "pdf" | "table1" | "glance", file: string): Promise<T | null> {
+export async function parse<T>(command: "xlsx" | "pdf" | "table1" | "glance", file: string): Promise<T | null> {
   try {
     return JSON.parse(await python(PKG, "cbo.py", [command, file])) as T;
   } catch {
