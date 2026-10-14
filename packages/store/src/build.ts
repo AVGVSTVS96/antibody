@@ -23,6 +23,7 @@ import { type AnyRow, mintClaim, type Names, restsOnOf } from "./claims.ts";
 import { type Db, type Param, query, tableNames } from "./db.ts";
 import { ruleFor } from "./rules.ts";
 import { count, day, lawNumber, memberLabel, quarter } from "./text.ts";
+import { trimEvidence } from "./trim.ts";
 
 export interface BuildResult {
   bundle: Bundle;
@@ -265,6 +266,7 @@ class Builder {
       rules: [],
     };
     bundle.claims = Object.fromEntries(this.claims);
+    trimEvidence(bundle);
     bundle.rules = [...this.rulesUsed].map(ruleFor).filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i);
 
     const parsed = BundleSchema.safeParse(bundle);
