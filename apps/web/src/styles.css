@@ -25,6 +25,11 @@
   --link: light-dark(#1d3cff, #8da0ff);
   --on-link: light-dark(#ffffff, #0c0c0c);
   --scrim: light-dark(#0b0b0b9e, #000000b8);
+  --lean-1: light-dark(#0b0b0b, #f2f2ee);
+  --lean-2: light-dark(#4a4a4a, #bdbdb8);
+  --lean-3: light-dark(#8a8a8a, #8a8a86);
+  --lean-4: light-dark(#c9c9c9, #5a5a57);
+  --lean-5: light-dark(#ededed, #2c2c2a);
 
   --display: "Inter Tight Variable", "Inter Tight", system-ui, sans-serif;
   --serif: "Newsreader Variable", Newsreader, Georgia, serif;

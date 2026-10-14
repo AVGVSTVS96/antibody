@@ -63,7 +63,7 @@ export function storyOf(b: Entry): Story {
     ? `${s.quietRun.marks} quiet and costly sections in one run drew ${s.quietRun.hits ? count(s.quietRun.hits, "mention") : "none"}. `
     : "";
   const priced = measured
-    ? `CBO prices ${measured === s.buried ? "them" : `${measured} of the ${s.buried}`} at ${cost}.`
+    ? `CBO prices ${measured === s.buried ? `the ${s.buried}` : `${measured} of the ${s.buried}`} at ${cost}.`
     : "CBO gave none of them a figure of its own.";
   return {
     lead: count(s.buried, "quiet section"),
