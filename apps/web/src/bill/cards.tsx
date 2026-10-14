@@ -45,8 +45,6 @@ export function Story({ m }: { m: BillModel }) {
   const track = useRef<HTMLDivElement>(null);
   const [at, setAt] = useState(0);
   const { b } = m;
-  const deficit = headlineDeficit(b, "current-law");
-  const late = m.sections.filter((v) => v.s.inFinal && v.s.late).length;
   const onScroll = () => {
     const el = track.current;
     const card = el?.firstElementChild as HTMLElement | null;
@@ -59,14 +57,14 @@ export function Story({ m }: { m: BillModel }) {
           {b.bill.shortTitle ?? b.bill.title} <span className="mono">{b.bill.display}</span>
         </h1>
         <p>
-          {deficit ? `CBO says it ${deficitWords(deficit.amountMusd)}` : "No CBO score"} ·{" "}
-          {b.lobbying.reports.toLocaleString("en-US")} lobbying reports
-          {m.lateShare == null ? "" : ` · ${late} ${late === 1 ? "section" : "sections"} added late`}
+          {b.bill.law ?? "In Congress"}
+          {m.sponsor ? ` · sponsor ${m.sponsor.label}` : ""}
         </p>
       </div>
       <div className="story" ref={track} onScroll={onScroll}>
         <div className="beat">
           <i>The loud part</i>
+          <strong className="vd">{loud ? count(loud.s.attention?.hits ?? 0, "article") : "No standout"}</strong>
           {loud ? (
             <p>
               <b>
@@ -82,8 +80,11 @@ export function Story({ m }: { m: BillModel }) {
             See the loud sections
           </button>
         </div>
-        <div className="beat">
+        <div className="beat quiet">
           <i>The quiet part</i>
+          <strong className="vd">
+            {quiet ? count(m.buried.length, "quiet section") : !ranked ? "Not tested" : "None found"}
+          </strong>
           {quiet ? (
             <p>
               <b>
@@ -96,20 +97,17 @@ export function Story({ m }: { m: BillModel }) {
             <p>Not tested: there are too few news articles to say which sections are quiet.</p>
           ) : (
             <p>
-              No section was both big-stakes, added late or off-topic, and ignored by the news.
+              No section was big-stakes, added late or off-topic, and ignored by the news.
               {near && (
                 <>
                   {" "}
-                  The closest is{" "}
+                  Closest:{" "}
                   <b
                     title={`Scored ${near.s.score!.buried!.toFixed(2)}; the bar is 0.45. ${stakesWords(near) || "No big stakes"}.`}
                   >
                     {m.secLabel(near)} {near.s.heading}
                   </b>
-                  .{" "}
-                  <a href={`${RULES_URL}#buried-v1`} target="_blank" rel="noopener">
-                    The rule
-                  </a>
+                  .
                 </>
               )}
             </p>
@@ -120,9 +118,10 @@ export function Story({ m }: { m: BillModel }) {
         </div>
         <div className="beat">
           <i>The money</i>
+          <strong className="vd">{count(m.b.lobbying.clients, "client")}</strong>
           <p>
-            <b>{count(m.b.lobbying.clients, "client")}</b> lobbied on it. <b>{m.tradersDuring}</b> of 535 members traded
-            stock in a tied company while the bill moved. Routine disclosures; no link to any vote is claimed.
+            lobbied on it. <b>{m.tradersDuring}</b> of 535 members traded stock in a tied company while the bill moved.
+            Routine disclosures; no link to any vote is claimed.
           </p>
           <button type="button" className="linkbtn" onClick={jump("card-lobby")}>
             See who lobbied
@@ -151,22 +150,24 @@ export function BillCard({ m }: { m: BillModel }) {
         Bill{b.bill.law ? ` · ${b.bill.law}` : ""}
         {b.bill.lawOn ? ` · signed ${day(b.bill.lawOn)}` : ""}
       </div>
-      <h2 style={{ marginTop: 6 }}>
+      <h2 className="billtitle" style={{ marginTop: 6 }}>
         {b.bill.shortTitle ?? b.bill.title}
         <span className="mono muted" style={{ fontSize: 13, fontWeight: 500 }}>
           {b.bill.display}
         </span>
       </h2>
       <p className="sub">
-        {b.bill.shortTitle ? `${b.bill.title.replace(/\.+$/, "")}. ` : ""}
-        {m.sponsor &&
-          (b.bill.vehicle ? (
-            <>
-              Vehicle bill introduced by {m.sponsor.label}. {b.bill.vehicle}{" "}
-            </>
-          ) : (
-            <>Sponsor {m.sponsor.label}. </>
-          ))}
+        <span className="desc">
+          {b.bill.shortTitle ? `${b.bill.title.replace(/\.+$/, "")}. ` : ""}
+          {m.sponsor &&
+            (b.bill.vehicle ? (
+              <>
+                Vehicle bill introduced by {m.sponsor.label}. {b.bill.vehicle}{" "}
+              </>
+            ) : (
+              <>Sponsor {m.sponsor.label}. </>
+            ))}
+        </span>
         {b.bill.claims.length ? (
           <Sources ids={b.bill.claims} />
         ) : (

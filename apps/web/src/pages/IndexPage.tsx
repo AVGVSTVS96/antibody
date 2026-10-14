@@ -92,15 +92,11 @@ export function IndexPage() {
           <span className="cap">Curated bills</span>
           <span className="cap">newest first</span>
         </div>
-        <details className="extra legal colnote">
-          <summary>Sponsor party is not who voted for it</summary>
-          <p>
-            The vote tally on each card shows how each party voted. Bills from different eras differ in who held power
-            (all six Democratic-sponsored bills are from the 117th Congress, when Democrats held the House, Senate and
-            White House), so read them as examples, not as a score between parties. {testable} of {index.bills.length}{" "}
-            bills had enough news and a late flag to test for buried candidates at all.
-          </p>
-        </details>
+        <p className="partynote">
+          <b>Sponsor party is a label, not a score.</b> Bills come from different eras: all six Democratic-sponsored
+          ones are from the 117th Congress, when Democrats held the House, Senate and White House. Read them as
+          examples. <a href="#read">How this works</a>
+        </p>
         {featured && (
           <div className="feature">
             <BillCard b={featured} big />
@@ -133,6 +129,7 @@ export function IndexPage() {
                       <li key={`${w.billId}-${w.seenAt}`} className="pick">
                         <span>
                           <b className="mono">{w.display}</b> {w.title}
+                          <PickHook entry={index.bills.find((b) => b.id === w.billId)} />
                           {w.sponsorParty && <span className="row-meta"> · {PARTY[w.sponsorParty]} sponsor</span>}
                           {w.reason && <div className="row-meta">{w.reason}</div>}
                         </span>
@@ -156,7 +153,7 @@ export function IndexPage() {
           )}
         </div>
 
-        <div className="section-h">
+        <div className="section-h" id="read">
           <span className="cap">How to read an x-ray</span>
         </div>
         <div className="method">
@@ -173,7 +170,8 @@ export function IndexPage() {
               Headline sections are the top tenth of a bill by news attention. A buried candidate has big stakes (a CBO
               figure of $10 billion or more, or about 20 lobbying reports), almost no news, and was added late or has
               little to do with the rest of the bill. Lobbying alone can give a section big stakes. The sub-scores sit
-              next to every label, never just a verdict.
+              next to every label, never just a verdict. {testable} of {index.bills.length} bills here had enough news
+              and a late flag to test at all.
             </p>
           </div>
           <div className="card">
@@ -254,10 +252,21 @@ function buriedLine(s: NonNullable<Entry["stats"]>) {
   return `Buried candidates: 0 of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}${s.buriedTest.why ? ` (${s.buriedTest.why})` : ""}.`;
 }
 
+function PickHook({ entry }: { entry?: Entry }) {
+  const num = entry && bigHook(entry);
+  if (!num) return null;
+  return (
+    <div className="ph">
+      <b>{num.num}</b> {num.label}
+    </div>
+  );
+}
+
 function BillCard({ b, big = false }: { b: Entry; big?: boolean }) {
   const s = b.stats;
   const party = s?.tally?.byParty;
   const num = bigHook(b);
+  const meta = [b.display, b.law].filter(Boolean).join(" · ");
   return (
     <a
       className={`billcard${big ? " big" : ""}`}
@@ -266,54 +275,60 @@ function BillCard({ b, big = false }: { b: Entry; big?: boolean }) {
       onPointerEnter={() => prefetchBundle(b.id)}
       onFocus={() => prefetchBundle(b.id)}
     >
-      <Fingerprint kinds={s?.fingerprint ?? ""} label={b.display} />
-      <div>
-        {b.id === START_HERE && <span className="badge-start">Start with this one</span>}
-        <div className="cap">
-          {b.display}
-          {b.sponsorParty ? ` · ${b.sponsorParty} sponsor` : ""}
-          {s?.vehicle ? " · vehicle bill" : ""}
-          {b.law ? ` · ${b.law}` : ""}
-          {b.latestActionOn ? ` · ${day(b.latestActionOn)}` : ""}
-        </div>
-        {num && (
-          <div className="bignum">
-            <b>{num.num}</b> <span>{num.label}</span>
-          </div>
-        )}
-        <h3>{b.shortTitle ?? b.title}</h3>
-        {s && hook(b, num?.used) && <div className="hook">{hook(b, num?.used)}</div>}
-        {s && (
-          <>
-            <div className="tags">
-              {b.congress ? (
-                <span title={CONGRESS_TAG[b.congress]}>
-                  {CONGRESS_TAG[b.congress]?.split(" · ")[0] ?? `${b.congress}th Congress`}
-                </span>
-              ) : null}
-              {s.tally && (
-                <span>
-                  {s.tally.chamber} vote{" "}
-                  <b>
-                    {s.tally.yeas}-{s.tally.nays}
-                  </b>
-                  {party && (
-                    <>
-                      {" "}
-                      (
-                      {(["R", "D", "I"] as const)
-                        .filter((p) => party[p])
-                        .map((p) => `${p} ${party[p]!.yea}-${party[p]!.nay}`)
-                        .join(", ")}
-                      )
-                    </>
-                  )}
-                </span>
-              )}
+      <div className="fp">
+        <Fingerprint kinds={s?.fingerprint ?? ""} label={b.display} />
+        {big && <small className="figkey">Ring: one tick per section. Gold is headline, red is buried.</small>}
+      </div>
+      <div className="bc">
+        <div className="bc-a">
+          {b.id === START_HERE && <span className="badge-start">Start with this one</span>}
+          <div className="cap meta">{meta}</div>
+          {num && (
+            <div className="bignum">
+              <b>{num.num}</b> <span>{num.label}</span>
             </div>
-            <div className="tests">{buriedLine(s)}</div>
-          </>
-        )}
+          )}
+          <h3>{b.shortTitle ?? b.title}</h3>
+        </div>
+        <div className="bc-b">
+          {s && hook(b, num?.used) && <div className="hook">{hook(b, num?.used)}</div>}
+          {s && (
+            <>
+              <div className="tags">
+                {b.sponsorParty && (
+                  <span title="Sponsor party is a label, not who voted for the bill">{b.sponsorParty} sponsor</span>
+                )}
+                {b.congress ? (
+                  <span title={CONGRESS_TAG[b.congress]}>
+                    {CONGRESS_TAG[b.congress]?.split(" · ")[0] ?? `${b.congress}th Congress`}
+                  </span>
+                ) : null}
+                {s.vehicle && <span title="A shell bill reused to carry other legislation">vehicle bill</span>}
+                {b.latestActionOn && <span>{day(b.latestActionOn)}</span>}
+                {s.tally && (
+                  <span>
+                    {s.tally.chamber} vote{" "}
+                    <b>
+                      {s.tally.yeas}-{s.tally.nays}
+                    </b>
+                    {party && (
+                      <>
+                        {" "}
+                        (
+                        {(["R", "D", "I"] as const)
+                          .filter((p) => party[p])
+                          .map((p) => `${p} ${party[p]!.yea}-${party[p]!.nay}`)
+                          .join(", ")}
+                        )
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+              <div className="tests">{buriedLine(s)}</div>
+            </>
+          )}
+        </div>
       </div>
     </a>
   );

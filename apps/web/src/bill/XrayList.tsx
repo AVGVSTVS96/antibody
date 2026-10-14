@@ -100,7 +100,7 @@ export function XrayList({ m }: { m: BillModel }) {
       <table className="secs">
         <thead>
           <tr>
-            <th>
+            <th className="c-n">
               <SortBtn s="num" cur={sort} set={setSort}>
                 §
               </SortBtn>
@@ -112,12 +112,12 @@ export function XrayList({ m }: { m: BillModel }) {
                 Loudness · articles
               </SortBtn>
             </th>
-            <th className="hide-s">
+            <th className="c-x">
               <SortBtn s="dollars" cur={sort} set={setSort}>
                 CBO 10-yr $
               </SortBtn>
             </th>
-            <th className="hide-s">
+            <th className="c-x">
               <SortBtn s="buried" cur={sort} set={setSort}>
                 Buried score
               </SortBtn>
@@ -149,7 +149,7 @@ export function XrayList({ m }: { m: BillModel }) {
                   aria-expanded={isOpen}
                 >
                   <td className="n">{m.secLabel(v)}</td>
-                  <td>
+                  <td className="ttl">
                     {s.heading} {v.kind === "headline" && <span className="pill headline">headline</span>}
                     {v.kind === "buried" && <span className="pill buried">buried candidate</span>}
                     {!s.inFinal && (
@@ -158,14 +158,14 @@ export function XrayList({ m }: { m: BillModel }) {
                       </span>
                     )}
                   </td>
-                  <td>
+                  <td className="when">
                     {sort === "num" ? (
                       <span className={`stagecode${s.late ? " late" : ""}`}>{s.late ? "late" : ""}</span>
                     ) : (
                       <span className="stagecode">{v.stageName.replace(/ \(.*\)$/, "")}</span>
                     )}
                   </td>
-                  <td>
+                  <td className="loud">
                     {s.attention?.pct == null ? (
                       <span className="miss" title="Too little news coverage on this bill to rank sections">
                         {s.attention ? count(s.attention.hits, "article") : "—"}
@@ -181,9 +181,9 @@ export function XrayList({ m }: { m: BillModel }) {
                       </div>
                     )}
                   </td>
-                  <td className="hide-s">
+                  <td className="cbo" data-l="CBO 10-yr $">
                     {v.dollarsMusd == null ? (
-                      <span className="miss">{m.perSectionDollars ? "—" : "whole bill"}</span>
+                      <span className="miss">—</span>
                     ) : (
                       <span className="money" title={figureNote(v)}>
                         {musd(v.dollarsMusd)}
@@ -191,7 +191,7 @@ export function XrayList({ m }: { m: BillModel }) {
                       </span>
                     )}
                   </td>
-                  <td className="hide-s">
+                  <td className="bur" data-l="Buried score">
                     {s.score?.buried != null ? (
                       <span className="mono">{s.score.buried.toFixed(2)}</span>
                     ) : (

@@ -1,7 +1,16 @@
 import { layerBorder } from "@sigma/node-border";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Sigma from "sigma";
-import { layerDashed, layerPlain, pathCurved, pathLine, sdfCircle, sdfDiamond, sdfSquare } from "sigma/rendering";
+import {
+  layerDashed,
+  layerFill,
+  layerPlain,
+  pathCurved,
+  pathLine,
+  sdfCircle,
+  sdfDiamond,
+  sdfSquare,
+} from "sigma/rendering";
 import { animateNodes } from "sigma/utils";
 import type { BillModel, DisplayKind } from "../lib/model.ts";
 import { type Palette, palette, useTheme } from "../lib/theme.ts";
@@ -9,8 +18,11 @@ import { Fit } from "../ui/icons.tsx";
 import { useFocus } from "./focus.ts";
 import {
   type Built,
+  cullLabels,
   type EdgeAttrs,
   type GS,
+  MONEY_HALF,
+  MONEY_TIES,
   type NodeAttrs,
   type NS,
   RADIUS,
@@ -56,9 +68,11 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
   const tipAnchor = useRef<(() => void) | null>(null);
   const [sigma, setSigma] = useState<Renderer | null>(null);
   const [moved, setMoved] = useState(false);
+  const [touched, setTouched] = useState(false);
   const theme = useTheme();
   const focus = useFocus();
   const env = useRef<Env>({ pal: palette(), view, hidden, labels });
+  const fit = useRef(0);
 
   useEffect(() => {
     const el = box.current;
@@ -69,11 +83,11 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
     document.fonts.load(`500 10px "${MONO}"`).finally(() => {
       if (dead) return;
       const E = env.current;
-      const dim = (focused: boolean, isActive: boolean) => (focused && !isActive ? 0.12 : 1);
+      const dim = (focused: boolean, isActive: boolean) => (focused && !isActive ? 0.14 : 1);
       // sigma 4's style typings collapse to `never` under TypeScript 7 (ExtractBaseType infers nothing), so the
       // style functions are typed by hand below and the declaration is passed through untyped.
       const r: Renderer = new Sigma(built.graph, el, {
-        customNodeState: { isActive: false },
+        customNodeState: { isActive: false, isTarget: false },
         customEdgeState: { isActive: false },
         customGraphState: { focused: false, tick: 0, zoomed: false },
         primitives: {
@@ -81,14 +95,16 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
             shapes: [sdfCircle(), sdfSquare({ cornerRadius: 0.18 }), sdfDiamond({ cornerRadius: 0.12 })],
             variables: {
               fillColor: { type: "color", default: "transparent" },
+              innerColor: { type: "color", default: "transparent" },
               borderColor: { type: "color", default: "transparent" },
               borderSize: { type: "number", default: 0 },
             },
             layers: [
+              layerFill({ color: { attribute: "fillColor" } }),
               layerBorder({
                 borders: [
                   { size: { attribute: "borderSize" }, color: { attribute: "borderColor" }, mode: "relative" },
-                  { size: 0, color: { attribute: "fillColor" }, fill: true },
+                  { size: 0, color: { attribute: "innerColor" }, fill: true },
                 ],
               }),
             ],
@@ -120,8 +136,11 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
             color: (a: NodeAttrs) => E.pal[a.tone],
             fillColor: (a: NodeAttrs, s: NS, gs: GS) =>
               rgba(E.pal[a.tone], a.fillAlpha * a.alpha * dim(gs.focused, s.isActive)),
-            borderColor: (a: NodeAttrs, s: NS, gs: GS) => rgba(E.pal[a.border], a.alpha * dim(gs.focused, s.isActive)),
-            borderSize: { attribute: "borderSize" },
+            innerColor: (a: NodeAttrs, s: NS, gs: GS) =>
+              rgba(E.pal[a.tone], a.fillAlpha * a.alpha * dim(gs.focused, s.isActive)),
+            borderColor: (a: NodeAttrs, s: NS, gs: GS) =>
+              s.isTarget || s.isHovered ? E.pal.text : rgba(E.pal[a.border], a.alpha * dim(gs.focused, s.isActive)),
+            borderSize: (a: NodeAttrs, s: NS) => (s.isTarget ? 0.5 : s.isHovered ? 0.36 : a.borderSize),
             label: { attribute: "label" },
             labelFont: MONO,
             labelSize: 11,
@@ -141,7 +160,7 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
               return gs.zoomed ? "auto" : "hidden";
             },
             visibility: (a: NodeAttrs) => (a.alpha < 0.02 ? "hidden" : "visible"),
-            depth: (_a: NodeAttrs, s: NS) => (s.isActive || s.isHovered ? "topNodes" : "nodes"),
+            depth: (_a: NodeAttrs, s: NS) => (s.isActive || s.isHovered || s.isTarget ? "topNodes" : "nodes"),
             zIndex: (a: NodeAttrs) => (a.kind === "bill" ? 2 : a.kind === "section" ? 1 : 0),
             cursor: "pointer",
           },
@@ -215,6 +234,7 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
     if (!sigma) return;
     const g = built.graph;
     env.current.view = view;
+    if (fit.current) cullLabels(g, view, fit.current);
     sigma.setGraphState({ tick: sigma.getGraphState().tick + 1 });
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const targets = targetsFor(g, view);
@@ -234,6 +254,12 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
       const c = sigma.graphToViewport({ x: 0, y: 0 });
       const e = sigma.graphToViewport({ x: RADIUS, y: 0 });
       const k = (e.x - c.x) / RADIUS;
+      const base = Math.round(k * sigma.getCamera().ratio * 25) / 25;
+      if (base > 0 && base !== fit.current) {
+        fit.current = base;
+        cullLabels(built.graph, env.current.view, base);
+        sigma.setGraphState({ tick: sigma.getGraphState().tick + 1 });
+      }
       const t = `translate(${c.x.toFixed(2)} ${c.y.toFixed(2)}) scale(${k.toFixed(5)})`;
       back.current?.setAttribute("transform", t);
       const fs = 11 / k;
@@ -251,9 +277,15 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
       setMoved(Math.abs(s.ratio - 1) > 0.02 || Math.abs(s.x - 0.5) > 0.01 || Math.abs(s.y - 0.5) > 0.01);
     };
     cam.on("updated", onCam);
-    sigma.on("enterNode", ({ node }) => focus.setHover(node));
+    sigma.on("enterNode", ({ node }) => {
+      focus.setHover(node);
+      setTouched(true);
+    });
     sigma.on("leaveNode", () => focus.setHover(null));
-    sigma.on("clickNode", ({ node }) => focus.pin(node));
+    sigma.on("clickNode", ({ node }) => {
+      focus.pin(node);
+      setTouched(true);
+    });
     sigma.on("clickStage", () => focus.pin(null));
     place();
     return () => {
@@ -261,7 +293,7 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
       sigma.removeAllListeners();
       cam.removeListener("updated", onCam);
     };
-  }, [sigma, focus.setHover, focus.pin]);
+  }, [sigma, built, focus.setHover, focus.pin]);
 
   const target = active ? (focus.pinned ?? focus.hover) : null;
   const shownTarget =
@@ -294,7 +326,9 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
     }
     g.forEachNode((n) => {
       const on = nodes.has(n);
-      if (sigma.getNodeState(n).isActive !== on) sigma.setNodeState(n, { isActive: on });
+      const st = sigma.getNodeState(n);
+      const isTarget = n === shownTarget;
+      if (st.isActive !== on || st.isTarget !== isTarget) sigma.setNodeState(n, { isActive: on, isTarget });
     });
     g.forEachEdge((e) => {
       const on = edges.has(e);
@@ -310,6 +344,7 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
     return () => removeEventListener("keydown", onKey);
   }, [active, focus.pinned, focus.pin]);
 
+  const coarse = fixed;
   const rings = view === "map";
   return (
     <>
@@ -335,10 +370,10 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
               <Seal />
             </g>
             <g className={`rings${rings ? " off" : ""} columns`}>
-              <text x={-(RADIUS - 150)} y={-(RADIUS - 38)}>
+              <text x={-MONEY_HALF} y={-(RADIUS - 40)}>
                 Companies
               </text>
-              <text x={RADIUS - 150} y={-(RADIUS - 38)}>
+              <text x={MONEY_HALF} y={-(RADIUS - 40)}>
                 Members
               </text>
             </g>
@@ -362,6 +397,24 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
           pinned={focus.pinned === shownTarget}
           anchorRef={tipAnchor}
         />
+      )}
+      {active && focus.pinned && shownTarget === focus.pinned && (
+        <div className="pinchip">
+          <span className="cap">Showing ties of</span>
+          <b>{built.graph.getNodeAttribute(focus.pinned, "label") || m.b.bill.display}</b>
+          <button type="button" aria-label="Clear the selection" onClick={() => focus.pin(null)}>
+            ×
+          </button>
+        </div>
+      )}
+      {active && view === "money" && (
+        <div className="mapnote">
+          Dot size and line width grow with trades or dollars. The {MONEY_TIES} strongest ties are drawn; click a dot to
+          see all of its ties.
+        </div>
+      )}
+      {active && view === "map" && !touched && !focus.pinned && (
+        <div className="mapnote fade">{coarse ? "Tap a dot for its ties" : "Click a dot to see only its ties"}</div>
       )}
       <button
         type="button"
@@ -396,7 +449,7 @@ function Donut({ r0, r1, fill }: { r0: number; r1: number; fill: string }) {
 const CAPTIONS = [
   { id: "cap-members", r: RING.members[0] - 5, text: "Members" },
   { id: "cap-actors", r: RING.actors[0] - 5, text: "Companies and lobbying clients" },
-  { id: "cap-sections", r: RING.sections[0] - 5, text: "Sections, later = further out" },
+  { id: "cap-sections", r: RING.sections[0] - 5, text: "Sections (§), later = further out" },
 ];
 
 function RingCaptions() {

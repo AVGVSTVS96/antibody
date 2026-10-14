@@ -19,6 +19,10 @@ export const RING = {
 };
 const MAX_ACTORS = 90;
 const MAX_MEMBERS = 180;
+const MONEY_COMPANIES = 45;
+const MONEY_MEMBERS = 70;
+export const MONEY_TIES = 70;
+export const MONEY_HALF = 300;
 
 export type Tone =
   | "violet"
@@ -62,6 +66,7 @@ export interface NodeAttrs {
   lrank: number;
   mimportant: number;
   mlrank: number;
+  mweight: number;
   weight: number;
   halo: "headline" | "buried" | null;
 }
@@ -75,12 +80,20 @@ export interface EdgeAttrs {
   curvature: number;
   mwidth: number;
   mbase: number;
+  mshare: number;
   views: ("map" | "money")[];
 }
 
-export type NS = { isActive: boolean; isHovered: boolean };
+export type NS = { isActive: boolean; isHovered: boolean; isTarget: boolean };
 export type GS = { focused: boolean; tick: number; zoomed: boolean };
-export type Renderer = Sigma<NodeAttrs, EdgeAttrs, Attributes, { isActive: boolean }, { isActive: boolean }, GS>;
+export type Renderer = Sigma<
+  NodeAttrs,
+  EdgeAttrs,
+  Attributes,
+  { isActive: boolean; isTarget: boolean },
+  { isActive: boolean },
+  GS
+>;
 
 export type LabelPos = "right" | "left" | "above" | "below" | "over";
 
@@ -130,6 +143,7 @@ export function buildGraph(m: BillModel): Built {
     lrank: 99,
     mimportant: 0,
     mlrank: 99,
+    mweight: 0,
     weight: 0,
     halo: null,
   };
@@ -228,7 +242,7 @@ export function buildGraph(m: BillModel): Built {
       placeEvenly(order, (o, ang) => actorAngle.set(o.a.id, ang));
     } else for (const [i, a] of actors.entries()) actorAngle.set(a.id, slots[i]!);
   }
-  const maxActor = Math.max(2, ((TAU * ar) / (actors.length || 1)) * 0.38);
+  const maxActor = Math.max(6, ((TAU * ar) / (actors.length || 1)) * 0.45);
   for (const a of actors) {
     const ang = actorAngle.get(a.id)!;
     const p = at(ang, ar);
@@ -240,11 +254,11 @@ export function buildGraph(m: BillModel): Built {
       tone: hollow ? "panel" : "violet",
       fillAlpha: hollow ? 1 : 0.88,
       border: "violet",
-      borderSize: hollow ? 0.2 : 0,
+      borderSize: hollow ? 0.38 : 0,
       labelTone: "text",
       rx: p.x,
       ry: p.y,
-      rsize: Math.min(maxActor, 3 + Math.sqrt(a.reports) * 0.9 + a.traders.size * 0.15),
+      rsize: Math.min(maxActor, 6.5 + Math.sqrt(a.reports) * 0.8 + a.traders.size * 0.15),
       ralpha: 1,
       rlabel: labelSide(ang),
       weight: actorWeight(a),
@@ -279,7 +293,7 @@ export function buildGraph(m: BillModel): Built {
   }
   const [m0, m1] = RING.members;
   const mr = (m0 + m1) / 2;
-  const maxMember = Math.max(1.6, ((TAU * mr) / (members.length || 1)) * 0.4);
+  const maxMember = Math.max(5.5, ((TAU * mr) / (members.length || 1)) * 0.5);
   for (const v of members) {
     const ang = memberAngle.get(v.node.id)!;
     const p = at(ang, mr);
@@ -290,11 +304,11 @@ export function buildGraph(m: BillModel): Built {
       tone: vote === "Yea" ? "violet" : "panel",
       fillAlpha: 1,
       border: v.sponsor ? "gold" : v.inserted.length ? "teal" : vote ? "violet" : "dim",
-      borderSize: v.sponsor || v.inserted.length ? 0.34 : vote === "Yea" ? 0 : 0.26,
+      borderSize: v.sponsor || v.inserted.length ? 0.4 : vote === "Yea" ? 0 : 0.4,
       labelTone: "text",
       rx: p.x,
       ry: p.y,
-      rsize: Math.min(maxMember, 3.2 + Math.sqrt(v.tradeCount + v.fundedUsd / 2e4) * 0.75),
+      rsize: Math.min(maxMember, 5.5 + Math.sqrt(v.tradeCount + v.fundedUsd / 2e4) * 0.6),
       ralpha: 1,
       rlabel: labelSide(ang),
       weight: memberWeight(v) + (v.sponsor ? 1e3 : 0),
@@ -316,7 +330,7 @@ export function buildGraph(m: BillModel): Built {
     const share = e.kind === "traded" || e.kind === "funded" ? Math.sqrt(e.weight / peak[e.kind]) : 0;
     const style: Pick<EdgeAttrs, "tone" | "width" | "base" | "views"> =
       e.kind === "lobbied"
-        ? { tone: "violet", width: 0.7, base: 0.28, views: ["map"] }
+        ? { tone: "violet", width: 1.3, base: 0.42, views: ["map"] }
         : e.kind === "traded"
           ? { tone: "steel", width: Math.min(0.6 + e.weight * 0.12, 2.2), base: 0.07, views: ["map", "money"] }
           : e.kind === "funded"
@@ -330,15 +344,16 @@ export function buildGraph(m: BillModel): Built {
       kind: e.kind,
       inference: e.inference,
       curvature: toCenter ? 0 : 0.22,
-      mwidth: 0.4 + share * 3,
-      mbase: 0.035 + share * share * 0.7,
+      mwidth: 0.9 + share * 3,
+      mbase: 0.3 + share * 0.5,
+      mshare: share,
       ...style,
     });
     counts[e.kind]++;
   }
 
-  cullRadialLabels(g);
   moneyLayout(g, m);
+  cullLabels(g, "map", 0.45);
   return {
     graph: g,
     stages,
@@ -375,10 +390,11 @@ function placeEvenly<T extends { w: number }>(items: T[], set: (item: T, angle: 
   for (const [i, it] of items.entries()) set(it, best + i * step);
 }
 
-const LABEL_SCALE = 0.65;
-const CHAR_W = 6.8 / LABEL_SCALE;
-const LABEL_H = 17 / LABEL_SCALE;
-const LABEL_GAP = 4 / LABEL_SCALE;
+const CHAR_W = 6.6;
+const LABEL_H = 15;
+const LABEL_GAP = 4;
+const LABEL_PAD = 4;
+const PER_KIND = 14;
 
 interface Pin {
   id: string;
@@ -400,43 +416,58 @@ function cull(pins: Pin[], cap: number): string[] {
     const x0 = p.side === "right" ? p.x + d : p.side === "left" ? p.x - d - w : p.x - w / 2;
     const y0 = p.side === "above" ? p.y - d - LABEL_H : p.side === "below" ? p.y + d : p.y - LABEL_H / 2;
     const box = { id: p.id, x0, x1: x0 + w, y0, y1: y0 + LABEL_H };
-    const pad = 4;
-    if (kept.some((k) => box.x0 < k.x1 + pad && box.x1 > k.x0 - pad && box.y0 < k.y1 + pad && box.y1 > k.y0 - pad))
+    if (
+      kept.some(
+        (k) =>
+          box.x0 < k.x1 + LABEL_PAD &&
+          box.x1 > k.x0 - LABEL_PAD &&
+          box.y0 < k.y1 + LABEL_PAD &&
+          box.y1 > k.y0 - LABEL_PAD,
+      )
+    )
       continue;
     kept.push(box);
   }
   return kept.map((k) => k.id);
 }
 
-function cullRadialLabels(g: Graph<NodeAttrs, EdgeAttrs>) {
-  const pins: Pin[] = [];
+/**
+ * Which company and member labels fit at this scale (screen pixels per graph unit at the unzoomed fit). The boxes
+ * are measured in pixels, so a small map keeps fewer labels than a big one and they still never overlap.
+ */
+export function cullLabels(g: Graph<NodeAttrs, EdgeAttrs>, view: "map" | "money", k: number) {
+  const radial = view === "map";
+  const pins: Record<"actor" | "member", Pin[]> = { actor: [], member: [] };
   g.forEachNode((id, a) => {
-    if (a.kind === "actor" || a.kind === "member")
-      pins.push({
+    if (a.kind !== "actor" && a.kind !== "member") return;
+    if (radial)
+      pins[a.kind].push({
         id,
-        x: a.rx,
-        y: a.ry,
-        size: a.rsize,
+        x: a.rx * k,
+        y: a.ry * k,
+        size: a.rsize * k,
         side: a.rlabel,
         chars: a.label.length,
         weight: a.weight,
       });
+    else if (a.malpha > 0)
+      pins[a.kind].push({
+        id,
+        x: a.mx * k,
+        y: a.my * k,
+        size: a.msize * k,
+        side: a.mlabel,
+        chars: a.label.length,
+        weight: a.mweight,
+      });
+    g.mergeNodeAttributes(id, radial ? { important: 0, lrank: 99 } : { mimportant: 0, mlrank: 99 });
   });
-  const actors = cull(
-    pins.filter((p) => g.getNodeAttribute(p.id, "kind") === "actor"),
-    14,
+  const keep = [...cull(pins.actor, PER_KIND), ...cull(pins.member, PER_KIND)].sort(
+    (x, y) =>
+      g.getNodeAttribute(y, radial ? "weight" : "mweight") - g.getNodeAttribute(x, radial ? "weight" : "mweight"),
   );
-  const members = cull(
-    pins.filter((p) => g.getNodeAttribute(p.id, "kind") === "member"),
-    14,
-  );
-  const order = [...actors, ...members].sort(
-    (x, y) => g.getNodeAttribute(y, "weight") - g.getNodeAttribute(x, "weight"),
-  );
-  order.forEach((id, i) => {
-    g.setNodeAttribute(id, "important", 1);
-    g.setNodeAttribute(id, "lrank", i);
-  });
+  for (const [i, id] of keep.entries())
+    g.mergeNodeAttributes(id, radial ? { important: 1, lrank: i } : { mimportant: 1, mlrank: i });
 }
 
 /**
@@ -466,9 +497,15 @@ function moneyLayout(g: Graph<NodeAttrs, EdgeAttrs>, m: BillModel) {
     return member ? member.fundedUsd / 2e4 + member.tradeCount : 0;
   };
   const sideOf = (id: string) => (g.getNodeAttribute(id, "kind") === "actor" ? "L" : "R");
-  const left = [...links.keys()].filter((id) => sideOf(id) === "L").sort((a, b) => dollars(b) - dollars(a));
-  const right = [...links.keys()].filter((id) => sideOf(id) === "R").sort((a, b) => dollars(b) - dollars(a));
-  const sizeOf = (id: string, cap: number) => Math.min(cap, 2.6 + Math.sqrt(dollars(id)) * 1.5);
+  const left = [...links.keys()]
+    .filter((id) => sideOf(id) === "L")
+    .sort((a, b) => dollars(b) - dollars(a))
+    .slice(0, MONEY_COMPANIES);
+  const right = [...links.keys()]
+    .filter((id) => sideOf(id) === "R")
+    .sort((a, b) => dollars(b) - dollars(a))
+    .slice(0, MONEY_MEMBERS);
+  const sizeOf = (id: string, cap: number) => Math.min(cap, 3.6 + Math.sqrt(dollars(id)) * 1.5);
   const column = (ids: string[]) => {
     const h = ids.map((id) => 2 * sizeOf(id, 13) + 2.5);
     const total = h.reduce((a, b) => a + b, 0);
@@ -498,7 +535,7 @@ function moneyLayout(g: Graph<NodeAttrs, EdgeAttrs>, m: BillModel) {
     L = place(L, cr.ys);
     cl = column(L);
   }
-  const X = RADIUS - 150;
+  const X = MONEY_HALF;
   const set = (ids: string[], col: ReturnType<typeof column>, x: number, side: LabelPos, cap: number) => {
     const pins: Pin[] = ids.map((id) => ({
       id,
@@ -509,14 +546,21 @@ function moneyLayout(g: Graph<NodeAttrs, EdgeAttrs>, m: BillModel) {
       chars: g.getNodeAttribute(id, "label").length,
       weight: dollars(id),
     }));
-    const keep = cull(pins, 14);
-    keep.forEach((id, i) => {
-      g.mergeNodeAttributes(id, { mimportant: 1, mlrank: i });
-    });
-    for (const p of pins) g.mergeNodeAttributes(p.id, { mx: x, my: p.y, malpha: 1, msize: p.size, mlabel: side });
+    for (const p of pins)
+      g.mergeNodeAttributes(p.id, { mx: x, my: p.y, malpha: 1, msize: p.size, mlabel: side, mweight: p.weight });
   };
   set(L, cl, -X, "left", 13);
   set(R, cr, X, "right", 13);
+
+  const placed = new Set([...L, ...R]);
+  const ties: [string, number][] = [];
+  g.forEachEdge((k, e, src, dst) => {
+    if (e.kind !== "traded" && e.kind !== "funded") return;
+    if (placed.has(src) && placed.has(dst)) ties.push([k, e.mshare]);
+    else g.setEdgeAttribute(k, "mbase", 0);
+  });
+  ties.sort((a, b) => b[1] - a[1]);
+  for (const [k] of ties.slice(MONEY_TIES)) g.mergeEdgeAttributes(k, { mbase: 0.06, mwidth: 0.5 });
 }
 
 export const VIEW_ATTRS = {

@@ -1,4 +1,7 @@
-import { Component, lazy, type ReactNode, Suspense } from "react";
+import type { BundleIndex } from "@antibody/core";
+import { parseBillId } from "@antibody/core/ids";
+import { Component, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { loadIndex } from "./lib/data.ts";
 import { useRoute } from "./lib/router.ts";
 import { IndexPage } from "./pages/IndexPage.tsx";
 import { Top } from "./ui/Top.tsx";
@@ -9,18 +12,38 @@ export function App() {
   const route = useRoute();
   return (
     <Catch key={route.page === "bill" ? route.id : "index"}>
-      <Suspense fallback={route.page === "bill" ? <BillSkeleton /> : <Loading />}>
+      <Suspense fallback={route.page === "bill" ? <BillSkeleton id={route.id} /> : <Loading />}>
         {route.page === "bill" ? <BillPage route={route} /> : <IndexPage />}
       </Suspense>
     </Catch>
   );
 }
 
-function BillSkeleton() {
+function BillSkeleton({ id }: { id: string }) {
+  const [entry, setEntry] = useState<BundleIndex["bills"][number] | null>(null);
+  useEffect(() => {
+    let live = true;
+    let want = id;
+    try {
+      want = parseBillId(id);
+    } catch {}
+    loadIndex()
+      .then((i) => live && setEntry(i.bills.find((b) => b.id === want) ?? null))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [id]);
   return (
     <>
-      <Top />
+      <Top crumb={entry?.shortTitle ?? entry?.display} />
       <div className="skel" role="status" aria-label="Loading the x-ray">
+        <div className="skelhead">
+          <h1>
+            {entry ? (entry.shortTitle ?? entry.title) : <span className="bone line" />}{" "}
+            {entry && <span className="mono">{entry.display}</span>}
+          </h1>
+        </div>
         <div className="story">
           {[0, 1, 2].map((i) => (
             <div key={i} className="beat bone" />

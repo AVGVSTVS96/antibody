@@ -1,10 +1,8 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMedia } from "../lib/media.ts";
 import type { BillModel, DisplayKind } from "../lib/model.ts";
 import type { View } from "../lib/router.ts";
-import { ThemeButton } from "../ui/ThemeButton.tsx";
-import { useFocus } from "./focus.ts";
-import type { Built } from "./graph.ts";
+import { type Built, MONEY_TIES } from "./graph.ts";
 import { MapCanvas } from "./MapCanvas.tsx";
 import { Ranked } from "./Ranked.tsx";
 import { XrayList } from "./XrayList.tsx";
@@ -30,7 +28,17 @@ const LEGEND: Record<"map" | "money", DisplayKind[]> = {
   money: ["traded", "funded"],
 };
 
+const NOUN: Record<DisplayKind, string> = {
+  lobbied: "lobbying",
+  traded: "stock-trade",
+  funded: "PAC-money",
+  voted: "vote",
+  sponsored: "sponsor",
+  inserted: "added-late",
+};
+
 const CROWDED = 120;
+const SEEN = "antibody.howto";
 
 const VIEWS: [View, string][] = [
   ["map", "Map"],
@@ -47,18 +55,19 @@ interface Props {
 
 export function Stage({ m, built, view, setView }: Props) {
   const [hidden, setHidden] = useState<Record<"map" | "money", Set<DisplayKind>>>(() => ({
-    map: new Set<DisplayKind>([
-      "funded",
-      "voted",
-      ...(built.counts.traded > CROWDED ? (["traded"] as const) : []),
-      ...(built.counts.inserted > CROWDED / 4 ? (["inserted"] as const) : []),
-    ]),
+    map: new Set<DisplayKind>(["funded", "voted", ...(built.counts.traded > CROWDED ? (["traded"] as const) : [])]),
     money: new Set(),
   }));
   const phone = useMedia("(max-width: 560px)");
   const compact = useMedia("(max-width: 980px)");
   const [folded, setFolded] = useState(true);
-  const focus = useFocus();
+  const [howOpen, setHowOpen] = useState(() => {
+    try {
+      return !localStorage.getItem(SEEN) && !matchMedia("(max-width: 980px)").matches;
+    } catch {
+      return false;
+    }
+  });
   const hideMap = view === "list" || (phone && folded);
   const mapView = view === "money" ? "money" : "map";
   const toggle = (k: DisplayKind) =>
@@ -72,67 +81,96 @@ export function Stage({ m, built, view, setView }: Props) {
   const { shown } = built;
   const sub =
     view === "money"
-      ? `${built.graph.filterNodes((_n, a) => a.malpha > 0 && a.kind === "actor").length} companies and ${built.graph.filterNodes((_n, a) => a.malpha > 0 && a.kind === "member").length} members joined by stock trades or PAC money`
+      ? `${built.graph.filterNodes((_n, a) => a.malpha > 0 && a.kind === "actor").length} companies and ${built.graph.filterNodes((_n, a) => a.malpha > 0 && a.kind === "member").length} members with the most stock-trade and PAC-money ties`
       : view === "list"
         ? `${m.versions.length} text versions · ${m.sections.length} sections, with every sub-score`
         : `The ${shown.actors} best-connected companies and clients${shown.actorsTotal > shown.actors ? ` of ${shown.actorsTotal}` : ""}, the ${shown.members} best-connected members${shown.membersTotal > shown.members ? ` of ${shown.membersTotal}` : ""}`;
-  const ranked = view === "money" || (compact && view !== "list");
+  const ranked = view !== "list";
+  const kinds = LEGEND[mapView].filter((k) => built.counts[k] > 0);
+  const on = kinds.filter((k) => !hidden[mapView].has(k));
+  const off = kinds.filter((k) => hidden[mapView].has(k));
+  const dashed = useMemo(() => {
+    let n = 0;
+    built.graph.forEachEdge((_e, a) => {
+      if (
+        a.inference &&
+        a.views.includes(mapView) &&
+        !hidden[mapView].has(a.kind) &&
+        (mapView !== "money" || a.mbase > 0)
+      )
+        n++;
+    });
+    return n > 0;
+  }, [built, mapView, hidden]);
+  const rankedList = ranked && <Ranked m={m} view={mapView} plain={phone && folded} />;
 
   return (
     <section className={`stage${view === "list" ? " list" : ""}`} aria-label="X-ray">
       <div className="stage-head">
-        <div className="cap">
-          {view === "money" ? "Money map" : "X-ray"}: {m.b.bill.display} {m.b.bill.shortTitle ?? ""}
+        <div className="row1">
+          <div className="cap">{view === "money" ? "Money map" : "X-ray"}</div>
+          <Seg view={view} setView={setView} />
         </div>
         <div className="s">{sub}</div>
       </div>
-      <ThemeButton className="iconbtn theme" />
       {view !== "list" && (
         <div className={`filters${hideMap ? " off" : ""}`}>
           <span className="cap">Show</span>
-          {LEGEND[mapView]
-            .filter((k) => built.counts[k] > 0)
-            .map((k) => (
-              <button
-                key={k}
-                type="button"
-                className="lg"
-                aria-pressed={!hidden[mapView].has(k)}
-                onClick={() => toggle(k)}
-              >
-                <Swatch color={TONE[k]} />
-                {NAMES[k]} <span className="n">{built.counts[k]}</span>
-              </button>
-            ))}
+          {kinds.map((k) => (
+            <button
+              key={k}
+              type="button"
+              className="lg"
+              style={{ "--tone": TONE[k] } as React.CSSProperties}
+              aria-pressed={!hidden[mapView].has(k)}
+              onClick={() => toggle(k)}
+            >
+              <Swatch color={TONE[k]} />
+              {NAMES[k]} <span className="n">{built.counts[k]}</span>
+            </button>
+          ))}
         </div>
       )}
-      {view === "map" && !hideMap && (
-        <details className="howto">
-          <summary>How to read this map</summary>
-          <p>
-            <b>Outer ring:</b> members who traded, were funded or sponsored. <b>Middle ring:</b> companies and lobbying
-            clients. <b>Inner ring:</b> the bill’s sections; the further out, the later the text they first appeared in.
-            A gold glow marks a headline section, a dashed red ring a buried candidate, a gold ring the sponsor. Teal
-            lines are sections added after the first text.
-          </p>
+      {view !== "list" && !hideMap && (
+        <p className="showing" aria-live="polite">
+          {view === "money"
+            ? `Drawing the ${MONEY_TIES} strongest of ${(built.counts.traded + built.counts.funded).toLocaleString("en-US")} ties.`
+            : on.length
+              ? `Showing ${on.map((k) => `${built.counts[k].toLocaleString("en-US")} ${NOUN[k]}`).join(", ")} ${on.length === 1 && built.counts[on[0]!] === 1 ? "tie" : "ties"}.`
+              : "Nothing is switched on."}
+          {off.length > 0 &&
+            ` Turn on ${off.map((k) => `${NAMES[k]} (${built.counts[k].toLocaleString("en-US")})`).join(" or ")} to see more.`}
+        </p>
+      )}
+      {view !== "list" && !hideMap && (
+        <details
+          className="howto"
+          open={howOpen}
+          onToggle={(e) => {
+            const open = e.currentTarget.open;
+            if (open === howOpen) return;
+            setHowOpen(open);
+            try {
+              localStorage.setItem(SEEN, "1");
+            } catch {}
+          }}
+        >
+          <summary>
+            {view === "money"
+              ? "Left: companies. Right: members. A line is a trade or PAC money."
+              : "Inner ring: sections. Middle: companies and clients. Outer: members."}
+            <span className="more"> What the marks mean</span>
+          </summary>
+          <Key view={mapView} />
         </details>
       )}
-      {view === "money" && (
-        <details className="howto">
-          <summary>How to read this map</summary>
-          <p>
-            <b>Left:</b> companies. <b>Right:</b> members. A line is a stock trade (steel) or PAC money (gold); thicker
-            and darker means more trades or dollars, and a bigger dot means more of either. Trades are routine
-            disclosures; no link to any vote is claimed.
-          </p>
-        </details>
-      )}
+      {phone && rankedList}
       {phone && view !== "list" && (
         <button type="button" className="seemap" aria-expanded={!folded} onClick={() => setFolded(!folded)}>
           {folded ? "See the map" : "Hide the map"}
         </button>
       )}
-      <div className={`stagebody${ranked && !hideMap ? " withrank" : ""}`}>
+      <div className={`stagebody${ranked && !phone && !hideMap ? " withrank" : ""}`}>
         <div className={`mapwrap${hideMap ? " off" : ""}`}>
           <MapCanvas
             m={m}
@@ -145,27 +183,73 @@ export function Stage({ m, built, view, setView }: Props) {
           />
         </div>
         {view === "list" && <XrayList m={m} />}
-        {ranked && !hideMap && <Ranked m={m} />}
+        {!phone && rankedList}
       </div>
-      <div className="stagefoot">
-        {view !== "list" && !hideMap && (
+      {dashed && view !== "list" && !hideMap && (
+        <div className="stagefoot">
           <span className="lg static">
             <Swatch color="var(--muted)" dashed />
-            dashed: inference
+            dashed line: an inference, with its rule on the claim
           </span>
-        )}
-        {view !== "list" && !hideMap && (
-          <span className="hint">
-            {focus.pinned
-              ? "Esc or click empty space to clear"
-              : compact
-                ? "Tap a dot for its ties"
-                : "Click a dot to see only its ties"}
-          </span>
-        )}
-        <Seg view={view} setView={setView} />
-      </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+const KEYS: Record<"map" | "money", { svg: React.ReactNode; text: string }[]> = {
+  map: [
+    {
+      svg: <circle cx="11" cy="7" r="4" fill="var(--violet)" />,
+      text: "Dot: section (§ number), company, member",
+    },
+    { svg: <circle cx="11" cy="7" r="6" fill="var(--gold)" opacity="0.4" />, text: "Gold glow: headline" },
+    {
+      svg: <circle cx="11" cy="7" r="5" fill="none" stroke="var(--red)" strokeDasharray="2 2" />,
+      text: "Dashed red ring: buried candidate",
+    },
+    {
+      svg: <circle cx="11" cy="7" r="4.5" fill="none" stroke="var(--gold)" strokeWidth="2" />,
+      text: "Gold ring: sponsor",
+    },
+    {
+      svg: <line x1="1" y1="7" x2="21" y2="7" stroke="var(--teal)" strokeWidth="2" />,
+      text: "Teal line: added late",
+    },
+    {
+      svg: <line x1="1" y1="7" x2="21" y2="7" stroke="var(--violet)" strokeWidth="2" />,
+      text: "Violet line: lobbying",
+    },
+  ],
+  money: [
+    {
+      svg: <line x1="1" y1="7" x2="21" y2="7" stroke="var(--steel)" strokeWidth="2" />,
+      text: "Steel line: stock trades",
+    },
+    { svg: <line x1="1" y1="7" x2="21" y2="7" stroke="var(--gold)" strokeWidth="2" />, text: "Gold line: PAC money" },
+    {
+      svg: <circle cx="11" cy="7" r="5" fill="var(--violet)" />,
+      text: "Bigger dot, thicker line: more trades or dollars",
+    },
+    {
+      svg: <line x1="1" y1="7" x2="21" y2="7" stroke="var(--muted)" strokeWidth="2" strokeDasharray="3 3" />,
+      text: "Dashed: an inference",
+    },
+  ],
+};
+
+function Key({ view }: { view: "map" | "money" }) {
+  return (
+    <ul className="key">
+      {KEYS[view].map((k) => (
+        <li key={k.text}>
+          <svg viewBox="0 0 22 14" aria-hidden="true">
+            {k.svg}
+          </svg>
+          <span>{k.text}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

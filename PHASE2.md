@@ -38,3 +38,17 @@ Still open:
 - Parallel inserted edges are still not bundled into one arc.
 - The skeleton does not yet show the bill's title from index.json.
 - Index "Worth a look" picks still lack a per-bill hook number.
+
+## Design builder round 2: done and still open
+
+Done: sigma node fill fixed (the border layer switched itself off for small nodes, so every filled dot was invisible; fill now has its own layer), bigger dots with hover and pinned rings plus a "Showing ties of" chip, label culling measured in screen pixels so labels never overlap at any map size, money map limited to the 45 biggest companies and 70 biggest members with the 70 strongest ties drawn and the rest faded (columns closer, scale note on the map), dashed key only when a dashed line is on screen, plain filter chips (no strikethrough) with a "Showing ... Turn on ..." line, added-late on by default, one-line ring caption plus a first-visit-open key, view tabs moved into the stage head, ranked lists that follow the view (lobbying clients, most-lobbied sections, sponsors for the map), phone: lists first, stat tiles right under the carousel, map optional, theme button in the top bar, X-ray list with no inner scroll and cards below 980px, story strip with a verdict per card and the quiet card marked, index cards on a fixed layout with a 40px hook number, party note shown in one line, watcher picks with hook numbers, friendlier not-found page, skeleton with the bill title.
+
+Still open:
+- Money map still draws 955 ties' worth of faint hairlines behind the 70 strong ones on the busiest bills.
+- Selection still opens the floating tip card, which covers part of the map; no side panel or bottom sheet yet.
+- Parallel inserted edges are not bundled into one arc.
+- At 1440x900 the radial map is cut by the fold until the page scrolls (the stage sticks and fills the screen once scrolled).
+- Section number pills on the inner ring were not added; the key says "§ number".
+- 25 Biome CSS descending-specificity warnings (9 new from this round) are not fixed.
+- The live e2e failed once on a flaky DNS lookup in its random source-URL sample (github.com ENOTFOUND), then passed; the check does not retry.
+- 768 and the phone list view were reviewed on the local build only.
