@@ -98,6 +98,7 @@ class Builder {
         ? { registrant: f.registrant_name, client: f.client_name, when: `${quarter(f.period)} ${f.year}` }
         : null;
     },
+    clientFiling: (key) => [...this.filings.values()].find((f) => f.client_key === key)?.url,
     committee: (id) => this.labels.committee.get(committeeKey(id)) ?? `committee ${id}`,
     roll: (id) => this.labels.roll.get(id) ?? `roll call ${id}`,
     amendment: (id) => this.labels.amendment.get(id) ?? `Amendment ${id}`,
@@ -629,11 +630,12 @@ class Builder {
       const any = [...this.filings.values()].find((f) => f.client_key === key)!;
       const c = clientRows.get(key);
       this.labels.client.set(key, c?.name ?? any.client_name);
+      const claim = c ? await this.cite("lda_clients", c) : null;
       this.node({
         id: nodeId("client", key),
         kind: "client",
         label: c?.name ?? any.client_name,
-        claims: [],
+        claims: claim ? [claim] : [],
         props: {
           names: c?.names ?? [any.client_name],
           ldaClientIds: c?.lda_client_ids ?? [any.lda_client_id],

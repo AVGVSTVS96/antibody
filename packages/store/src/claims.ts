@@ -33,6 +33,8 @@ export interface Names {
   /** `Akin Gump` / `Visa U.S.A.` / `Q1 2025` for a filing id. */
   filing(id: string): { registrant: string; client: string; when: string } | null;
   committee(id: string): string;
+  /** A filing that names this lobbying client, for the client's own claim (lda_clients rows have no source). */
+  clientFiling(key: string): string | undefined;
   roll(id: string): string;
   amendment(id: string): string;
   estimate(id: string): AnyRow | null;
@@ -231,6 +233,11 @@ export const TEMPLATES: Record<string, Template> = {
       restsOn: r.total_rests_on ?? [],
     };
   },
+
+  lda_clients: (r, _f, n) => ({
+    text: `${r.name} files as a lobbying client under ${r.names.map((x: string) => quote(x, 80)).join(", ")} (LDA client ${r.lda_client_ids.length > 1 ? "ids" : "id"} ${r.lda_client_ids.join(", ")}).`,
+    sourceUrl: n.clientFiling(r.id),
+  }),
 
   ptr_documents: (r) => ({
     text: `${r.filer_name} filed a periodic transaction report${r.filed_on ? ` on ${day(r.filed_on)}` : ""}${r.scanned ? " on paper" : ""}; ${r.read_status === "read" ? "it has been read" : r.read_status === "partial" ? "it has been partly read" : "it has not been read yet"}.`,
