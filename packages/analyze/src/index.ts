@@ -15,15 +15,15 @@ const PKG = join(import.meta.dir, "..");
 /** Published rules for the bundle's rules[]. */
 export const RULES = [
   {
-    id: "attention",
-    version: "attention-v1",
+    id: "attention-v1",
+    version: "1",
     text:
       "News attention counts articles from a fixed, published outlet list, read by a language model that records " +
       "which sections each article discusses. Each side (left, center, right) is weighted equally. Trade and legal " +
       "press is shown apart and never counted.",
     url: null,
   },
-  { id: "buried", version: SCORE.version, text: SCORE_TEXT.join(" "), url: null },
+  { id: "buried-v1", version: "1", text: SCORE_TEXT.join(" "), url: null },
 ];
 
 async function runAttention(ctx: StageContext) {
