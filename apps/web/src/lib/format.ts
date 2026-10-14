@@ -5,6 +5,8 @@ const MIXED_CASE: [RegExp, string][] = [
   [/\bFedex\b/g, "FedEx"],
   [/\bModernatx\b/g, "ModernaTX"],
   [/\bNbcuniversal\b/g, "NBCUniversal"],
+  [/\bCorecivic\b/g, "CoreCivic"],
+  [/\bCoca Cola\b/g, "Coca-Cola"],
 ];
 
 /** Initialisms with a vowel in them; the ones without (CMS, PNC, CSX) are found by shape. */

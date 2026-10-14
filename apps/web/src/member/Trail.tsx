@@ -14,6 +14,9 @@ const ms = (iso: string) => Date.parse(`${iso}T00:00:00Z`);
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
 const monthDay = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const dated = (d: string) => `${monthDay(d)} ${d.slice(0, 4)}`;
+/** "Jan 7 2025", or "Jan 7 2025 to Mar 3 2026" when the trades span days. */
+const range = (from: string, to: string) => (from === to ? dated(from) : `${dated(from)} to ${dated(to)}`);
 const monthName = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase();
 
@@ -171,7 +174,7 @@ export function Trail({ trades, scope }: { trades: Trade[]; scope: Scope }) {
             <strong>{trades.length}</strong>
             <span>
               {count(trades.length, "trade")} in {rows.length === 1 ? "this stock" : `these ${rows.length} stocks`},{" "}
-              {monthDay(first[0]!)} {first[0]!.slice(0, 4)} to {monthDay(first.at(-1)!)} {first.at(-1)!.slice(0, 4)}
+              {range(first[0]!, first.at(-1)!)}
             </span>
             <Src ids={trades.map((t) => t.event.claim)} label="filings" />
           </p>
@@ -187,7 +190,7 @@ export function Trail({ trades, scope }: { trades: Trade[]; scope: Scope }) {
           <p className="trail-who">
             <b>
               {owners.length === 1
-                ? `All ${trades.length} in the ${ownerWords(owners[0]!.owner)}`
+                ? `${trades.length === 1 ? "In" : `All ${trades.length} in`} the ${ownerWords(owners[0]!.owner)}`
                 : owners.map((o) => `${o.count} in the ${ownerWords(o.owner)}`).join(", ")}
             </b>
             <span>

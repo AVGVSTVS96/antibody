@@ -11,7 +11,7 @@ import { scopeOf } from "../member/scope.ts";
 import { Touch } from "../member/Touch.tsx";
 import { Trail } from "../member/Trail.tsx";
 import { Votes } from "../member/Votes.tsx";
-import { formerNote, lastName, memberName } from "../money/Members.tsx";
+import { formerNote, lastName, memberName, seatOf } from "../money/Members.tsx";
 import { useModel } from "../ui/BillGate.tsx";
 import { NotFound } from "../ui/NotFound.tsx";
 import { Kicker, Note, Section, Wrap } from "../ui/primitives.tsx";
@@ -40,9 +40,9 @@ function Member({ member }: { member: NodeOf<"member"> }) {
     view.node.props.paperFilingsUnread ||
     m.b.gaps.some((g) => g.kind === "paper_filings_unread" && g.nodes.includes(member.id));
   const chamber = member.props.chamber === "House" ? "Representative" : "Senator";
-  const seat = member.props.district != null ? `${member.props.state}-${member.props.district}` : member.props.state;
+  const seat = seatOf(member);
   const bill = m.b.bill.display;
-  const former = formerNote(member, m.b.bill.congress);
+  const former = formerNote(member, m);
   const bare = scope.kind === "bill";
   const where =
     scope.kind === "quiet"

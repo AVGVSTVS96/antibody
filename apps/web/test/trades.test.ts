@@ -162,6 +162,18 @@ test("the trade gaps are the notes about what the trade counts leave out", () =>
   expect(gaps.every((g) => g.kind === "paper_filings_unread" || /trades/.test(g.text))).toBe(true);
 });
 
+test("trade gaps are picked by id, whatever their count wording", () => {
+  const gap = (id: string, kind: string, text: string) => ({ id, kind, text, nodes: [], claims: [] });
+  const gaps = tradeGaps({
+    gaps: [
+      gap("unmatched-filers", "entity_recall", "1 trade in tied stocks is from a filer not matched to a member"),
+      gap("non-stock-trades", "other", "1 trade in tied companies was options (1), bonds (0) or other securities (0)"),
+      gap("clients-limited", "other", "12 trades is not about trades"),
+    ],
+  } as never);
+  expect(gaps.map((g) => g.id)).toEqual(["unmatched-filers", "non-stock-trades"]);
+});
+
 test("trades group by owner, most first, and by amount range, smallest first", () => {
   const book = tradeBook(model());
   const owners = byOwner(book.all);

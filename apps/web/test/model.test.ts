@@ -112,6 +112,13 @@ test("the closest section to quiet-and-costly has a score above zero and names w
   expect(near.missed.some((w) => /stakes/.test(w))).toBe(true);
 });
 
+test("one spelling for CoreCivic and Coca-Cola", () => {
+  expect(plainName("CORECIVIC, INC. POLITICAL ACTION COMMITTEE (CORECIVIC PAC)", 60)).toContain("CoreCivic");
+  expect(plainName("COCA COLA CO")).toBe("Coca-Cola");
+  expect(plainName("COCA-COLA COMPANY")).toBe("Coca-Cola");
+  expect(nice("THE COCA-COLA COMPANY NONPARTISAN COMMITTEE FOR GOOD GOVERNMENT")).toContain("Coca-Cola Company");
+});
+
 test("Mc- and NBC names are cased as their owners write them", () => {
   expect(nice("MCKESSON CORP")).toBe("McKesson Corp");
   expect(nice("COMCAST CORPORATION & NBCUNIVERSAL POLITICAL ACTION COMMITTEE - FEDERAL")).toContain("NBCUniversal");

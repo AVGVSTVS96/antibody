@@ -1,4 +1,13 @@
-import { type KeyboardEvent, memo, type PointerEvent, type ReactNode, useMemo, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  memo,
+  type PointerEvent,
+  type ReactNode,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { count, musd } from "../lib/format.ts";
 import {
   type Geometry,
@@ -287,6 +296,8 @@ export function Tape<R extends TapeMark>({
   note,
 }: TapeProps<R>) {
   const stage = useRef<HTMLDivElement>(null);
+  const flag = useRef<HTMLSpanElement>(null);
+  const [flagWidth, setFlagWidth] = useState(0);
   const width = useWidth(stage);
   const compact = width > 0 && width < COMPACT_BELOW;
   const marked = tape.headline + tape.quiet > 0;
@@ -301,6 +312,7 @@ export function Tape<R extends TapeMark>({
   const currentIndex = useMemo(() => (current ? tape.rows.findIndex((r) => r.id === current) : -1), [tape, current]);
   const run = useMemo(() => (note ? quietRun(tape) : null), [tape, note]);
   const labels = useMemo(() => (width ? axisLabels(tape, width) : []), [tape, width]);
+  useLayoutEffect(() => setFlagWidth(flag.current?.offsetWidth ?? 0));
   if (!n) return null;
 
   const showAxis = axis ?? !compact;
@@ -383,6 +395,7 @@ export function Tape<R extends TapeMark>({
   const cur = currentIndex >= 0 ? marks[currentIndex]! : null;
   const currentText = `§${tape.rows[currentIndex]?.num} · ${currentLabel}`;
   const flipLabel = !!cur && cur.x + currentText.length * LABEL_CHAR + 12 > width - AXIS_ROOM;
+  const flagLeft = cur ? Math.max(flipLabel ? cur.x + cur.w + 3 - flagWidth : cur.x - 3, g.flat ? 0 : AXIS_ROOM) : 0;
   const runFrom = run && marks[run.from]!;
   const runTo = run && marks[run.to]!;
 
@@ -423,10 +436,7 @@ export function Tape<R extends TapeMark>({
         {cur && (
           <>
             <i className="tape-current" style={{ left: cur.x - 3, width: cur.w + 6 }} />
-            <span
-              className="tape-current-label"
-              style={flipLabel ? { right: width - cur.x - cur.w - 3 } : { left: cur.x - 3 }}
-            >
+            <span ref={flag} className="tape-current-label" style={{ left: flagLeft }}>
               {currentText}
             </span>
           </>

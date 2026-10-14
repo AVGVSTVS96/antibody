@@ -6,7 +6,7 @@ import { Note, Stat, StatRow } from "../ui/primitives.tsx";
 import { Src } from "../ui/receipt.tsx";
 import { DollarRow } from "./Bars.tsx";
 import { ChapterPage } from "./ChapterPage.tsx";
-import { bigUsd, bigUsdSum, ch3, ch3Head, figure } from "./data.ts";
+import { bigUsd, ch3, ch3Head, figure, shownSum } from "./data.ts";
 import { Cap } from "./parts.tsx";
 import { useTween } from "./tween.ts";
 
@@ -31,10 +31,11 @@ export default function Ch3({ m }: { m: BillModel }) {
   const gap =
     data.gap != null && data.billTotal != null ? (
       <Note title="GAP SHOWN · SECTIONS ≠ BILL TOTAL" tone="dashed">
-        Section lines add up to {figure(data.sectionSum)}. CBO's bill total is {figure(data.billTotal)}.{" "}
+        Section lines add up to {figure(data.sectionSum, data.digits)}. CBO's bill total is{" "}
+        {figure(data.billTotal, data.digits)}.{" "}
         {Math.abs(data.sectionSum) <= Math.abs(data.billTotal)
-          ? `The ${bigUsd(data.gap)} gap is dollars CBO did not pin to one section.`
-          : `The two differ by ${bigUsd(data.gap)}: CBO prints some dollars only for the whole bill or for a group of sections.`}{" "}
+          ? `The ${shownSum(data.digits, data.billTotal, -data.sectionSum)} gap is dollars CBO did not pin to one section.`
+          : `The two differ by ${shownSum(data.digits, data.billTotal, -data.sectionSum)}: CBO prints some dollars only for the whole bill or for a group of sections.`}{" "}
         {count(data.noFigure, "section")} {data.noFigure === 1 ? "has" : "have"} no CBO figure at all, and{" "}
         {data.evenSplit} {data.evenSplit === 1 ? "shows" : "show"} an even share of a shared line.
       </Note>
@@ -51,7 +52,7 @@ export default function Ch3({ m }: { m: BillModel }) {
       kicker={data.kicker}
       prose={[
         mv
-          ? `Sections add ${bigUsd(data.added)} and cut ${bigUsd(data.cut)}. Gross movement counts adds and cuts alike; it is not net cost. Quiet is about coverage and timing, not size.`
+          ? `Sections add ${bigUsd(data.added, data.digits)} and cut ${bigUsd(data.cut, data.digits)}. Gross movement counts adds and cuts alike; it is not net cost. Quiet is about coverage and timing, not size.`
           : undefined,
       ]}
       chips={chosen && <Src ids={data.baselines.map((b) => b.est.claim)} label="CBO ESTIMATE" />}
@@ -88,9 +89,9 @@ export default function Ch3({ m }: { m: BillModel }) {
         <section className="moves">
           <Cap>Where the dollars move</Cap>
           <p>
-            Sections add {bigUsd(data.added)} and cut {bigUsd(data.cut)}. Gross movement,{" "}
-            {bigUsdSum(data.added, data.cut)}, counts adds and cuts alike: it is not net cost. Quiet is about coverage
-            and timing, not size: it can sit on a small dollar figure or a big one.
+            Sections add {bigUsd(data.added, data.digits)} and cut {bigUsd(data.cut, data.digits)}. Gross movement,{" "}
+            {shownSum(data.digits, data.added, data.cut)}, counts adds and cuts alike: it is not net cost. Quiet is
+            about coverage and timing, not size: it can sit on a small dollar figure or a big one.
           </p>
           <div className="move-bar" role="toolbar" aria-label="Gross movement by kind of section">
             {(["other", "loud", "quiet"] as const).map(
@@ -102,7 +103,7 @@ export default function Ch3({ m }: { m: BillModel }) {
                     data-kind={k}
                     style={{ flexGrow: mv[k] }}
                     aria-pressed={kind === k}
-                    aria-label={`${KIND_LABEL[k]} sections: ${bigUsd(mv[k])}`}
+                    aria-label={`${KIND_LABEL[k]} sections: ${bigUsd(mv[k], data.digits)}`}
                     onClick={() => setKind(kind === k ? null : k)}
                   />
                 ),
@@ -113,7 +114,7 @@ export default function Ch3({ m }: { m: BillModel }) {
               <Stat
                 key={k}
                 tone={k === "quiet" && data.byKind.quiet.length ? "quiet" : undefined}
-                value={bigUsd(mv[k])}
+                value={bigUsd(mv[k], data.digits)}
                 label={
                   k === "quiet" && !data.quietTested
                     ? "quiet sections: bill not tested"

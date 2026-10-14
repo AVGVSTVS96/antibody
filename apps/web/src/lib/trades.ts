@@ -254,9 +254,11 @@ export function rankMembers(m: BillModel, companies: ReadonlySet<NodeId>): Ranke
   return out.sort((a, b) => b.companies - a.companies || a.member.node.label.localeCompare(b.member.node.label));
 }
 
+const TRADE_GAPS = new Set(["non-stock-trades", "unmatched-filers"]);
+
 /** The bundle's notes on what the trade counts leave out: paper filings not read, options and bonds, unmatched filers. */
 export function tradeGaps(b: Bundle): Bundle["gaps"] {
-  return b.gaps.filter((g) => g.kind === "paper_filings_unread" || /^[\d,]+ trades /.test(g.text));
+  return b.gaps.filter((g) => g.kind === "paper_filings_unread" || TRADE_GAPS.has(g.id));
 }
 
 const OWNER: Record<Owner, string> = {

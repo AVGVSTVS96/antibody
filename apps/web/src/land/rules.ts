@@ -1,6 +1,7 @@
 import type { BundleIndex, Featured } from "@antibody/core";
 import { count, day } from "../lib/format.ts";
-import { money } from "./format.ts";
+import { extraDigits } from "../lib/sums.ts";
+import { money, moneyPrinter, shownMoney } from "./format.ts";
 
 export type IndexBill = BundleIndex["bills"][number];
 export type Stats = NonNullable<IndexBill["stats"]>;
@@ -52,7 +53,8 @@ export function storyOf(b: Entry): Story {
     };
   }
   const { addedMusd, cutMusd, measured } = s.quietCost;
-  const cost = [addedMusd && `${money(addedMusd)} added`, cutMusd && `${money(cutMusd)} cut`]
+  const more = extraDigits(moneyPrinter, (v, eq) => eq(v(addedMusd) + v(cutMusd), addedMusd + cutMusd));
+  const cost = [addedMusd && `${money(addedMusd, more)} added`, cutMusd && `${money(cutMusd, more)} cut`]
     .filter(Boolean)
     .join(" and ");
   const loud =
@@ -67,7 +69,7 @@ export function storyOf(b: Entry): Story {
     : "CBO gave none of them a figure of its own.";
   return {
     lead: count(s.buried, "quiet section"),
-    mark: measured ? `${money(addedMusd + cutMusd)} of change.` : null,
+    mark: measured ? `${shownMoney(more, addedMusd, cutMusd)} of change.` : null,
     body: `${name}: ${loud}${run}${priced}`,
   };
 }

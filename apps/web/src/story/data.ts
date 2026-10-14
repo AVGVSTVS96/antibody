@@ -1,6 +1,7 @@
 import { type Bundle, billStats, type Dollar, headlineDeficit, type NodeId, type Owner } from "@antibody/core";
 import { count, day, deficitWords, nice, plainName, usd } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
+import { extraDigits, type Printer } from "../lib/sums.ts";
 import { daysBetween, medianPerTrader, tradeBook, windowShare } from "../lib/trades.ts";
 import { decides } from "../member/votes.ts";
 
@@ -27,12 +28,29 @@ const pct = (a: number, b: number) => Math.round((100 * a) / b);
 export const shortDay = (iso: string) => day(iso).replace(/, \d{4}$/, "");
 const year = (iso: string) => iso.slice(0, 4);
 
-/** `$3.39T`, `$12.5B`, `$254B`, `$120M`: the unsigned size of CBO millions, three digits at most. The one money format of the story. */
-export function bigUsd(m: number): string {
+const unitOf = (a: number) =>
+  a >= 1e6
+    ? { div: 1e6, unit: "T", dec: 2 }
+    : a >= 1e3
+      ? { div: 1e3, unit: "B", dec: a < 1e5 ? 1 : 0 }
+      : { div: 1, unit: "M", dec: 0 };
+
+/**
+ * `$3.39T`, `$12.5B`, `$254B`, `$120M`: the unsigned size of CBO millions, three digits at most. The one money format
+ * of the story. `extra` adds decimals where a sentence's parts need them to add up to its total.
+ */
+export function bigUsd(m: number, extra = 0): string {
   const a = Math.abs(m);
-  if (a >= 1e6) return `$${(a / 1e6).toFixed(2)}T`;
-  if (a >= 1e3) return `$${a < 1e5 ? (a / 1e3).toFixed(1) : Math.round(a / 1e3).toLocaleString("en-US")}B`;
-  return Math.round(a) === 0 ? "$0" : `$${Math.round(a)}M`;
+  const { div, unit, dec } = unitOf(a);
+  const text = (a / div).toFixed(dec + extra);
+  return Number(text) === 0 ? "$0" : `$${text}${unit}`;
+}
+
+/** The value `bigUsd` prints, signed, in $ millions. */
+export function usdShown(m: number, extra = 0): number {
+  const a = Math.abs(m);
+  const { div, dec } = unitOf(a);
+  return Math.sign(m) * Number((a / div).toFixed(dec + extra)) * div;
 }
 
 /** "The most-named section", "All 3 most-named sections", "2 of the 3 most-named sections": the subject of a sentence. */
@@ -43,23 +61,17 @@ export const mostNamed = (unmentioned: number, top: number) =>
       ? "The most-named section"
       : `All ${top} most-named sections`;
 
-/** A figure's size as `bigUsd` prints it, in $ millions. */
-const shown = (m: number) => {
-  const a = Math.abs(m);
-  return a >= 1e6
-    ? Math.round(a / 1e4) * 1e4
-    : a >= 1e5
-      ? Math.round(a / 1e3) * 1e3
-      : a >= 1e3
-        ? Math.round(a / 100) * 100
-        : Math.round(a);
-};
+export const usdPrinter: Printer = { text: bigUsd, value: usdShown };
 
-/** The parts rounded as `bigUsd` shows them, then added, so a sentence's parts always add up to its total. */
-export const bigUsdSum = (...parts: number[]) => bigUsd(parts.reduce((n, m) => n + shown(m), 0));
+/** The sum of figures as each prints, so a sentence's total is always its printed parts added up. */
+export const shownSum = (extra: number, ...parts: number[]) =>
+  bigUsd(
+    parts.reduce((n, m) => n + usdShown(m, extra), 0),
+    extra,
+  );
 
 /** `+$3.39T`, `−$12.5B`: the same size with its sign always spelled out. */
-export const figure = (m: number) => `${m < 0 ? "−" : "+"}${bigUsd(m)}`;
+export const figure = (m: number, extra = 0) => `${m < 0 ? "−" : "+"}${bigUsd(m, extra)}`;
 
 /** Client spending with one decimal: `$41.2M`. */
 export function spend(n: number): string {
@@ -313,8 +325,12 @@ export function ch2(m: BillModel): Chapter<Ch2Data> {
   const adds = rows.filter((r) => r.musd != null && !r.evenSplit && r.musd > 0).length;
   const cuts = rows.filter((r) => r.musd != null && !r.evenSplit && r.musd < 0).length;
   const net = addedMusd - cutMusd;
+  const more = extraDigits(
+    usdPrinter,
+    (v, eq) => eq(v(addedMusd) + v(cutMusd), addedMusd + cutMusd) && eq(v(addedMusd) - v(cutMusd), net),
+  );
   const cbo = measured
-    ? `CBO prices ${[adds && `${adds} at ${bigUsd(addedMusd)} more deficit`, cuts && `${cuts} at ${bigUsd(cutMusd)} less`].filter(Boolean).join(" and ")}${adds && cuts ? `: a net ${net < 0 ? "cut" : "addition"} of ${bigUsd(net)}` : ""}.${measured < n ? ` ${n - measured} have no CBO figure of their own and qualified through lobbying.` : ""}`
+    ? `CBO prices ${[adds && `${adds} at ${bigUsd(addedMusd, more)} more deficit`, cuts && `${cuts} at ${bigUsd(cutMusd, more)} less`].filter(Boolean).join(" and ")}${adds && cuts ? `: a net ${net < 0 ? "cut" : "addition"} of ${shownSum(more, addedMusd, -cutMusd)}` : ""}.${measured < n ? ` ${n - measured} have no CBO figure of their own and qualified through lobbying.` : ""}`
     : "CBO gave none of them its own dollar figure; they qualified through lobbying.";
 
   return chapter(
@@ -324,7 +340,7 @@ export function ch2(m: BillModel): Chapter<Ch2Data> {
         text: `${hits ? count(hits, "mention") : `0 of ${articles.toLocaleString("en-US")} articles`}.`,
         tone: "label",
       },
-      ...(measured ? [{ text: `${bigUsd(addedMusd + cutMusd)} of changes.` }] : []),
+      ...(measured ? [{ text: `${shownSum(more, addedMusd, cutMusd)} of changes.` }] : []),
     ],
     `${lateLine} ${press} ${cbo}`,
     data,
@@ -356,6 +372,8 @@ export interface Ch3Data {
   biggest: SectionDollar[];
   byKind: Record<"loud" | "quiet" | "other", SectionDollar[]>;
   sectionSum: number;
+  /** Extra decimals the chapter's dollar figures need for its parts to add up to its totals. */
+  digits: number;
   /** CBO's whole-bill figure on the baseline the section lines are on, and how far the section lines fall from it. */
   billTotal: number | null;
   gap: number | null;
@@ -399,20 +417,31 @@ export function ch3(m: BillModel): Chapter<Ch3Data> {
     : null;
   const comparable = law && sectionBaseline?.baseline === "current-law" ? law : null;
 
+  const movement = figured.length
+    ? { loud: gross(byKind.loud), quiet: gross(byKind.quiet), other: gross(byKind.other) }
+    : null;
+  const billTotal = comparable?.d.amountMusd ?? null;
+  const digits = extraDigits(
+    usdPrinter,
+    (v, eq) =>
+      eq(v(added) + v(cut), added + cut) &&
+      (!movement || eq(v(movement.loud) + v(movement.quiet) + v(movement.other), added + cut)) &&
+      (billTotal == null || eq(v(sectionSum) + v(billTotal - sectionSum), billTotal)),
+  );
+
   const data: Ch3Data = {
     baselines,
     quietTested: stats.buriedTest.tested,
     kicker: baselines[0] ? `CBO · ${baselines[0].est.versionScored} · ${baselines[0].d.period}` : null,
-    movement: figured.length
-      ? { loud: gross(byKind.loud), quiet: gross(byKind.quiet), other: gross(byKind.other) }
-      : null,
+    movement,
+    digits,
     added,
     cut,
     figured: figured.length,
     biggest: [...figured].sort((x, y) => Math.abs(y.musd) - Math.abs(x.musd)).slice(0, 10),
     byKind,
     sectionSum,
-    billTotal: comparable?.d.amountMusd ?? null,
+    billTotal,
     gap: comparable ? comparable.d.amountMusd - sectionSum : null,
     noFigure: fin.length - figured.length,
     evenSplit: figured.filter((s) => s.evenSplit).length,
