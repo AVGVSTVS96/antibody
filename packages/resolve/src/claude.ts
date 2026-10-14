@@ -2,7 +2,7 @@ import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-export const MODEL = process.env.ANTIBODY_REVIEW_MODEL ?? "opus";
+export const MODEL = process.env.ANTIBODY_REVIEW_MODEL ?? "sonnet";
 
 /**
  * One `claude -p` call with no tools, settings or MCP servers, returning the JSON array in its answer.

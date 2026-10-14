@@ -29,7 +29,8 @@ const outcomes = (await Bun.file(
 ).json()) as Resolved["outcomes"];
 const edgar = new Map((await loadEdgar()).map((c) => [c.cik, c]));
 
-const hash = (s: string) => Number(new Bun.CryptoHasher("sha1").update(`antibody-p1:${s}`).digest("hex").slice(0, 8));
+const hash = (s: string) =>
+  Number.parseInt(new Bun.CryptoHasher("sha1").update(`antibody-p1:${s}`).digest("hex").slice(0, 8), 16);
 const strata = new Map<string, Resolved["outcomes"]>();
 for (const o of outcomes) {
   if (old.has(o.mention.name.toUpperCase())) continue;
