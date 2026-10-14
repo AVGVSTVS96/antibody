@@ -195,7 +195,7 @@ export function buildLines(
         years,
         title: it.title,
         even: true,
-        restsOn: [id],
+        restsOn: [`cbo_lines/${id}`],
       });
   }
 

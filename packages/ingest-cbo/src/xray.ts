@@ -111,7 +111,9 @@ export async function xray(ctx: StageContext) {
         `${built.lines.length} lines`,
         r.checks ? `reconcile ${r.exact}/${r.checks} exact` : null,
         r.failing.length ? `NOT reconciled: ${r.failing.join(", ")}` : null,
-        built.unmapped.length ? `unmapped sections ${built.unmapped.join(" ")}` : null,
+        sections.length && built.unmapped.length
+          ? `${built.unmapped.length} CBO section numbers not found in ${code ?? "an unknown version"}: ${built.unmapped.slice(0, 8).join(" ")}`
+          : null,
       ]
         .filter(Boolean)
         .join(" · "),
