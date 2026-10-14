@@ -19,12 +19,19 @@ import "../money/money.css";
 const SHOWN = 12;
 
 function Headline({ m, v, ties, matched }: { m: BillModel; v: SectionView; ties: number; matched: number }) {
-  if (!ties) return <>No lobbying client named {m.secLabel(v)} by number.</>;
+  if (!ties)
+    return v.named ? (
+      <>None of the clients drawn here named {m.secLabel(v)}.</>
+    ) : (
+      <>No lobbying filing names {m.secLabel(v)}.</>
+    );
   if (!matched) return <>{count(ties, "client")} named it. None matched a listed company.</>;
   return (
     <>Who traded the stock of the {matched === 1 ? "company" : `${matched} companies`} whose lobbyists named it.</>
   );
 }
+
+const filingsName = (n: number) => `${count(n, "filing")} ${n === 1 ? "names" : "name"}`;
 
 const UNMATCHED = " Unmatched with the most reports: ";
 
@@ -54,12 +61,12 @@ function Follow({ v }: { v: SectionView }) {
   const bare = own.length === 0;
   const ties = bare ? (wide ? bill : []) : own;
   const rows = useMemo(() => ledger(m, ties), [m, ties]);
-  const companies = useMemo(() => new Set(rows.flatMap((r) => (r.tie.company ? [r.tie.company.id] : []))), [rows]);
+  const companies = useMemo(() => new Set(rows.flatMap((r) => (r.company ? [r.company.id] : []))), [rows]);
   const ranked = useMemo(() => rankMembers(m, companies), [m, companies]);
   const rate = useMemo(() => baseRate(m, companies), [m, companies]);
   const [all, setAll] = useState(false);
   const { bill: card } = m.b;
-  const filings = ties.reduce((n, t) => n + t.edge.props.reports, 0);
+  const clients = m.b.nodes.filter((n) => n.kind === "client").length;
   const inWindow = ranked.filter((r) => r.inWindow > 0);
   const party = (list: typeof ranked) =>
     (["R", "D", "I"] as const)
@@ -70,8 +77,26 @@ function Follow({ v }: { v: SectionView }) {
   const recall = m.b.gaps.find((g) => g.kind === "entity_recall" && /lobbying clients/.test(g.text));
   const kind = v.kind === "buried" ? "quiet" : v.kind === "headline" ? "headline" : null;
 
+  const tapeView = (
+    <Tape
+      tape={tape}
+      current={v.s.id}
+      currentLabel={phone ? undefined : "The section whose money you are following"}
+      pinned={phone}
+      legend={!phone}
+      axis={!phone}
+      caption={
+        phone
+          ? "The tape · tap a mark to re-aim"
+          : "The tape · same tape, carried across every step · click any mark to re-aim this page"
+      }
+      onSelect={(row) => navigate(sectionHref(card.id, row.routeId))}
+    />
+  );
+
   return (
     <div className="money">
+      {phone && tapeView}
       <Wrap className="page money-head">
         <Kicker>
           STEP 3 · FOLLOW THE MONEY · {card.display} › {m.secLabel(v)} {v.s.heading}
@@ -84,18 +109,25 @@ function Follow({ v }: { v: SectionView }) {
             <p className="lead">
               {bare ? (
                 <>
-                  {count(
-                    bill.reduce((n, t) => n + t.edge.props.reports, 0),
-                    "filing",
-                  )}{" "}
-                  from {count(bill.length, "client")} name {card.display} as a whole, but none names {m.secLabel(v)}, so
-                  there is no stock to trace from it.
+                  {v.named > 0 && (
+                    <>
+                      {filingsName(v.named)} it; none is from a client drawn here (only the{" "}
+                      {clients.toLocaleString("en-US")} busiest of the bill's{" "}
+                      {m.b.lobbying.clients.toLocaleString("en-US")} lobbying clients are).{" "}
+                    </>
+                  )}
+                  {bill.length > 0 &&
+                    `${count(
+                      bill.reduce((n, t) => n + t.edge.props.reports, 0),
+                      "filing",
+                    )} from ${count(bill.length, "client")} name ${card.display} as a whole, so there is no stock to trace from ${m.secLabel(v)}.`}
                 </>
               ) : (
                 <>
-                  {count(filings, "filing")} from {count(own.length, "client")} name {m.secLabel(v)} by number. Each row
-                  is one client: the listed company it matches, the dates members of Congress traded that stock, and
-                  what its PAC gave (a floor).
+                  {filingsName(v.named)} {m.secLabel(v)}; the {v.drawn.toLocaleString("en-US")} from these{" "}
+                  {count(own.length, "client")} {own.length === 1 ? "is" : "are"} drawn. Each row is one company: the
+                  clients that merge into it, the dates members of Congress traded its stock, and what its PAC gave (a
+                  floor).
                 </>
               )}
             </p>
@@ -128,20 +160,7 @@ function Follow({ v }: { v: SectionView }) {
         </div>
       </Wrap>
 
-      <Tape
-        tape={tape}
-        current={v.s.id}
-        currentLabel={phone ? undefined : "The section whose money you are following"}
-        pinned={phone}
-        legend={!phone}
-        axis={!phone}
-        caption={
-          phone
-            ? "The tape · tap a mark to re-aim"
-            : "The tape · same tape, carried across every step · click any mark to re-aim this page"
-        }
-        onSelect={(row) => navigate(sectionHref(card.id, row.routeId))}
-      />
+      {!phone && tapeView}
 
       {bare && (
         <Section kicker="Bill-wide view" title="The clients that named the bill as a whole">
@@ -166,7 +185,7 @@ function Follow({ v }: { v: SectionView }) {
 
       {rows.length > 0 && (
         <Section
-          kicker={`The ledger · one row per lobbying client · left to right is the trail${bare ? " · bill-wide" : ""}`}
+          kicker={`The ledger · one row per company · left to right is the trail${bare ? " · bill-wide" : ""}`}
           aside={
             <ul className="legend legend-trade">
               <li>

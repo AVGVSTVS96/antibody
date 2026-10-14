@@ -35,8 +35,7 @@ function MonthChart({
   const n = months.length;
   const peak = months.reduce((a, x) => (x.trades > a.trades ? x : a), months[0]!);
   const w = 100 / n;
-  const at = months.indexOf(peak) / n;
-  const edge = at < 0.2 ? "start" : at > 0.75 ? "end" : null;
+  const at = (months.indexOf(peak) + 0.5) / n;
   const band =
     window &&
     ([
@@ -45,6 +44,13 @@ function MonthChart({
     ] as const);
   return (
     <figure className="months">
+      <p className="months-peak">
+        {peak.trades > 0 && (
+          <span style={{ left: `${at * 100}%`, transform: `translateX(-${at * 100}%)` }}>
+            {monthLabel(peak.month)} · {count(peak.trades, "trade")}
+          </span>
+        )}
+      </p>
       <svg width="100%" height={HEIGHT} role="img" aria-label={label}>
         {band && (
           <rect className="months-band" x={`${band[0] * w}%`} width={`${(band[1] - band[0]) * w}%`} height={HEIGHT} />
@@ -60,13 +66,8 @@ function MonthChart({
         <line className="months-base" x1="0" x2="100%" y1={HEIGHT - 0.5} y2={HEIGHT - 0.5} />
       </svg>
       <figcaption>
-        {!(peak.trades > 0 && edge === "start") && <span>{monthLabel(months[0]!.month)}</span>}
-        {peak.trades > 0 && (
-          <span style={edge ? undefined : { left: `${(months.indexOf(peak) + 0.5) * w}%` }} data-peak={edge ?? ""}>
-            {monthLabel(peak.month)} · {count(peak.trades, "trade")}
-          </span>
-        )}
-        {!(peak.trades > 0 && edge === "end") && <span>{monthLabel(months.at(-1)!.month)}</span>}
+        <span>{monthLabel(months[0]!.month)}</span>
+        <span>{monthLabel(months.at(-1)!.month)}</span>
       </figcaption>
     </figure>
   );
@@ -86,28 +87,30 @@ export function Months({ member }: { member: NodeOf<"member"> }) {
   const last = lastName(member);
   return (
     <div className="baseline">
-      <div className="baseline-charts">
-        <div>
-          <h3 className="kicker">
-            {last}'s trades by month · all {everyone.length} months · gray = the {ws.windowDays} days the bill moved
-          </h3>
-          <MonthChart months={own} window={book.window} label={`${last}'s trades per month`} />
-        </div>
+      <div className="baseline-charts" data-solo={mine.length === 0 || undefined}>
+        {mine.length > 0 ? (
+          <div>
+            <h3 className="kicker">
+              {last}'s trades by month · all {everyone.length} months · gray = the {ws.windowDays} days the bill moved
+            </h3>
+            <MonthChart months={own} window={book.window} label={`${last}'s trades per month`} />
+          </div>
+        ) : (
+          <p className="baseline-none">{last} filed no trades in tied companies.</p>
+        )}
         <div>
           <h3 className="kicker">Is that a spike? All {everyone.length} months, all members</h3>
           <MonthChart months={everyone} window={book.window} label="All members' trades per month" />
         </div>
       </div>
       <p>
-        {mine.length ? (
+        {mine.length > 0 && (
           <>
             {last} filed {count(mine.length, "trade")} in{" "}
             {count(new Set(mine.map((t) => t.company)).size, "tied company", "tied companies")} across the full span.{" "}
             {inside} fall in the {ws.windowDays} days the bill moved
             {peak.trades > inside ? `; ${monthLabel(peak.month)} alone has ${peak.trades}` : ""}.{" "}
           </>
-        ) : (
-          <>{last} has no trades in tied companies in the data. </>
         )}
         Across all members, {ws.inside.toLocaleString("en-US")} of {ws.trades.toLocaleString("en-US")} trades (
         {share(ws.inside, ws.trades)}) fall in those {ws.windowDays} days, and {ws.windowDays} of{" "}

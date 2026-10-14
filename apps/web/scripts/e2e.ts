@@ -950,6 +950,15 @@ for (const id of ["119-hr-1", "117-hr-5376", "119-s-1582"].filter((i) => ids.inc
     );
     const traders = new Set(traded.filter((e) => companies.has(e.dst)).map((e) => e.src));
     const { page, errors } = await open(`/bill/${id}/section/${encodeURIComponent(slugOf(bundle, sec))}`);
+    const named = sec.score?.components.lobbyingReports ?? 0;
+    const drawn = edges.reduce((n, e) => (e.kind === "lobbied" && e.dst === secNode ? n + e.props.reports : n), 0);
+    const clients = byCount.get(secNode)!;
+    const lede = await page.locator(".money-head .lead").innerText();
+    check(
+      lede.startsWith(`${named.toLocaleString("en-US")} filings name §${sec.num}`) &&
+        lede.includes(`; the ${drawn.toLocaleString("en-US")} from these ${clients} clients are drawn.`),
+      `${id} money: the lede says ${named} filings name the section and the ${drawn} from these ${clients} clients are drawn`,
+    );
     check(
       companies.size === 0 || (await page.locator(".lrow").count()) > 0,
       `${id} money: a row for each client with a listed company`,
@@ -1023,9 +1032,19 @@ for (const id of ["119-hr-1", "117-hr-5376", "119-s-1582"].filter((i) => ids.inc
   const bare = bundle.sections.find((s) => s.inFinal && !byCount.has(`section:${s.id}`));
   if (bare) {
     const { page } = await open(`/bill/${id}/section/${encodeURIComponent(slugOf(bundle, bare))}`);
+    const named = bare.score?.components.lobbyingReports ?? 0;
     check(
-      (await page.locator("h1").innerText()).startsWith("No lobbying client named"),
-      `${id} money: a section no client named says so`,
+      (await page.locator("h1").innerText()).startsWith(
+        named > 0 ? "None of the clients drawn here named" : "No lobbying filing names",
+      ),
+      `${id} money: a section no drawn client named says so (${named} filings name it)`,
+    );
+    check(
+      named === 0 ||
+        (await page.locator(".money-head .lead").innerText()).startsWith(
+          `${named.toLocaleString("en-US")} filings name it; none is from a client drawn here`,
+        ),
+      `${id} money: and says how many filings do name it`,
     );
     check(
       (await page.locator(".lrow").count()) === 0 && (await page.getByText("Show the bill-wide view").count()) === 1,
@@ -1082,6 +1101,8 @@ for (const id of ["119-hr-1", "117-hr-5376", "119-s-1582"].filter((i) => ids.inc
           t
             .replace(who, "X")
             .replace(/(: \$[\d,.]+[KMB]?)?\.?$/, "")
+            .replace(/^No net PAC money from tied companies in the data$/, "X's tied PAC donors")
+            .replace(/(\d+ largest |\d+ |one )?tied PAC donors?/, "tied PAC donors")
             .replace(/[\d,.$]+[KMB]?/g, "#"),
         )
         .filter((t) => !/in th(is|ese)/.test(t)),

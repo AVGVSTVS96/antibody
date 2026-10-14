@@ -6,10 +6,12 @@ import { useModel } from "../ui/BillGate.tsx";
 import { Src } from "../ui/receipt.tsx";
 import { chipName } from "./Members.tsx";
 import { TradeStrip } from "./TradeStrip.tsx";
-import { type LedgerRow, methodWords } from "./ties.ts";
+import { clientLines, type LedgerRow, methodWords } from "./ties.ts";
+import { usePhone } from "./usePhone.ts";
 import "./money.css";
 
 const OPEN = 8;
+const OPEN_PHONE = 3;
 const PAGE = 24;
 
 const monthYear = (iso: string) =>
@@ -68,30 +70,34 @@ function Row({
   open: boolean;
   onToggle: () => void;
 }) {
-  const { tie, trades, traders, gifts } = row;
-  const { company, resolution, edge } = tie;
-  const name = nice(tie.client.label);
+  const { ties, company, trades, traders, gifts } = row;
+  const lines = clientLines(ties);
+  const methods = [...new Set(ties.flatMap((t) => (t.resolution ? [methodWords(t.resolution.props.method)] : [])))];
+  const inference = ties.some((t) => t.resolution?.basis === "inference");
   const first = trades.length ? [...new Set(trades.map((t) => t.edge.claims[0]!))] : [];
   return (
     <li className="lrow" data-open={open || undefined}>
       <div className="lc lc-client">
         <span className="lab">1 · Who lobbied it · fact</span>
-        <h3>{name}</h3>
-        <p className="meta">
-          <Src ids={edge.claims} label={count(edge.props.reports, "filing")} />
-          {" · "}
-          {count(edge.props.quarters, "quarter")}
-        </p>
+        {lines.map((l) => (
+          <div key={l.name} className="lclient">
+            <h3>{l.name}</h3>
+            <p className="meta">
+              <Src ids={l.claims} label={count(l.reports, "filing")} />
+              {l.quarters != null && ` · ${count(l.quarters, "quarter")}`}
+            </p>
+          </div>
+        ))}
       </div>
       <div className="lc lc-company">
         <span className="lab">2 · Listed company · inference</span>
-        {company && resolution ? (
-          <div className="cbox" data-inference={resolution.basis === "inference" || undefined}>
+        {company ? (
+          <div className="cbox" data-inference={inference || undefined}>
             <b>
               {company.ticker ?? "—"} {nice(company.label)}
             </b>
             <span>
-              {methodWords(resolution.props.method)} · <Src ids={resolution.claims} label="why" />
+              {methods.join(", ")} · <Src ids={ties.flatMap((t) => t.resolution?.claims ?? [])} label="why" />
             </span>
           </div>
         ) : (
@@ -104,7 +110,13 @@ function Row({
         <span className="lab">
           3 · When members traded the stock · {monthYear(domain[0])} → {monthYear(domain[1])}
         </span>
-        <TradeStrip trades={trades} domain={domain} window={window} label={`${name}'s stock`} fade />
+        <TradeStrip
+          trades={trades}
+          domain={domain}
+          window={window}
+          label={`${lines.map((l) => l.name).join(" and ")}'s stock`}
+          fade
+        />
       </div>
       <div className="lc lc-who">
         <span className="lab">4 · Who traded</span>
@@ -149,10 +161,11 @@ function Row({
 
 /** The collapsed form of a row: one line naming the client, its stock and its counts. */
 function Chip({ row, onOpen }: { row: LedgerRow; onOpen: () => void }) {
-  const { company, resolution } = row.tie;
+  const { company, ties } = row;
+  const resolution = ties[0]!.resolution;
   const body = (
     <>
-      <b>{plainName(row.tie.client.label, 30)}</b>
+      <b>{[...new Set(ties.map((t) => plainName(t.client.label, 30)))].join(" + ")}</b>
       <span>
         {[
           company?.ticker,
@@ -180,24 +193,27 @@ function Chip({ row, onOpen }: { row: LedgerRow; onOpen: () => void }) {
   );
 }
 
-/** One row per lobbying client: the client, the company it is matched to, when members traded its stock, who, and what its PAC gave. */
+/** One row per company's lobbying clients: the clients, the company they are matched to, when members traded its stock, who, and what its PAC gave. */
 export function Ledger({ rows }: { rows: LedgerRow[] }) {
   const m = useModel();
+  const phone = usePhone();
   const book = tradeBook(m);
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   const [members, setMembers] = useState<ReadonlySet<string>>(new Set());
   const [shown, setShown] = useState(PAGE);
+  const [collapsed, setCollapsed] = useState(true);
   const domain = book.span ?? (["2000-01-01", "2000-01-02"] as const);
-  const full = useMemo(
-    () => rows.filter((r, i) => (r.tie.company && i < OPEN) || opened.has(r.tie.client.id)),
-    [rows, opened],
-  );
+  const open = phone ? OPEN_PHONE : OPEN;
+  const full = useMemo(() => rows.filter((r, i) => (r.company && i < open) || opened.has(r.key)), [rows, opened, open]);
   const rest = rows.filter((r) => !full.includes(r));
   const toggle = (set: ReadonlySet<string>, id: string) => {
     const next = new Set(set);
     if (!next.delete(id)) next.add(id);
     return next;
   };
+  const more = rest.some((r) => r.company)
+    ? `${count(rest.length, "more client")}`
+    : `${count(rest.length, "client")} matched no listed company`;
   return (
     <div className="ledger">
       <div className="lhead" aria-hidden="true">
@@ -225,35 +241,49 @@ export function Ledger({ rows }: { rows: LedgerRow[] }) {
       <ul className="lrows">
         {full.map((r) => (
           <Row
-            key={r.tie.client.id}
+            key={r.key}
             row={r}
             domain={domain}
             window={book.window}
-            open={members.has(r.tie.client.id)}
-            onToggle={() => setMembers((s) => toggle(s, r.tie.client.id))}
+            open={members.has(r.key)}
+            onToggle={() => setMembers((s) => toggle(s, r.key))}
           />
         ))}
       </ul>
       {rest.length > 0 && (
         <div className="lrest">
-          <p className="kicker">
-            {rest.some((r) => r.tie.company)
-              ? `${count(rest.length, "more client")} · rows collapsed · open one to see its trail`
-              : `${count(rest.length, "client")} matched no listed company`}
-            {rest.length > shown && (
-              <>
-                {" · "}
+          {phone ? (
+            <button type="button" className="lmore" aria-expanded={!collapsed} onClick={() => setCollapsed((x) => !x)}>
+              {more}
+              {rest.some((r) => r.company) && ", collapsed"} {collapsed ? "↓" : "↑"}
+            </button>
+          ) : (
+            <p className="kicker">
+              {rest.some((r) => r.company) ? `${more} · rows collapsed · open one to see its trail` : more}
+              {rest.length > shown && (
+                <>
+                  {" · "}
+                  <button type="button" className="linkbtn" onClick={() => setShown((n) => n + PAGE)}>
+                    show {Math.min(PAGE, rest.length - shown)} more
+                  </button>
+                </>
+              )}
+            </p>
+          )}
+          {(!phone || !collapsed) && (
+            <>
+              <ul className="lchips">
+                {rest.slice(0, shown).map((r) => (
+                  <Chip key={r.key} row={r} onOpen={() => setOpened((s) => toggle(s, r.key))} />
+                ))}
+              </ul>
+              {phone && rest.length > shown && (
                 <button type="button" className="linkbtn" onClick={() => setShown((n) => n + PAGE)}>
                   show {Math.min(PAGE, rest.length - shown)} more
                 </button>
-              </>
-            )}
-          </p>
-          <ul className="lchips">
-            {rest.slice(0, shown).map((r) => (
-              <Chip key={r.tie.client.id} row={r} onOpen={() => setOpened((s) => toggle(s, r.tie.client.id))} />
-            ))}
-          </ul>
+              )}
+            </>
+          )}
         </div>
       )}
       <p className="kicker lfloor">
