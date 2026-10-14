@@ -14,7 +14,7 @@ Nonpartisan X-ray of US federal bills: headline vs. buried provisions, lobbying,
 packages/core        @antibody/core   the contract: Claim, Node/Edge kinds, TABLES (DuckDB rows), Bundle, Stage
 packages/ingest-*    one source each, writes its own tables
 packages/resolve     companies, entity resolution, tied stock
-packages/analyze     attention per section, LLM counterparts, headline vs buried scores
+packages/analyze     attention per section, headline vs buried scores
 packages/store       loads every table into data/antibody.duckdb, mints claims, builds bundles
 packages/watch       the daily watcher
 apps/cli             `bun run antibody xray <bill>` · `run <stage> [bill]` · `watch` · `stages`
@@ -35,7 +35,7 @@ Changing the contract: additive changes (a new column, table or edge prop) go st
 
 | spike | home | owns tables |
 |---|---|---|
-| `spikes/bills` (sections.py, amendments.py) | `packages/ingest-bills` | bills, versions, sections, sponsorships, bill_committees, amendments, amendment_sections |
+| `spikes/bills` (sections.py, amendments.py) | `packages/ingest-bills` | bills, versions, sections, sponsorships, bill_committees, amendments, amendment_sections, counterparts |
 | `spikes/cbo` (parse_xlsx/pdf/table1, reconcile, map_sections) | `packages/ingest-cbo` | cbo_estimates, cbo_lines, cbo_notes |
 | `spikes/lobbying` (lda.ts, extract.ts, staff.ts, pull.ts) | `packages/ingest-lobbying` | lda_filings, lda_clients, lda_bill_refs, lda_topic_refs, lda_lobbyists, lda_spend |
 | `spikes/trades` (fetch-house/senate, parse_house*, parse-senate, ocr_pages) | `packages/ingest-trades` | ptr_documents, trades |
@@ -43,7 +43,7 @@ Changing the contract: additive changes (a new column, table or edge prop) go st
 | `spikes/entities` load_fec.py | `packages/ingest-fec` | pacs, contributions |
 | `spikes/attention` gnews.py, fetch.py | `packages/ingest-news` | outlets, articles |
 | `spikes/entities` resolve*.py, llm_review.py, mentions.py | `packages/resolve` | companies, resolutions, benefits |
-| `spikes/attention` sections.py, match.py, score.py (late.py is replaced by `sections.late`) | `packages/analyze` | attention, counterparts, section_scores |
+| `spikes/attention` sections.py, match.py, score.py (late.py is replaced by `sections.late`) | `packages/analyze` | attention, section_scores |
 | `spikes/entities` graph.py, `spikes/report/export.py` | `packages/store` | builds graph, claims, bundles |
 | `spikes/report/page/antibody.html` (design reference) | `apps/web` | — |
 

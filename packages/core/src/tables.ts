@@ -68,12 +68,17 @@ export const TABLES = {
     first_version: z.string(),
     in_final: z.boolean(),
     changed_in: z.array(z.string()),
+    /** The version where this lineage ends; when `split_into` is non-empty it was split there, not dropped. */
     removed_in: z.string().nullable(),
     revived_in: z.array(z.string()),
     split_from: z.string().nullable(),
+    /** Sections later split out of this one (lineage ids). */
     split_into: z.array(z.string()),
     merged_into: z.string().nullable(),
-    /** First appears after the first chamber-passed version, and is not just split out of an older section. */
+    /**
+     * First appears in the first chamber-passed version or later (a floor amendment, the other chamber, conference),
+     * and is not just split out of an older section. Lineage only: an LLM counterpart (see `counterparts`) never sets it.
+     */
     late: z.boolean(),
     words: z.number().int(),
     text_url: z.url(),
@@ -101,6 +106,8 @@ export const TABLES = {
     number: z.string(),
     chamber: Chamber,
     sponsor_bioguide: z.string().nullable(),
+    /** Thomas code when a committee offered it (House Rules Committee substitutes have no member sponsor). */
+    sponsor_committee: z.string().nullable(),
     purpose: z.string().nullable(),
     status: z.enum(["agreed", "failed", "withdrawn", "no_action", "other"]),
     latest_action: z.string().nullable(),
@@ -113,7 +120,17 @@ export const TABLES = {
   amendment_sections: table("@antibody/ingest-bills", {
     amendment_id: z.string(),
     section_id: z.string(),
+    /** text: the amendment's printed text holds the section; inferred: it's the only agreed amendment that step. */
     how: z.enum(["text", "inferred"]),
+    /** inserted becomes an `inserted` edge from the sponsor; struck and changed are shown on the amendment only. */
+    effect: z.enum(["inserted", "struck", "changed"]),
+    ...inference,
+  }),
+  /** LLM-paired functional rewrites between a removed and an added section (Senate rewrites of House text). */
+  counterparts: table("@antibody/ingest-bills", {
+    bill_id: billId,
+    removed_section_id: z.string(),
+    added_section_id: z.string(),
     ...inference,
   }),
 
@@ -455,7 +472,7 @@ export const TABLES = {
     ...inference,
   }),
 
-  // ── @antibody/analyze: attention, counterparts, headline vs buried ──
+  // ── @antibody/analyze: attention, headline vs buried ──
   attention: table("@antibody/analyze", {
     bill_id: billId,
     /** null = the "bill as a whole" bucket, which also feeds the outside-the-text lane. */
@@ -465,12 +482,6 @@ export const TABLES = {
     trade_legal_hits: z.number().int(),
     pct: z.number().min(0).max(1).nullable(),
     example_article_ids: z.array(z.string()),
-    ...inference,
-  }),
-  counterparts: table("@antibody/analyze", {
-    bill_id: billId,
-    removed_section_id: z.string(),
-    added_section_id: z.string(),
     ...inference,
   }),
   section_scores: table("@antibody/analyze", {

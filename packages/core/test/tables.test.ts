@@ -123,3 +123,9 @@ test("cbo lines name their spending kind and estimates keep the PDF they quote",
   expect(TABLES.cbo_lines.schema.safeParse({ ...line, spending: "other" }).success).toBe(false);
   expect(Object.fromEntries(columns("cbo_estimates")).pdf_url).toBe("VARCHAR");
 });
+
+test("bills owns the LLM counterparts; amendment rows name a committee sponsor and each section's effect", () => {
+  expect(TABLES.counterparts.owner).toBe("@antibody/ingest-bills");
+  expect(Object.fromEntries(columns("amendments")).sponsor_committee).toBe("VARCHAR");
+  expect(Object.fromEntries(columns("amendment_sections")).effect).toBe("VARCHAR NOT NULL");
+});
