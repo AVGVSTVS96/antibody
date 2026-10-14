@@ -62,6 +62,11 @@ test("billStats counts the index card numbers", () => {
     vehicle: false,
     deficitMusd: 120,
     fingerprint: "u",
+    tape: { late: "l", dollars: ".", evenSplit: [] },
+    quietCost: { addedMusd: 0, cutMusd: 0, measured: 0 },
+    articlesRead: null,
+    mentions: null,
+    quietRun: null,
   });
 });
 

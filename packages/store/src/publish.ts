@@ -1,6 +1,6 @@
 import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type BillId, type Bundle, BundleIndex, billDisplay, billStats, type Row } from "@antibody/core";
+import { type BillId, type Bundle, BundleIndex, billDisplay, billStats, indexTotals, type Row } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 
 const STAMP = /"generatedAt":"[^"]*"/;
@@ -129,6 +129,7 @@ export async function writeIndex(
     generatedAt: new Date().toISOString(),
     bills,
     watch: await watchPicks(bundles, events ?? (await readRows("watch_events"))),
+    totals: indexTotals([...bundles.values()]),
   });
   await mkdir(dir, { recursive: true });
   await Bun.write(join(dir, "index.json"), `${JSON.stringify(index, null, 1)}\n`);

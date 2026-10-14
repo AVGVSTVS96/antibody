@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { Claim, ClaimId } from "./claim.ts";
 import { Edge, NodeId, nodeId } from "./graph.ts";
+import { QuietCost, QuietRun, Tape, tapeOf } from "./tape.ts";
+import { IndexTotals } from "./totals.ts";
 
 /**
  * The per-bill Bundle: everything the web app renders for one bill, written by @antibody/store to
@@ -348,6 +350,16 @@ export const BillStats = z.object({
   deficitMusd: z.number().nullable(),
   /** One letter per final section in order: h headline, b buried, n normal, u unscored. Drawn as the card's ring. */
   fingerprint: z.string().regex(/^[hbnu]*$/),
+  /** The same sections' late flags and dollar size classes, so the card's tape can be drawn from the index alone. */
+  tape: Tape.default({ late: "", dollars: "", evenSplit: [] }),
+  /** What the quiet-and-costly sections add and cut by CBO's figure for each; the card's "$101B added, $153B cut". */
+  quietCost: QuietCost.default({ addedMusd: 0, cutMusd: 0, measured: 0 }),
+  /** The news articles judged to be about the bill (the sample section counts come from); null when no sample was read. */
+  articlesRead: z.number().int().nullable().default(null),
+  /** Mentions of final sections in those articles: all, and those of the headline sections; null when sections were not ranked. */
+  mentions: z.object({ headline: z.number().int(), total: z.number().int() }).nullable().default(null),
+  /** The longest run of quiet-and-costly sections close together in bill order, when there is one. */
+  quietRun: QuietRun.nullable().default(null),
 });
 
 /** A bill the daily watcher flagged (from `watch_events`), x-rayed or not yet. */
@@ -383,6 +395,8 @@ export const BundleIndex = z.object({
     }),
   ),
   watch: z.array(WatchPick).default([]),
+  /** Counts over every bill in `bills`, each record once; null in an index written before this field. */
+  totals: IndexTotals.nullable().default(null),
 });
 export type BundleIndex = z.infer<typeof BundleIndex>;
 
@@ -541,5 +555,7 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     vehicle: !!b.bill.vehicle,
     deficitMusd: deficit?.amountMusd ?? null,
     fingerprint: final.map((s) => (s.score ? s.score.label[0] : "u")).join(""),
+    ...tapeOf(final, !b.bill.lateUnavailable),
+    articlesRead: b.attention.sample?.relevant ?? null,
   };
 }

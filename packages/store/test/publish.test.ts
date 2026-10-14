@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Bundle } from "@antibody/core";
+import { type Bundle, indexTotals } from "@antibody/core";
 import fixture from "../../core/fixtures/genius-mini.bundle.json";
 import { indexEntry, writeBundle, writeIndex } from "../src/publish.ts";
 
@@ -35,5 +35,6 @@ test("an index lists the curated ids first, in that order, and says what each bu
   expect(index.bills.map((b) => b.id)).toEqual(["117-hr-5376", bundle.bill.id]);
   expect(index.bills[1]).toEqual(indexEntry(bundle));
   expect(index.watch).toEqual([]);
+  expect(index.totals).toEqual(indexTotals([bundle, other]));
   expect((await Bun.file(join(published, "index.json")).json()).bills).toHaveLength(2);
 });

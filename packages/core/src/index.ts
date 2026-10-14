@@ -6,3 +6,5 @@ export * from "./graph.ts";
 export * from "./ids.ts";
 export type * from "./stage.ts";
 export * from "./tables.ts";
+export * from "./tape.ts";
+export * from "./totals.ts";
