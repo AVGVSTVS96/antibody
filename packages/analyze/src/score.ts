@@ -1,4 +1,4 @@
-import { type BillId, figureOrder, type Row, sectionFigure } from "@antibody/core";
+import { type BillId, BURIED_BARS, figureOrder, type Row, sectionFigure } from "@antibody/core";
 
 /**
  * The buried score, one formula for every bill and party. Every constant is here and in SCORE_TEXT.
@@ -13,12 +13,12 @@ export const SCORE = {
   lateBonus: 0.25,
   offTopicBonus: 0.25,
   /** A "sneak signal" for the buried label: late, or at least this far off-topic (0-1 rank within the bill). */
-  offTopicSneak: 0.75,
+  offTopicSneak: BURIED_BARS.offTopic,
   /** headline: top tenth by attention, with at least this many articles. */
   headlinePct: 0.9,
   headlineMinHits: 3,
   /** buried: score at least this high, stakes of at least $10B (or about 20 lobbying reports), and a sneak signal. */
-  buriedMin: 0.45,
+  buriedMin: BURIED_BARS.score,
   buriedMinStakes: 0.667,
 } as const;
 

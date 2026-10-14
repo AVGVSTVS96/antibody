@@ -501,6 +501,8 @@ function finalVote(b: Bundle) {
 
 /** Stakes big enough for the buried label: $10B in a CBO figure CBO gave the section itself, or about 20 lobbying reports (buried-v1's 0.667 bar). */
 export const BIG_STAKES = { dollarsMusd: 10_000, reports: 22 };
+/** The other two bars of the buried label: the score, and how far off-topic (0-1 rank within the bill) counts as a sneak signal. */
+export const BURIED_BARS = { score: 0.45, offTopic: 0.75 };
 const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null; lobbyingReports: number }) =>
   (c.dollarsMusd !== null && c.dollarsSplit !== "even_split" && Math.abs(c.dollarsMusd) >= BIG_STAKES.dollarsMusd) ||
   c.lobbyingReports >= BIG_STAKES.reports;

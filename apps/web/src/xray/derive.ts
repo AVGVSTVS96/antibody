@@ -1,6 +1,6 @@
-import { type Bundle, type Dollar, headlineDeficit } from "@antibody/core";
+import { BURIED_BARS, type Bundle, type Dollar, headlineDeficit } from "@antibody/core";
 import { count, day } from "../lib/format.ts";
-import type { BillModel, SectionView } from "../lib/model.ts";
+import type { BillModel, Near, SectionView } from "../lib/model.ts";
 import type { Tape, TapeRow } from "../lib/tape.ts";
 
 export const OUTLETS_URL = "https://github.com/AVGVSTVS96/antibody/blob/main/packages/ingest-news/data/outlets.json";
@@ -61,6 +61,12 @@ export function baselines(b: Bundle): Baseline[] {
     const estimate = dollar && estimates.get(dollar.estimateId);
     return dollar && estimate ? [{ baseline, dollar, estimate }] : [];
   });
+}
+
+/** "The closest was Rulemaking (§13), scored 0.85, above the 0.45 the rule needs, but it was not added late." */
+export function nearly(m: BillModel, { v, score, missed }: Near): string {
+  const bar = BURIED_BARS.score;
+  return `The closest was ${v.s.heading} (${m.secLabel(v)}), scored ${score.toFixed(2)}, ${score >= bar ? "above" : "under"} the ${bar} the rule needs${missed.length ? `, but ${missed.join("; ")}` : ""}.`;
 }
 
 export type Filter = "all" | "loud" | "quiet" | "late" | "lobbied";
@@ -194,34 +200,41 @@ export function seenOf(m: BillModel, v: SectionView, firstPass: Passage | undefi
 }
 
 export interface Lobbying {
-  reports: number;
+  /** Filings that name the section: the count its score used. */
+  named: number;
+  /** Of those, the reports from clients the bundle draws, and how many clients. */
+  drawn: number;
   clients: number;
-  claims: string[];
+  /** What backs the named count (the score's), and what backs the drawn part (the lobbied edges). */
+  namedClaims: string[];
+  drawnClaims: string[];
 }
 
-const lobbying = new WeakMap<BillModel, Map<string, Lobbying>>();
+const edgesOf = new WeakMap<BillModel, Map<string, { clients: Set<string>; claims: string[] }>>();
 
-/** Lobbying reports that name each section, from the clients the bundle draws. */
-export function lobbyingOf(m: BillModel, sectionId: string): Lobbying {
-  let by = lobbying.get(m);
+/** The lobbying behind a section: the filings that name it, and the part of them from clients the bundle draws. */
+export function lobbyingOf(m: BillModel, v: SectionView): Lobbying {
+  let by = edgesOf.get(m);
   if (!by) {
     by = new Map();
-    const actors = new Map<string, Set<string>>();
     for (const e of m.edges) {
       if (e.kind !== "lobbied" || !e.dst.startsWith("section:")) continue;
       const id = e.dst.slice(8);
-      const l = by.get(id) ?? { reports: 0, clients: 0, claims: [] };
-      l.reports += e.weight;
+      const l = by.get(id) ?? { clients: new Set(), claims: [] };
+      l.clients.add(e.src);
       l.claims.push(...e.claims);
       by.set(id, l);
-      const set = actors.get(id) ?? new Set();
-      set.add(e.src);
-      actors.set(id, set);
-      l.clients = set.size;
     }
-    lobbying.set(m, by);
+    edgesOf.set(m, by);
   }
-  return by.get(sectionId) ?? { reports: 0, clients: 0, claims: [] };
+  const drawn = by.get(v.s.id);
+  return {
+    named: v.named,
+    drawn: v.drawn,
+    clients: drawn?.clients.size ?? 0,
+    namedClaims: v.s.score ? [v.s.score.claim] : (drawn?.claims ?? []),
+    drawnClaims: drawn?.claims ?? [],
+  };
 }
 
 const quote = (s: string) => (/[",\n]/.test(s) ? `"${s.replaceAll('"', '""')}"` : s);

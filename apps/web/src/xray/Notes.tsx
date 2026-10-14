@@ -177,7 +177,7 @@ function Seen({ row, ctx }: { row: TapeRow; ctx: Ctx }) {
             key={t.code}
             data-first={t.first || undefined}
             data-end={t.x > 0.5 || undefined}
-            style={{ left: `${t.x * 100}%` }}
+            style={t.x > 0.5 ? { right: `${(1 - t.x) * 100}%` } : { left: `${t.x * 100}%` }}
           >
             {label(t)}
           </span>
@@ -222,21 +222,34 @@ function Distance({ row }: { row: TapeRow }) {
 }
 
 function Lobbying({ row, ctx }: { row: TapeRow; ctx: Ctx }) {
-  const l = lobbyingOf(ctx.m, row.id);
+  const l = lobbyingOf(ctx.m, row.view);
   const bill = ctx.m.b.bill.id;
+  const drawnNote = ctx.m.b.gaps.find((g) => g.text.startsWith("Drawn:"))?.text;
   return (
     <section className="x-note x-lobby">
       <header>
         <b>LOBBYING</b>
-        {l.reports > 0 && <Kind ids={l.claims.slice(0, 1)} note="LDA.GOV" />}
+        {l.named > 0 && <Kind ids={l.namedClaims.slice(0, 1)} note="LDA.GOV" />}
       </header>
-      {l.reports ? (
+      {l.named ? (
         <>
           <p className="x-lobby-line">
-            {count(l.reports, "lobbying report")} name it, from {count(l.clients, "drawn client")}.
+            {count(l.named, "lobbying report")} name it
+            <span className="x-sub">
+              {l.drawn
+                ? `. The ${l.drawn} from ${count(l.clients, "drawn client")} are the ones on the money page.`
+                : "; none is from a client drawn here."}
+            </span>
           </p>
+          {!l.drawn && drawnNote && <p className="x-fine">{drawnNote}</p>}
           <p className="x-fine">
-            Counts the clients drawn on the money page, not every filing. <Src ids={l.claims} label="REPORTS" />
+            <Src ids={l.namedClaims} label="REPORTS" />
+            {l.drawn > 0 && (
+              <>
+                {" "}
+                <Src ids={l.drawnClaims} label="FROM DRAWN CLIENTS" />
+              </>
+            )}
           </p>
           <a className="x-follow" href={sectionHref(bill, ctx.m.sectionSlug(row.view))} onClick={onLink}>
             <span>FOLLOW THE MONEY</span>
@@ -244,7 +257,7 @@ function Lobbying({ row, ctx }: { row: TapeRow; ctx: Ctx }) {
           </a>
         </>
       ) : (
-        <p className="x-lobby-line">No lobbying report in the bundle names it.</p>
+        <p className="x-lobby-line">No lobbying filing names it.</p>
       )}
     </section>
   );

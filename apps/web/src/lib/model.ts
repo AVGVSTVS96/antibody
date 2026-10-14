@@ -1,5 +1,7 @@
 import {
   activeSpan,
+  BIG_STAKES,
+  BURIED_BARS,
   type Bundle,
   type Edge,
   type EdgeOf,
@@ -10,7 +12,7 @@ import {
   type Section,
   sectionFigure,
 } from "@antibody/core";
-import { count, deficitWords, plainName } from "./format.ts";
+import { count, deficitWords, plainName, usd } from "./format.ts";
 
 export type SectionKind = "headline" | "buried" | "normal" | "unscored";
 
@@ -108,9 +110,9 @@ export interface BillModel {
   tradersDuring: number;
   /** First text through signing (or the last dated action): the span in which a trade could be about the bill. */
   span: [string, string] | null;
-  /** `§30002`, with the version in brackets when another section of the bill has the same number. */
+  /** `§30002` for a section of the final text; a final section whose number repeats says where it sits, a dropped one says so. */
   secLabel: (v: SectionView) => string;
-  /** What a section is called in a URL: its number when no other section of the bill has it, else its full id. */
+  /** What a section is called in a URL: its number when it is the one section of the final text with it, else its full id. */
   sectionSlug: (v: SectionView) => string;
   sectionBySlug: (slug: string) => SectionView | undefined;
   /** Share of final sections that arrived late (null when the late flag is unavailable). */
@@ -400,9 +402,16 @@ export function buildModel(b: Bundle): BillModel {
     if (!voted || m.vote) tradersVoted[m.node.props.party]++;
     else tradersNoVote++;
   }
-  const numCount = new Map<string, number>();
-  for (const v of sections) numCount.set(v.s.num, (numCount.get(v.s.num) ?? 0) + 1);
   const finalSections = sections.filter((v) => v.s.inFinal);
+  const droppedSections = sections.filter((v) => !v.s.inFinal);
+  const sharing = (of: SectionView[], v: SectionView) => of.filter((x) => x.s.num === v.s.num).length;
+  const uniqueFinal = (v: SectionView) => v.s.inFinal && sharing(finalSections, v) === 1;
+  const secLabel = (v: SectionView) => {
+    if (uniqueFinal(v)) return `§${v.s.num}`;
+    if (v.s.inFinal) return `§${v.s.num} (${placeWords(v.s.path)})`;
+    const stage = sharing(droppedSections, v) > 1 ? ` (${v.stageName.replace(/ \(.*\)$/, "")})` : "";
+    return `§${v.s.num}, ${b.bill.law ? "dropped before passage" : "dropped from the latest text"}${stage}`;
+  };
 
   const sponsorNode = b.bill.sponsor ? nodeById.get(b.bill.sponsor) : undefined;
   return {
@@ -429,16 +438,24 @@ export function buildModel(b: Bundle): BillModel {
     tradersNoVote,
     tradersDuring,
     span,
-    secLabel: (v) =>
-      (numCount.get(v.s.num) ?? 0) > 1 ? `§${v.s.num} (${v.stageName.replace(/ \(.*\)$/, "")})` : `§${v.s.num}`,
-    sectionSlug: (v) => ((numCount.get(v.s.num) ?? 0) > 1 ? v.s.id : v.s.num),
-    sectionBySlug: (slug) =>
-      sectionById.get(slug) ?? sections.find((v) => v.s.num === slug && numCount.get(slug) === 1),
+    secLabel,
+    sectionSlug: (v) => (uniqueFinal(v) ? v.s.num : v.s.id),
+    sectionBySlug: (slug) => sectionById.get(slug) ?? finalSections.find((v) => v.s.num === slug && uniqueFinal(v)),
     lateShare:
       b.bill.lateUnavailable || !finalSections.length
         ? null
         : finalSections.filter((v) => v.s.late).length / finalSections.length,
   };
+}
+
+/** "Division B · Title I": where a section sits in the bill, outermost first ("top level" when it sits in none). */
+function placeWords(path: string): string {
+  const parts = path
+    .split("/")
+    .map((p) => p.split(":") as [string, string])
+    .filter(([kind]) => kind !== "sec")
+    .map(([kind, name]) => `${kind.charAt(0).toUpperCase()}${kind.slice(1)} ${name}`);
+  return parts.join(" · ") || "top level";
 }
 
 export function memberShort(m: NodeOf<"member">): string {
@@ -461,9 +478,46 @@ export function stakesWords(v: SectionView): string {
     .join(" and ");
 }
 
-/** The section closest to the quiet-and-costly rule that did not meet it, so "none" never reads as "not measured". */
-export function closestToQuiet(m: BillModel): SectionView | undefined {
-  return m.sections
-    .filter((v) => v.s.inFinal && v.kind !== "buried" && v.kind !== "headline" && v.s.score?.buried != null)
+export interface Near {
+  v: SectionView;
+  score: number;
+  /** The other bars of the quiet-and-costly rule it misses, in words (its score is compared with the rule's own bar apart). */
+  missed: string[];
+}
+
+/** The scored, not-yet-quiet section with the highest score, and what it lacks: "none" then never reads as "not measured". */
+export function closestToQuiet(m: BillModel): Near | undefined {
+  const v = m.sections
+    .filter((x) => x.s.inFinal && x.kind === "normal" && (x.s.score?.buried ?? 0) > 0)
     .sort((x, y) => y.s.score!.buried! - x.s.score!.buried!)[0];
+  if (!v) return undefined;
+  const { buried, components: c } = v.s.score!;
+  const titles = new Set(
+    m.sections.flatMap((x) =>
+      x.s.inFinal ? x.s.path.split("/").filter((p, i) => !i && /^(title|division):/.test(p)) : [],
+    ),
+  ).size;
+  const bigDollars =
+    c.dollarsMusd != null && c.dollarsSplit !== "even_split" && Math.abs(c.dollarsMusd) >= BIG_STAKES.dollarsMusd;
+  const lateCounts = !m.b.bill.lateUnavailable && c.late && (m.lateShare ?? 0) < 1;
+  const offTopicCounts = titles <= 1 && (c.offTopic ?? 0) >= BURIED_BARS.offTopic;
+  const missed: string[] = [];
+  if (!bigDollars && c.lobbyingReports < BIG_STAKES.reports)
+    missed.push(
+      `its stakes are under the bar (a CBO figure of ${usd(BIG_STAKES.dollarsMusd * 1e6)} or ${BIG_STAKES.reports} lobbying reports)`,
+    );
+  if (!lateCounts && !offTopicCounts)
+    missed.push(
+      [
+        m.b.bill.lateUnavailable
+          ? "the late flag is unavailable on this bill"
+          : c.late
+            ? "being late counts for nothing when the whole bill arrived late"
+            : "it was not added late",
+        titles > 1
+          ? "off-topic distance doesn't count in a bill built from several committees' titles"
+          : `it is not among the most off-topic quarter of the bill`,
+      ].join(", and "),
+    );
+  return { v, score: buried!, missed };
 }

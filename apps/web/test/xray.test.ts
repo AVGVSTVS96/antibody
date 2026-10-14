@@ -176,5 +176,6 @@ test("article ticks end on the largest count and stay few", () => {
   expect(xTicks(4)).toEqual([1, 2, 3, 4]);
   expect(xTicks(24)).toEqual([1, 5, 10, 15, 20, 24]);
   expect(xTicks(242)).toEqual([1, 50, 100, 150, 200, 242]);
+  expect(xTicks(34)).toEqual([1, 5, 10, 15, 20, 25, 30, 34]);
   expect(xTicks(1)).toEqual([1]);
 });
