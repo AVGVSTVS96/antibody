@@ -384,7 +384,8 @@ export const TABLES = {
   // ── @antibody/watch: the daily watcher ──
   watch_events: table("@antibody/watch", {
     bill_id: billId,
-    kind: z.enum(["new_version", "enrolled", "new_bill", "hot"]),
+    /** hot = the watcher flagged the bill that day; detail holds its score, sub-scores and reasons. */
+    kind: z.enum(["new_version", "enrolled", "new_bill", "floor_vote", "action", "cbo_estimate", "hot"]),
     seen_at: z.iso.datetime({ offset: true }),
     url: z.url(),
     detail: json,
