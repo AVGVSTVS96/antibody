@@ -1,0 +1,109 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-10-13T21:00:00-07:00",
+  "bill": {
+    "id": "119-s-1582",
+    "display": "S.1582",
+    "congress": 119,
+    "title": "Guiding and Establishing National Innovation for U.S. Stablecoins Act",
+    "shortTitle": "GENIUS Act",
+    "sponsor": "member:H000601",
+    "law": "P.L. 119-27",
+    "lawOn": "2025-07-18",
+    "latestAction": "Became Public Law No: 119-27.",
+    "url": "https://www.congress.gov/bill/119th-congress/senate-bill/1582",
+    "billstatusUrl": "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/s/BILLSTATUS-119s1582.xml",
+    "claims": ["bills/119-s-1582"]
+  },
+  "versions": [
+    { "code": "pcs", "name": "Placed on Calendar Senate", "date": "2025-05-05", "url": "https://www.govinfo.gov/content/pkg/BILLS-119s1582pcs/xml/BILLS-119s1582pcs.xml", "sections": 19, "words": 18047, "predecessor": false, "claim": "versions/119-s-1582@pcs" },
+    { "code": "es", "name": "Engrossed in Senate", "date": "2025-06-17", "url": "https://www.govinfo.gov/content/pkg/BILLS-119s1582es/xml/BILLS-119s1582es.xml", "sections": 20, "words": 19838, "predecessor": false, "claim": "versions/119-s-1582@es" }
+  ],
+  "sections": [
+    {
+      "id": "119-s-1582@es:sec:19",
+      "num": "19",
+      "heading": "Disclosure relating to payment stablecoins",
+      "path": "sec:19",
+      "firstVersion": "es",
+      "inFinal": true,
+      "late": true,
+      "changedIn": [],
+      "removedIn": null,
+      "revivedIn": [],
+      "splitFrom": null,
+      "splitInto": [],
+      "mergedInto": null,
+      "counterpart": null,
+      "words": 42,
+      "textUrl": "https://www.govinfo.gov/content/pkg/BILLS-119s1582enr/xml/BILLS-119s1582enr.xml",
+      "preview": "Section 13104(a)(3) of title 5, United States Code, is amended, in the first sentence, by striking \", or any deposits\" and inserting \", any payment stablecoins issued by a permitted payment stabl",
+      "history": {
+        "es": { "path": "sec:19", "heading": "Disclosure relating to payment stablecoins", "words": 42, "match": null, "similarity": null, "wordsAdded": null, "wordsRemoved": null, "largestInserts": [] }
+      },
+      "dollars": [],
+      "attention": null,
+      "score": null,
+      "claims": ["sections/119-s-1582@es:sec:19"]
+    }
+  ],
+  "votes": [
+    { "id": "senate-119-1-318", "chamber": "Senate", "number": 318, "date": "2025-06-17", "question": "On Passage of the Bill S. 1582", "result": "Bill Passed", "yeas": 68, "nays": 30, "url": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml", "claim": "roll_calls/senate-119-1-318" }
+  ],
+  "amendments": [],
+  "dollars": {
+    "estimates": [
+      { "id": "s1582-es", "url": "https://www.cbo.gov/publication/61551", "fileUrl": "https://www.cbo.gov/system/files/2025-07/s1582table1.xlsx", "archiveUrl": null, "publishedOn": null, "versionCode": "es", "versionScored": "As passed by the Senate on June 17, 2025", "baseline": "current-law", "baselineLabel": "CBO current-law baseline", "perSection": false, "mandates": { "privateSector": "Yes, Over Threshold", "intergovernmental": "Yes, Under Threshold", "claim": "cbo_estimates/s1582-es#mandates" }, "claim": "cbo_estimates/s1582-es" }
+    ],
+    "wholeBill": [
+      { "estimateId": "s1582-es", "baseline": "current-law", "measure": "deficit", "period": "2025-2035", "amountMusd": 120, "split": "exact", "claim": "cbo_lines/s1582-es:deficit" }
+    ]
+  },
+  "attention": { "via": [], "outletListVersion": null, "window": null, "articles": 0, "general": null },
+  "lobbying": { "reports": 757, "clients": 174, "registrants": 175, "lobbyists": 711, "byPhase": { "bill": 245, "enactmentQuarter": 167, "law": 345 }, "spendTotalUsd": null, "shareEstimateUsd": null, "claims": [] },
+  "nodes": [
+    { "id": "member:H000601", "kind": "member", "label": "Sen. Bill Hagerty (R-TN)", "claims": ["members/H000601"], "props": { "bioguide": "H000601", "party": "R", "state": "TN", "district": null, "chamber": "Senate", "paperFilingsUnread": false } },
+    { "id": "member:M001236", "kind": "member", "label": "Rep. Tim Moore (R-NC)", "claims": ["members/M001236"], "props": { "bioguide": "M001236", "party": "R", "state": "NC", "district": 14, "chamber": "House", "paperFilingsUnread": false } },
+    { "id": "member:C001123", "kind": "member", "label": "Rep. Gil Cisneros (D-CA)", "claims": ["members/C001123"], "props": { "bioguide": "C001123", "party": "D", "state": "CA", "district": 31, "chamber": "House", "paperFilingsUnread": false } },
+    { "id": "company:1679788", "kind": "company", "label": "Coinbase Global, Inc.", "claims": ["companies/1679788"], "props": { "cik": "1679788", "tickers": ["COIN"], "secUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1679788" } },
+    { "id": "client:coinbase", "kind": "client", "label": "Coinbase, Inc.", "claims": [], "props": { "names": ["COINBASE, INC."], "ldaClientIds": ["51414"], "description": "centralized exchange for buying, selling, trading, and storing digital assets" } }
+  ],
+  "edges": [
+    { "id": "sponsored:H000601", "kind": "sponsored", "src": "member:H000601", "dst": "bill:119-s-1582", "basis": "fact", "claims": ["sponsorships/119-s-1582:H000601"], "props": { "role": "sponsor", "date": null, "withdrawnOn": null } },
+    { "id": "resolves_to:client:coinbase", "kind": "resolves_to", "src": "client:coinbase", "dst": "company:1679788", "basis": "inference", "claims": ["resolutions/client:coinbase"], "props": { "method": "llm_subsidiary", "reason": "Coinbase, Inc. is the operating subsidiary of Coinbase Global, Inc." } },
+    {
+      "id": "traded:M001236:1679788", "kind": "traded", "src": "member:M001236", "dst": "company:1679788", "basis": "fact", "claims": ["trades/20032256#1"],
+      "props": { "events": [ { "date": "2025-09-11", "type": "purchase", "amount": "$15,001 - $50,000", "owner": "self", "ticker": "COIN", "asset": "Coinbase Global, Inc. - Class A Common Stock (COIN) [ST]", "readBy": "text", "claim": "trades/20032256#1" } ] }
+    },
+    {
+      "id": "traded:C001123:1679788", "kind": "traded", "src": "member:C001123", "dst": "company:1679788", "basis": "fact", "claims": ["trades/20033455#5"],
+      "props": { "events": [ { "date": "2025-10-09", "type": "purchase", "amount": "$1,001 - $15,000", "owner": "self", "ticker": "COIN", "asset": "Coinbase Global, Inc. - Class A Common Stock (COIN) [ST]", "readBy": "text", "claim": "trades/20033455#5" } ] }
+    }
+  ],
+  "claims": {
+    "bills/119-s-1582": { "id": "bills/119-s-1582", "text": "S.1582, the GENIUS Act, became Public Law 119-27 on July 18, 2025.", "kind": "fact", "sourceUrl": "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/s/BILLSTATUS-119s1582.xml", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "versions/119-s-1582@pcs": { "id": "versions/119-s-1582@pcs", "text": "The version placed on the Senate calendar on May 5, 2025 has 19 sections.", "kind": "fact", "sourceUrl": "https://www.govinfo.gov/content/pkg/BILLS-119s1582pcs/xml/BILLS-119s1582pcs.xml", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "versions/119-s-1582@es": { "id": "versions/119-s-1582@es", "text": "The Senate-passed version of June 17, 2025 has 20 sections.", "kind": "fact", "sourceUrl": "https://www.govinfo.gov/content/pkg/BILLS-119s1582es/xml/BILLS-119s1582es.xml", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "sections/119-s-1582@es:sec:19": { "id": "sections/119-s-1582@es:sec:19", "text": "Section 19, \"Disclosure relating to payment stablecoins\", first appears in the Senate-passed text; it is not in the version placed on the calendar.", "kind": "fact", "sourceUrl": "https://www.govinfo.gov/content/pkg/BILLS-119s1582es/xml/BILLS-119s1582es.xml", "sourceLocator": "sec. 19", "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "roll_calls/senate-119-1-318": { "id": "roll_calls/senate-119-1-318", "text": "The Senate passed S.1582 68-30 on June 17, 2025 (roll call 318).", "kind": "fact", "sourceUrl": "https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00318.xml", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "cbo_estimates/s1582-es": { "id": "cbo_estimates/s1582-es", "text": "CBO scored S.1582 as passed by the Senate on June 17, 2025, under its current-law baseline.", "kind": "fact", "sourceUrl": "https://www.cbo.gov/publication/61551", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "cbo_estimates/s1582-es#mandates": { "id": "cbo_estimates/s1582-es#mandates", "text": "CBO found a private-sector mandate over the threshold.", "kind": "fact", "sourceUrl": "https://www.cbo.gov/system/files/2025-07/s1582.pdf", "sourceLocator": "page 1", "archiveUrl": null, "quote": "Yes, Over Threshold", "confidence": 1, "restsOn": [], "rule": null },
+    "cbo_lines/s1582-es:deficit": { "id": "cbo_lines/s1582-es:deficit", "text": "CBO: the bill adds $120 million to deficits over 2025-2035 (current-law baseline).", "kind": "fact", "sourceUrl": "https://www.cbo.gov/system/files/2025-07/s1582table1.xlsx", "sourceLocator": "Table 1, outlay and revenue rows", "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "members/H000601": { "id": "members/H000601", "text": "Bill Hagerty is a Republican senator from Tennessee.", "kind": "fact", "sourceUrl": "https://bioguide.congress.gov/search/bio/H000601", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "members/M001236": { "id": "members/M001236", "text": "Tim Moore is a Republican representative from North Carolina.", "kind": "fact", "sourceUrl": "https://bioguide.congress.gov/search/bio/M001236", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "members/C001123": { "id": "members/C001123", "text": "Gil Cisneros is a Democratic representative from California.", "kind": "fact", "sourceUrl": "https://bioguide.congress.gov/search/bio/C001123", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "companies/1679788": { "id": "companies/1679788", "text": "Coinbase Global, Inc. trades as COIN (SEC CIK 1679788).", "kind": "fact", "sourceUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1679788", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "sponsorships/119-s-1582:H000601": { "id": "sponsorships/119-s-1582:H000601", "text": "Sen. Bill Hagerty sponsored S.1582.", "kind": "fact", "sourceUrl": "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/s/BILLSTATUS-119s1582.xml", "sourceLocator": "sponsors", "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "lda_bill_refs/9beeca5f-74bd-4012-8957-7053df57e67a#0#119-s-1582": { "id": "lda_bill_refs/9beeca5f-74bd-4012-8957-7053df57e67a#0#119-s-1582", "text": "Porterfield, Fettig & Sears reported lobbying for Coinbase, Inc. on S.394, the GENIUS Act, in Q1 2025.", "kind": "fact", "sourceUrl": "https://lda.gov/filings/public/filing/9beeca5f-74bd-4012-8957-7053df57e67a/print/", "sourceLocator": "lobbying activity", "archiveUrl": null, "quote": "Issues related to the storage and trading of digital assets; S.394, the GENIUS Act.", "confidence": 1, "restsOn": [], "rule": null },
+    "resolutions/client:coinbase": { "id": "resolutions/client:coinbase", "text": "The lobbying client \"Coinbase, Inc.\" is taken to be Coinbase Global, Inc. (COIN).", "kind": "inference", "sourceUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1679788", "sourceLocator": null, "archiveUrl": null, "quote": null, "confidence": 0.95, "restsOn": ["lda_bill_refs/9beeca5f-74bd-4012-8957-7053df57e67a#0#119-s-1582", "companies/1679788"], "rule": "subsidiary-parent: a subsidiary's lobbying counts toward its public parent" },
+    "trades/20032256#1": { "id": "trades/20032256#1", "text": "Rep. Tim Moore (R-NC) bought Coinbase (COIN) stock worth $15,001-$50,000 on Sep 11, 2025.", "kind": "fact", "sourceUrl": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032256.pdf", "sourceLocator": "page 1", "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null },
+    "trades/20033455#5": { "id": "trades/20033455#5", "text": "Rep. Gil Cisneros (D-CA) bought Coinbase (COIN) stock worth $1,001-$15,000 on Oct 9, 2025.", "kind": "fact", "sourceUrl": "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20033455.pdf", "sourceLocator": "page 5", "archiveUrl": null, "quote": null, "confidence": 1, "restsOn": [], "rule": null }
+  },
+  "gaps": [
+    { "id": "paper-ptrs", "kind": "paper_filings_unread", "text": "Paper filings not yet read: 8 members file trades on paper (5 R, 3 D); their trades are missing here.", "nodes": [], "claim": null },
+    { "id": "no-section-dollars", "kind": "no_section_dollars", "text": "CBO published whole-bill numbers only for this bill, so no section has its own dollar figure.", "nodes": [], "claim": "cbo_estimates/s1582-es" }
+  ],
+  "rules": [
+    { "id": "tied-stock", "version": "1", "text": "A stock is tied to a bill if the company lobbied on it (LD-2) or is named in its text.", "url": null }
+  ]
+}
