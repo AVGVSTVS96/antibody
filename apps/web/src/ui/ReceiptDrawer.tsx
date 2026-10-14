@@ -6,7 +6,8 @@ import { citation, notShown, provenance, ruleId, ruleUrl } from "../lib/receipt-
 import { InferenceTag, Tag } from "./primitives.tsx";
 
 interface Props {
-  claims: Record<string, Claim> | null;
+  lookup: (id: string) => Claim | null | undefined;
+  request: (ids: readonly string[]) => void;
   rules: Bundle["rules"];
   walk: { ids: readonly string[]; at: number };
   label?: string;
@@ -31,14 +32,28 @@ const place = (url: string) => {
   }
 };
 
-export function ReceiptDrawer({ claims, rules, walk, label, nested, closing, onClose, onBack, onStep, onRest }: Props) {
+export function ReceiptDrawer({
+  lookup,
+  request,
+  rules,
+  walk,
+  label,
+  nested,
+  closing,
+  onClose,
+  onBack,
+  onStep,
+  onRest,
+}: Props) {
   const panel = useRef<HTMLElement>(null);
   const phone = useMedia("(max-width: 720px)");
   const id = walk.ids[walk.at]!;
-  const claim = claims?.[id];
+  const claim = lookup(id);
   const count = walk.ids.length;
 
-  useEffect(() => panel.current?.focus({ preventScroll: true }), []);
+  const focusPanel = () => panel.current?.focus({ preventScroll: true });
+  useEffect(focusPanel, []);
+  useEffect(() => request(walk.ids.slice(Math.max(walk.at - 1, 0), walk.at + 2)), [request, walk.ids, walk.at]);
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
@@ -123,7 +138,14 @@ export function ReceiptDrawer({ claims, rules, walk, label, nested, closing, onC
         </div>
         <header className="rcpt-head" {...grab}>
           {nested ? (
-            <button type="button" className="rcpt-back" onClick={onBack}>
+            <button
+              type="button"
+              className="rcpt-back"
+              onClick={() => {
+                onBack();
+                focusPanel();
+              }}
+            >
               ← BACK
             </button>
           ) : (
@@ -138,13 +160,23 @@ export function ReceiptDrawer({ claims, rules, walk, label, nested, closing, onC
         </header>
         <div className="rcpt-scroll" key={id} {...body}>
           {claim ? (
-            <Record claim={claim} claims={claims!} rules={rules} label={label} onRest={onRest} />
+            <Record
+              claim={claim}
+              lookup={lookup}
+              request={request}
+              rules={rules}
+              label={label}
+              onRest={(i) => {
+                onRest(i);
+                focusPanel();
+              }}
+            />
           ) : (
             <div className="rcpt-pad">
               <h2 id="rcpt-claim" className="rcpt-claim">
-                {claims ? "This record is not in the bundle." : "Loading the record…"}
+                {claim === null ? "This record could not be loaded." : "Loading the record…"}
               </h2>
-              {claims && <p className="rcpt-prov">CLAIM ID · {id}</p>}
+              {claim === null && <p className="rcpt-prov">CLAIM ID · {id}</p>}
             </div>
           )}
         </div>
@@ -190,13 +222,15 @@ export function ReceiptDrawer({ claims, rules, walk, label, nested, closing, onC
 
 function Record({
   claim: c,
-  claims,
+  lookup,
+  request,
   rules,
   label,
   onRest,
 }: {
   claim: Claim;
-  claims: Record<string, Claim>;
+  lookup: Props["lookup"];
+  request: Props["request"];
   rules: Bundle["rules"];
   label?: string;
   onRest: (index: number) => void;
@@ -259,7 +293,7 @@ function Record({
           url={rule?.url ?? (rid ? ruleUrl(rid) : null)}
         />
       )}
-      {c.restsOn.length > 0 && <RestsOn key={c.id} claim={c} claims={claims} onRest={onRest} />}
+      {c.restsOn.length > 0 && <RestsOn key={c.id} claim={c} lookup={lookup} request={request} onRest={onRest} />}
       <div className="rcpt-pad rcpt-end">
         <div className="rcpt-not">
           <b>WHAT THIS DOES NOT SHOW</b>
@@ -295,15 +329,18 @@ function Rule({ id, text, url }: { id: string | null; text?: string; url: string
 
 function RestsOn({
   claim,
-  claims,
+  lookup,
+  request,
   onRest,
 }: {
   claim: Claim;
-  claims: Record<string, Claim>;
+  lookup: Props["lookup"];
+  request: Props["request"];
   onRest: (index: number) => void;
 }) {
   const [shown, setShown] = useState(REST_PAGE);
   const ids = claim.restsOn;
+  useEffect(() => request(ids.slice(0, shown)), [request, ids, shown]);
   return (
     <section className={`rcpt-rests${claim.kind === "inference" ? " dashed" : ""}`}>
       <span className="kicker">
@@ -311,18 +348,18 @@ function RestsOn({
       </span>
       <ol>
         {ids.slice(0, shown).map((rid, i) => {
-          const r = claims[rid];
+          const r = lookup(rid);
           return (
             <li key={rid}>
               <button type="button" onClick={() => onRest(i)}>
-                {r?.kind === "inference" ? (
+                {r === undefined ? null : r?.kind === "inference" ? (
                   <InferenceTag small />
                 ) : (
                   <Tag tone="ink" small>
                     FACT
                   </Tag>
                 )}
-                <span>{r?.text ?? rid}</span>
+                <span>{r === undefined ? "Loading the record…" : (r?.text ?? rid)}</span>
               </button>
               {r && (
                 <a

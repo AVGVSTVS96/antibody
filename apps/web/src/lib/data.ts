@@ -1,4 +1,5 @@
 import type { Bundle, BundleIndex, Claim } from "@antibody/core";
+import { claimShardFile, claimShardOf } from "@antibody/core/claim-shards";
 
 /**
  * Bundles are validated when store publishes them (and in this app's tests), so the browser reads them as typed JSON
@@ -39,10 +40,16 @@ export function loadBundle(id: string): Promise<Bundle | null> {
 
 export const prefetchBundle = (id: string) => void loadBundle(id).catch(() => {});
 
-/** The claims sidecar of one bill, or the claims inside its bundle when it has no sidecar. */
-export async function loadClaims(id: string): Promise<Record<string, Claim>> {
-  const index = await loadIndex();
-  const entry = index.bills.find((b) => b.id === id);
-  if (entry?.claimsFile) return load<Record<string, Claim>>(`/bundles/${entry.claimsFile}`);
-  return (await loadBundle(id))?.claims ?? {};
+/**
+ * The claims in the shards that hold `ids` (all of each shard, since it is downloaded anyway), or the bundle's own
+ * claims when it has no shards. A shard is fetched once; an id no shard holds is simply absent from the result.
+ */
+export async function loadClaims(bundle: Bundle, ids: readonly string[]): Promise<Record<string, Claim>> {
+  const { claimShards, claims } = bundle;
+  if (!claimShards) return claims;
+  const files = new Set(ids.map((id) => claimShardOf(claimShards, id)).filter((shard) => shard >= 0));
+  const shards = await Promise.all(
+    [...files].map((shard) => load<Record<string, Claim>>(`/bundles/${claimShardFile(bundle.bill.id, shard)}`)),
+  );
+  return Object.assign({}, ...shards);
 }
