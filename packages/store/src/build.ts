@@ -928,6 +928,8 @@ class Builder {
     )) {
       const [pac, bioguide] = pair.split("|") as [string, string];
       const periods = w.cycles.map((c) => `&two_year_transaction_period=${c}`).join("");
+      const recipients = [...new Set(gs.map((g) => g.recipient_committee_id).filter(Boolean))];
+      const to = recipients.length === 1 ? `&recipient_committee_id=${recipients[0]}` : "";
       this.edge(
         "funded",
         `funded:${pac}:${bioguide}`,
@@ -939,7 +941,7 @@ class Builder {
           contributions: gs.length,
           first: gs[0]!.date,
           last: gs.at(-1)!.date,
-          allTxnsUrl: `https://www.fec.gov/data/disbursements/?data_type=processed&committee_id=${pac}${periods}`,
+          allTxnsUrl: `https://www.fec.gov/data/disbursements/?data_type=processed&committee_id=${pac}${to}${periods}`,
         },
       );
     }
