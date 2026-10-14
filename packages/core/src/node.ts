@@ -65,7 +65,7 @@ export async function readRows<T extends TableName>(table: T, shard?: string): P
 const canCap = Bun.which("systemd-run") !== null && process.env.CI === undefined;
 
 /**
- * Runs a command, memory-capped with `systemd-run --user --scope -p MemoryMax=<cap>` on the server
+ * Runs a command, memory-capped with `systemd-run --user --scope -p MemoryMax=<cap> -p CPUWeight=20` on the server
  * (plain elsewhere, like CI). Use it for bulk downloads, OCR/vision batches, big parses and DuckDB loads.
  */
 export async function heavy(cmd: string[], opts: { memoryMax?: string; cwd?: string } = {}): Promise<string> {
