@@ -1,4 +1,4 @@
-import type { Dollar } from "@antibody/core";
+import { type Dollar, headlineDeficit } from "@antibody/core";
 import { count, day, musd, nice, pct, usd } from "../lib/format.ts";
 import type { Actor, BillModel, MemberView, SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
@@ -10,9 +10,8 @@ export const secId = (v: SectionView) => `section:${v.s.id}`;
 
 export function BillCard({ m }: { m: BillModel }) {
   const { b } = m;
-  const deficits = b.dollars.wholeBill.filter((d) => d.measure === "deficit");
-  const lawDeficit = deficits.find((d) => d.baseline === "current-law") ?? deficits[0];
-  const policyDeficit = deficits.find((d) => d.baseline === "current-policy");
+  const lawDeficit = headlineDeficit(b, "current-law");
+  const policyDeficit = headlineDeficit(b, "current-policy");
   const est = b.dollars.estimates.find((e) => e.id === lawDeficit?.estimateId) ?? b.dollars.estimates[0];
   const amend = b.amendments;
   const byStatus = (s: string) => amend.filter((a) => a.status === s).length;

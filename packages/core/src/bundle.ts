@@ -357,10 +357,31 @@ export function checkBundle(b: Bundle): string[] {
   return problems;
 }
 
+const years = (period: string) => {
+  const [from, to] = period.split("-").map(Number);
+  return (to ?? from ?? 0) - (from ?? 0);
+};
+
+/**
+ * The whole-bill deficit line to headline for a baseline: from the latest published CBO estimate that has one (a
+ * signed law's estimate beats the House-passed one), the longest period it gives. Ties go to the larger id.
+ */
+export function headlineDeficit(b: Bundle, baseline: Dollar["baseline"]): Dollar | undefined {
+  const published = new Map(b.dollars.estimates.map((e) => [e.id, e.publishedOn]));
+  return b.dollars.wholeBill
+    .filter((d) => d.measure === "deficit" && d.baseline === baseline)
+    .sort(
+      (x, y) =>
+        (published.get(y.estimateId) ?? "").localeCompare(published.get(x.estimateId) ?? "") ||
+        y.estimateId.localeCompare(x.estimateId) ||
+        years(y.period) - years(x.period),
+    )[0];
+}
+
 /** The index card counts for one bundle; store calls this when it writes index.json. */
 export function billStats(b: Bundle): z.infer<typeof BillStats> {
   const final = b.sections.filter((s) => s.inFinal);
-  const deficit = b.dollars.wholeBill.find((d) => d.measure === "deficit" && d.baseline === "current-law");
+  const deficit = headlineDeficit(b, "current-law");
   return {
     sections: final.length,
     headline: final.filter((s) => s.score?.label === "headline").length,

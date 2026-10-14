@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import fixture from "../fixtures/genius-mini.bundle.json";
-import { Bundle, BundleIndex, billStats, checkBundle } from "../src/bundle.ts";
+import { Bundle, BundleIndex, billStats, checkBundle, headlineDeficit } from "../src/bundle.ts";
 
 test("the fixture is a valid, sound bundle", () => {
   const parsed = Bundle.safeParse(fixture);
@@ -50,6 +50,23 @@ test("billStats counts the index card numbers", () => {
     deficitMusd: 120,
     fingerprint: "u",
   });
+});
+
+test("the headline deficit comes from the latest published estimate, longest period", () => {
+  const b = structuredClone(Bundle.parse(fixture));
+  const base = b.dollars.wholeBill.find((d) => d.measure === "deficit")!;
+  const est = b.dollars.estimates[0]!;
+  b.dollars.estimates = [
+    { ...est, id: "old", publishedOn: "2025-06-04" },
+    { ...est, id: "new", publishedOn: "2025-07-21" },
+  ];
+  b.dollars.wholeBill = [
+    { ...base, estimateId: "old", period: "2025-2034", amountMusd: 2416229 },
+    { ...base, estimateId: "new", period: "2025-2029", amountMusd: 1 },
+    { ...base, estimateId: "new", period: "2025-2034", amountMusd: 3394444 },
+  ];
+  expect(headlineDeficit(b, "current-law")?.amountMusd).toBe(3394444);
+  expect(headlineDeficit(b, "current-policy")).toBeUndefined();
 });
 
 test("checkBundle also follows *Claim props, like a lobbied edge's shareClaim", () => {

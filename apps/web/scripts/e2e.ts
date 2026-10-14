@@ -41,9 +41,9 @@ async function open(path: string, width = 1440) {
     published.every((p) => links.includes(p)),
     `index links all ${published.length} published bills (${links.length} bill links on the page)`,
   );
-  const parties = new Set(index.bills.map((b) => b.ledBy));
+  const parties = new Set(index.bills.map((b) => b.sponsorParty));
   check(parties.has("R") && parties.has("D"), "both parties lead at least one published bill");
-  const box = page.locator("input[type=search], input[type=text]").first();
+  const box = page.locator('input[placeholder*="congress.gov"]');
   await box.fill("GENIUS");
   await page.waitForTimeout(300);
   check((await page.locator("a[href='/bill/119-s-1582']").count()) > 0, "search 'GENIUS' keeps the GENIUS bill");
