@@ -23,7 +23,7 @@ const billId = z.string().regex(/^\d+-[a-z]+-\d+$/);
 const Party = z.enum(["R", "D", "I"]);
 const Chamber = z.enum(["House", "Senate"]);
 const Baseline = z.enum(["current-law", "current-policy"]);
-const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit"]);
+const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit", "nonscorable_revenues"]);
 const Spending = z.enum(["direct", "discretionary"]);
 
 const table = <S extends z.ZodRawShape>(owner: string, shape: S) => ({

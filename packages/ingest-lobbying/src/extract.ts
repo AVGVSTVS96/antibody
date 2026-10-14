@@ -221,7 +221,7 @@ export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
   let lawCited = false;
   const ours = (n: { type: string; number: number }) => m.numbers.has(`${n.type}${n.number}`);
   const conflict = (at: number, len: number) => {
-    const near = text.slice(Math.max(0, at - 40), at + len + 40);
+    const near = clause(text, at, at + len);
     const numbers = billNumbers(near);
     return numbers.some((n) => !ours(n)) && !numbers.some(ours) && !m.names.some((x) => x.re.test(near));
   };

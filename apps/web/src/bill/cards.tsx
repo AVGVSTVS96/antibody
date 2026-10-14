@@ -4,7 +4,13 @@ import type { Actor, BillModel, MemberView, SectionView } from "../lib/model.ts"
 import { Inf, Sources, Src } from "../ui/claims.tsx";
 import { useRowFocus } from "./focus.ts";
 
-const MEASURE = { deficit: "Deficit", outlays: "Outlays", revenues: "Revenues", budget_authority: "Budget authority" };
+const MEASURE = {
+  deficit: "Deficit",
+  outlays: "Outlays",
+  revenues: "Revenues",
+  budget_authority: "Budget authority",
+  nonscorable_revenues: "Unscored revenues (not in the deficit)",
+};
 
 export const secId = (v: SectionView) => `section:${v.s.id}`;
 

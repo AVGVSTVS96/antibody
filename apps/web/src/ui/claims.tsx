@@ -9,20 +9,21 @@ interface Open {
 }
 
 interface Ctx {
+  loading: boolean;
   claim: (id: string) => Claim | undefined;
   open: (id: string, el: HTMLElement) => void;
   close: (now?: boolean) => void;
   keep: () => void;
 }
 
-const ClaimCtx = createContext<Ctx>({ claim: () => undefined, open() {}, close() {}, keep() {} });
+const ClaimCtx = createContext<Ctx>({ loading: false, claim: () => undefined, open() {}, close() {}, keep() {} });
 export const useClaims = () => useContext(ClaimCtx);
 
 const OPEN_DELAY = 220;
 const CLOSE_GRACE = 160;
 
 /** One popover for every source chip on the page: hover or focus a chip to read the claim it stands for. */
-export function ClaimProvider({ claims, children }: { claims: Record<string, Claim>; children: ReactNode }) {
+export function ClaimProvider({ claims, children }: { claims: Record<string, Claim> | null; children: ReactNode }) {
   const [open, setOpen] = useState<Open | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const shown = useRef(false);
@@ -30,7 +31,8 @@ export function ClaimProvider({ claims, children }: { claims: Record<string, Cla
 
   const ctx = useMemo<Ctx>(
     () => ({
-      claim: (id) => claims[id],
+      loading: claims === null,
+      claim: (id) => claims?.[id],
       open(id, el) {
         clearTimeout(timer.current);
         const go = () => setOpen({ id, rect: el.getBoundingClientRect() });
@@ -62,7 +64,7 @@ export function ClaimProvider({ claims, children }: { claims: Record<string, Cla
   return (
     <ClaimCtx.Provider value={ctx}>
       {children}
-      {open && claims[open.id] && <ClaimPopover claim={claims[open.id]!} rect={open.rect} all={claims} />}
+      {open && claims?.[open.id] && <ClaimPopover claim={claims[open.id]!} rect={open.rect} all={claims} />}
     </ClaimCtx.Provider>
   );
 }
@@ -149,10 +151,15 @@ export const Inf = () => <span className="pill inf">inference</span>;
 
 /** A source chip: the record behind one claim. Dashed gold when the claim is an inference. */
 export function Src({ id, label }: { id: string; label?: string }) {
-  const { claim, open, close } = useClaims();
+  const { claim, open, close, loading } = useClaims();
   const c = claim(id);
   const onEnter = useCallback((e: React.SyntheticEvent<HTMLAnchorElement>) => open(id, e.currentTarget), [id, open]);
-  if (!c) return null;
+  if (!c)
+    return loading ? (
+      <span className="src ghost" aria-hidden="true">
+        {label ?? "source"}
+      </span>
+    ) : null;
   return (
     <a
       className={`src${c.kind === "inference" ? " inference" : ""}`}
@@ -172,7 +179,16 @@ export function Src({ id, label }: { id: string; label?: string }) {
 
 /** Chips for several claims, one per distinct record, so twenty trades on one filing show one chip. */
 export function Sources({ ids, max = 3 }: { ids: (string | null | undefined)[]; max?: number }) {
-  const { claim } = useClaims();
+  const { claim, loading } = useClaims();
+  if (loading) {
+    return ids.some(Boolean) ? (
+      <span className="chips">
+        <span className="src ghost" aria-hidden="true">
+          source
+        </span>
+      </span>
+    ) : null;
+  }
   const seen = new Set<string>();
   const unique: string[] = [];
   for (const id of ids) {

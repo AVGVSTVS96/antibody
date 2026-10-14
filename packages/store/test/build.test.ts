@@ -303,10 +303,10 @@ test("a bill listed only by a description takes the name its first section gives
   expect(bundle.bill.shortTitle).toBe("One Big Beautiful Bill Act");
 });
 
-test("a lobbying total cites an lda.gov list of the client's filings that name the bill, not one filing", () => {
+test("a lobbying total cites the first filing it adds and lists every one under rests on, never a search that cannot reproduce the number", () => {
   const total = b.claims["lda_spend/119-s-1582:coinbase#total"]!;
-  expect(total.sourceUrl).toStartWith("https://lda.gov/api/v1/filings/?");
-  expect(total.sourceUrl).toContain("client_name=");
-  expect(total.sourceUrl).toContain("filing_specific_lobbying_issues=");
-  expect(total.sourceLocator).toContain("filings naming the bill");
+  expect(total.sourceUrl).not.toContain("/api/v1/filings/?");
+  expect(total.restsOn.length).toBeGreaterThan(0);
+  expect(total.restsOn.every((id) => id.startsWith("lda_filings/"))).toBe(true);
+  expect(total.sourceLocator).toContain("rests on");
 });

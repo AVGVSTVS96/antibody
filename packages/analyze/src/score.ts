@@ -12,6 +12,8 @@ export const SCORE = {
   /** Largest late bonus; scaled down by the share of the bill that arrived late (a rewrite is not a sneak). */
   lateBonus: 0.25,
   offTopicBonus: 0.25,
+  /** Being late says nothing about one section once this share of the bill (or more) arrived late. */
+  lateMaxShare: 0.5,
   /** A "sneak signal" for the buried label: late, or at least this far off-topic (0-1 rank within the bill). */
   offTopicSneak: 0.75,
   /** headline: top tenth by attention, with at least this many articles. */
@@ -25,9 +27,9 @@ export const SCORE = {
 export const SCORE_TEXT = [
   "Stakes: how much the section matters, from 0 to 1. It is the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale, where $1 million is 0, $1 billion is 0.5 and $1 trillion is 1 (cuts and costs count the same; a dollar figure that is only an even share of a line CBO printed for several sections is shown but not counted). Lobbying: the number of lobbying reports that name the section, on a log scale where 1 report is 0.15, 10 is 0.52 and 100 is 1.",
   "Quiet: 1 minus the section's attention percentile within its bill, so the least-covered section is close to 1 and the most-covered is 0.",
-  "Sneak: 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill (from the bill's version history), plus 0.25 times how unlike the rest of the bill it is (0 to 1). The late bonus shrinks by the share of the bill that arrived late: when most of a bill is rewritten late, being late says little about any one section.",
+  "Sneak: 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill (from the bill's version history), plus 0.25 times how unlike the rest of the bill it is (0 to 1). The late bonus shrinks by the share of the bill that arrived late, and counts for nothing once half the bill or more arrived late: when a bill is rewritten late, being late says little about any one section. Off-topic distance counts only in a bill with a single committee title: a bill assembled from several committees' titles has a minority title by construction.",
   "Buried score = stakes × quiet × sneak, from 0 to 1.5.",
-  "Label: 'headline' when a section is in the top tenth of its bill by attention and at least 3 articles discussed it. 'Buried' when the score is at least 0.45, stakes are at least 0.667 ($10 billion, or about 20 lobbying reports), and the section is either late or in the most off-topic quarter of the bill. Everything else is 'normal'.",
+  "Label: 'headline' when a section is in the top tenth of its bill by attention and at least 3 articles discussed it. 'Buried' (shown on the site as 'quiet and costly') when the score is at least 0.45, stakes are at least 0.667 ($10 billion, or about 20 lobbying reports), and the section is either late (where late counts) or in the most off-topic quarter of the bill (where off-topic counts). Everything else is 'normal'.",
   "The rule is not symmetric on purpose, and the page says so: a section with no CBO figure can still qualify through lobbying alone, and being late or being off-topic alone is enough to count as a sneak signal. A big dollar figure with a loud news cycle is never labeled buried, whatever it does.",
   "All three parts are shown next to the label. The formula never looks at party, sponsor or outlet lean; the thresholds are the same for every bill.",
 ];
@@ -41,6 +43,8 @@ export interface Components {
   dollarsSplit?: "exact" | "even_split" | null;
   /** Share of the bill's final sections that arrived late; scales the late bonus. */
   lateShare?: number;
+  /** Distinct committee titles or divisions among the final sections; off-topic distance only counts in a bill with one. */
+  titles?: number;
   dollarsMusd: number | null;
   attentionPct: number | null;
   late: boolean;
@@ -55,10 +59,14 @@ export function stakes(c: Pick<Components, "dollarsMusd" | "dollarsSplit" | "lob
   );
 }
 
+const lateCounts = (c: Pick<Components, "late" | "lateShare">) => c.late && (c.lateShare ?? 0) < SCORE.lateMaxShare;
+const offTopicOf = (c: Pick<Components, "offTopic" | "titles">) => ((c.titles ?? 1) > 1 ? 0 : (c.offTopic ?? 0));
+
 export function buried(c: Components): number | null {
   if (c.attentionPct === null) return null;
   const quiet = 1 - c.attentionPct;
-  const sneak = 1 + (c.late ? SCORE.lateBonus * (1 - (c.lateShare ?? 0)) : 0) + SCORE.offTopicBonus * (c.offTopic ?? 0);
+  const sneak =
+    1 + (lateCounts(c) ? SCORE.lateBonus * (1 - (c.lateShare ?? 0)) : 0) + SCORE.offTopicBonus * offTopicOf(c);
   return Number((stakes(c) * quiet * sneak).toFixed(4));
 }
 
@@ -66,7 +74,7 @@ export function label(c: Components, hits: number): Row<"section_scores">["label
   if (c.attentionPct !== null && c.attentionPct >= SCORE.headlinePct && hits >= SCORE.headlineMinHits)
     return "headline";
   const b = buried(c);
-  const sneaky = c.late || (c.offTopic ?? 0) >= SCORE.offTopicSneak;
+  const sneaky = lateCounts(c) || offTopicOf(c) >= SCORE.offTopicSneak;
   if (b !== null && b >= SCORE.buriedMin && stakes(c) >= SCORE.buriedMinStakes && sneaky) return "buried";
   return "normal";
 }
@@ -142,6 +150,7 @@ export function scoreRows(
   const att = new Map(attention.filter((a) => a.section_id).map((a) => [a.section_id!, a]));
   const final = sections.filter((s) => s.in_final);
   const lateShare = final.length ? final.filter((s) => s.late).length / final.length : 0;
+  const titles = new Set(final.map((s) => s.path.split("/")[0]).filter((p) => /^(title|division):/.test(p!))).size;
   return final.map((s) => {
     const a = att.get(s.id);
     const d = dollars.bySection.get(s.id) ?? null;
@@ -152,6 +161,7 @@ export function scoreRows(
       attentionPct: a?.pct ?? null,
       late: s.late,
       lateShare,
+      titles,
       offTopic: offTopic.get(s.id) ?? null,
       lobbyingReports: filings.length,
     };
@@ -179,6 +189,7 @@ export function scoreRows(
       evidence: {
         version: SCORE.version,
         late_share: Number(lateShare.toFixed(4)),
+        titles,
         stakes: Number(stakes(c).toFixed(4)),
         quiet: c.attentionPct === null ? null : Number((1 - c.attentionPct).toFixed(4)),
         dollars_measure: d?.measure ?? null,

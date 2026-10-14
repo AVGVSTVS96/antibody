@@ -9,7 +9,7 @@ export interface FigureEstimate {
 
 export interface FigureLine<C = string> {
   estimateId: string;
-  measure: "budget_authority" | "outlays" | "revenues" | "deficit";
+  measure: "budget_authority" | "outlays" | "revenues" | "deficit" | "nonscorable_revenues";
   /** $ millions, signed as CBO prints it. */
   amountMusd: number;
   split: "exact" | "even_split";

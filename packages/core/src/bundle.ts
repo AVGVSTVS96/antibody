@@ -13,7 +13,8 @@ const date = z.iso.date();
 const Party = z.enum(["R", "D", "I"]);
 const Chamber = z.enum(["House", "Senate"]);
 export const Baseline = z.enum(["current-law", "current-policy"]);
-export const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit"]);
+/** nonscorable_revenues is CBO's memorandum line (revenues it expects but does not score); it is never part of the deficit. */
+export const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit", "nonscorable_revenues"]);
 export const OutletGroup = z.enum(["left", "center-left", "center", "center-right", "right"]);
 
 export const BillCard = z.object({
@@ -331,6 +332,7 @@ export const BundleIndex = z.object({
       sponsorParty: Party.nullable(),
       latestActionOn: date.nullable(),
       file: z.string(),
+      claimsFile: z.string().nullable().default(null),
       stats: BillStats.nullable().default(null),
     }),
   ),

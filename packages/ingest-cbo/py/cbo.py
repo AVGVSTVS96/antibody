@@ -136,6 +136,11 @@ def parse_sheet(ws, years, lines):
                 rows.append(row(ws, title, current, ctx, a, data, years, i))
             continue
 
+        if a and not has_data and not header:
+            current = {"line": next(lines), "kind": classify_line(a), "section_raw": None, "section_title": a, "component": None, "row0": i, "has_rows": False,
+                       "context": {k: v for k, v in ctx.items() if k != "block"}}
+            continue
+
         if current and c and not has_data and text(r[YEAR_COL0]):
             current["has_rows"] = True
             rows.append({**row(ws, title, current, ctx, c, [None] * len(years), years, i), "note": text(r[YEAR_COL0]),
@@ -197,7 +202,7 @@ def classify_line(b):
     l = b.lower()
     if "interaction" in l:
         return "interaction"
-    if l.startswith("subtotal") or l.startswith("total"):
+    if l.startswith("subtotal") or re.search(r"\btotal\b", l):
         return "subtotal"
     if "sequestration" in l:
         return "sequestration"
@@ -217,9 +222,20 @@ def expand_sections(raw):
 
 
 def find_years(ws):
-    for r in ws.iter_rows(min_row=1, max_row=30, values_only=True):
+    """Column labels of a sheet. Some CBO sheets print the two total columns over two rows (' 2021-' above '2030'),
+    which must read as '2021-2030', not collide with the annual 2030 column."""
+    rows = list(ws.iter_rows(min_row=1, max_row=30, values_only=True))
+    for k, r in enumerate(rows):
         if len(r) > YEAR_COL0 and text(r[YEAR_COL0]).isdigit():
-            return [text(x).replace(" ", "") for x in r[YEAR_COL0:] if x is not None]
+            above = rows[k - 1] if k else ()
+            out = []
+            for j in range(YEAR_COL0, len(r)):
+                if r[j] is None:
+                    continue
+                label = text(r[j]).replace(" ", "")
+                lead = text(above[j]).replace(" ", "") if j < len(above) and above[j] is not None else ""
+                out.append(lead + label if lead.endswith("-") and label.isdigit() else label)
+            return out
     return None
 
 
@@ -380,7 +396,7 @@ def per_section_pdf(pdf_path):
 def pdf_summary(pdf_path):
     """Whole-bill totals printed in a PDF's tables, before any per-title 'Table N.': total direct spending,
     total discretionary spending, total revenues and the effect on the deficit."""
-    rows, years, after = [], None, ""
+    rows, years, after, memo = [], None, "", None
     with pdfplumber.open(pdf_path) as pdf:
         for pno, page in enumerate(pdf.pages, 1):
             clean = page.filter(lambda o: o.get("object_type") != "char" or o["size"] > SUPERSCRIPT_MAX)
@@ -394,6 +410,20 @@ def pdf_summary(pdf_path):
                 if not years:
                     continue
                 label, nums = split_numbers(line, len(years))
+                if label.startswith("Memorandum"):
+                    memo = ""
+                    continue
+                if memo is not None:
+                    if not nums:
+                        memo = f"{memo} {label}".strip()
+                        continue
+                    if memo.startswith("Nonscorable"):
+                        rows.append({"block": "memorandum", "measure": f"{memo} {label}".strip(),
+                                     "measure_kind": "nonscorable_revenues",
+                                     "values": dict(zip(years, [value(t) for t in nums])), "raw": dict(zip(years, nums)),
+                                     "range": f"page {pno}"})
+                    memo = None
+                    continue
                 if label.startswith(("Total Changes in", "Net Increase or Decrease", "Increases or Decreases", "Increases in", "Decreases in")):
                     after = label
                 if not nums:

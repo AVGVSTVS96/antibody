@@ -166,3 +166,21 @@ test("a short title sitting next to another bill's number is held out", () => {
   expect(level("H.R. 3633, Digital Asset Market Clarity Act, and the GENIUS Act")).toBe("high");
   expect(level("S. 394, the GENIUS Act")).toBe("high");
 });
+
+test("a public law number in a line about another bill is held out, even when the filer mistyped the law", () => {
+  const s146 = matcher({
+    bill: "119-s-146",
+    congress: 119,
+    numbers: [{ id: "119-s-146", introduced: "2025-01-16", why: "own" }],
+    names: [],
+    laws: ["119-12"],
+    introduced: "2025-01-16",
+    enactedOn: "2025-05-19",
+    rivals: [],
+    support: [],
+    years: [2025, 2026],
+  });
+  const text =
+    "Public Law No. 119-12, Business State and Local Tax Deduction provisions related to H.R. 1, One Big Beautiful Bill Act";
+  expect(best(findRefs(text, period(2025, "third_quarter"), s146))?.level).toBe("low");
+});

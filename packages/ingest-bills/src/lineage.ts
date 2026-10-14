@@ -55,6 +55,7 @@ export interface StepStats {
 /** Tracks every section across the versions, oldest first. */
 export function trace(bill: string, versions: ParsedVersion[]): { lineages: Lineage[]; steps: StepStats[] } {
   const lineages: Lineage[] = [];
+  const taken = new Set<string>();
   const steps: StepStats[] = [];
   let current = new Map<number, number>();
 
@@ -132,7 +133,10 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
         idx = lineages.length;
         const from = split.get(j);
         const parent = from ? lineages[current.get(from.whole)!]! : null;
-        const id = `${bill}@${v.code}:${s.path}`;
+        const base = `${bill}@${v.code}:${s.path}`;
+        let id = base;
+        for (let n = 2; taken.has(id); n++) id = `${base}~${n}`;
+        taken.add(id);
         lineages.push({
           id,
           firstVersion: v.code,

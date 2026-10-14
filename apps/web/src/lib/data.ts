@@ -1,4 +1,4 @@
-import type { Bundle, BundleIndex } from "@antibody/core";
+import type { Bundle, BundleIndex, Claim } from "@antibody/core";
 
 /**
  * Bundles are validated when store publishes them (and in this app's tests), so the browser reads them as typed JSON
@@ -28,3 +28,9 @@ export async function loadBundle(id: string): Promise<Bundle | null> {
 }
 
 export const prefetchBundle = (id: string) => void loadBundle(id).catch(() => {});
+
+export async function loadClaims(id: string): Promise<Record<string, Claim> | null> {
+  const index = await loadIndex();
+  const entry = index.bills.find((b) => b.id === id);
+  return entry?.claimsFile ? load<Record<string, Claim>>(`/bundles/${entry.claimsFile}`) : null;
+}

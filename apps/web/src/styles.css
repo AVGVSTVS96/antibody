@@ -339,6 +339,18 @@ button {
   white-space: nowrap;
   transition: box-shadow 0.12s;
 }
+.src.ghost {
+  color: transparent;
+  background: var(--violet-soft);
+  border-color: transparent;
+  animation: ghost 1.2s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes ghost {
+  to {
+    opacity: 0.45;
+  }
+}
 .src::after {
   content: "↗";
   font-size: 9px;

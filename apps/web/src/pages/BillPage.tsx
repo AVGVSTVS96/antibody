@@ -1,4 +1,4 @@
-import type { Bundle } from "@antibody/core";
+import type { Bundle, Claim } from "@antibody/core";
 import { congressGovUrl, parseBillId } from "@antibody/core/ids";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -14,7 +14,7 @@ import {
 import { type Focus, FocusCtx } from "../bill/focus.ts";
 import { buildGraph } from "../bill/graph.ts";
 import { Stage } from "../bill/Stage.tsx";
-import { loadBundle } from "../lib/data.ts";
+import { loadBundle, loadClaims } from "../lib/data.ts";
 import { buildModel } from "../lib/model.ts";
 import { billHref, navigate, type Route, type View } from "../lib/router.ts";
 import { ClaimProvider } from "../ui/claims.tsx";
@@ -33,6 +33,17 @@ export default function BillPage({ route }: { route: BillRoute }) {
 }
 
 function BillView({ b, route }: { b: Bundle; route: BillRoute }) {
+  const [claims, setClaims] = useState<Record<string, Claim> | null>(Object.keys(b.claims).length ? b.claims : null);
+  useEffect(() => {
+    if (claims) return;
+    let live = true;
+    loadClaims(b.bill.id)
+      .then((c) => live && setClaims(c ?? {}))
+      .catch(() => live && setClaims({}));
+    return () => {
+      live = false;
+    };
+  }, [b.bill.id, claims]);
   const m = useMemo(() => buildModel(b), [b]);
   const built = useMemo(() => buildGraph(m), [m]);
   const [hover, setHover] = useState<string | null>(null);
@@ -51,7 +62,7 @@ function BillView({ b, route }: { b: Bundle; route: BillRoute }) {
   const focus = useMemo<Focus>(() => ({ hover, pinned, setHover, pin }), [hover, pinned, pin]);
 
   return (
-    <ClaimProvider claims={b.claims}>
+    <ClaimProvider claims={claims}>
       <FocusCtx.Provider value={focus}>
         <Top crumb={b.bill.shortTitle ?? b.bill.display} right={b.bill.law ?? b.bill.display} theme={false} />
         <Verdict m={m} />

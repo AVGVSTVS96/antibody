@@ -5,28 +5,39 @@ import { paths, readRows } from "@antibody/core/node";
 
 const STAMP = /"generatedAt":"[^"]*"/;
 
+const claimsFile = (id: string) => `${id}.claims.json`;
+
 /**
- * Writes `data/bundles/<bill>.json`, and the published copy the site serves when `publish` is set. A published
- * copy that differs only in `generatedAt` stays as it is, so a daily rebuild commits only what changed.
+ * Writes `data/bundles/<bill>.json`, and the published copy the site serves when `publish` is set. The published
+ * copy keeps its claims in a sidecar, `<bill>.claims.json`, so the page can paint before the largest part of the
+ * bundle arrives. A published file that differs only in `generatedAt` stays as it is, so a daily rebuild commits
+ * only what changed.
  */
 export async function writeBundle(
   bundle: Bundle,
   { publish = false, local = paths.bundles, published = paths.published } = {},
 ): Promise<string[]> {
-  const json = JSON.stringify(bundle);
   const dirs = publish ? [local, published] : [local];
   const files: string[] = [];
   for (const dir of dirs) {
     await mkdir(dir, { recursive: true });
-    const file = join(dir, `${bundle.bill.id}.json`);
-    const old =
-      dir === published
+    const split = dir === published;
+    const parts: [string, string][] = split
+      ? [
+          [`${bundle.bill.id}.json`, JSON.stringify({ ...bundle, claims: {} })],
+          [claimsFile(bundle.bill.id), JSON.stringify(bundle.claims)],
+        ]
+      : [[`${bundle.bill.id}.json`, JSON.stringify(bundle)]];
+    for (const [name, json] of parts) {
+      const file = join(dir, name);
+      const old = split
         ? await Bun.file(file)
             .text()
             .catch(() => null)
         : null;
-    if (old?.replace(STAMP, "") !== json.replace(STAMP, "")) await Bun.write(file, json);
-    files.push(file);
+      if (old?.replace(STAMP, "") !== json.replace(STAMP, "")) await Bun.write(file, json);
+    }
+    files.push(join(dir, `${bundle.bill.id}.json`));
   }
   return files;
 }
@@ -57,6 +68,7 @@ export function indexEntry(b: Bundle): BundleIndex["bills"][number] {
     sponsorParty: sponsorParty(b),
     latestActionOn: latestActionOn(b),
     file: `${b.bill.id}.json`,
+    claimsFile: claimsFile(b.bill.id),
     stats: billStats(b),
   };
 }
@@ -102,7 +114,7 @@ export async function writeIndex(
   events?: Row<"watch_events">[],
 ): Promise<BundleIndex> {
   const files = (await readdir(dir).catch(() => [] as string[])).filter(
-    (f) => f.endsWith(".json") && f !== "index.json",
+    (f) => f.endsWith(".json") && f !== "index.json" && !f.endsWith(".claims.json"),
   );
   const bundles = new Map<string, Bundle>();
   for (const f of files) {

@@ -1,5 +1,8 @@
 import { Claim, type ClaimId } from "@antibody/core";
-import { CBO_EVEN_SPLIT } from "./rules.ts";
+import { CBO_EVEN_SPLIT, DOCS } from "./rules.ts";
+
+const ATTENTION_LOCATOR = 'how attention is counted; the counted articles are under "rests on"';
+
 import {
   count,
   day,
@@ -35,8 +38,6 @@ export interface Names {
   committee(id: string): string;
   /** A filing that names this lobbying client, for the client's own claim (lda_clients rows have no source). */
   clientFiling(key: string): string | undefined;
-  /** An lda.gov query that lists every filing naming the bill, for one client or (null) for all of them. */
-  lobbyingList(key: string | null): string | undefined;
   roll(id: string): string;
   amendment(id: string): string;
   estimate(id: string): AnyRow | null;
@@ -82,6 +83,8 @@ function cboChange(measure: string, m: number): string {
       return m > 0 ? `adds ${amount} to deficits` : `reduces deficits by ${amount}`;
     case "revenues":
       return m > 0 ? `raises revenues by ${amount}` : `lowers revenues by ${amount}`;
+    case "nonscorable_revenues":
+      return `would also raise revenues by ${amount} that CBO does not score, so it is not part of the deficit effect`;
     case "outlays":
       return m > 0 ? `increases outlays by ${amount}` : `decreases outlays by ${amount}`;
     default:
@@ -228,16 +231,14 @@ export const TEMPLATES: Record<string, Template> = {
         text: `An estimated ${usd(r.share_usd ?? 0)} of that spending was about ${n.bill}: the total times the share of issue lines that name it.`,
         restsOn: [`lda_spend/${r.id}#total`],
       };
-    const list = r.topic_only ? undefined : n.lobbyingList(r.client_key);
     return {
       text: `${whom} reported ${usd(r.total_usd ?? 0)} in lobbying spending in the ${count(r.quarters, "quarter")} whose filings named ${n.bill}${r.topic_only ? " by topic only" : ""}.`,
       kind: "fact",
       rule: null,
       restsOn: r.total_rests_on ?? [],
-      ...(list && {
-        sourceUrl: list,
-        sourceLocator: `lda.gov's list of ${r.client_key ? "this client's" : "all"} filings naming the bill; the total adds ${count(r.reports, "report")}, each one cited under "rests on"`,
-      }),
+      sourceLocator: r.client_key
+        ? `the first of the ${count(r.reports, "filing")} this total adds; each one is cited under "rests on"`
+        : `the first client's first filing; the total adds ${count(r.reports, "report")} from the clients cited under "rests on"`,
     };
   },
 
@@ -325,9 +326,26 @@ export const TEMPLATES: Record<string, Template> = {
 
   attention: (r, _f, n) => {
     const subject = r.section_id ? sec(n, r.section_id) : `${n.bill} as a whole`;
-    const pct = r.pct != null ? `, more than ${Math.round(r.pct * 100)}% of this bill's sections` : "";
     const trade = r.trade_legal_hits ? ` Trade and legal press: ${count(r.trade_legal_hits, "more article")}.` : "";
-    return { text: `${count(r.hits, "article")} from the counted outlets matched ${subject}${pct}.${trade}` };
+    if (!r.hits)
+      return {
+        text: `No article from the counted outlets matched ${subject}.${trade}`,
+        sourceLocator: ATTENTION_LOCATOR,
+        sourceUrl: `${DOCS}#attention-v1`,
+      };
+    const rank =
+      r.pct == null
+        ? ""
+        : r.pct >= 0.995
+          ? ", the most covered section of this bill"
+          : r.pct <= 0.005
+            ? ", among the least covered sections of this bill"
+            : `, more than ${Math.round(r.pct * 100)}% of this bill's other sections`;
+    return {
+      text: `${count(r.hits, "article")} from the counted outlets matched ${subject}${rank}.${trade}`,
+      sourceLocator: ATTENTION_LOCATOR,
+      sourceUrl: `${DOCS}#attention-v1`,
+    };
   },
 
   counterparts: (r, _f, n) => ({

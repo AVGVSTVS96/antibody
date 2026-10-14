@@ -85,9 +85,8 @@ await phone.page.close();
 await browser.close();
 
 const urls = new Map<string, string>();
-for (const f of readdirSync(bundlesDir).filter((f) => f.endsWith(".json") && f !== "index.json")) {
-  const b = (await Bun.file(join(bundlesDir, f)).json()) as Bundle;
-  const claims = Object.values(b.claims);
+for (const f of readdirSync(bundlesDir).filter((f) => f.endsWith(".claims.json"))) {
+  const claims = Object.values((await Bun.file(join(bundlesDir, f)).json()) as Bundle["claims"]);
   const step = Math.max(1, Math.floor(claims.length / 6));
   for (let i = 0; i < claims.length; i += step) urls.set(claims[i]!.sourceUrl, claims[i]!.id);
 }

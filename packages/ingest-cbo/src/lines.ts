@@ -274,6 +274,7 @@ function deficit(id: string, outlays?: Line, revenues?: Line): Line | null {
 
 const WHOLE: [RegExp, Measure | null, Spending][] = [
   [/authorization/i, null, null],
+  [/nonscorable/i, "nonscorable_revenues", null],
   [/subject to appropriation.*outlays/i, "outlays", "discretionary"],
   [/subject to appropriation/i, "budget_authority", "discretionary"],
   [/on-budget|off-budget/i, "deficit", null],

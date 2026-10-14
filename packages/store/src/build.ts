@@ -13,7 +13,6 @@ import {
   type Edge,
   type EdgeKind,
   type EdgeOf,
-  lobbyingQuery,
   type Node,
   type NodeId,
   nodeId,
@@ -109,16 +108,6 @@ class Builder {
       return f
         ? { registrant: f.registrant_name, client: f.client_name, when: `${quarter(f.period)} ${f.year}` }
         : null;
-    },
-    lobbyingList: (key) => {
-      const node = key ? this.nodes.get(`client:${key}`) : null;
-      const name = node?.kind === "client" ? node.props.names[0] : null;
-      if (key && !name) return undefined;
-      const q = new URLSearchParams({
-        ...(name && { client_name: name }),
-        filing_specific_lobbying_issues: lobbyingQuery(this.bill),
-      });
-      return `https://lda.gov/api/v1/filings/?${q}`;
     },
     clientFiling: (key) => [...this.filings.values()].find((f) => f.client_key === key)?.url,
     committee: (id) => this.labels.committee.get(committeeKey(id)) ?? `committee ${id}`,

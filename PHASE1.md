@@ -84,9 +84,20 @@ The review of the live site found these; each is fixed on main with a test where
 - **money** (members, fec): congress.gov beta House votes skipped (need an api.data.gov key; the Clerk XML covers the same votes); individual money to leadership PACs is not summed by employer; a roster is one snapshot per Congress.
 - **entities**: parent and subsidiary ownership is the model's knowledge, checked against SEC's list only (Calpine was missed); verdicts are a mix of Opus (about 3,000) and Sonnet; donor-employer matches were read by eye, not against a labeled file; bonds, structured notes and bank-branded funds are out of the headline tier.
 - **attention**: 118-hr-3746 had no sections when attention first ran, so it was matched in this integration run only through the `build` pipeline; late flags on shell vehicles (late flags are withheld there now).
-- **bundle**: claims sidecar (gap 2, and 11).
+- **bundle**: claims now ship in a `<bill>.claims.json` sidecar (the page paints with ghost chips, then fills them); the main files are still 6 to 9 MB raw for the largest bills.
 - **web**: only the pages above exist; a pre-render step for the client-rendered pages is a later speedup; Playwright full-page phone screenshots repeat sections (a stitching artifact, the DOM has one copy).
 - **watch**: gap 7.
+
+## Left open after round 1 of the Phase 2 fixer
+
+Fixed: the CBO parser (ARPA section 2922 no longer shows a whole-bill figure; nonscorable revenues are their own measure), lobbying total claims that cite filings instead of an unreproducible list query, the S.146 public-law join, duplicate section ids in one text version, the late gate and title count in buried-v1, attention wording and its method-page source, and the claims sidecar. Not done:
+
+- map hairball (labels, edge alpha, ring captions), stat tiles, layout order, index card hooks, small low-contrast text, mobile map preview
+- whole-bill totals for FRA, IIJA, NDAA and ARP; the IRA still lists estimates from several dates in one line
+- trade-tie baseline and window; subsidiary acquisition dates; committee roster as-of dates; "Hearings by" wording; primary tickers only
+- the watcher: stale digest, title-based lobbying counts, "hot" cutoff and party audit; the "not tested" coverage state
+- a 119th Democratic-led and a 117th Republican-led bill in the curated set
+- the attention rows for the second H.R.1 section were not recomputed
 
 ## Run it
 

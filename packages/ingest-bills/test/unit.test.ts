@@ -71,6 +71,12 @@ describe("match and lineage", () => {
     expect(lineages.find((l) => l.id === "119-s-1@ih:sec:2")!.history.es!.movedFrom).toBe("sec:2");
   });
 
+  test("two sections that share a path in one version get distinct ids", () => {
+    const a = v(section("2", "Grants", LOREM("g")) + section("2", "Nutrition", LOREM("n")), "rh");
+    const { lineages } = trace("119-hr-1", [a]);
+    expect(lineages.map((l) => l.id)).toEqual(["119-hr-1@rh:sec:2", "119-hr-1@rh:sec:2~2"]);
+  });
+
   test("the old side of a split names its pieces", () => {
     const a = v(section("1", "Safety net", `${LOREM("s", 40)} ${LOREM("d", 40)}`), "pcs");
     const b = v(section("1", "Sugar", LOREM("s", 40)) + section("2", "Dairy", LOREM("d", 40)), "eas");
