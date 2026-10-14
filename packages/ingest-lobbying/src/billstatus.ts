@@ -92,7 +92,9 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
   };
 }
 
-const OFFICIAL = /^(A bill|An act|To |A joint resolution|A resolution|A concurrent resolution|Joint resolution)/i;
+/** Display titles are sometimes the official title ("An act to provide for reconciliation …"). */
+const OFFICIAL =
+  /^(A bill|An act|To |A joint resolution|A resolution|A concurrent resolution|Joint resolution|Making)\b/i;
 
 export interface BillName {
   title: string;
@@ -111,13 +113,13 @@ const CURRENT = /display title|popular title|as enacted|enrolled/i;
  * count only from the latest dated text version when CRS doesn't say which version carried them.
  */
 export function billNames(s: BillStatus): BillName[] {
-  const dated = s.versions.filter((v) => v.date).map((v) => v.date!);
+  const dated = s.versions.map((v) => v.date).filter((d): d is string => !!d && d <= (s.enactedOn ?? "9999"));
   const versionDate = (name: string | null) => s.versions.find((v) => v.type === name)?.date ?? null;
   const latest = dated.sort().at(-1) ?? s.introduced;
   const out = new Map<string, BillName>();
   const rank = { current: 2, earlier: 1, portion: 0 };
   for (const t of s.titles) {
-    if (!t.title || OFFICIAL.test(t.title) || !/title/i.test(t.type)) continue;
+    if (!t.title || /official/i.test(t.type) || OFFICIAL.test(t.title)) continue;
     const kind: BillName["kind"] = PORTION.test(t.type)
       ? "portion"
       : !s.enactedOn || CURRENT.test(t.type) || /enrolled/i.test(t.version ?? "")
