@@ -16,25 +16,26 @@ const monthDay = (d: string) =>
 const monthName = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase();
 
-/** The dates at the chart's edges: whole months around the member's trades, the window and the milestones. */
+/** The dates at the chart's edges: whole months around the member's trades, the window and the milestones, and one empty month after, so a trade on a month's last day does not sit on the frame. */
 function domainOf(dates: string[]): [string, string] {
   const sorted = [...dates].sort();
   const from = sorted[0]!.slice(0, 7);
   const last = sorted.at(-1)!;
-  const end = new Date(Date.UTC(Number(last.slice(0, 4)), Number(last.slice(5, 7)), 1));
+  const end = new Date(Date.UTC(Number(last.slice(0, 4)), Number(last.slice(5, 7)) + 1, 1));
   return [`${from}-01`, iso(end.getTime())];
 }
 
+/** Month labels counted back from the last month with data, so that month always carries one. */
 function axisMonths(domain: [string, string], max = 7) {
   const out: { at: number; date: string }[] = [];
   const [a, b] = [ms(domain[0]), ms(domain[1])];
   for (let t = new Date(a); t.getTime() < b; t.setUTCMonth(t.getUTCMonth() + 1))
     out.push({ at: (t.getTime() - a) / (b - a), date: iso(t.getTime()) });
   const step = Math.ceil(out.length / max);
-  return out.filter((_, i) => i % step === 0);
+  return out.filter((_, i) => (out.length - 2 - i) % step === 0);
 }
 
-/** Where each milestone falls; those within a tenth of the chart share one label. */
+/** Where each milestone falls; those within a sixth of the chart share one label. */
 function marks(domain: [string, string], events: { date: string; label: string }[]) {
   const [a, b] = [ms(domain[0]), ms(domain[1])];
   const groups: { at: number; text: string[] }[] = [];
@@ -42,7 +43,7 @@ function marks(domain: [string, string], events: { date: string; label: string }
     const at = (ms(e.date) - a) / (b - a);
     const text = `${monthDay(e.date)} ${e.label}`;
     const last = groups.at(-1);
-    if (last && at - last.at < 0.1) last.text.push(text);
+    if (last && at - last.at < 0.16) last.text.push(text);
     else groups.push({ at, text: [text] });
   }
   return groups;

@@ -159,6 +159,19 @@ export function windowShare(book: TradeBook): WindowShare | null {
   };
 }
 
+type Funded = MemberView["funded"][number];
+
+/**
+ * A member's kept tied PAC donors, split by what they netted: `given` is money that stayed (net above $0), `returned`
+ * is a gift the campaign gave back, or one that nets to nothing. Only `given` is a donor in any total or ranking.
+ */
+export function tiedDonors(member: MemberView): { given: Funded[]; returned: Funded[] } {
+  const given: Funded[] = [];
+  const returned: Funded[] = [];
+  for (const f of member.funded) (f.edge.props.amountUsd > 0 ? given : returned).push(f);
+  return { given, returned };
+}
+
 export interface RateCounts {
   members: number;
   /** Members with a trade in one of the companies. */
@@ -183,7 +196,7 @@ export function baseRate(m: BillModel, companies?: ReadonlySet<NodeId>): BaseRat
   const byParty: Record<Party, RateCounts> = { R: empty(), D: empty(), I: empty() };
   for (const mv of m.members) {
     const traded = (book.byMember.get(mv.node.id) ?? []).some((t) => mine(t.company));
-    const gifted = mv.funded.filter((f) => mine(f.actor)).reduce((sum, f) => sum + f.edge.props.amountUsd, 0) > 0;
+    const gifted = tiedDonors(mv).given.some((f) => mine(f.actor));
     for (const c of [total, byParty[mv.node.props.party]]) {
       c.members++;
       if (traded) c.traded++;

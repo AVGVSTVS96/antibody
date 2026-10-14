@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { count, usd } from "../lib/format.ts";
 import { type BillRoute, billHref, navigate, onLink, sectionHref } from "../lib/router.ts";
 import { buildTape } from "../lib/tape.ts";
-import { byOwner, medianPerTrader, ownerWords, rankMembers, tradeBook, tradeGaps } from "../lib/trades.ts";
+import { byOwner, medianPerTrader, ownerWords, rankMembers, tiedDonors, tradeBook, tradeGaps } from "../lib/trades.ts";
 import { Donors } from "../member/Donors.tsx";
 import { Months } from "../member/Months.tsx";
 import { Seats } from "../member/Seats.tsx";
@@ -19,6 +19,8 @@ import { Src } from "../ui/receipt.tsx";
 import { Tape } from "../ui/Tape.tsx";
 import "../member/member.css";
 
+const DONORS = 5;
+
 function Member({ member }: { member: NodeOf<"member"> }) {
   const m = useModel();
   const book = tradeBook(m);
@@ -31,7 +33,8 @@ function Member({ member }: { member: NodeOf<"member"> }) {
   const stocks = new Set(tied.map((t) => t.company));
   const touched = scope.rows.filter((r) => [...(scope.bySection.get(r.id) ?? [])].some((c) => stocks.has(c)));
   const ranked = useMemo(() => rankMembers(m, scope.companies), [m, scope]);
-  const gifts = view.funded.reduce((n, f) => n + f.edge.props.amountUsd, 0);
+  const donors = tiedDonors(view).given;
+  const gifts = donors.reduce((n, f) => n + f.edge.props.amountUsd, 0);
   const owners = byOwner(tied);
   const unread =
     view.node.props.paperFilingsUnread ||
@@ -85,9 +88,9 @@ function Member({ member }: { member: NodeOf<"member"> }) {
                   No trade in a company tied to {where} is on {last}'s disclosure forms in the data.
                 </>
               )}{" "}
-              {view.funded.length
-                ? `The ${view.funded.length === 1 ? "largest tied PAC donor gave" : `${view.funded.length} largest tied PAC donors gave`} ${usd(gifts)}. `
-                : ""}
+              {donors.length > 0
+                ? `The ${donors.length === 1 ? "one tied PAC donor gave" : `${donors.length} ${donors.length === DONORS ? "largest " : ""}tied PAC donors gave`} ${usd(gifts)}. `
+                : "No net PAC money from tied companies is in the data. "}
               Whether any of it mattered is not something the record can say.
             </p>
             {view.inserted.length > 0 && (
@@ -136,9 +139,17 @@ function Member({ member }: { member: NodeOf<"member"> }) {
         }
       >
         <p className="member-context">
-          Context: {last}'s filings list {count(mine.length, "trade")} in{" "}
-          {count(new Set(mine.map((t) => t.company)).size, "tied company", "tied companies")}; the median member who
-          traded filed {medianPerTrader(book)}.{" "}
+          {mine.length > 0 ? (
+            <>
+              Context: {last}'s filings list {count(mine.length, "trade")} in{" "}
+              {count(new Set(mine.map((t) => t.company)).size, "tied company", "tied companies")}; the median member who
+              traded filed {medianPerTrader(book)}.{" "}
+            </>
+          ) : (
+            <>
+              No trades in tied companies on {last}'s forms; the median member who traded filed {medianPerTrader(book)}.{" "}
+            </>
+          )}
           {mine.length > 0 && <Src ids={mine.map((t) => t.event.claim)} label="filings" />}
           {tied.length > 0 &&
             ` The ${stocks.size} ${stocks.size === 1 ? "stock" : "stocks"} below ${stocks.size === 1 ? "is" : "are"} the subset tied to ${where}.`}
@@ -187,27 +198,35 @@ function Member({ member }: { member: NodeOf<"member"> }) {
           <div>
             <Kicker>PAC money to {last}'s campaign · fact · FEC · a floor, not the total</Kicker>
             <h2>
-              {last}'s 5 largest tied PAC donors{view.funded.length ? `: ${usd(gifts)}.` : "."}
+              {donors.length === 0
+                ? "No net PAC money from tied companies in the data."
+                : `${last}'s ${donors.length === 1 ? "one tied PAC donor" : `${donors.length} ${donors.length === DONORS ? "largest " : ""}tied PAC donors`}: ${usd(gifts)}.`}
             </h2>
             <Donors member={member} />
           </div>
           <div>
             <Kicker>Same lens, everyone · one rule</Kicker>
             <h2>Who else touches {where}?</h2>
-            <Touch
-              ranked={ranked}
-              current={member.id}
-              unit={
-                bare
-                  ? "Tied companies traded"
-                  : `Companies tied to ${scope.kind === "quiet" ? "a quiet section" : "a named section"}`
-              }
-            />
-            <p className="kicker">
-              {count(ranked.length, "member")} {ranked.length === 1 ? "has" : "have"} at least one. Ordered by how many
-              tied companies a member traded, then by name; never by party or dollars. No bar says who acted on what, or
-              who knew.
-            </p>
+            {ranked.length === 0 ? (
+              <p className="lead">No member's forms in the data list a trade in a company tied to {where}.</p>
+            ) : (
+              <>
+                <Touch
+                  ranked={ranked}
+                  current={member.id}
+                  unit={
+                    bare
+                      ? "Tied companies traded"
+                      : `Companies tied to ${scope.kind === "quiet" ? "a quiet section" : "a named section"}`
+                  }
+                />
+                <p className="kicker">
+                  {count(ranked.length, "member")} {ranked.length === 1 ? "has" : "have"} at least one. Ordered by how
+                  many tied companies a member traded, then by name; never by party or dollars. No bar says who acted on
+                  what, or who knew.
+                </p>
+              </>
+            )}
           </div>
           <div className="member-says">
             <Note title="What this page does not say">

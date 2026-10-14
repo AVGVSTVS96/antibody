@@ -243,6 +243,25 @@
   gap: 12px 24px;
 }
 
+.lclient + .lclient {
+  margin-top: 8px;
+}
+
+.lmore {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--ink);
+  background: none;
+  font: 700 12px / 16px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lmore:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 .lchip {
   display: flex;
   width: 100%;
@@ -353,13 +372,32 @@ button.lchip:hover {
   }
 
   .lc h3 {
-    font-size: 24px;
-    line-height: 26px;
+    font-size: 22px;
+    line-height: 24px;
+  }
+
+  .lab {
+    font-size: 9px;
+    letter-spacing: 0.06em;
   }
 
   .lc-who,
   .lc-pac {
-    flex-direction: column;
+    flex-flow: row wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    padding-top: 10px;
+  }
+
+  .lc-who .lab {
+    display: none;
+  }
+
+  .lc-who .who {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
   }
 }
 
