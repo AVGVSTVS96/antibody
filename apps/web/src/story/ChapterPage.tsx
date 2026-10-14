@@ -2,7 +2,7 @@ import { createContext, type ReactNode, useContext, useLayoutEffect, useState } 
 import { onLink, storyHref } from "../lib/router.ts";
 import { useModel } from "../ui/BillGate.tsx";
 import { Kicker } from "../ui/primitives.tsx";
-import type { HeadLine } from "./data.ts";
+import { glue, type HeadLine } from "./data.ts";
 import { readSeconds } from "./read.ts";
 import { TITLES } from "./titles.ts";
 
@@ -110,7 +110,7 @@ export function ChapterPage({
         </h1>
       </header>
       <div className="ch-lede">
-        <p className="lead">{lede}</p>
+        <p className="lead">{glue(lede)}</p>
         {chips && <div className="chips">{chips}</div>}
       </div>
       <div className="ch-body">{children}</div>

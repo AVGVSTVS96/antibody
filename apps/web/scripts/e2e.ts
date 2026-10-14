@@ -8,7 +8,7 @@
 import { readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { activeSpan, type Bundle, type BundleIndex, type Claim, landingOrder } from "@antibody/core";
+import { activeSpan, type Bundle, type BundleIndex, billStats, type Claim, landingOrder } from "@antibody/core";
 import { chromium, type Page } from "playwright-core";
 import { modelOf } from "../src/lib/model.ts";
 import { buildTape } from "../src/lib/tape.ts";
@@ -45,6 +45,21 @@ async function open(path: string, width = 1440) {
 }
 
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+
+const brokenNumbers = (page: Page) =>
+  page.evaluate(() => {
+    let broken = 0;
+    const words = document.createTreeWalker(document.querySelector(".story")!, NodeFilter.SHOW_TEXT);
+    for (let node = words.nextNode(); node; node = words.nextNode())
+      for (const m of (node.textContent ?? "").matchAll(/[$+−-]?\d[\d,.]*[TBMK%]?/g)) {
+        const range = document.createRange();
+        range.setStart(node, m.index);
+        range.setEnd(node, m.index + m[0].length);
+        const rows = new Set([...range.getClientRects()].filter((r) => r.width).map((r) => Math.round(r.top)));
+        if (rows.size > 1) broken++;
+      }
+    return broken;
+  });
 
 async function layoutShift(page: Page) {
   return page.evaluate(
@@ -159,7 +174,7 @@ async function layoutShift(page: Page) {
         String(exhibitSection.score.components.lobbyingReports),
     `the exhibit is a quiet and costly section of ${featured.display} and its count of filings that name it matches the bundle's score`,
   );
-  check((await page.locator(".exhibit a.src:not(.ghost)").count()) > 0, "the exhibit's numbers carry source chips");
+  check((await page.locator(".exhibit a.src").count()) > 0, "the exhibit's numbers carry source chips");
 
   const stage = page.locator(".tape-stage");
   await stage.focus();
@@ -601,7 +616,7 @@ async function xray(id: string) {
   check(items === first.attention!.hits, `${id} the open row lists its ${first.attention!.hits} articles (${items})`);
   check(requests.length === 1, `${id} the articles file loaded once, on request`);
   const news = openRows().first().locator(".x-note", { hasText: "NEWS" }).locator("a.src").first();
-  await page.waitForSelector("a.src:not(.ghost)");
+  await page.waitForSelector("a.src");
   await news.click();
   await page.waitForSelector("[role=dialog] #rcpt-claim");
   check(true, `${id} the news count opens its receipt`);
@@ -688,7 +703,7 @@ for (const id of ids) {
 }
 
 {
-  const storyBills = ["119-hr-1", "117-hr-5376", "119-s-1582", "119-hr-4405", "117-s-3522"].filter((id) =>
+  const storyBills = ["119-hr-1", "117-hr-5376", "119-s-1582", "119-hr-4405", "117-s-3522", "119-s-1071"].filter((id) =>
     ids.includes(id),
   );
   const bundleOf = async (id: string) => (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
@@ -698,7 +713,9 @@ for (const id of ids) {
     const b = await bundleOf(id);
     const final = b.sections.filter((s) => s.inFinal);
     const headline = final.filter((s) => s.score?.label === "headline").length;
-    const quiet = final.filter((s) => s.score?.label === "buried").length;
+    const quietSections = final.filter((s) => s.score?.label === "buried");
+    const quiet = quietSections.length;
+    const { tested, why } = billStats(b).buriedTest;
     const span = activeSpan(b);
     const traders = new Set(
       b.edges.flatMap((e) =>
@@ -731,6 +748,23 @@ for (const id of ids) {
           (await page.locator(".ch").getAttribute("data-tone")) === (quiet ? "quiet" : null),
           `${id} story 2: ${quiet ? "yellow" : "plain"} page tone`,
         );
+      const text = await page.locator("main").innerText();
+      if (!tested && [1, 2, 5].includes(n))
+        check(
+          text.includes("couldn't test") &&
+            text.toLowerCase().includes(why!) &&
+            !/went through quietly\.|named a quiet section/.test(text),
+          `${id} story ${n}: says the bill could not be tested for quiet sections, with why`,
+        );
+      if (n === 2) {
+        const badges = (await page.locator(".q-row .lda").allInnerTexts()).map((t) => Number.parseInt(t, 10));
+        const named = quietSections.map((s) => s.score!.components.lobbyingReports).filter((r) => r > 0);
+        check(
+          JSON.stringify(badges.sort((x, y) => x - y)) === JSON.stringify(named.sort((x, y) => x - y)),
+          `${id} story 2: every LDA badge is the count its section's score used`,
+        );
+      }
+      if (n === 3) check(!/\$\d{1,3},\d{3}B/.test(text), `${id} story 3: one money format ($3.39T, never $3,394B)`);
       if (n === 4)
         check(
           h1.replace(/\s/g, "").includes(b.lobbying.reports.toLocaleString("en-US")),
@@ -738,10 +772,32 @@ for (const id of ids) {
         );
       if (n === 6 && traders.size)
         check(h1.startsWith(String(traders.size)), `${id} story 6 headline is ${traders.size} members`);
-      for (const width of [1440, 768, 390]) {
+      for (const width of [1440, 768, 390, 360]) {
         await page.setViewportSize({ width, height: 900 });
         await page.waitForTimeout(120);
         check((await overflow(page)) <= 0, `${id} story ${n} at ${width}: no horizontal overflow`);
+        if (width < 400 && (n === 3 || n === 4))
+          check((await brokenNumbers(page)) === 0, `${id} story ${n} at ${width}: no number breaks across lines`);
+        if (width < 400 && n === 6) {
+          const crowded = await page.evaluate(() => {
+            const pins = [...document.querySelectorAll<SVGCircleElement>(".pin circle")].map((c) =>
+              c.getBoundingClientRect(),
+            );
+            const box = document.querySelector(".day-chart svg")?.getBoundingClientRect();
+            const overlap = pins.filter((a, i) =>
+              pins.some((b, j) => i < j && Math.abs(a.x - b.x) < a.width && Math.abs(a.y - b.y) < a.height),
+            );
+            const outside = box ? pins.filter((p) => p.left < box.left - 1 || p.right > box.right + 1) : [];
+            const tags = [...document.querySelectorAll(".party")].filter(
+              (t) => new Set([...t.getClientRects()].map((r) => Math.round(r.top))).size > 1,
+            );
+            return overlap.length + outside.length + tags.length;
+          });
+          check(
+            crowded === 0,
+            `${id} story 6 at ${width}: vote pins never overlap or leave the chart, party tags stay on one line`,
+          );
+        }
       }
       await page
         .waitForFunction(() => !document.querySelector("a.src.ghost, span.src.ghost"), null, { timeout: 60000 })
@@ -782,8 +838,8 @@ for (const id of ids) {
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(150);
     check(path(page) === url(6), "ArrowRight on chapter 6 stays");
-    await page.waitForSelector("a.src:not(.ghost)", { timeout: 60000 });
-    await page.locator("a.src:not(.ghost)").first().click();
+    await page.waitForSelector("a.src", { timeout: 60000 });
+    await page.locator("a.src").first().click();
     await page.waitForSelector("[role=dialog]");
     await page.keyboard.press("ArrowLeft");
     await page.waitForTimeout(150);

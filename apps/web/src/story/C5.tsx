@@ -6,7 +6,7 @@ import { Note, Tag } from "../ui/primitives.tsx";
 import { Src } from "../ui/receipt.tsx";
 import { ChapterPage } from "./ChapterPage.tsx";
 import { ch5, listAnd, shortDay, type Tie } from "./data.ts";
-import { Cap, RuleChip } from "./parts.tsx";
+import { Cap, Person, RuleChip } from "./parts.tsx";
 
 function Card({ t, m, win }: { t: Tie; m: BillModel; win: string }) {
   const id = m.b.bill.id;
@@ -34,7 +34,7 @@ function Card({ t, m, win }: { t: Tie; m: BillModel; win: string }) {
               {t.members.map((x) => (
                 <li key={x.id}>
                   <a href={memberHref(id, x.id.slice(7))} onClick={onLink}>
-                    {x.name.replace(/^(Sen|Rep)\.\s+/, "")}
+                    <Person label={x.name} />
                   </a>
                   <span>{count(x.trades, "trade")}</span>
                 </li>

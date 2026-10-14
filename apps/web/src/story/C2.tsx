@@ -11,8 +11,7 @@ import { Cap, RuleChip } from "./parts.tsx";
 
 function Filings({ m, row }: { m: BillModel; row: QuietRow }) {
   const edges = m.edges.filter((e) => e.kind === "lobbied" && e.dst === `section:${row.v.s.id}`);
-  const total = row.v.s.score?.components.lobbyingReports ?? 0;
-  const listed = edges.reduce((n, e) => n + e.weight, 0);
+  const { named, drawn } = row.v;
   return (
     <div className="q-open">
       <ul>
@@ -25,12 +24,12 @@ function Filings({ m, row }: { m: BillModel; row: QuietRow }) {
         ))}
       </ul>
       <p className="small">
-        {listed < total
-          ? listed
-            ? `${count(listed, "report")} of ${total} listed: only the busiest clients are drawn. `
-            : `${count(total, "report")} name it. None is from the busiest clients drawn here. `
+        {drawn < named
+          ? drawn
+            ? `${count(drawn, "report")} of ${named} listed: only the busiest clients are drawn. `
+            : `${count(named, "report")} name it. None is from the busiest clients drawn here. `
           : ""}
-        {row.v.s.score && <Src ids={row.v.s.score.claim} label={`${total} REPORTS COUNTED`} />}
+        {row.v.s.score && <Src ids={row.v.s.score.claim} label={`${named} REPORTS COUNTED`} />}
       </p>
     </div>
   );
@@ -38,12 +37,11 @@ function Filings({ m, row }: { m: BillModel; row: QuietRow }) {
 
 function Row({ m, row, i, scale }: { m: BillModel; row: QuietRow; i: number; scale: number }) {
   const [open, setOpen] = useState(false);
-  const reports = row.v.s.score?.components.lobbyingReports ?? 0;
   return (
     <DollarRow m={m} v={row.v} dollars={row.musd} evenSplit={row.evenSplit} scale={scale} i={i}>
-      {reports > 0 && (
+      {row.v.named > 0 && (
         <button type="button" className="lda" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {reports} LDA
+          {row.v.named} LDA
         </button>
       )}
       {open && <Filings m={m} row={row} />}

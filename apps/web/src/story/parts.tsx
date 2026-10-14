@@ -17,6 +17,16 @@ export function RuleChip({ bundle, id }: { bundle: Bundle; id: string }) {
   );
 }
 
+/** A member's name with the party tag (`R-MI`) kept on one line. */
+export function Person({ label }: { label: string }) {
+  const [, name = label, party] = label.replace(/^(Sen|Rep)\.\s+/, "").match(/^(.*?) (\([^)]*\))$/) ?? [];
+  return (
+    <>
+      {name} {party && <span className="party">{party}</span>}
+    </>
+  );
+}
+
 /** A mono caption over a chart: what one mark is. */
 export function Cap({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (

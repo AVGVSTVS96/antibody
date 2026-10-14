@@ -1,10 +1,10 @@
 import type { ArticleList } from "@antibody/core";
 import { useMemo, useState } from "react";
+import { loadArticles } from "../lib/data.ts";
 import { count } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { billHref, sectionHref } from "../lib/router.ts";
 import { Src } from "../ui/receipt.tsx";
-import { loadArticles } from "./articles.ts";
 import { ChapterPage } from "./ChapterPage.tsx";
 import { type Ch1Data, ch1, figure, GROUP_SHORT, GROUPS, type Group } from "./data.ts";
 import { Cap, Num, RuleChip } from "./parts.tsx";
@@ -153,12 +153,8 @@ export default function Ch1({ m }: { m: BillModel }) {
       }
       notes={
         <div className="hand-off">
-          <b>{data.quietCount ? data.quietHits : "0"}</b>
-          <p>
-            {data.quietCount
-              ? `${data.quietHits === 1 ? "mention" : "mentions"} reached the ${data.quietCount} sections that went through quietly. Next chapter.`
-              : "No section met the quiet-and-costly rule. Next chapter says what came closest."}
-          </p>
+          <b>{data.handoff.value}</b>
+          <p>{data.handoff.text}</p>
         </div>
       }
       ledger={
