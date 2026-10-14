@@ -12,6 +12,7 @@ export interface Source {
   fileUrl: string;
   archiveUrl: string | null;
   pdfUrl: string | null;
+  pdfArchiveUrl: string | null;
 }
 
 export interface Reconcile {
@@ -317,7 +318,7 @@ function wholeBill(src: Source, summary: Summary | null, glance: Glance | null):
       total_musd: values[period]!,
       values,
       split: "exact",
-      archive_url: url === src.fileUrl ? src.archiveUrl : null,
+      archive_url: url === src.fileUrl ? src.archiveUrl : src.pdfArchiveUrl,
       rests_on: [],
       source_url: url,
       source_locator: where,
