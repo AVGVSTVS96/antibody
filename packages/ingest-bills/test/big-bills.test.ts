@@ -45,10 +45,14 @@ if (hr1)
       expect(l.last.text).toContain("90 percent");
     });
 
-    test("late in the final law: 4 from the House floor, 112 from the Senate", () => {
+    test("late in the final law: 112, all first in the Senate's text; the House floor's 4 are in the House-passed text", () => {
       const late = rows.sections!.filter((s) => s.in_final && s.late);
-      expect(late.filter((s) => s.first_version === "eh")).toHaveLength(4);
+      expect(late.filter((s) => s.first_version === "eh")).toHaveLength(0);
       expect(late.filter((s) => s.first_version === "eas")).toHaveLength(112);
+      expect(sections.get("119-hr-1@eh:title:XI/subtitle:C/part:1/sec:112032")).toMatchObject({
+        first_version: "eh",
+        late: false,
+      });
     });
 
     test("who offered it: Ernst's millionaire-unemployment section, Blackburn's AI strike, the Rules Committee print", () => {

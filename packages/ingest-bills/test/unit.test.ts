@@ -4,7 +4,7 @@ import type { AmendmentRecord } from "../src/billstatus.ts";
 import { candidates } from "../src/counterparts.ts";
 import { amendmentFrom } from "../src/crec.ts";
 import { wordDiff } from "../src/diff.ts";
-import { trace } from "../src/lineage.ts";
+import { isLate, trace } from "../src/lineage.ts";
 import { match } from "../src/match.ts";
 import { parseSections, type Sec } from "../src/sections.ts";
 import { canon, citations, normEnum } from "../src/text.ts";
@@ -166,4 +166,32 @@ test("counterpart candidates need a shared heading word, cited law or wording", 
   expect(candidates(removed, added).map((l) => l.last.heading)).toEqual([
     "Modifications to SNAP work requirements for able-bodied adults",
   ]);
+});
+
+describe("late: first appears after the first chamber-passed text", () => {
+  const versions = ["rh", "eh", "pcs", "eas"].map((code) => ({
+    code,
+    predecessor: false,
+    secs: parseSections(bill(section("1", "Same", LOREM(code)))),
+  }));
+  const lineage = (firstVersion: string) => ({ firstVersion, splitFrom: null }) as Parameters<typeof isLate>[0];
+  const flags = (...codes: string[]) => codes.map((c) => isLate(lineage(c), versions));
+
+  test("the House-passed text itself is not late; Senate and later versions are", () => {
+    expect(flags("rh", "eh", "pcs", "eas")).toEqual([false, false, true, true]);
+  });
+
+  test("a split that keeps its parent's wording is not late", () => {
+    const split = { firstVersion: "eas", splitFrom: { id: "x", share: 0.95 } } as Parameters<typeof isLate>[0];
+    expect(isLate(split, versions)).toBe(false);
+  });
+
+  test("a bill that never passed a chamber has no late sections", () => {
+    expect(
+      isLate(
+        lineage("eas"),
+        versions.filter((v) => v.code === "rh"),
+      ),
+    ).toBe(false);
+  });
 });

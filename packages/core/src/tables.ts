@@ -78,7 +78,7 @@ export const TABLES = {
     split_into: z.array(z.string()),
     merged_into: z.string().nullable(),
     /**
-     * First appears in the first chamber-passed version or later (a floor amendment, the other chamber, conference),
+     * First appears after the first chamber-passed version (the other chamber, conference),
      * and is not just split out of an older section. Lineage only: an LLM counterpart (see `counterparts`) never sets it.
      */
     late: z.boolean(),

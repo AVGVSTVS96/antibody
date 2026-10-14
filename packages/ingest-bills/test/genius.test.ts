@@ -48,8 +48,8 @@ test("lineage: 59/59 sections carried from committee text to law, one added on t
   expect(sec19.last.text).toContain("aggregating $5,000 or less");
 });
 
-test("late: only sec. 19 (first in the Senate-passed text); predecessor and committee sections never", () => {
-  expect(lineages.filter((l) => isLate(l, versions)).map((l) => l.id)).toEqual([sec19.id]);
+test("late: none; sec. 19 first appears in the Senate-passed text itself, and predecessor and committee sections never", () => {
+  expect(lineages.filter((l) => isLate(l, versions))).toEqual([]);
 });
 
 test("sec. 19 came in through Hagerty's substitute SA 2307, read from its printed text", () => {

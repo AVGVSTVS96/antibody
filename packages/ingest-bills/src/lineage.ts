@@ -214,14 +214,14 @@ const PASSED = new Set(["eh", "es", "ath", "ats", "eah", "eas", "enr", "plaw"]);
 export const PURE_SPLIT = 0.9;
 
 /**
- * Late: first appears in the first chamber-passed text or after it (floor amendments, the other chamber, conference),
- * and isn't just a piece split out of an older section. Sections of the bill's first own text are never late.
+ * Late: first appears after the first chamber-passed text (the other chamber, conference), and isn't just a piece split
+ * out of an older section. Sections of the bill's first own text, or of that passed text itself, are never late.
  */
 export function isLate(l: Lineage, versions: ParsedVersion[]): boolean {
   const codes = versions.map((v) => v.code);
   const first = codes.indexOf(l.firstVersion);
   const ownStart = versions.findIndex((v) => !v.predecessor);
   const passed = codes.findIndex((c) => PASSED.has(c));
-  if (passed < 0 || first <= ownStart || first < passed) return false;
+  if (passed < 0 || first <= Math.max(ownStart, passed)) return false;
   return !(l.splitFrom && l.splitFrom.share >= PURE_SPLIT);
 }
