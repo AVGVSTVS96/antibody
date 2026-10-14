@@ -53,7 +53,8 @@ Checks run on the live URL: index lists all 12 bills with both parties, GENIUS a
 10. **Watcher**: dollars and buried show "—" for bills that are not x-rayed, so a big bill outside the top 25 on the cheap score could be missed (`ANTIBODY_WATCH_ENRICH` widens it). Floor action by voice vote or unanimous consent is not counted as rushed. Simple resolutions are left out on purpose.
 11. **Not scheduled.** `scripts/daily.sh` (watcher, then deploy) and a systemd timer for 6 am are in `scripts/systemd/` but not enabled, because each run x-rays 3 bills with Sonnet and plans are tight. Enable with `systemctl --user enable --now antibody-daily.timer` after copying both files to `~/.config/systemd/user/`.
 12. **Not connected to git on Vercel.** Deploys go from this machine (`bun run deploy`); pushing to GitHub does not redeploy.
-13. Smaller: Media Cloud's partisanship quintiles are from 2019 and the center-right group has one outlet; two CSS specificity warnings in Biome; the index page's `<link rel=preload>` for `index.json` keeps one request open in headless Chromium (harmless, `networkidle` never settles, so the scripts wait for a selector instead).
+13. **Bundle builds are not byte-stable.** Rebuilding the same tables gives slightly different claim counts (IRA: 56,598 to 56,616 across rebuilds, about 1,900 contribution claims differ). The per-member cap of 5 largest donors in `buildMoney` has ties, and adding `id` to its `ORDER BY` did not make two rebuilds match, so another unordered step remains. Not diagnosed.
+14. Smaller: Media Cloud's partisanship quintiles are from 2019 and the center-right group has one outlet; two CSS specificity warnings in Biome; the index page's `<link rel=preload>` for `index.json` keeps one request open in headless Chromium (harmless, `networkidle` never settles, so the scripts wait for a selector instead).
 
 ## What each part left open
 
