@@ -1,26 +1,47 @@
-import { BundleIndex } from "@antibody/core";
-import { useEffect, useState } from "react";
+import { Component, lazy, type ReactNode, Suspense } from "react";
+import { useRoute } from "./lib/router.ts";
+import { IndexPage } from "./pages/IndexPage.tsx";
+import { Top } from "./ui/Top.tsx";
+
+const BillPage = lazy(() => import("./pages/BillPage.tsx"));
 
 export function App() {
-  const [index, setIndex] = useState<BundleIndex | null>(null);
-
-  useEffect(() => {
-    fetch("/bundles/index.json")
-      .then((r) => r.json())
-      .then((j) => setIndex(BundleIndex.parse(j)));
-  }, []);
-
+  const route = useRoute();
   return (
-    <main>
-      <h1>antibody</h1>
-      {index?.bills.length === 0 && <p>No bills x-rayed yet.</p>}
-      <ul>
-        {index?.bills.map((b) => (
-          <li key={b.id}>
-            {b.display} {b.shortTitle ?? b.title}
-          </li>
-        ))}
-      </ul>
-    </main>
+    <Catch key={route.page === "bill" ? route.id : "index"}>
+      <Suspense fallback={<Loading />}>{route.page === "bill" ? <BillPage route={route} /> : <IndexPage />}</Suspense>
+    </Catch>
   );
+}
+
+export function Loading({ what = "Loading" }: { what?: string }) {
+  return (
+    <div className="loading">
+      <span className="cap">{what}</span>
+    </div>
+  );
+}
+
+class Catch extends Component<{ children: ReactNode }, { error: Error | null }> {
+  override state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  override render() {
+    if (!this.state.error) return this.props.children;
+    return (
+      <>
+        <Top />
+        <div className="home">
+          <div className="hero">
+            <h1>Something broke loading this page.</h1>
+            <p className="mono">{this.state.error.message}</p>
+            <p>
+              <a href="/">Back to all bills</a>
+            </p>
+          </div>
+        </div>
+      </>
+    );
+  }
 }
