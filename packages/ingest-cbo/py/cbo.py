@@ -567,7 +567,7 @@ def glance(path):
         "glance": glance_table(words),
         "mandates": mandates(words),
         "baseline_month": baseline.group(1) if baseline else None,
-        "budget_enforcement_baseline": bool(re.search(r"budget enforcement baseline", flat, re.I)),
+        "budget_enforcement_baseline": bool(re.search(r"budget[- ]enforcement baseline|baseline used for budget enforcement", flat, re.I)),
     }
 
 

@@ -8,6 +8,9 @@ export const MODEL = "claude-opus-5-5";
 export const RULE =
   "cbo-prose-to-section: a model (Opus 5.5) linked this sentence of CBO's estimate to the bill section whose provision it describes; the quote is checked word for word against the cited PDF page";
 
+/** Below this the model itself is unsure the sentence is about that section; such links are dropped, not shown. */
+export const MIN_CONFIDENCE = 0.5;
+
 export interface Link {
   section: string;
   page: number;
@@ -35,7 +38,7 @@ export function norm(s: string): string {
     .toLowerCase();
 }
 
-/** Keeps a link only when its section exists in the scored version and its quote is on the page it names. */
+/** Keeps a link only when its section exists in the scored version, its quote is on the page it names, and the model is fairly sure. */
 export function verify(links: Link[], pages: string[], sections: Section[]): (Link & { sectionId: string })[] {
   const byNum = new Map(sections.map((s) => [s.num, s]));
   const pageText = pages.map(norm);
@@ -44,7 +47,15 @@ export function verify(links: Link[], pages: string[], sections: Section[]): (Li
     const s = byNum.get(String(l.section).replace(/^sec(tion)?\.?\s*/i, ""));
     const text = pageText[l.page - 1];
     const key = `${s?.id}|${norm(l.quote)}`;
-    if (!s || !text || norm(l.quote).length < 20 || !text.includes(norm(l.quote)) || seen.has(key)) return [];
+    if (
+      !s ||
+      !text ||
+      l.confidence < MIN_CONFIDENCE ||
+      norm(l.quote).length < 20 ||
+      !text.includes(norm(l.quote)) ||
+      seen.has(key)
+    )
+      return [];
     seen.add(key);
     return [{ ...l, section: s.num, sectionId: s.id }];
   });
@@ -115,7 +126,7 @@ export async function notes(ctx: StageContext) {
     );
     const kept = verify(answer.links, glance.pages, scored);
     ctx.log(
-      `${e.id}: ${answer.links.length} links proposed, ${kept.length} kept (quote on page, section exists) · $${answer.costUsd.toFixed(2)} · ${((performance.now() - t0) / 1000).toFixed(0)}s`,
+      `${e.id}: ${answer.links.length} links proposed, ${kept.length} kept (quote on its page, section exists, model confidence ≥ 0.5) · $${answer.costUsd.toFixed(2)} · ${((performance.now() - t0) / 1000).toFixed(0)}s`,
     );
     for (const [i, l] of kept.entries())
       rows.push({

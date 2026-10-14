@@ -61,7 +61,10 @@ const MONTH =
 export function baselineOf(listing: Listing, pdf: { month: string | null; enforcement: boolean } | null): Baseline {
   const text = `${listing.title} ${listing.description}`;
   const dynamic = /dynamic/i.test(listing.title) ? ", dynamic estimate" : "";
-  if (/budget enforcement baseline|current[- ]policy baseline/i.test(text) || (pdf?.enforcement && !MONTH.test(text)))
+  if (
+    /budget[- ]enforcement baseline|baseline used for budget enforcement|current[- ]policy baseline/i.test(text) ||
+    (pdf?.enforcement && !MONTH.test(text))
+  )
     return { baseline: "current-policy", label: `Senate budget-enforcement baseline (current policy)${dynamic}` };
   const month = text.match(MONTH)?.[1] ?? pdf?.month;
   return {
