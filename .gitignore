@@ -9,3 +9,6 @@ __pycache__/
 .vercel/
 !packages/*/data/
 apps/web/shots/
+
+# published bundles are build output (170 MB for the 12 curated bills); `bun run deploy` uploads them
+apps/web/public/bundles/*.json

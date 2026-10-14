@@ -48,3 +48,7 @@ Changing the contract: additive changes (a new column, table or edge prop) go st
 | `spikes/report/page/antibody.html` (design reference) | `apps/web` | — |
 
 The six fixes in `spikes/decisions.json` live in the contract: `sections.split_into` + `late` from the lineage (fixes 1, 2), `cbo_lines.split` + `rests_on` (3, 4), `ptr_documents.read_status` → the "paper filings not yet read" gap (5), stub-URL validation + `trades.owner` (6).
+
+## Phase 1
+
+All parts are merged into main and the site is live; see `PHASE1.md` for what works, the URL, the ranked gaps and what each part left open. Published bundles (`apps/web/public/bundles/*.json`) are build output, gitignored; `bun run deploy` uploads them.

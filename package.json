@@ -9,7 +9,9 @@
     "format": "biome check --write .",
     "typecheck": "tsc",
     "test": "bun test",
-    "ci": "biome ci . && tsc && bun test"
+    "ci": "biome ci . && tsc && bun test",
+    "deploy": "scripts/deploy.sh",
+    "e2e": "bun apps/web/scripts/e2e.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",

@@ -28,7 +28,8 @@ async function open(path: string, width = 1440) {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
-  await page.goto(`${base}${path}`, { waitUntil: "networkidle" });
+  await page.goto(`${base}${path}`, { waitUntil: "load" });
+  await page.waitForSelector(path === "/" ? ".billcard" : ".stage", { timeout: 30000 });
   return { page, errors };
 }
 
@@ -60,7 +61,7 @@ for (const id of sample) {
   check((await page.locator(".sigma canvas").count()) > 0, `${id} map canvas mounted`);
   for (const view of ["money", "list", "map"]) {
     await page.click(`[data-view="${view}"]`);
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(1000);
     check(
       (await page.locator(`[data-view="${view}"]`).getAttribute("aria-pressed")) === "true" &&
         page.url().includes(view === "map" ? id : `view=${view}`),

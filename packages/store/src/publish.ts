@@ -61,6 +61,8 @@ export function indexEntry(b: Bundle): BundleIndex["bills"][number] {
   };
 }
 
+const partyOf = (p: unknown) => (p === "R" || p === "D" || p === "I" ? p : null);
+
 /** The watcher's latest picks (its "hot" events from the newest run), linked to a bundle when one is published. */
 async function watchPicks(bundles: Map<string, Bundle>, events: Row<"watch_events">[]): Promise<BundleIndex["watch"]> {
   const hot = events.filter((e) => e.kind === "hot");
@@ -76,12 +78,15 @@ async function watchPicks(bundles: Map<string, Bundle>, events: Row<"watch_event
       return {
         billId: e.bill_id,
         display: b?.bill.display ?? billDisplay(e.bill_id as BillId),
-        title: b?.bill.shortTitle ?? b?.bill.title ?? billDisplay(e.bill_id as BillId),
+        title:
+          b?.bill.shortTitle ??
+          b?.bill.title ??
+          (typeof e.detail.title === "string" ? e.detail.title : billDisplay(e.bill_id as BillId)),
         kind: e.kind,
         seenAt: e.seen_at,
         url: e.url,
         reason: typeof e.detail.reason === "string" ? e.detail.reason : null,
-        sponsorParty: b ? sponsorParty(b) : null,
+        sponsorParty: b ? sponsorParty(b) : partyOf(e.detail.sponsorParty),
         file: b ? `${e.bill_id}.json` : null,
       };
     });

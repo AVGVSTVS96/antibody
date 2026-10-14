@@ -31,7 +31,8 @@ for (const [name, path] of pages)
         hasTouch: mobile,
         colorScheme: theme,
       });
-      await page.goto(`${base}${path}?theme=${theme}`, { waitUntil: "networkidle" });
+      await page.goto(`${base}${path}?theme=${theme}`, { waitUntil: "load" });
+      await page.waitForSelector(name === "index" ? ".billcard" : ".stage", { timeout: 30000 });
       if (name !== "index") await page.waitForSelector(".sigma canvas", { state: "attached", timeout: 30000 });
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(1500);

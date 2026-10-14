@@ -28,12 +28,15 @@ export function BillCard({ m }: { m: BillModel }) {
         </span>
       </h2>
       <p className="sub">
-        {b.bill.shortTitle ? `${b.bill.title}. ` : ""}
+        {b.bill.shortTitle ? `${b.bill.title.replace(/\.+$/, "")}. ` : ""}
         {m.sponsor && <>Sponsor {m.sponsor.label}. </>}
-        <Sources ids={b.bill.claims} />{" "}
-        <a className="src" href={b.bill.billstatusUrl} target="_blank" rel="noopener">
-          BILLSTATUS
-        </a>
+        {b.bill.claims.length ? (
+          <Sources ids={b.bill.claims} />
+        ) : (
+          <a className="src" href={b.bill.billstatusUrl} target="_blank" rel="noopener">
+            BILLSTATUS
+          </a>
+        )}
       </p>
       <div className="stats">
         <div className="stat">

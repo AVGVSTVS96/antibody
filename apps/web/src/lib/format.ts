@@ -30,6 +30,7 @@ export function usd(n: number | null | undefined): string {
   if (n == null) return "—";
   const a = Math.abs(n);
   const sign = n < 0 ? "−" : "";
+  if (a >= 1e12) return `${sign}$${(a / 1e12).toFixed(a >= 1e13 ? 0 : 1)}T`;
   if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(a >= 1e10 ? 0 : 1)}B`;
   if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}M`;
   if (a >= 1e3) return `${sign}$${Math.round(a / 1e3)}K`;
