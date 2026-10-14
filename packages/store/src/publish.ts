@@ -3,15 +3,29 @@ import { join } from "node:path";
 import { type BillId, type Bundle, BundleIndex, billDisplay, billStats } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 
-/** Writes `data/bundles/<bill>.json`, and the published copy the site serves when `publish` is set. */
-export async function writeBundle(bundle: Bundle, { publish = false } = {}): Promise<string[]> {
+const STAMP = /"generatedAt":"[^"]*"/;
+
+/**
+ * Writes `data/bundles/<bill>.json`, and the published copy the site serves when `publish` is set. A published
+ * copy that differs only in `generatedAt` stays as it is, so a daily rebuild commits only what changed.
+ */
+export async function writeBundle(
+  bundle: Bundle,
+  { publish = false, local = paths.bundles, published = paths.published } = {},
+): Promise<string[]> {
   const json = JSON.stringify(bundle);
-  const dirs = publish ? [paths.bundles, paths.published] : [paths.bundles];
+  const dirs = publish ? [local, published] : [local];
   const files: string[] = [];
   for (const dir of dirs) {
     await mkdir(dir, { recursive: true });
     const file = join(dir, `${bundle.bill.id}.json`);
-    await Bun.write(file, json);
+    const old =
+      dir === published
+        ? await Bun.file(file)
+            .text()
+            .catch(() => null)
+        : null;
+    if (old?.replace(STAMP, "") !== json.replace(STAMP, "")) await Bun.write(file, json);
     files.push(file);
   }
   return files;

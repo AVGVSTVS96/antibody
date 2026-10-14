@@ -1,6 +1,6 @@
 import type { Bundle, Claim, ClaimId } from "@antibody/core";
 
-export const EDGE_CLAIM_CAP = 8;
+export const EDGE_CLAIM_CAP = 6;
 
 /**
  * Keeps a bounded set of claims on each edge and drops every claim nothing points at. A lobbying edge can rest on
