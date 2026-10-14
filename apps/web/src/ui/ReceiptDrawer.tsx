@@ -38,7 +38,9 @@ export function ReceiptDrawer({ claims, rules, walk, label, nested, closing, onC
   const claim = claims?.[id];
   const count = walk.ids.length;
 
-  useEffect(() => panel.current?.focus({ preventScroll: true }), []);
+  useEffect(() => {
+    if (!panel.current?.contains(document.activeElement)) panel.current?.focus({ preventScroll: true });
+  });
 
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") {

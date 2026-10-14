@@ -24,11 +24,14 @@ function Filings({ m, row }: { m: BillModel; row: QuietRow }) {
           </li>
         ))}
       </ul>
-      {listed < total && (
-        <p className="small">
-          {count(listed, "report")} of {total} listed: only the busiest clients are drawn.
-        </p>
-      )}
+      <p className="small">
+        {listed < total
+          ? listed
+            ? `${count(listed, "report")} of ${total} listed: only the busiest clients are drawn. `
+            : `${count(total, "report")} name it. None is from the busiest clients drawn here. `
+          : ""}
+        {row.v.s.score && <Src ids={row.v.s.score.claim} label={`${total} REPORTS COUNTED`} />}
+      </p>
     </div>
   );
 }
