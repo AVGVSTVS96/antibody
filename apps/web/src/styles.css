@@ -1589,7 +1589,8 @@ table.secs tr.grp td {
   background: var(--violet);
   border-radius: 999px;
   padding: 3px 8px;
-  margin-left: 8px;
+  display: inline-block;
+  margin-bottom: 6px;
 }
 .billcard .hook {
   margin-top: 6px;
@@ -1612,7 +1613,7 @@ table.secs tr.grp td {
 }
 .colnote {
   grid-column: 1 / -1;
-  margin: 0;
+  margin: 0 0 8px;
   font-size: 13px;
   color: var(--muted);
 }

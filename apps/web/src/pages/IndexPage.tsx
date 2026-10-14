@@ -244,6 +244,7 @@ function buriedLine(s: NonNullable<Entry["stats"]>) {
   if (!s.buriedTest.tested) return `Buried candidates: not tested (${s.buriedTest.why}).`;
   if (s.buried > 0)
     return `Buried candidates: ${s.buried} of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}.`;
+  if (s.buriedTest.bigStakes === 0) return "Tested for buried candidates: no section has big stakes.";
   return `Buried candidates: 0 of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}${s.buriedTest.why ? ` (${s.buriedTest.why})` : ""}.`;
 }
 
@@ -260,12 +261,12 @@ function BillCard({ b }: { b: Entry }) {
     >
       <Fingerprint kinds={s?.fingerprint ?? ""} label={b.display} />
       <div>
+        {b.id === START_HERE && <span className="badge-start">Start with this one</span>}
         <div className="cap">
           {b.display}
           {b.sponsorParty ? ` · ${b.sponsorParty} sponsor` : ""}
           {b.law ? ` · ${b.law}` : ""}
           {b.latestActionOn ? ` · ${day(b.latestActionOn)}` : ""}
-          {b.id === START_HERE && <span className="badge-start">Start with this one</span>}
         </div>
         <h3>{b.shortTitle ?? b.title}</h3>
         {s && hook(b) && <div className="hook">{hook(b)}</div>}
