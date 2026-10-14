@@ -43,17 +43,41 @@ def units(article):
 STOP = set(
     "a an the of to for and or in on by with from at as under that this these those is are be any other certain "
     "such section sec act title subtitle chapter part related relating modifications modification modify "
-    "treatment rules rule special additional program programs".split()
+    "treatment rules rule special additional program programs amendment amendments code codes".split()
 )
-LEXICAL = 8
+LEXICAL = 12
+
+
+def stem(w):
+    return w[:-1] if w.endswith("s") and len(w) > 3 else w
 
 
 def tokens(text):
-    return {w[:-1] if w.endswith("s") and len(w) > 3 else w for w in re.findall(r"[a-z][a-z0-9]+", text.lower())} - STOP
+    return {stem(w) for w in re.findall(r"[a-z][a-z0-9]+", text.lower()) if not w.isdigit()} - STOP
+
+
+def initialisms(heading):
+    """Capitalised runs of two or more words ("Internal Revenue Service") mapped to their initials ("irs")."""
+    words = re.findall(r"[A-Za-z][A-Za-z0-9'-]*", heading)
+    out, run = {}, []
+    for i, w in enumerate(words + [""]):
+        joins = w in ("of", "and", "for", "the") and run and words[i + 1 : i + 2] and words[i + 1][:1].isupper()
+        if w[:1].isupper() or joins:
+            run.append(w)
+            continue
+        caps = [x for x in run if x[:1].isupper()]
+        for start in (0, 1) if i - len(run) == 0 else (0,):
+            part = caps[start:]
+            if len(part) >= 2:
+                out["".join(x[0] for x in part).lower()] = {stem(x.lower()) for x in part}
+        run = []
+    return out
 
 
 def lexical(secs, arts):
-    heads = [tokens(s["text"].split(". ")[0]) for s in secs]
+    titles = [s["text"].split(". ")[0] for s in secs]
+    heads = [tokens(t) for t in titles]
+    initials = [initialisms(t) for t in titles]
     df = {}
     for h in heads:
         for w in h:
@@ -67,8 +91,14 @@ def lexical(secs, arts):
             if len(h) < 2:
                 continue
             mass = sum(idf[w] for w in h)
-            got = sum(idf[w] for w in h if w in words)
-            if got / mass >= 0.6:
+            spelled = set(words)
+            need = 0.6
+            for short, long in initials[i].items():
+                if short in words:
+                    spelled |= long
+                    need = 0.5
+            got = sum(idf[w] for w in h if w in spelled)
+            if got / mass >= need:
                 scored.append((got / mass, got, i))
         out[a["id"]] = [i for _, _, i in sorted(scored, reverse=True)[:LEXICAL]]
     return out
