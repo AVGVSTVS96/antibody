@@ -3,5 +3,5 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@antibody/core": "workspace:*" }
+  "dependencies": { "@antibody/core": "workspace:*", "zod": "4.6.7" }
 }
