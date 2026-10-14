@@ -89,8 +89,8 @@ async function bundles(ids: BillId[], publish: boolean): Promise<BillId[]> {
   const failed: BillId[] = [];
   for (const id of ids) {
     try {
-      const { bundle, warnings } = await buildBundle(db, id);
-      const [file] = await writeBundle(bundle, { publish });
+      const { bundle, warnings, articles } = await buildBundle(db, id);
+      const [file] = await writeBundle(bundle, { publish, articles });
       const size = (Bun.file(file!).size / 1024).toFixed(0);
       console.log(
         `✓ bundle ${id}: ${bundle.sections.length} sections, ${bundle.nodes.length} nodes, ${bundle.edges.length} edges, ${Object.keys(bundle.claims).length} claims, ${bundle.gaps.length} gaps, ${size} KB`,

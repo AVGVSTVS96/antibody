@@ -81,7 +81,7 @@ export const Estimate = z.object({
   claim: ClaimId,
 });
 
-const Example = z.object({
+export const Example = z.object({
   url: z.url(),
   outlet: z.string(),
   group: z.string(),
@@ -391,6 +391,8 @@ export const BundleIndex = z.object({
       latestActionOn: date.nullable(),
       file: z.string(),
       claimsFile: z.string().nullable().default(null),
+      /** `<bill>.articles.json`: every counted article per section (see `ArticleList`); null when the bill has none. */
+      articlesFile: z.string().nullable().default(null),
       stats: BillStats.nullable().default(null),
     }),
   ),

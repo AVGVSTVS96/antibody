@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Bundle, checkBundle, TABLES, type TableName } from "@antibody/core";
+import { type Bundle, checkArticleList, checkBundle, TABLES, type TableName } from "@antibody/core";
 import { buildBundle } from "../src/build.ts";
 import { type Db, loadTables, openDb } from "../src/db.ts";
 import { GENIUS_ROWS } from "./genius-rows.ts";
@@ -308,4 +308,90 @@ test("a lobbying total cites the first filing it adds and lists every one under 
   expect(total.restsOn.length).toBeGreaterThan(0);
   expect(total.restsOn.every((id) => id.startsWith("lda_filings/"))).toBe(true);
   expect(total.sourceLocator).toContain("rests on");
+});
+
+describe("the article list", () => {
+  const finalSections = GENIUS_ROWS.sections!.filter((s) => s.in_final);
+  const [a, b2] = finalSections as { id: string }[];
+  const outlet = (domain: string, name: string, group: string) => ({
+    id: domain,
+    name,
+    domain,
+    group,
+    list_version: "outlets-v1",
+    mediacloud_id: null,
+  });
+  const article = (n: number, domain: string, published_on: string | null) => ({
+    id: `119-s-1582:a${n}`,
+    bill_id: "119-s-1582",
+    url: `https://${domain}/story-${n}`,
+    outlet_id: domain,
+    title: `Story ${n}`,
+    published_on,
+    via: "mediacloud",
+    text_chars: 5000,
+    source_url: `https://${domain}/story-${n}`,
+    source_locator: null,
+  });
+  const attention = (section: string | null, counted: number[], extra = {}) => ({
+    id: `119-s-1582:${section ?? "general"}`,
+    bill_id: "119-s-1582",
+    section_id: section,
+    hits: counted.length,
+    hits_by_group: {},
+    trade_legal_hits: 0,
+    pct: null,
+    example_article_ids: counted.slice(0, 1).map((n) => `119-s-1582:a${n}`),
+    rule: "attention-v1: test",
+    confidence: 0.75,
+    rests_on: counted.length ? counted.map((n) => `articles/119-s-1582:a${n}`) : [`sections/${section}`],
+    evidence: {},
+    ...extra,
+  });
+  const rows = {
+    ...GENIUS_ROWS,
+    outlets: [outlet("a.example", "A Times", "left"), outlet("b.example", "B Post", "right")],
+    articles: [
+      article(1, "a.example", "2025-06-01"),
+      article(2, "b.example", "2025-06-20"),
+      article(3, "a.example", null),
+      article(4, "b.example", "2025-06-05"),
+    ],
+    attention: [
+      attention(a!.id, [1, 2, 3]),
+      attention(b2!.id, [2]),
+      attention(null, [4]),
+      attention(String(finalSections[2]!.id), []),
+    ],
+  };
+
+  test("lists each counted article once, newest first, and points each section at its own", async () => {
+    const { bundle, articles } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+    expect(articles.articles.map((x) => [x.outlet, x.title, x.date])).toEqual([
+      ["B Post", "Story 2", "2025-06-20"],
+      ["B Post", "Story 4", "2025-06-05"],
+      ["A Times", "Story 1", "2025-06-01"],
+      ["A Times", "Story 3", null],
+    ]);
+    expect(articles.articles[0]).toMatchObject({
+      url: "https://b.example/story-2",
+      group: "right",
+      claim: "articles/119-s-1582:a2",
+    });
+    expect(articles.bySection).toEqual({ [a!.id]: [0, 2, 3], [b2!.id]: [0] });
+    expect(articles.general).toEqual([1]);
+    expect(articles.articles.every((x) => x.claim in bundle.claims)).toBe(true);
+    expect(checkArticleList(articles, bundle)).toEqual([]);
+  });
+
+  test("a count that disagrees with the bundle is caught", async () => {
+    const { bundle, articles } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+    const broken = { ...articles, bySection: { ...articles.bySection, [a!.id]: [0] } };
+    expect(checkArticleList(broken, bundle)).toEqual([`${a!.id}: 1 articles listed, the bundle counts 3`]);
+  });
+
+  test("a bill with no attention rows has an empty list", async () => {
+    const { articles } = await buildBundle(await load(GENIUS_ROWS), "119-s-1582", { now: NOW });
+    expect(articles).toEqual({ schema: 1, billId: "119-s-1582", articles: [], bySection: {}, general: [] });
+  });
 });

@@ -1,21 +1,31 @@
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { type BillId, type Bundle, BundleIndex, billDisplay, billStats, indexTotals, type Row } from "@antibody/core";
+import {
+  type ArticleList,
+  type BillId,
+  type Bundle,
+  BundleIndex,
+  billDisplay,
+  billStats,
+  indexTotals,
+  type Row,
+} from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 
 const STAMP = /"generatedAt":"[^"]*"/;
 
 const claimsFile = (id: string) => `${id}.claims.json`;
+const articlesFile = (id: string) => `${id}.articles.json`;
 
 /**
  * Writes `data/bundles/<bill>.json`, and the published copy the site serves when `publish` is set. The published
  * copy keeps its claims in a sidecar, `<bill>.claims.json`, so the page can paint before the largest part of the
  * bundle arrives. A published file that differs only in `generatedAt` stays as it is, so a daily rebuild commits
- * only what changed.
+ * only what changed. `articles` goes beside it as `<bill>.articles.json` (and is removed when the bill has none).
  */
 export async function writeBundle(
   bundle: Bundle,
-  { publish = false, local = paths.bundles, published = paths.published } = {},
+  { publish = false, local = paths.bundles, published = paths.published, articles = null as ArticleList | null } = {},
 ): Promise<string[]> {
   const dirs = publish ? [local, published] : [local];
   const files: string[] = [];
@@ -28,6 +38,8 @@ export async function writeBundle(
           [claimsFile(bundle.bill.id), JSON.stringify(bundle.claims)],
         ]
       : [[`${bundle.bill.id}.json`, JSON.stringify(bundle)]];
+    if (articles?.articles.length) parts.push([articlesFile(bundle.bill.id), JSON.stringify(articles)]);
+    else await rm(join(dir, articlesFile(bundle.bill.id)), { force: true });
     for (const [name, json] of parts) {
       const file = join(dir, name);
       const old = split
@@ -58,7 +70,7 @@ const sponsorParty = (b: Bundle) => {
   return sponsor?.kind === "member" ? sponsor.props.party : null;
 };
 
-export function indexEntry(b: Bundle): BundleIndex["bills"][number] {
+export function indexEntry(b: Bundle, { articles = false } = {}): BundleIndex["bills"][number] {
   return {
     id: b.bill.id,
     display: b.bill.display,
@@ -70,6 +82,7 @@ export function indexEntry(b: Bundle): BundleIndex["bills"][number] {
     latestActionOn: latestActionOn(b),
     file: `${b.bill.id}.json`,
     claimsFile: claimsFile(b.bill.id),
+    articlesFile: articles ? articlesFile(b.bill.id) : null,
     stats: billStats(b),
   };
 }
@@ -114,15 +127,16 @@ export async function writeIndex(
   order: string[] = [],
   events?: Row<"watch_events">[],
 ): Promise<BundleIndex> {
-  const files = (await readdir(dir).catch(() => [] as string[])).filter(
-    (f) => f.endsWith(".json") && f !== "index.json" && !f.endsWith(".claims.json"),
+  const all = await readdir(dir).catch(() => [] as string[]);
+  const files = all.filter(
+    (f) => f.endsWith(".json") && f !== "index.json" && !f.endsWith(".claims.json") && !f.endsWith(".articles.json"),
   );
   const bundles = new Map<string, Bundle>();
   for (const f of files) {
     const b = (await Bun.file(join(dir, f)).json()) as Bundle;
     bundles.set(b.bill.id, b);
   }
-  const bills = [...bundles.values()].map(indexEntry);
+  const bills = [...bundles.values()].map((b) => indexEntry(b, { articles: all.includes(articlesFile(b.bill.id)) }));
   const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length);
   bills.sort((a, b) => rank(a.id) - rank(b.id) || (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""));
   const index = BundleIndex.parse({

@@ -1,4 +1,5 @@
 import {
+  type ArticleList,
   type BillId,
   type Bundle,
   Bundle as BundleSchema,
@@ -7,6 +8,7 @@ import {
   billstatusUrl,
   type Claim,
   type ClaimId,
+  checkArticleList,
   checkBundle,
   congressGovUrl,
   type Dollar,
@@ -32,6 +34,8 @@ export interface BuildResult {
   bundle: Bundle;
   /** Rows the builder had to leave out, with why (an unknown member, a claim that failed validation…). */
   warnings: string[];
+  /** Every counted article per section, for the `<bill>.articles.json` sidecar. */
+  articles: ArticleList;
 }
 
 const DESCRIPTION = /^(?:an act|a bill|to )\b/i;
@@ -97,6 +101,7 @@ class Builder {
   /** Trades in a tied company's options, bonds and other securities: listed in the gaps, not counted as stock trades. */
   private nonStock = { option: 0, bond: 0, other: 0 };
   private display: string;
+  private articleList!: ArticleList;
 
   constructor(
     private db: Db,
@@ -323,7 +328,11 @@ class Builder {
     const problems = checkBundle(parsed.data);
     if (problems.length)
       throw new BuildError(`${this.bill}: ${problems.length} dangling refs, e.g. ${problems.slice(0, 5).join("; ")}`);
-    return { bundle: parsed.data, warnings: this.warnings };
+    const articles = this.articleList;
+    const listed = checkArticleList(articles, parsed.data);
+    if (listed.length)
+      throw new BuildError(`${this.bill}: article list disagrees with the bundle: ${listed.slice(0, 5).join("; ")}`);
+    return { bundle: parsed.data, warnings: this.warnings, articles };
   }
 
   private async buildVersions(): Promise<Bundle["versions"]> {
@@ -1130,6 +1139,7 @@ class Builder {
       if (r.section_id == null) general = await shape(r);
       else if (this.sections.has(r.section_id)) this.sections.get(r.section_id)!.attention = await shape(r);
     }
+    this.articleList = this.listArticles(rows, byId);
     const dates = articles
       .map((a) => a.published_on)
       .filter(Boolean)
@@ -1141,6 +1151,43 @@ class Builder {
       articles: articles.length,
       sample: this.names.sample.relevant ? this.names.sample : null,
       general,
+    };
+  }
+
+  /** Every article the attention rows count, once, with the sections (and the bill as a whole) each one is counted for. */
+  private listArticles(rows: AnyRow[], byId: Map<string, AnyRow>): ArticleList {
+    const counted = (r: AnyRow) =>
+      r.hits > 0 ? (r.rests_on as string[]).flatMap((c) => (c.startsWith("articles/") ? [c.slice(9)] : [])) : [];
+    const ids = [...new Set(rows.flatMap(counted))].filter((id) => byId.has(id) && this.claims.has(`articles/${id}`));
+    const articles = ids
+      .map((id) => {
+        const { outlet_name, outlet_group, url, title, published_on } = byId.get(id)!;
+        return {
+          id,
+          url,
+          outlet: outlet_name ?? new URL(url).hostname,
+          group: outlet_group ?? "unlisted",
+          title,
+          date: published_on,
+          claim: `articles/${id}`,
+        };
+      })
+      .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "") || a.claim.localeCompare(b.claim));
+    const at = new Map(articles.map((a, i) => [a.id, i]));
+    const positions = (r: AnyRow) =>
+      counted(r)
+        .flatMap((id) => at.get(id) ?? [])
+        .sort((x, y) => x - y);
+    return {
+      schema: 1,
+      billId: this.bill,
+      articles: articles.map(({ id, ...a }) => a),
+      bySection: Object.fromEntries(
+        rows
+          .filter((r) => r.section_id != null && this.sections.has(r.section_id) && r.hits > 0)
+          .map((r) => [r.section_id, positions(r)]),
+      ),
+      general: positions(rows.find((r) => r.section_id == null) ?? { hits: 0 }),
     };
   }
 

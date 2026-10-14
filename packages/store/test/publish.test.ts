@@ -38,3 +38,21 @@ test("an index lists the curated ids first, in that order, and says what each bu
   expect(index.totals).toEqual(indexTotals([bundle, other]));
   expect((await Bun.file(join(published, "index.json")).json()).bills).toHaveLength(2);
 });
+
+test("the article list is published beside the bundle, referenced from the index, and absent when empty", async () => {
+  const published = await mkdtemp(join(dir, "articles-"));
+  const where = { local: join(published, "local"), published };
+  const claim = Object.keys(bundle.claims)[0]!;
+  const list = {
+    schema: 1 as const,
+    billId: bundle.bill.id,
+    articles: [{ url: "https://a.example/x", outlet: "A", group: "left", title: "T", date: null, claim }],
+    bySection: {},
+    general: [0],
+  };
+  await writeBundle(bundle, { publish: true, articles: list, ...where });
+  expect(await Bun.file(join(published, `${bundle.bill.id}.articles.json`)).json()).toEqual(list);
+  expect((await writeIndex(published, [], [])).bills[0]!.articlesFile).toBe(`${bundle.bill.id}.articles.json`);
+  await writeBundle(bundle, { publish: true, articles: { ...list, articles: [], general: [] }, ...where });
+  expect((await writeIndex(published, [], [])).bills[0]!.articlesFile).toBeNull();
+});
