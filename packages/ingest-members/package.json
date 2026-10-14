@@ -2,6 +2,11 @@
   "name": "@antibody/ingest-members",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@antibody/core": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@antibody/core": "workspace:*",
+    "fast-xml-parser": "5.11.2"
+  }
 }
