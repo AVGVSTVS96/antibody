@@ -1,0 +1,9 @@
+[project]
+name = "ingest-news"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "googlenewsdecoder>=0.1.7",
+    "selectolax<1",  # googlenewsdecoder still imports the Modest backend that selectolax 1.0 removed
+    "trafilatura>=2.0.0",
+]

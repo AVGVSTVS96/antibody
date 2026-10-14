@@ -1,0 +1,14 @@
+{
+ "about": "Search terms per bill: its official short title, the name the press used, and its number. Same shape for every bill; a bill not listed here is searched by its short title and number from BILLSTATUS. A window, when given, overrides the default (introduced - 7 days to law or last action + 30 days).",
+ "bills": {
+  "119-s-1582": { "terms": ["\"GENIUS Act\"", "\"S. 1582\""], "window": ["2025-02-01", "2025-08-15"] },
+  "119-hr-1": { "terms": ["\"One Big Beautiful Bill\"", "\"Big Beautiful Bill\""], "window": ["2025-05-01", "2025-08-01"] },
+  "117-hr-5376": { "terms": ["\"Inflation Reduction Act\""], "window": ["2022-07-25", "2022-09-30"] },
+  "117-hr-4346": { "terms": ["\"CHIPS and Science Act\"", "\"CHIPS Act\""] },
+  "117-hr-3684": { "terms": ["\"Infrastructure Investment and Jobs Act\"", "\"bipartisan infrastructure bill\"", "\"bipartisan infrastructure law\""] },
+  "117-hr-1319": { "terms": ["\"American Rescue Plan\""] },
+  "118-hr-3746": { "terms": ["\"Fiscal Responsibility Act\"", "\"debt ceiling deal\""] },
+  "119-s-5": { "terms": ["\"Laken Riley Act\""] },
+  "119-s-146": { "terms": ["\"TAKE IT DOWN Act\""] }
+ }
+}
