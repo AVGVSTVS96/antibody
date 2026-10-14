@@ -22,11 +22,21 @@ test("buried = stakes × quiet × sneak, and needs attention to exist", () => {
 });
 
 test("labels use one set of thresholds", () => {
-  const quiet = { dollarsMusd: 100_000, attentionPct: 0.05, late: false, offTopic: null, lobbyingReports: 0 };
+  const quiet = { dollarsMusd: 100_000, attentionPct: 0.05, late: true, offTopic: null, lobbyingReports: 0 };
   expect(label(quiet, 0)).toBe("buried");
   expect(label({ ...quiet, dollarsMusd: 500 }, 0)).toBe("normal");
+  expect(label({ ...quiet, late: false }, 0)).toBe("normal");
+  expect(label({ ...quiet, late: false, offTopic: 0.8 }, 0)).toBe("buried");
   expect(label({ ...quiet, attentionPct: 0.95 }, SCORE.headlineMinHits)).toBe("headline");
   expect(label({ ...quiet, attentionPct: 0.95 }, SCORE.headlineMinHits - 1)).not.toBe("headline");
+});
+
+test("the late bonus shrinks when most of the bill arrived late", () => {
+  const base = { dollarsMusd: 10_000, attentionPct: 0, late: true, offTopic: 0, lobbyingReports: 0 };
+  const s = stakes(base);
+  expect(buried({ ...base, lateShare: 0 })).toBeCloseTo(s * 1.25, 3);
+  expect(buried({ ...base, lateShare: 0.5 })).toBeCloseTo(s * 1.125, 3);
+  expect(buried({ ...base, lateShare: 1 })).toBeCloseTo(s, 3);
 });
 
 test("the score never sees party: the same components give the same score for any bill", () => {
@@ -35,8 +45,8 @@ test("the score never sees party: the same components give the same score for an
   expect(buried({ ...c })).toBe(buried({ ...c }));
 });
 
-test("percentile counts ties as half", () => {
-  expect(percentile(0, [0, 0, 0, 1])).toBeCloseTo(1 / 3, 5);
+test("percentile ranks every uncovered section at the bottom, ties included", () => {
+  expect(percentile(0, [0, 0, 0, 1])).toBe(0);
   expect(percentile(1, [0, 0, 0, 1])).toBe(1);
   expect(percentile(0, [0, 1, 2])).toBe(0);
 });

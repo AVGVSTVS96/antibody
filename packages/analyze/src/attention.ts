@@ -15,16 +15,10 @@ const SIDE_NAMES = Object.keys(SIDES) as Side[];
 type Group = Row<"outlets">["group"];
 const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group] as [string, Group]));
 
-/** Percentile within `reference`: the share of reference values below v, counting ties as half. */
+/** Percent rank within `reference`: the share of the other values strictly below v, so uncovered sections all rank 0. */
 export function percentile(v: number, reference: number[]): number {
   if (reference.length < 2) return 0.5;
-  let below = 0;
-  let equal = 0;
-  for (const r of reference) {
-    if (r < v) below++;
-    else if (r === v) equal++;
-  }
-  return Math.min(1, Math.max(0, (below + Math.max(equal - 1, 0) / 2) / (reference.length - 1)));
+  return reference.filter((r) => r < v).length / (reference.length - 1);
 }
 
 const hash = (s: string) => createHash("sha1").update(s).digest("hex");

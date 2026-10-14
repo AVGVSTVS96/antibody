@@ -47,10 +47,10 @@ export function menu(sections: Row<"sections">[]) {
   return { text: lines.join("\n"), ids };
 }
 
-function system(bill: BillId, title: string, menuText: string) {
+function system(bill: BillId, title: string) {
   return `You read news articles about the US bill ${billDisplay(bill)} ("${title}") and record which of its sections each article discusses.
 
-The bill's sections are listed below as: id | section number | heading | first words of its text. Sections marked [dropped before the final text] were in an earlier version only.
+The bill's sections are listed at the top of the user message as: id | section number | heading | first words of its text. Sections marked [dropped before the final text] were in an earlier version only.
 
 For each article:
 - "about": "bill" when the bill, its provisions or the fight over it is a main subject of the article; "mention" when the bill comes up in an article mainly about something else; "unrelated" when it is not about this bill at all (another bill, or a passing word).
@@ -58,10 +58,7 @@ For each article:
 - "whole": true when the article covers the bill as a whole (its passage, a vote, its politics, its total cost), whether or not it also discusses sections.
 - "outside": when the article is about this bill's debate but its main subject is something that is not in the bill's text (an issue the bill leaves out, a failed amendment, a conflict of interest tied to it), name that subject in at most eight plain, neutral words; otherwise null.
 
-Judge every article by the same standard, whatever its outlet or point of view. Reply with JSON only: an array with one object per article, {"a": <article number>, "about": "bill"|"mention"|"unrelated", "s": [...], "whole": true|false, "outside": string|null}.
-
-SECTIONS
-${menuText}`;
+Judge every article by the same standard, whatever its outlet or point of view. Reply with JSON only: an array with one object per article, {"a": <article number>, "about": "bill"|"mention"|"unrelated", "s": [...], "whole": true|false, "outside": string|null}.`;
 }
 
 const articleBlock = (a: ArticleIn, n: number) =>
@@ -86,11 +83,11 @@ export async function matchArticles(
   const batches: ArticleIn[][] = [];
   for (let i = 0; i < todo.length; i += BATCH) batches.push(todo.slice(i, i + BATCH));
   if (batches.length) opts.log?.(`matching ${todo.length} articles in ${batches.length} calls (${model})`);
-  const sys = system(bill, title, m.text);
+  const sys = system(bill, title);
 
   await pool(batches, PARALLEL, async (batch, bi) => {
-    const prompt = batch.map((a, i) => articleBlock(a, i + 1)).join("\n\n---\n\n");
-    for (let attempt = 0; attempt < 3; attempt++) {
+    const prompt = `SECTIONS\n${m.text}\n\n=====\n\n${batch.map((a, i) => articleBlock(a, i + 1)).join("\n\n---\n\n")}`;
+    for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const r = await claude(prompt, { system: sys, model, signal: opts.signal });
         const out = parseJson<
