@@ -1,8 +1,13 @@
+import { mkdirSync } from "node:fs";
 import { exists, mkdir, readdir } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { heavy, paths } from "@antibody/core/node";
 import { z } from "zod";
 import { pool } from "./http.ts";
+
+const emptyDir = join(homedir(), ".cache", "claude-empty");
+mkdirSync(emptyDir, { recursive: true });
 
 export const VISION_MODEL = process.env.ANTIBODY_VISION_MODEL ?? "claude-sonnet-5-5";
 const PKG = join(import.meta.dir, "..");
@@ -139,7 +144,7 @@ async function ask(image: string, system: string, text: string): Promise<{ answe
       "--system-prompt",
       system,
     ],
-    { cwd: visionRoot(), stdin: new Blob([`${JSON.stringify(message)}\n`]), stdout: "pipe", stderr: "pipe" },
+    { cwd: emptyDir, stdin: new Blob([`${JSON.stringify(message)}\n`]), stdout: "pipe", stderr: "pipe" },
   );
   const out = await new Response(proc.stdout).text();
   await proc.exited;
