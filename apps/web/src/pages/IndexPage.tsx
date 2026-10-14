@@ -242,9 +242,10 @@ function hook(b: Entry): string {
 
 function buriedLine(s: NonNullable<Entry["stats"]>) {
   if (!s.buriedTest.tested) return `Buried candidates: not tested (${s.buriedTest.why}).`;
+  if (!s.buriedTest.dollarsMeasured) return "Stakes can't be measured: CBO gave no section its own dollar figure.";
   if (s.buried > 0)
     return `Buried candidates: ${s.buried} of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}.`;
-  if (s.buriedTest.bigStakes === 0) return "Tested for buried candidates: no section has big stakes.";
+  if (s.buriedTest.bigStakes === 0) return "No section has big stakes.";
   return `Buried candidates: 0 of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}${s.buriedTest.why ? ` (${s.buriedTest.why})` : ""}.`;
 }
 
@@ -308,11 +309,15 @@ function BillCard({ b }: { b: Entry }) {
                 <b>{s.lobbyingReports.toLocaleString("en-US")}</b> lobbying reports
               </span>
               <span title="Members of Congress with a stock trade dated from the bill's first text through its signing in a company tied to the bill. Routine disclosures; no link to any vote is claimed. Members trade large companies' shares all the time.">
-                <b>{s.membersTradedDuring}</b> of 535 members traded stock in affected companies while it moved
+                <b>{s.membersTradedDuring}</b> of 535 members traded stock in tied companies
+                {s.tradeSpan ? ` (${day(s.tradeSpan[0])} to ${day(s.tradeSpan[1])})` : ""}
               </span>
               {s.deficitMusd != null && (
                 <span>
                   <b>{musd(s.deficitMusd)}</b> deficit
+                  {s.deficitDirectOnly
+                    ? " (direct spending and revenue only; excludes discretionary appropriations)"
+                    : ""}
                 </span>
               )}
             </div>

@@ -1,4 +1,4 @@
-import { type Dollar, headlineDeficit } from "@antibody/core";
+import { type Dollar, headlineDeficit, isAppropriations } from "@antibody/core";
 import { useState } from "react";
 import { count, day, deficitWords, musd, nice, RULES_URL, rank, usd } from "../lib/format.ts";
 import type { Actor, BillModel, MemberView, SectionView } from "../lib/model.ts";
@@ -101,8 +101,8 @@ export function Story({ m }: { m: BillModel }) {
       <div className="beat">
         <i>The money</i>
         <p>
-          <b>{count(companies, "company", "companies")}</b> lobbied on it. <b>{m.tradersDuring}</b> of 535 members
-          traded stock in a tied company while the bill moved. Routine disclosures; no link to any vote is claimed.
+          <b>{count(m.b.lobbying.clients, "client")}</b> lobbied on it. <b>{m.tradersDuring}</b> of 535 members traded
+          stock in a tied company while the bill moved. Routine disclosures; no link to any vote is claimed.
         </p>
         <button type="button" className="linkbtn" onClick={jump("card-lobby")}>
           See who lobbied
@@ -156,14 +156,15 @@ export function BillCard({ m }: { m: BillModel }) {
             <>
               <div className="v">{musd(lawDeficit.amountMusd)}</div>
               <div className="n">
-                {lawDeficit.baseline === "current-law" ? "current law" : "current policy"}{" "}
+                {lawDeficit.baseline === "current-law" ? "current law" : "current policy"}
+                {isAppropriations(b) ? ", direct spending and revenue only; excludes discretionary appropriations" : ""}{" "}
                 <Src id={lawDeficit.claim} label="CBO" />
               </div>
             </>
           ) : (
             <>
-              <div className="v missing">No CBO score</div>
-              <div className="n">none published</div>
+              <div className="v missing">{b.dollars.estimates.length ? "CBO estimate found" : "No CBO score"}</div>
+              <div className="n">{b.dollars.estimates.length ? "total not read yet" : "none listed in BILLSTATUS"}</div>
             </>
           )}
         </div>
@@ -193,27 +194,30 @@ export function BillCard({ m }: { m: BillModel }) {
         </div>
       </div>
       {est && (
-        <div className="row-meta" style={{ marginTop: 6 }}>
-          Scored: {est.versionScored}. Baseline: <b>{est.baselineLabel}</b>.{" "}
-          {policyDeficit && (
-            <span>
-              Under current policy: {musd(policyDeficit.amountMusd)} <Src id={policyDeficit.claim} label="CBO" />{" "}
-            </span>
-          )}
-          {b.dollars.wholeBill
-            .filter((d) => d.measure !== "deficit" && d.baseline === est.baseline)
-            .map((d: Dollar) => (
-              <span key={d.claim}>
-                {MEASURE[d.measure]} {musd(d.amountMusd)} <Src id={d.claim} label="CBO" />{" "}
+        <details className="scored">
+          <summary>How CBO scored it</summary>
+          <div className="row-meta" style={{ marginTop: 6 }}>
+            Scored: {est.versionScored}. Baseline: <b>{est.baselineLabel}</b>.{" "}
+            {policyDeficit && (
+              <span>
+                Under current policy: {musd(policyDeficit.amountMusd)} <Src id={policyDeficit.claim} label="CBO" />{" "}
               </span>
-            ))}
-          {est.mandates?.privateSector.startsWith("Yes") && (
-            <span>
-              CBO says it adds private-sector mandates above the legal threshold{" "}
-              <Src id={est.mandates.claim} label="CBO" />.
-            </span>
-          )}
-        </div>
+            )}
+            {b.dollars.wholeBill
+              .filter((d) => d.measure !== "deficit" && d.estimateId === est.id)
+              .map((d: Dollar) => (
+                <span key={d.claim}>
+                  {MEASURE[d.measure]} {musd(d.amountMusd)} <Src id={d.claim} label="CBO" />{" "}
+                </span>
+              ))}
+            {est.mandates?.privateSector.startsWith("Yes") && (
+              <span>
+                CBO says it adds private-sector mandates above the legal threshold{" "}
+                <Src id={est.mandates.claim} label="CBO" />.
+              </span>
+            )}
+          </div>
+        </details>
       )}
       {b.votes.length > 0 && (
         <details>
@@ -957,10 +961,7 @@ export function MembersCard({ m }: { m: BillModel }) {
           <div className="cap" style={{ marginTop: 16 }}>
             PAC money from tied organizations, given before the member’s vote <Inf />
           </div>
-          <p className="row-meta">
-            Committee seats, leadership roles and being up for re-election explain most of the differences between
-            members; no earlier cycle is shown to compare against.
-          </p>
+          <p className="row-meta">Only each member’s top five givers are counted, so these totals are a floor.</p>
           <div className="split">
             {parties.map((p) => {
               const list = byParty(funded, p);
