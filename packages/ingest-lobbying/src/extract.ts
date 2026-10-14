@@ -244,23 +244,45 @@ export function best(refs: Ref[]): Ref | null {
   return refs.reduce<Ref | null>((b, r) => (!b || RANK[r.level] > RANK[b.level] ? r : b), null);
 }
 
+const BEFORE = /^[\s\-–—,:([]*(?:(?:the\s+)?provisions?\s+(?:in|of)\s+)?$/i;
+const AFTER = /^\s*(?:\([^)]*\)\s*)*(?:of|in|to|under|from)\s+(?:the\s+)?$/i;
+
 /**
- * Section numbers the line cites for this bill. A section followed by "of <another law>" (the Internal Revenue
- * Code, a U.S.C. title, another Act) is left out; store keeps only numbers that exist in the bill.
+ * Section numbers the line cites for this bill. A section counts only when the text ties it to the bill:
+ * "H.R. 1 - Section 70531", "Sec. 70402 of H.R. 1", "Section 112025 in H.R.1", or the bill's name or public law
+ * after the section ("Sec. 4 of the GENIUS Act"); a name before it ("the GENIUS Act - Section 16(a)") is not enough, since it may be the Exchange Act's. A section next to another bill, an earlier bill that shared the title (its sections
+ * are numbered differently), another law, or nothing at all is left out; store keeps only numbers that exist in
+ * the bill.
  */
 export function sectionNums(text: string, m: Matcher): string[] {
+  const own = billRef(m.aliases.bill);
+  const anchors: { start: number; end: number; ours: boolean; number: boolean }[] = [];
+  for (const n of billNumbers(text))
+    anchors.push({
+      start: n.index,
+      end: n.index + n.text.length,
+      ours: n.type === own.type && n.number === own.number,
+      number: true,
+    });
+  for (const n of m.names)
+    for (const h of text.matchAll(new RegExp(n.re.source, `${n.re.flags.replace("g", "")}g`)))
+      anchors.push({ start: h.index!, end: h.index! + h[0].length, ours: true, number: false });
+  for (const law of m.aliases.laws)
+    for (const h of text.matchAll(new RegExp(`(?<![\\d-])${law}(?![\\d-])`, "g")))
+      anchors.push({ start: h.index!, end: h.index! + law.length, ours: true, number: false });
+
   const out = new Set<string>();
   for (const s of text.matchAll(SECTION)) {
-    const after = text.slice(s.index! + s[0].length, s.index! + s[0].length + 90);
-    const of = after.match(/^\s*(?:\([^)]*\)\s*)*of\s+(?:the\s+)?([^;,]{0,80})/i);
-    if (of) {
-      const target = of[1]!;
-      const ours =
-        m.names.some((n) => n.re.test(target)) ||
-        billNumbers(target).some((n) => m.numbers.has(`${n.type}${n.number}`)) ||
-        m.aliases.laws.some((l) => target.includes(l));
-      if (!ours) continue;
-    } else if (/^\s*(?:\([^)]*\)\s*)*(?:U\.?S\.?C|IRC|I\.R\.C)/i.test(after)) continue;
+    const start = s.index!;
+    const end = start + s[0].length;
+    const before = anchors.find(
+      (a) => a.number && a.end <= start && a.end >= start - 40 && BEFORE.test(text.slice(a.end, start)),
+    );
+    const after = anchors.find((a) => a.start >= end && a.start <= end + 60 && AFTER.test(text.slice(end, a.start)));
+    const tail = text.slice(end, end + 90);
+    const elsewhere = /^\s*(?:\([^)]*\)\s*)*(?:of\s|(?:U\.?S\.?C|IRC|I\.R\.C))/i.test(tail) && !after;
+    const anchor = after ?? before;
+    if (elsewhere || !anchor?.ours) continue;
     out.add(s[1]!);
     for (const more of (s[2] ?? "").matchAll(/\d{1,6}[A-Za-z]?/g)) out.add(more[0]);
   }

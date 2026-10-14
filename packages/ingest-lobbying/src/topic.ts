@@ -10,7 +10,7 @@ import { clientRows, filingRow, markSuperseded, mergeClient, phaseOf } from "./r
 import { upsert } from "./shards.ts";
 import { spendRows } from "./spend.ts";
 
-const MODEL = "opus";
+const MODEL = "sonnet";
 const BATCH = 40;
 const KEEP = 0.6;
 /** A topic-only line never reads as more certain than this, whatever the model says. */

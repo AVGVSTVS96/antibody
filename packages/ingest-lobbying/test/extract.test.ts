@@ -127,6 +127,19 @@ test("section numbers for this bill, not for other laws", () => {
   ]);
   expect(sectionNums("H.R. 1, Section 45Y of the Internal Revenue Code", O)).toEqual([]);
   expect(sectionNums("H.R. 1, section 1202 IRC", O)).toEqual([]);
+  expect(sectionNums("(H.R.1 - Sections 70301, 70521)", O)).toEqual(["70301", "70521"]);
+  expect(sectionNums("Oppose Section 112025 in H.R.1 and Section 199A", O)).toEqual(["112025"]);
+  expect(sectionNums("provisions in Section 70402 of the One Big Beautiful Bill Act", O)).toEqual(["70402"]);
+  expect(sectionNums("Section 70101 of H.R. 2392 and the One Big Beautiful Bill", O)).toEqual([]);
+});
+
+test("a section next to an earlier bill with the same title, or a different law, is not this bill's", () => {
+  const text =
+    "S. 394 - Guiding and Establishing National Innovation for U.S. Stablecoins of 2025: custodians (Sec.8(b)(2)).";
+  expect(sectionNums(text, G)).toEqual([]);
+  expect(sectionNums("digital assets and the GENIUS Act - Section 16(a), Foreign Private Issuer", G)).toEqual([]);
+  expect(sectionNums("Section 4 of the GENIUS Act (reserves)", G)).toEqual(["4"]);
+  expect(sectionNums("S.1582, Sec. 4 (payment stablecoin issuers)", G)).toEqual(["4"]);
 });
 
 test("name forms drop the year, and Act when three words remain", () => {
