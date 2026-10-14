@@ -85,6 +85,7 @@ export function Months({ member }: { member: NodeOf<"member"> }) {
   const peak = own.reduce((a, x) => (x.trades > a.trades ? x : a), own[0]!);
   const inside = windowCounts(mine).inside;
   const last = lastName(member);
+  const bill = m.b.bill.display;
   return (
     <div className="baseline">
       <div className="baseline-charts" data-solo={mine.length === 0 || undefined}>
@@ -96,7 +97,9 @@ export function Months({ member }: { member: NodeOf<"member"> }) {
             <MonthChart months={own} window={book.window} label={`${last}'s trades per month`} />
           </div>
         ) : (
-          <p className="baseline-none">{last} filed no trades in tied companies.</p>
+          <p className="baseline-none">
+            {last} filed no trades in companies that lobbied on {bill}.
+          </p>
         )}
         <div>
           <h3 className="kicker">Is that a spike? All {everyone.length} months, all members</h3>
@@ -107,8 +110,12 @@ export function Months({ member }: { member: NodeOf<"member"> }) {
         {mine.length > 0 && (
           <>
             {last} filed {count(mine.length, "trade")} in{" "}
-            {count(new Set(mine.map((t) => t.company)).size, "tied company", "tied companies")} across the full span.{" "}
-            {inside} fall in the {ws.windowDays} days the bill moved
+            {count(
+              new Set(mine.map((t) => t.company)).size,
+              "company that lobbied on " + bill,
+              `companies that lobbied on ${bill}`,
+            )}{" "}
+            across the full span. {inside} fall in the {ws.windowDays} days the bill moved
             {peak.trades > inside ? `; ${monthLabel(peak.month)} alone has ${peak.trades}` : ""}.{" "}
           </>
         )}

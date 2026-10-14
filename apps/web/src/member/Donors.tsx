@@ -1,6 +1,6 @@
 import type { NodeOf } from "@antibody/core";
 import { useMemo } from "react";
-import { count, day, usd } from "../lib/format.ts";
+import { count, day, exactUsd } from "../lib/format.ts";
 import { pacName } from "../lib/pac.ts";
 import { tiedDonors } from "../lib/trades.ts";
 import { lastName } from "../money/Members.tsx";
@@ -41,10 +41,10 @@ export function Donors({ member }: { member: NodeOf<"member"> }) {
       {edges.length > 0 && (
         <>
           <p className="donors-sum">
-            <strong>{usd(total)}</strong>
+            <strong>{exactUsd(total)}</strong>
             <span>
-              from {edges.length === 1 ? "one company PAC" : `${edges.length} company PACs`}. {usd(before)} came before{" "}
-              {mark}, {usd(after)} after.
+              from {edges.length === 1 ? "one company PAC" : `${edges.length} company PACs`}. {exactUsd(before)} came
+              before {mark}, {exactUsd(after)} after.
             </span>
           </p>
           {total > 0 && (
@@ -65,8 +65,8 @@ export function Donors({ member }: { member: NodeOf<"member"> }) {
               {edges.map((e) => (
                 <tr key={e.id}>
                   <th scope="row">{pacName(pacs.get(e.src)?.label ?? e.src)}</th>
-                  <td>{usd(e.props.beforeUsd)}</td>
-                  <td>{usd(e.props.afterUsd)}</td>
+                  <td>{exactUsd(e.props.beforeUsd)}</td>
+                  <td>{exactUsd(e.props.afterUsd)}</td>
                   <td>
                     <Src
                       ids={e.claims}

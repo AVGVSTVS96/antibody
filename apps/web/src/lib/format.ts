@@ -2,6 +2,8 @@ const MIXED_CASE: [RegExp, string][] = [
   [/\bJpmorgan\b/g, "JPMorgan"],
   [/\bPwc\b/g, "PwC"],
   [/\bAmazon Com\b/g, "Amazon.com"],
+  [/\bFedex\b/g, "FedEx"],
+  [/\bModernatx\b/g, "ModernaTX"],
 ];
 
 /** Initialisms with a vowel in them; the ones without (CMS, PNC, CSX) are found by shape. */
@@ -19,7 +21,10 @@ const isAcronym = (w: string) =>
   (/^[B-DF-HJ-NP-TV-Z]{2,5}$/.test(w) && !ABBREVIATIONS.has(w)) ||
   /^[A-Z]{1,2}&[A-Z]{1,2}$/.test(w);
 
-const capitalise = (w: string) => (isAcronym(w) ? w : w[0] + w.slice(1).toLowerCase());
+const SMALL = new Set(["OF", "AND", "THE", "FOR"]);
+
+const capitalise = (w: string, at: number) =>
+  isAcronym(w) ? w : at > 0 && SMALL.has(w) ? w.toLowerCase() : w[0] + w.slice(1).toLowerCase();
 
 /** SEC, FEC and LDA names arrive in caps with suffixes like "/DE/"; show them the way the company writes itself. */
 export function nice(name: string): string {
@@ -27,7 +32,7 @@ export function nice(name: string): string {
     .replace(/\s*\/[A-Z]{2,3}\/?$/, "")
     .replace(/\s*\/NEW\/$/, "")
     .replace(/ DE$/, "");
-  if (s === s.toUpperCase()) s = s.replace(/[A-Z]+(?:&[A-Z]+)?/g, capitalise);
+  if (!/[a-z]{4,}/.test(s)) s = s.replace(/[A-Z]+(?:&[A-Z]+)?/g, (w, at: number) => capitalise(w, at));
   for (const [re, to] of MIXED_CASE) s = s.replace(re, to);
   const unclosed = s.split("(").length - s.split(")").length;
   if (unclosed > 0) s += ")".repeat(unclosed);
@@ -41,9 +46,16 @@ export function usd(n: number | null | undefined): string {
   if (a >= 1e12) return `${sign}$${(a / 1e12).toFixed(a >= 1e13 ? 0 : 1)}T`;
   if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(a >= 1e10 ? 0 : 1)}B`;
   if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}M`;
-  if (a >= 1e3) return `${sign}$${Math.round(a / 1e3)}K`;
+  if (a >= 1e4) return `${sign}$${Math.round(a / 1e3)}K`;
+  if (a >= 1e3) {
+    const k = Math.round(a / 100) / 10;
+    return k >= 10 ? `${sign}$10K` : `${sign}$${k}K`;
+  }
   return `${sign}$${Math.round(a)}`;
 }
+
+/** Whole dollars, nothing rounded: for a named person's money, where parts must add up to the total shown. */
+export const exactUsd = (n: number) => `${n < 0 ? "−" : ""}$${Math.abs(Math.round(n)).toLocaleString("en-US")}`;
 
 /** CBO prints $ millions; signed, with the sign spelled out so a cut never reads as spending. */
 export function musd(m: number): string {

@@ -36,6 +36,7 @@ describe.skipIf(published.length === 0)("every published bundle", () => {
         for (const f of given) expect(f.edge.props.amountUsd).toBeGreaterThan(0);
         for (const f of returned) expect(f.edge.props.amountUsd).toBeLessThanOrEqual(0);
         if (given.length) expect(given.reduce((n, f) => n + f.edge.props.amountUsd, 0)).toBeGreaterThan(0);
+        for (const f of given) expect(f.edge.props.beforeUsd + f.edge.props.afterUsd).toBe(f.edge.props.amountUsd);
       }
     });
 
