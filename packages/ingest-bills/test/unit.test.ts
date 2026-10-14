@@ -7,7 +7,7 @@ import { wordDiff } from "../src/diff.ts";
 import { isLate, trace } from "../src/lineage.ts";
 import { match } from "../src/match.ts";
 import { parseSections, type Sec } from "../src/sections.ts";
-import { canon, capitalizeNames, citations, namesIn, normEnum } from "../src/text.ts";
+import { canon, capitalizeNames, citations, fromCaps, namesIn, normEnum, upperFirst } from "../src/text.ts";
 
 const bill = (body: string) => `<?xml version="1.0"?><bill><legis-body>${body}</legis-body></bill>`;
 const section = (num: string, heading: string, text: string, id = "") =>
@@ -206,4 +206,20 @@ test("a lowercase name in a heading takes its capitals from the names a title sp
   );
   expect(capitalizeNames("Department of justice grants", titles)).toBe("Department of Justice grants");
   expect(capitalizeNames("Epsteins and jeffreys", titles)).toBe("Epsteins and jeffreys");
+});
+
+test("a heading printed only in caps becomes a sentence that keeps its proper nouns and acronyms", () => {
+  expect(fromCaps("ALLOWANCES FOR COMPENSATION OF INTERNS IN HOUSE COMMITTEE OFFICES")).toBe(
+    "Allowances for compensation of interns in House committee offices",
+  );
+  expect(fromCaps("LIBRARY OF CONGRESS ORDERS UNDER TASK AND DELIVERY ORDER CONTRACTS")).toBe(
+    "Library of Congress orders under task and delivery order contracts",
+  );
+  expect(fromCaps("GRANTS TO THE DEPARTMENT OF ENERGY IN NEW MEXICO AND PUERTO RICO")).toBe(
+    "Grants to the Department of Energy in New Mexico and Puerto Rico",
+  );
+  expect(fromCaps("MEDICAID AND HOUSING")).toBe("Medicaid and housing");
+  expect(fromCaps("LIHEAP")).toBe("LIHEAP");
+  expect(upperFirst("puerto rico schooling")).toBe("Puerto rico schooling");
+  expect(upperFirst('"quoted" heading')).toBe('"quoted" heading');
 });

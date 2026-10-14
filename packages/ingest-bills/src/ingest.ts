@@ -18,7 +18,7 @@ import { cached, NotFound } from "./fetch.ts";
 import { isLate, type Lineage, type ParsedVersion, PURE_SPLIT, trace, wholesaleReason } from "./lineage.ts";
 import { findPredecessor } from "./predecessor.ts";
 import { PartialAmendment, parseSections, type Sec, sectionNum } from "./sections.ts";
-import { capitalizeNames, namesIn } from "./text.ts";
+import { capitalizeNames, fromCaps, namesIn, upperFirst } from "./text.ts";
 import { textVersions, type VersionRef } from "./versions.ts";
 
 export interface IngestOptions {
@@ -51,18 +51,19 @@ const sentenceCase = (h: string) =>
     .some((w) => w.length > 3 && /^[a-z]/.test(w));
 
 /**
- * The last heading that isn't in all caps (enrolled bills and laws print some headings in caps), with the names the
- * bill's titles capitalize, and those an earlier version's sentence-case heading capitalized that the bill's text
- * spells the same way: GPO sometimes lowercases a name in one version and not another.
+ * The last heading that isn't in all caps (enrolled bills and laws print some headings in caps), starting with a
+ * capital, with the names the bill's titles capitalize and those an earlier version's sentence-case heading
+ * capitalized that the bill's text spells the same way (GPO sometimes lowercases a name in one version and not
+ * another). A heading only ever printed in caps becomes a sentence.
  */
 function heading(l: Lineage, titles: Map<string, string>, text: Map<string, string>): string {
   const printed = Object.values(l.history)
     .map((s) => s.heading)
     .filter((h) => h !== h.toUpperCase());
   const last = printed.at(-1);
-  if (last === undefined) return l.last.heading;
+  if (last === undefined) return fromCaps(l.last.heading);
   const earlier = printed.filter(sentenceCase).flatMap((h) => [...namesIn([`in ${h}`])]);
-  return capitalizeNames(last, new Map([...titles, ...earlier.filter(([lower]) => text.has(lower))]));
+  return upperFirst(capitalizeNames(last, new Map([...titles, ...earlier.filter(([lower]) => text.has(lower))])));
 }
 
 export async function loadStatus(bill: BillId, refresh = false): Promise<BillStatus> {
