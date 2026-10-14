@@ -3,6 +3,7 @@ import type { Row } from "@antibody/core";
 import type { HouseFiling, ParsedDoc } from "./house.ts";
 import { memberMatcher } from "./members.ts";
 import { amountRange, isoDate, owner, tradeType } from "./normalize.ts";
+import { collapseRestated, type Filed } from "./restated.ts";
 import { imageDir, pagePath, parseSenatePtr, type SenateReport } from "./senate.ts";
 import { cachedPages, cachedRead, type FIELDS, type PageResult, type VisionRow } from "./vision.ts";
 
@@ -111,6 +112,7 @@ const readStatus = (read: number, total: number | null, dropped: boolean): Doc["
 export async function buildRows(house: HouseFiling[], parsed: Map<string, ParsedDoc>, senate: SenateReport[]) {
   const match = await memberMatcher();
   const built: Built = { documents: [], trades: [], dropped: [] };
+  const amended = new Set<string>();
 
   for (const f of house) {
     const id = houseDocId(f.docId);
@@ -164,6 +166,7 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       );
       lost = built.dropped.length > before;
     }
+    if (doc?.trades.some((t) => t.details?.filing_status === "Amended")) amended.add(id);
     built.documents.push({
       id,
       chamber: "House",
@@ -241,6 +244,7 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       built.trades.push(...visionTrades(id, base, vp, (p) => ({ url: r.url, where: `image ${p}` }), built.dropped));
       lost = built.dropped.length > before;
     }
+    if (/\(Amendment/i.test(r.title)) amended.add(id);
     built.documents.push({
       id,
       chamber: "Senate",
@@ -256,5 +260,9 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       source_locator: null,
     });
   }
+  const docs = new Map<string, Filed>(
+    built.documents.map((d) => [d.id, { filedOn: d.filed_on ?? "", amended: amended.has(d.id) }]),
+  );
+  built.trades = collapseRestated(built.trades, docs);
   return built;
 }

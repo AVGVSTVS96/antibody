@@ -4,7 +4,7 @@ import { heavy, paths } from "@antibody/core/node";
 import { z } from "zod";
 import { pool } from "./http.ts";
 
-export const VISION_MODEL = "claude-opus-5-5";
+export const VISION_MODEL = process.env.ANTIBODY_VISION_MODEL ?? "claude-sonnet-5-5";
 const PKG = join(import.meta.dir, "..");
 const LONG_EDGE = 1650;
 
@@ -78,7 +78,7 @@ const RECHECK_PROMPT = `You are checking specific cells of a transcription of th
 
 Answer with one JSON object and nothing else: {"cells": [{"row", "field", "value", "readable"}]}`;
 
-export const visionRoot = () => join(paths.raw("trades"), "vision");
+export const visionRoot = () => process.env.ANTIBODY_VISION_DIR ?? join(paths.raw("trades"), "vision");
 const readPath = (doc: string, page: number) => join(visionRoot(), "reads", doc, `${page}.json`);
 const imagePath = (doc: string, page: number) => join(visionRoot(), "img", doc, `${page}.png`);
 
