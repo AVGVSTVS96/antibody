@@ -1,6 +1,6 @@
 import type { Company } from "./edgar.ts";
 import { tokenSet, tokenSort } from "./fuzzy.ts";
-import { assetName, CORPORATE, NON_COMPANY, norm, normTicker, tickerInAsset, tokens } from "./normalize.ts";
+import { CORPORATE, NON_COMPANY, norm, normTicker, parseAsset, tokens } from "./normalize.ts";
 
 /** One organization name found in a record, to be resolved to an SEC company. */
 export interface Mention {
@@ -127,8 +127,9 @@ function namesAgree(a: string, b: string): boolean {
  * with a clear margin and the same first word. Everything plausible but uncertain goes to review with candidates.
  */
 export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
-  const raw = m.source === "trade" ? assetName(m.name) : m.name;
-  const ticker = m.source === "trade" ? (m.ticker ?? tickerInAsset(m.name)) : null;
+  const asset = m.source === "trade" ? parseAsset(m.name) : null;
+  const raw = asset ? asset.name : m.name;
+  const ticker = asset ? (m.ticker ?? asset.ticker) : null;
   const normalized = norm(raw);
 
   if (ticker) {

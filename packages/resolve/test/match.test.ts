@@ -4,7 +4,7 @@ import type { Company } from "../src/edgar.ts";
 import { ratio, tokenSet, tokenSort } from "../src/fuzzy.ts";
 import { CompanyIndex, type Mention, resolveMention } from "../src/match.ts";
 import { employerMentions, pacMentions, tradeMentions } from "../src/mentions.ts";
-import { assetName, norm, tickerInAsset } from "../src/normalize.ts";
+import { norm, parseAsset } from "../src/normalize.ts";
 
 const co = (cik: number, name: string, ...tickers: string[]): Company => ({
   cik: String(cik),
@@ -47,8 +47,14 @@ test("normalization keeps the real client and drops legal and PAC words", () => 
   expect(norm("OCCIDENTAL PETROLEUM CORPORATION POLITICAL ACTION COMMITTEE")).toBe("OCCIDENTAL PETROLEUM");
   expect(norm("OCCIDENTAL PETROLEUM CORP /DE/")).toBe("OCCIDENTAL PETROLEUM");
   expect(norm("NEWMONT CORPORATION (F/K/A NEWMONT GOLDCORP CORPORATION)")).toBe("NEWMONT");
-  expect(assetName("Alphabet Inc. - Class A Common Stock (GOOGL) [ST]")).toBe("Alphabet Inc.");
-  expect(tickerInAsset("Berkshire Hathaway Inc. New (BRK.B) [ST]")).toBe("BRK.B");
+  expect(parseAsset("Alphabet Inc. - Class A Common Stock (GOOGL) [ST]")).toEqual({
+    name: "Alphabet Inc.",
+    ticker: "GOOGL",
+  });
+  expect(parseAsset("Berkshire Hathaway Inc. New (BRK.B) [ST]").ticker).toBe("BRK.B");
+  expect(parseAsset("PEP - PepsiCo, Inc. - Common Stock")).toEqual({ name: "PepsiCo, Inc.", ticker: "PEP" });
+  expect(parseAsset("MU CALL").ticker).toBe("MU");
+  expect(parseAsset("AMAT").ticker).toBe("AMAT");
 });
 
 test("a PTR ticker resolves when its company name agrees, share classes included", () => {

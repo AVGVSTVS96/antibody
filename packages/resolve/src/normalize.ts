@@ -23,18 +23,24 @@ export function norm(name: string | null | undefined): string {
 
 export const tokens = (normalized: string): string[] => (normalized ? normalized.split(" ") : []);
 
-/** A PTR asset line without its "(TICKER)", "[ST]" and share-class tail: "Alphabet Inc. - Class A Common Stock". */
-export function assetName(asset: string): string {
-  return asset
+/**
+ * A PTR asset line split into the company name and the ticker it writes, in any of the spellings filers use:
+ * "Alphabet Inc. - Class A Common Stock (GOOGL) [ST]", "PEP - PepsiCo, Inc. - Common Stock", "MU CALL", "AMAT".
+ */
+export function parseAsset(asset: string): { name: string; ticker: string | null } {
+  const s = asset.trim();
+  const lead = s.match(/^([A-Z]{1,5}(?:[.-][A-Z])?)\s+-\s+(.+)$/);
+  if (lead) return { name: lead[2]!.replace(/\s+-\s+.*$/, ""), ticker: lead[1]! };
+  const option = s.match(/^([A-Z]{1,5})\s+(?:CALLS?|PUTS?)\b/);
+  if (option) return { name: "", ticker: option[1]! };
+  if (/^[A-Z]{1,5}$/.test(s)) return { name: "", ticker: s };
+  const ticker = s.match(/\(([A-Z][A-Z0-9.-]{0,6})\)\s*(?:\[[A-Z]{2}\])?\s*$/)?.[1] ?? null;
+  const name = s
     .replace(/\[[A-Z]{2}\]\s*$/, "")
-    .replace(/\(([A-Z0-9.\-/]{1,8})\)\s*$/, "")
+    .replace(/\(([A-Z0-9./-]{1,8})\)\s*$/, "")
     .replace(/\s+-\s+.*$/, "")
     .trim();
-}
-
-/** "(TICKER)" at the end of a PTR asset line, before an optional "[ST]". */
-export function tickerInAsset(asset: string): string | null {
-  return asset.match(/\(([A-Z][A-Z0-9.-]{0,6})\)\s*(?:\[[A-Z]{2}\])?\s*$/)?.[1] ?? null;
+  return { name, ticker };
 }
 
 /** EDGAR writes share classes with a dash (BRK-B); filings write BRK.B, BRK/B or BRK B. */
