@@ -64,10 +64,10 @@ function Filled({ model, v, phone }: { model: BillModel; v: SectionView; phone: 
           }
         />
         <Stat
-          value={v.lobbied}
+          value={v.named}
           label={
             <>
-              Lobbying {v.lobbied === 1 ? "report names" : "reports name"} it {cite(lobbyClaims)}
+              Lobbying {v.named === 1 ? "report names" : "reports name"} it {cite(lobbyClaims)}
             </>
           }
         />

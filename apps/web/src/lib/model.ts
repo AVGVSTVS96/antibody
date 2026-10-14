@@ -20,8 +20,10 @@ export interface SectionView {
   /** Index of the version it first appeared in (0 = earliest stage, predecessor included). */
   stage: number;
   stageName: string;
-  /** Lobbying reports that cite this section by number. */
-  lobbied: number;
+  /** Lobbying filings that name this section by number: the count its score used. */
+  named: number;
+  /** Of those, the reports from clients drawn in the bundle (its lobbied edges). */
+  drawn: number;
   dollarsMusd: number | null;
   /** The one CBO estimate the section's dollars come from, with the estimate's own wording (null when none lists it). */
   figure: (Figure & { estimate: Bundle["dollars"]["estimates"][number] }) | null;
@@ -153,7 +155,8 @@ export function buildModel(b: Bundle): BillModel {
       kind: s.score ? s.score.label : "unscored",
       stage: stageOf.get(s.firstVersion) ?? 0,
       stageName: versions.find((v) => v.code === s.firstVersion)?.name ?? s.firstVersion,
-      lobbied: sectionLobbying.get(s.id) ?? 0,
+      named: s.score?.components.lobbyingReports ?? sectionLobbying.get(s.id) ?? 0,
+      drawn: sectionLobbying.get(s.id) ?? 0,
       dollarsMusd: shown?.musd ?? null,
       figure: shown && { ...shown, estimate: estimateById.get(shown.estimateId)! },
     };
@@ -452,7 +455,7 @@ export function memberShort(m: NodeOf<"member">): string {
 export function stakesWords(v: SectionView): string {
   return [
     v.dollarsMusd != null && v.s.score?.components.dollarsSplit !== "even_split" ? deficitWords(v.dollarsMusd) : null,
-    v.lobbied ? `${count(v.lobbied, "lobbying report")} name it` : null,
+    v.named ? `${count(v.named, "lobbying report")} name it` : null,
   ]
     .filter(Boolean)
     .join(" and ");

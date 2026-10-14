@@ -33,7 +33,7 @@ export function exhibitOf(m: BillModel): SectionView | undefined {
   const size = (v: SectionView) => Math.abs(v.dollarsMusd ?? 0);
   return m.sections
     .filter((v) => v.s.inFinal && v.kind === "buried")
-    .sort((a, b) => b.lobbied - a.lobbied || size(b) - size(a))[0];
+    .sort((a, b) => b.named - a.named || size(b) - size(a))[0];
 }
 
 const DAY = 86_400_000;

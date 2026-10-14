@@ -207,7 +207,7 @@ function versionSentence(m: BillModel, rows: SectionView[]): string {
 const quietWord = (v: SectionView) => {
   const why = [
     v.dollarsMusd != null && v.s.score?.components.dollarsSplit !== "even_split" ? deficitWords(v.dollarsMusd) : null,
-    v.lobbied ? `${count(v.s.score?.components.lobbyingReports ?? v.lobbied, "lobbying report")} name it` : null,
+    v.named ? `${count(v.named, "lobbying report")} name it` : null,
   ].filter(Boolean);
   return why.length ? why.join(" and ") : "had the highest quiet-and-costly score";
 };

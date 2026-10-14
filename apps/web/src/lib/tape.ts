@@ -111,7 +111,7 @@ export function buildTape(m: BillModel): Tape {
         group: group?.key ?? null,
         place,
         articles: v.s.attention?.hits ?? null,
-        lobbying: v.lobbied,
+        lobbying: v.named,
       };
     },
   );
