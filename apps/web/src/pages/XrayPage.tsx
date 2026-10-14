@@ -17,6 +17,7 @@ import { hover, reading } from "../xray/store.ts";
 import "../xray/xray.css";
 
 function LiveTape({ tape, onSelect, phone }: { tape: TapeData; onSelect: (r: TapeRow) => void; phone: boolean }) {
+  const narrow = useMedia("(max-width: 1100px)");
   const lit = hover.use();
   const here = reading.use();
   const highlight = useMemo(() => (lit ? new Set([lit]) : undefined), [lit]);
@@ -28,7 +29,7 @@ function LiveTape({ tape, onSelect, phone }: { tape: TapeData; onSelect: (r: Tap
       current={here ?? undefined}
       currentLabel={phone ? "You are here" : "You are reading this"}
       highlight={highlight}
-      legend={!phone}
+      legend={!narrow}
       caption={
         phone
           ? "THE TAPE · STAYS PINNED"

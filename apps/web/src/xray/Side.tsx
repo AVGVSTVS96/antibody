@@ -40,6 +40,13 @@ export function Pair({ pair, read, go }: { pair: Contrast; read: number; go: (id
         Picked by one rule for every bill: the headline and the quiet-and-costly section whose CBO figures are closest
         on a log scale, both exact lines (not an even split), both adding or both cutting.
       </p>
+      <p className="x-chips">
+        <Src ids={[...pair.loud.view.figure!.claims, ...pair.quiet.view.figure!.claims]} label="CBO FIGURES" />
+        <Src
+          ids={[pair.loud.view.s.attention?.claim, pair.quiet.view.s.attention?.claim].filter((c): c is string => !!c)}
+          label="ARTICLE COUNTS"
+        />
+      </p>
     </section>
   );
 }

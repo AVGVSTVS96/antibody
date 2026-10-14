@@ -129,9 +129,13 @@ export function useReader(tape: Tape, billId: string) {
 
   useEffect(() => {
     if (!target) return;
-    document
-      .querySelector(`[data-row="${CSS.escape(target)}"]`)
-      ?.scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "start" });
+    const el = document.querySelector(`[data-row="${CSS.escape(target)}"]`);
+    el?.scrollIntoView({ behavior: calm() ? "auto" : "smooth", block: "start" });
+    if (el && !calm()) {
+      // Rows the scroll passes over settle at their real heights, so the stop it aimed at has moved: align once more.
+      const settle = () => el.scrollIntoView({ block: "start" });
+      addEventListener("scrollend", settle, { once: true });
+    }
     setFlash(target);
     setTarget(null);
   }, [target]);
