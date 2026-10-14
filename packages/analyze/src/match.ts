@@ -5,9 +5,9 @@ import { paths, python } from "@antibody/core/node";
 import { claude, parseJson, pool } from "./llm.ts";
 
 /** Bumped whenever the prompt or the menu format changes; old matches are then re-done. */
-export const MATCHER = "section-matcher-v3";
+export const MATCHER = "section-matcher-v4";
 export const MATCH_MODEL = process.env.ANTIBODY_MATCH_MODEL ?? "sonnet";
-const BATCH = 10;
+const BATCH = 8;
 const PARALLEL = 4;
 const ARTICLE_WORDS = 900;
 
@@ -37,21 +37,57 @@ export interface MatchRun {
 
 const lead = (s: string, words: number) => s.split(/\s+/).slice(0, words).join(" ");
 
+const line = (s: Row<"sections">, key: string) =>
+  `${key} | sec. ${s.num} | ${s.heading}${s.in_final ? "" : " [dropped before the final text]"} | ${lead(s.preview, 30)}`;
+
+/** A menu of the given sections: "S1 | sec. 70301 | heading | first words" lines, and the key → section id map. */
 export function menu(sections: Row<"sections">[]) {
   const ids = new Map<string, string>();
   const lines = sections.map((s, i) => {
     const key = `S${i + 1}`;
     ids.set(key, s.id);
-    const tag = s.in_final ? "" : " [dropped before the final text]";
-    return `${key} | sec. ${s.num} | ${s.heading}${tag} | ${lead(s.preview, 30)}`;
+    return line(s, key);
   });
   return { text: lines.join("\n"), ids };
+}
+
+/** Sections shown per article. A short bill is shown whole. */
+export const SHORTLIST = 15;
+/** A bill with this many sections or fewer is shown whole to the matcher: no shortlist step. */
+export const WHOLE_MENU = 40;
+
+/**
+ * The sections each article might be about (py/candidates.py: best embedding match between the section's heading and
+ * opening words and any paragraph of the article). Cached per bill.
+ */
+export async function shortlist(
+  bill: BillId,
+  names: string[],
+  sections: Row<"sections">[],
+  articles: ArticleIn[],
+): Promise<Map<string, string[]>> {
+  const dir = join(paths.raw("analyze"), "match");
+  const input = join(dir, `${bill}.cand.in.json`);
+  const output = join(dir, `${bill}.cand.json`);
+  const payload = JSON.stringify({
+    k: SHORTLIST,
+    names,
+    sections: sections.map((s) => ({ id: s.id, text: `${s.heading}. ${lead(s.preview, 30)}` })),
+    articles: articles.map((a) => ({ id: a.id, title: a.title, text: a.text?.slice(0, 14_000) ?? "" })),
+  });
+  const prev = Bun.file(input);
+  if (!(await prev.exists()) || (await prev.text()) !== payload || !(await Bun.file(output).exists())) {
+    await Bun.write(input, payload);
+    await python(join(import.meta.dir, ".."), "candidates.py", [input, output], { memoryMax: "3G" });
+  }
+  const r: { candidates: Record<string, string[]> } = await Bun.file(output).json();
+  return new Map(Object.entries(r.candidates));
 }
 
 function system(bill: BillId, title: string) {
   return `You read news articles about the US bill ${billDisplay(bill)} ("${title}") and record which of its sections each article discusses.
 
-The bill's sections are listed at the top of the user message as: id | section number | heading | first words of its text. Sections marked [dropped before the final text] were in an earlier version only.
+Each article comes with a short list of the bill's sections it might be about, as: id | section number | heading | first words of its text. Pick only from that list, and pick every section on it the article discusses. Sections marked [dropped before the final text] were in an earlier version only.
 
 For each article:
 - "about": "bill" when the bill, its provisions or the fight over it is a main subject of the article; "mention" when the bill comes up in an article mainly about something else; "unrelated" when it is not about this bill at all (another bill, or a passing word).
@@ -70,11 +106,14 @@ export async function matchArticles(
   title: string,
   sections: Row<"sections">[],
   articles: ArticleIn[],
-  opts: { refresh?: boolean; model?: string; log?: (m: string) => void; signal?: AbortSignal } = {},
+  opts: { names?: string[]; refresh?: boolean; model?: string; log?: (m: string) => void; signal?: AbortSignal } = {},
 ): Promise<MatchRun> {
   const model = opts.model ?? MATCH_MODEL;
-  const m = menu(sections);
-  const menuHash = createHash("sha1").update(m.text).digest("hex").slice(0, 12);
+  const byId = new Map(sections.map((x) => [x.id, x]));
+  const menuHash = createHash("sha1")
+    .update(`${sections.length <= WHOLE_MENU ? 0 : SHORTLIST}\n${menu(sections).text}`)
+    .digest("hex")
+    .slice(0, 12);
   const file = Bun.file(join(paths.raw("analyze"), "match", `${bill}.${model}.json`));
   const prior: MatchRun | null = (await file.exists()) ? await file.json() : null;
   const reuse = prior && !opts.refresh && prior.matcher === MATCHER && prior.menuHash === menuHash;
@@ -85,9 +124,21 @@ export async function matchArticles(
   for (let i = 0; i < todo.length; i += BATCH) batches.push(todo.slice(i, i + BATCH));
   if (batches.length) opts.log?.(`matching ${todo.length} articles in ${batches.length} calls (${model})`);
   const sys = system(bill, title);
+  const everything = sections.length <= WHOLE_MENU;
+  const short =
+    todo.length && !everything ? await shortlist(bill, opts.names ?? [], sections, todo) : new Map<string, string[]>();
 
   await pool(batches, PARALLEL, async (batch, bi) => {
-    const prompt = `SECTIONS\n${m.text}\n\n=====\n\n${batch.map((a, i) => articleBlock(a, i + 1)).join("\n\n---\n\n")}`;
+    const menus: Map<string, string>[] = [];
+    const prompt = batch
+      .map((a, i) => {
+        const m = menu(
+          everything ? sections : (short.get(a.id) ?? []).flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])),
+        );
+        menus.push(m.ids);
+        return `${articleBlock(a, i + 1)}\n\nSECTIONS THIS ARTICLE MIGHT BE ABOUT\n${m.text}`;
+      })
+      .join("\n\n=====\n\n");
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const r = await claude(prompt, { system: sys, model, signal: opts.signal });
@@ -96,10 +147,11 @@ export async function matchArticles(
         >(r.text);
         for (const o of out) {
           const a = batch[o.a - 1];
-          if (!a) continue;
+          const ids = menus[o.a - 1];
+          if (!a || !ids) continue;
           run.matches[a.id] = {
             about: ["bill", "mention", "unrelated"].includes(o.about) ? o.about : "unrelated",
-            sections: [...new Set(o.s.flatMap((k) => (m.ids.has(k) ? [m.ids.get(k)!] : [])))],
+            sections: [...new Set(o.s.flatMap((k) => (ids.has(k) ? [ids.get(k)!] : [])))],
             whole: !!o.whole,
             outside: o.outside?.trim() || null,
           };
@@ -150,7 +202,7 @@ export async function matchEmbed(
     bill_title: title,
     names,
     sections: sections.map((s) => ({ id: s.id, text: `${s.heading}. ${lead(s.preview, 30)}` })),
-    articles: articles.map((a) => ({ id: a.id, title: a.title, text: a.text ? lead(a.text, ARTICLE_WORDS) : "" })),
+    articles: articles.map((a) => ({ id: a.id, title: a.title, text: a.text?.slice(0, 14_000) ?? "" })),
   };
   const key = JSON.stringify(payload);
   const prev = Bun.file(input);

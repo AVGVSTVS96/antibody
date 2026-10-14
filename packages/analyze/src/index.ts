@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { BillId, Row, Stage, StageContext } from "@antibody/core";
 import { paths, python, readRows, writeRows } from "@antibody/core/node";
 import { articleText, OUTLETS, searchPlan } from "@antibody/ingest-news";
-import { attention } from "./attention.ts";
+import { attention, MIN_TEXT_CHARS } from "./attention.ts";
 import { claudeAvailable, matchArticles, matchEmbed } from "./match.ts";
 import { BOILERPLATE, SCORE, SCORE_TEXT, scoreRows, sectionDollars, sectionReports } from "./score.ts";
 
@@ -32,28 +32,28 @@ async function runAttention(ctx: StageContext) {
   if (!sections.length) throw new Error(`no sections for ${bill}: run the bills stage first`);
   const [b] = await readRows("bills", bill);
   const articles = await readRows("articles", bill);
-  const read = articles.filter((a) => a.text_chars !== null);
+  const read = articles.filter((a) => (a.text_chars ?? 0) >= MIN_TEXT_CHARS);
   const outlet = new Map(OUTLETS.map((o) => [o.domain, o.name]));
   const input = await Promise.all(
     read.map(async (a) => ({
       id: a.id,
       outlet: outlet.get(a.outlet_id ?? "") ?? a.outlet_id ?? "unknown",
       title: a.title,
-      text: a.text_chars ? await articleText(bill, a.id) : null,
+      text: await articleText(bill, a.id),
     })),
   );
   const title = b?.short_title ?? b?.title ?? bill;
+  const names = (await searchPlan(bill)).query.match(/"([^"]+)"/g)?.map((q) => q.slice(1, -1)) ?? [];
   const useClaude = process.env.ANTIBODY_MATCHER !== "embed" && (await claudeAvailable());
   if (!useClaude) ctx.log("claude -p unavailable: matching with local embeddings (the weaker fallback)");
   const run = useClaude
-    ? await matchArticles(bill, title, sections, input, { refresh: ctx.refresh, log: ctx.log, signal: ctx.signal })
-    : await matchEmbed(
-        bill,
-        title,
-        (await searchPlan(bill)).query.match(/"([^"]+)"/g)?.map((q) => q.slice(1, -1)) ?? [],
-        sections,
-        input,
-      );
+    ? await matchArticles(bill, title, sections, input, {
+        names,
+        refresh: ctx.refresh,
+        log: ctx.log,
+        signal: ctx.signal,
+      })
+    : await matchEmbed(bill, title, names, sections, input);
   const res = attention(bill, sections, articles, run);
   await writeRows("attention", bill, res.rows);
   ctx.log(`${res.rows.length} attention rows from ${res.relevant} relevant articles (matcher ${run.model})`);
