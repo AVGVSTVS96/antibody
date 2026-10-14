@@ -24,7 +24,8 @@ test("a bill the rule could not run on says so, with why, where a chapter would 
   expect(second.lede).toContain(why);
   expect(second.data.closest).toBeNull();
   const fifth = ch5(m);
-  expect(fifth.head.map((l) => l.text).join(" ")).toContain("couldn't test");
+  expect(fifth.head.map((l) => l.text).join(" ")).toMatch(/^\d+ listed compan(y|ies) lobbied on this bill\.$/);
+  expect(fifth.lede).toContain("We couldn't test for quiet sections");
   expect(fifth.lede).toContain(why);
 });
 

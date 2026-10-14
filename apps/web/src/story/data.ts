@@ -123,12 +123,9 @@ export function ch1(m: BillModel): Chapter<Ch1Data> {
     group,
     hits: sum(fin.map((v) => v.s.attention?.hitsByGroup[group] ?? 0)),
   }));
-  const rows = ranked
-    ? headline.slice(0, 7)
-    : [...fin]
-        .filter((v) => hitsOf(v) > 0)
-        .sort((x, y) => hitsOf(y) - hitsOf(x))
-        .slice(0, 7);
+  const rows = (ranked ? headline.slice(0, 7) : fin.filter((v) => hitsOf(v) > 0))
+    .toSorted((x, y) => hitsOf(y) - hitsOf(x))
+    .slice(0, 7);
 
   let head: HeadLine[];
   let lede: string;
@@ -623,12 +620,14 @@ export function ch5(m: BillModel): Chapter<Ch5Data> {
   const untested = untestedWhy(b);
   if (untested)
     return chapter(
-      [
-        { text: "We couldn't test" },
-        { text: "for quiet sections,", tone: "label" },
-        { text: "so no company is tied." },
-      ],
-      `The rule that finds quiet sections did not run: ${untested}. No company can be tied to one. ${tiedWhole(listed)}`,
+      listed
+        ? [
+            { text: String(listed), tone: "big" },
+            { text: `listed ${listed === 1 ? "company" : "companies"}` },
+            { text: "lobbied on this bill." },
+          ]
+        : [{ text: "No listed company" }, { text: "lobbied on this bill.", tone: "label" }],
+      `We couldn't test for quiet sections, so none can be tied to one: ${untested}.${listed ? ` ${listed === 1 ? "It is" : "They are"} tied to the bill as a whole because ${listed === 1 ? "it" : "they"} lobbied on it.` : ""}`,
       data,
     );
   if (!ties.length)

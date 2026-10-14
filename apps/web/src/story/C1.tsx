@@ -106,12 +106,12 @@ function Rows({ c, m }: { c: Ch1Data; m: BillModel }) {
         <section className="outlets" aria-label="Where the mentions came from">
           <Cap>Where the {c.mentions.toLocaleString("en-US")} mentions came from</Cap>
           <div className="outlet-bar" role="toolbar" aria-label="Filter the squares by outlet group">
-            {c.groups.map(({ group: g, hits }) =>
+            {c.groups.map(({ group: g, hits }, i) =>
               hits ? (
                 <button
                   type="button"
                   key={g}
-                  style={{ flexGrow: hits }}
+                  style={{ flexGrow: hits, background: `var(--lean-${i + 1})` }}
                   aria-pressed={group === g}
                   aria-label={`${g}: ${hits}`}
                   onClick={() => setGroup(group === g ? null : g)}
