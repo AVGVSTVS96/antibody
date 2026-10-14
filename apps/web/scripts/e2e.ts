@@ -8,7 +8,7 @@
 import { readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Bundle, BundleIndex, Claim } from "@antibody/core";
+import { activeSpan, type Bundle, type BundleIndex, type Claim } from "@antibody/core";
 import { chromium, type Page } from "playwright-core";
 import { libraryOf } from "../src/land/rules.ts";
 
@@ -429,6 +429,302 @@ for (const id of sample) {
   await page.waitForFunction(() => location.pathname.includes("/section/"));
   check(page.url().includes("/section/19"), "search finds a section by number and opens its page");
   await page.close();
+}
+
+{
+  const storyBills = ["119-hr-1", "117-hr-5376", "119-s-1582", "119-hr-4405", "117-s-3522"].filter((id) =>
+    ids.includes(id),
+  );
+  const bundleOf = async (id: string) => (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
+  const groupCount = (n: number) => `CHAPTER ${n} OF 6`;
+
+  for (const id of storyBills) {
+    const b = await bundleOf(id);
+    const final = b.sections.filter((s) => s.inFinal);
+    const headline = final.filter((s) => s.score?.label === "headline").length;
+    const quiet = final.filter((s) => s.score?.label === "buried").length;
+    const span = activeSpan(b);
+    const traders = new Set(
+      b.edges.flatMap((e) =>
+        e.kind === "traded" && span && e.props.events.some((ev) => ev.date >= span[0] && ev.date <= span[1])
+          ? [e.src]
+          : [],
+      ),
+    );
+    for (let n = 1; n <= 6; n++) {
+      const { page, errors } = await open(`/bill/${id}/story/${n}`, 390);
+      const head = await page.locator(".story-count").innerText();
+      check(head.includes(groupCount(n)), `${id} story ${n}: header says ${groupCount(n)}`);
+      check(
+        /\d:\d\d/.test(await page.locator(".story-count time").innerText()),
+        `${id} story ${n}: reading time shown`,
+      );
+      check((await page.locator(".story-steps li").count()) === 6, `${id} story ${n}: six progress segments`);
+      check(
+        (await page.locator(".story-steps [data-state=done]").count()) === n - 1 &&
+          (await page.locator(".story-steps [aria-current=step]").count()) === 1,
+        `${id} story ${n}: ${n - 1} segments done, one current`,
+      );
+      const h1 = await page.locator("main h1").innerText();
+      if (n === 1 && headline)
+        check(h1.includes(`${headline} section`), `${id} story 1 headline counts ${headline} loud sections`);
+      if (n === 2 && quiet)
+        check(h1.includes(`${quiet} section`), `${id} story 2 headline counts ${quiet} quiet sections`);
+      if (n === 2)
+        check(
+          (await page.locator(".ch").getAttribute("data-tone")) === (quiet ? "quiet" : null),
+          `${id} story 2: ${quiet ? "yellow" : "plain"} page tone`,
+        );
+      if (n === 4)
+        check(
+          h1.replace(/\s/g, "").includes(b.lobbying.reports.toLocaleString("en-US")),
+          `${id} story 4 headline is ${b.lobbying.reports} reports`,
+        );
+      if (n === 6 && traders.size)
+        check(h1.startsWith(String(traders.size)), `${id} story 6 headline is ${traders.size} members`);
+      for (const width of [1440, 768, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.waitForTimeout(120);
+        check((await overflow(page)) <= 0, `${id} story ${n} at ${width}: no horizontal overflow`);
+      }
+      await page
+        .waitForFunction(() => !document.querySelector("a.src.ghost, span.src.ghost"), null, { timeout: 60000 })
+        .catch(() => {});
+      const gone = await page.locator("span.src.gone").count();
+      check(gone === 0, `${id} story ${n}: every chip finds its claim (${gone} without a record)`);
+      check(errors.length === 0, `${id} story ${n}: no console errors ${errors.slice(0, 2).join(" | ")}`);
+      await page.close();
+    }
+  }
+
+  const id = "119-hr-1";
+  const url = (n?: number) => `/bill/${id}/story${n ? `/${n}` : ""}`;
+  const path = (page: Page) => new URL(page.url()).pathname;
+  const settle = (page: Page, p: string) =>
+    page.waitForFunction((x) => location.pathname === x, p, { timeout: 5000 }).catch(() => {});
+
+  {
+    const { page } = await open(url(), 1440);
+    check(
+      (await page.locator(".story-count").innerText()).includes(groupCount(1)),
+      "story without a chapter opens chapter 1",
+    );
+    await page.keyboard.press("ArrowRight");
+    await settle(page, url(2));
+    check(path(page) === url(2), "ArrowRight goes to the next chapter");
+    await page.keyboard.press("ArrowLeft");
+    await settle(page, url(1));
+    check(path(page) === url(1), "ArrowLeft goes back");
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForTimeout(150);
+    check(path(page) === url(1), "ArrowLeft on chapter 1 stays");
+    await page.locator(".story-steps li:nth-child(4) a").click();
+    await settle(page, url(4));
+    check(path(page) === url(4), "tapping a progress segment jumps to that chapter");
+    await page.goto(`${base}${url(6)}`);
+    await page.waitForSelector("main h1");
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(150);
+    check(path(page) === url(6), "ArrowRight on chapter 6 stays");
+    await page.waitForSelector("a.src:not(.ghost)", { timeout: 60000 });
+    await page.locator("a.src:not(.ghost)").first().click();
+    await page.waitForSelector("[role=dialog]");
+    await page.keyboard.press("ArrowLeft");
+    await page.waitForTimeout(150);
+    check(path(page) === url(6), "arrow keys walk the receipt, not the chapters, while it is open");
+    await page.keyboard.press("Escape");
+    await page.close();
+  }
+
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    const page = await ctx.newPage();
+    await page.goto(`${base}${url(2)}`);
+    await page.waitForSelector(".story-head");
+    const cdp = await ctx.newCDPSession(page);
+    const drag = async (x0: number, y0: number, x1: number, y1: number) => {
+      const t = (type: "touchStart" | "touchMove" | "touchEnd", x: number, y: number) =>
+        cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+      await t("touchStart", x0, y0);
+      for (let i = 1; i <= 6; i++) await t("touchMove", x0 + ((x1 - x0) * i) / 6, y0 + ((y1 - y0) * i) / 6);
+      await t("touchEnd", x1, y1);
+      await page.waitForTimeout(600);
+    };
+    await drag(300, 500, 80, 510);
+    await settle(page, url(3));
+    check(path(page) === url(3), "a swipe left goes to the next chapter");
+    await drag(80, 500, 300, 510);
+    await settle(page, url(2));
+    check(path(page) === url(2), "a swipe right goes back");
+    await drag(200, 700, 190, 300);
+    check(path(page) === url(2), "a vertical swipe scrolls and does not change the chapter");
+    await page.goto(`${base}${url(6)}`);
+    await page.waitForSelector(".day-chart svg");
+    const box = (await page.locator(".day-chart svg").boundingBox())!;
+    await page.evaluate((y) => scrollTo(0, y), box.y - 200);
+    const at = (await page.locator(".day-chart svg").boundingBox())!;
+    await drag(at.x + 60, at.y + 60, at.x + 300, at.y + 62);
+    check(path(page) === url(6), "a drag across the day chart reads the chart and does not turn the page");
+    await ctx.close();
+  }
+
+  for (const scheme of ["light", "dark"] as const) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: scheme });
+    const page = await ctx.newPage();
+    await page.goto(`${base}${url(2)}`);
+    await page.waitForSelector("main h1");
+    await page.waitForTimeout(500);
+    const bg = () => page.locator(".story").evaluate((el) => getComputedStyle(el).backgroundColor);
+    check((await bg()) === "rgb(255, 232, 31)", `${scheme}: chapter 2 is yellow (${await bg()})`);
+    const ink = await page.locator(".ch-lede .lead").evaluate((el) => getComputedStyle(el).color);
+    check(ink === "rgb(11, 11, 11)", `${scheme}: chapter 2 text is ink on yellow (${ink})`);
+    await page.goto(`${base}${url(1)}`);
+    await page.waitForSelector("main h1");
+    await page.waitForTimeout(500);
+    check((await bg()) !== "rgb(255, 232, 31)", `${scheme}: chapter 1 is not yellow`);
+    await ctx.close();
+  }
+
+  {
+    const { page } = await open(`/bill/117-hr-5376/story/2`, 390);
+    const bg = await page.locator(".story").evaluate((el) => getComputedStyle(el).backgroundColor);
+    check(bg !== "rgb(255, 232, 31)", "a bill with no quiet section keeps chapter 2 off yellow");
+    await page.close();
+  }
+
+  for (const motion of ["no-preference", "reduce"] as const) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: motion });
+    const page = await ctx.newPage();
+    await page.goto(`${base}${url(2)}`);
+    await page.waitForSelector(".q-bar");
+    const anim = await page
+      .locator(".q-bar")
+      .first()
+      .evaluate((el) => getComputedStyle(el).animationName);
+    check(
+      (anim !== "none") === (motion === "no-preference"),
+      `bars grow only when motion is welcome (${motion}: ${anim})`,
+    );
+    const fill = await page
+      .locator(".story-steps [data-state=now] a")
+      .evaluate((el) => getComputedStyle(el, "::before").animationName);
+    check(
+      (fill !== "none") === (motion === "no-preference"),
+      `the progress fill runs only when motion is welcome (${motion}: ${fill})`,
+    );
+    await ctx.close();
+  }
+
+  {
+    const { page } = await open(url(1), 390);
+    const first = page.locator(".sq-row").first();
+    const shown = Number(await first.locator(".squares b").innerText());
+    check((await first.locator(".squares i").count()) === shown, "chapter 1: a row draws one square per article");
+    await first.locator(".squares").click();
+    check(
+      (await first.locator(".sq-open li").count()) <= 3 &&
+        (await first.locator(".sq-open li a[href^=http]").count()) > 0,
+      "chapter 1: a row opens up to three example articles with real links",
+    );
+    await first.locator(".sq-open .linkbtn").click();
+    await page.waitForFunction((n) => document.querySelectorAll(".sq-open li").length === n, shown, { timeout: 10000 });
+    check(true, `chapter 1: show all lists all ${shown} counted articles`);
+    await page.locator(".outlet-bar button").first().click();
+    check(
+      (await page.locator(".squares i[data-dim]").count()) > 0,
+      "chapter 1: an outlet segment dims the squares of the other groups",
+    );
+    await page.locator(".outlet-bar button").first().click();
+    check((await page.locator(".squares i[data-dim]").count()) === 0, "chapter 1: tapping again clears the filter");
+    await page.close();
+  }
+
+  {
+    const { page } = await open(url(2), 390);
+    const chip = page.locator(".q-row .lda").first();
+    await chip.click();
+    await page.waitForSelector(".q-open");
+    check(true, "chapter 2: an LDA chip opens the filings that name the section");
+    await page.close();
+  }
+
+  {
+    const { page } = await open(url(3), 390);
+    const cards = page.locator(".bl-pick");
+    if ((await cards.count()) === 2) {
+      await cards.nth(1).click();
+      await page.waitForFunction(() => document.querySelector(".ch-h1")?.textContent?.includes("cut from"), null, {
+        timeout: 3000,
+      });
+      check(true, "chapter 3: the baseline switch turns the headline to the other baseline");
+      check(
+        (await cards.count()) === 2 && (await page.locator(".bl").count()) === 2,
+        "chapter 3: both baselines stay on screen",
+      );
+    }
+    await page.locator(".move-bar button").first().click();
+    check(
+      (await page.locator(".move-open li").count()) > 0,
+      "chapter 3: pressing a segment lists the sections it holds",
+    );
+    await page.close();
+  }
+
+  {
+    const { page } = await open(url(4), 390);
+    await page.locator(".phase-bar button").first().click();
+    check((await page.locator(".cl-sq i[data-dim]").count()) > 0, "chapter 4: a phase segment recolours the squares");
+    await page.locator(".cl-head").first().click();
+    await page.waitForSelector("[role=dialog]");
+    check(true, "chapter 4: a client row opens its filings in the receipt");
+    await page.keyboard.press("Escape");
+    await page.close();
+  }
+
+  {
+    const { page } = await open(url(5), 390);
+    const tie = page.locator(".tie").first();
+    await tie.locator("summary").click();
+    check(
+      (await tie.locator(".tie-open li a[href*='/member/']").count()) > 0,
+      "chapter 5: a tie opens the members who traded its stock",
+    );
+    check(
+      (await page.locator(".story-head").evaluate((el) => getComputedStyle(el).borderBottomStyle)) === "dashed",
+      "chapter 5: the whole chapter is drawn dashed",
+    );
+    await page.close();
+  }
+
+  {
+    const ctx = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+      permissions: ["clipboard-read", "clipboard-write"],
+    });
+    const page = await ctx.newPage();
+    await page.goto(`${base}${url(6)}`);
+    await page.waitForSelector(".day-chart svg");
+    const svg = page.locator(".day-chart svg");
+    await svg.scrollIntoViewIfNeeded();
+    const box = (await svg.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + 80);
+    check(/trades?/i.test(await page.locator(".day-read").innerText()), "chapter 6: hovering a day reads its trades");
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.mouse.move(0, 0);
+    check(/trades?/i.test(await page.locator(".day-read").innerText()), "chapter 6: a pressed day stays pinned");
+    check((await page.locator(".pin").count()) >= 3, "chapter 6: the votes are pinned on the chart");
+    check((await page.locator(".month-bar").count()) >= 24, "chapter 6: the all-months baseline draws every month");
+    await page.locator(".lead-rows a").first().click();
+    await page.waitForFunction(() => location.pathname.includes("/member/"));
+    await page.goBack();
+    await page.waitForSelector(".share");
+    await page.locator(".share").click();
+    await page.waitForTimeout(200);
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    check(copied === `${base}${url()}`, `share copies the story link (${copied})`);
+    await ctx.close();
+  }
 }
 
 const phone = await open("/bill/119-s-1582", 390);
