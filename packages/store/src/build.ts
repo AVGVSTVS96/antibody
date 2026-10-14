@@ -209,11 +209,11 @@ class Builder {
     if (!bill) throw new BuildError(`no bills row for ${this.bill}: run the bills stage first`);
     this.names.display = this.display;
     this.names.bill = `${this.display}${bill.short_title ? ` (${bill.short_title})` : ""}`;
-    for (const m of await this.select("members")) this.members.set(m.id, m);
 
     const versions = await this.buildVersions();
     await this.buildSections();
     const window = this.window(bill, versions);
+    for (const m of await this.select("members")) this.members.set(m.id, asOf(m, bill.law_on ?? window.end));
     const dollars = await this.buildDollars();
     const votes = await this.buildVotes();
     await this.buildSponsors();
@@ -493,22 +493,30 @@ class Builder {
     }
   }
 
+  /** The committee's node (added on first use), or null when the committees table doesn't know it. */
+  private async committee(id: string): Promise<NodeId | null> {
+    const key = committeeKey(id);
+    const nid = nodeId("committee", key);
+    if (this.nodes.has(nid)) return nid;
+    const [c] = await this.select("committees", "upper(id) = $k", { k: key });
+    if (!c) return null;
+    this.labels.committee.set(key, c.name);
+    const claim = await this.cite("committees", c);
+    this.node({
+      id: nid,
+      kind: "committee",
+      label: c.name,
+      claims: claim ? [claim] : [],
+      props: { chamber: c.chamber },
+    });
+    return nid;
+  }
+
   private async buildCommittees() {
     const referred = await this.select("bill_committees", "bill_id = $b", { b: this.bill });
     if (!referred.length) return;
     const keys = [...new Set(referred.map((r) => committeeKey(r.committee_id)))];
-    const committees = await this.select("committees", "list_contains($k, upper(id))", { k: keys });
-    for (const c of committees) {
-      this.labels.committee.set(committeeKey(c.id), c.name);
-      const claim = await this.cite("committees", c);
-      this.node({
-        id: nodeId("committee", committeeKey(c.id)),
-        kind: "committee",
-        label: c.name,
-        claims: claim ? [claim] : [],
-        props: { chamber: c.chamber },
-      });
-    }
+    for (const k of keys) await this.committee(k);
     for (const r of referred) {
       const key = committeeKey(r.committee_id);
       if (!this.nodes.has(`committee:${key}`)) {
@@ -558,10 +566,11 @@ class Builder {
       const mine = links.filter((l) => l.amendment_id === a.id && this.sections.has(l.section_id));
       const sponsorKnown = a.sponsor_bioguide && this.members.has(a.sponsor_bioguide);
       if (sponsorKnown) this.memberIds.add(a.sponsor_bioguide);
+      const byCommittee = !sponsorKnown && a.sponsor_committee ? await this.committee(a.sponsor_committee) : null;
       for (const l of mine) {
         const link = await this.cite("amendment_sections", l);
         if (link) this.sections.get(l.section_id)!.claims.push(link);
-        if (link && sponsorKnown && a.status === "agreed")
+        if (link && sponsorKnown && a.status === "agreed" && (l.effect ?? "inserted") === "inserted")
           this.edge(
             "inserted",
             `inserted:${a.id}:${l.section_id}`,
@@ -578,7 +587,7 @@ class Builder {
         id: a.id,
         number: this.labels.amendment.get(a.id)!,
         chamber: a.chamber,
-        sponsor: sponsorKnown ? nodeId("member", a.sponsor_bioguide) : null,
+        sponsor: sponsorKnown ? nodeId("member", a.sponsor_bioguide) : byCommittee,
         purpose: a.purpose,
         status: a.status,
         latestAction: a.latest_action,
@@ -634,20 +643,18 @@ class Builder {
     }
 
     const spend = await this.select("lda_spend", "bill_id = $b", { b: this.bill });
-    const spendClaims = async (s: AnyRow | undefined) =>
-      s
-        ? [
-            await this.cite("lda_spend", s, "total"),
-            s.share_usd != null ? await this.cite("lda_spend", s, "share") : null,
-          ].filter((x): x is ClaimId => !!x)
-        : [];
+    const spendClaims = async (s: AnyRow | undefined) => ({
+      total: s?.total_usd != null ? await this.cite("lda_spend", s, "total") : null,
+      share: s?.share_usd != null ? await this.cite("lda_spend", s, "share") : null,
+    });
     const spendOf = (key: string | null, topic: boolean) =>
       spend.find((s) => s.client_key === key && !!s.topic_only === topic);
 
     const byClient = groupBy(refs, (r) => this.filings.get(r.filing_id)!.client_key);
     for (const [key, rs] of byClient) {
       const s = spendOf(key, false);
-      const claims = [...(await spendClaims(s)), ...(await this.cites("lda_bill_refs", rs))];
+      const { total, share } = await spendClaims(s);
+      const claims = [total, ...(await this.cites("lda_bill_refs", rs))].filter((c): c is ClaimId => !!c);
       const sectionNums = new Set(rs.flatMap((r) => r.section_nums as string[]));
       this.edge(
         "lobbied",
@@ -655,7 +662,7 @@ class Builder {
         nodeId("client", key),
         nodeId("bill", this.bill),
         claims,
-        s ? spendProps(s, false) : this.refProps(rs, false),
+        s ? { ...spendProps(s, false), shareClaim: share } : this.refProps(rs, false),
       );
       for (const num of sectionNums) {
         const target = this.sectionByNum(num);
@@ -674,14 +681,15 @@ class Builder {
     for (const [key, rs] of groupBy(topicRefs, (r) => this.filings.get(r.filing_id)?.client_key ?? "")) {
       if (!key) continue;
       const s = spendOf(key, true);
-      const claims = [...(await spendClaims(s)), ...(await this.cites("lda_topic_refs", rs))];
+      const { total, share } = await spendClaims(s);
+      const claims = [total, ...(await this.cites("lda_topic_refs", rs))].filter((c): c is ClaimId => !!c);
       this.edge(
         "lobbied",
         `lobbied:topic:${key}`,
         nodeId("client", key),
         nodeId("bill", this.bill),
         claims,
-        s ? spendProps(s, true) : this.refProps(rs, true),
+        s ? { ...spendProps(s, true), shareClaim: share } : this.refProps(rs, true),
       );
     }
 
@@ -749,7 +757,7 @@ class Builder {
       byPhase: phases,
       spendTotalUsd: whole?.total_usd ?? null,
       shareEstimateUsd: whole?.share_usd ?? null,
-      claims: await spendClaims(whole),
+      claims: Object.values(await spendClaims(whole)).filter((c): c is ClaimId => !!c),
     };
   }
 
@@ -1015,7 +1023,7 @@ class Builder {
     const unreadIds = new Set(unread.map((d) => d.bioguide));
     for (const id of this.memberIds) {
       const m = this.members.get(id)!;
-      const claim = await this.cite("members", m);
+      const claim = await this.cite("members", m, m.term?.start ?? null);
       this.node({
         id: nodeId("member", id),
         kind: "member",
@@ -1106,6 +1114,20 @@ class Builder {
     if (removed.length) gap("unmatched-filers", "entity_recall", removed.join("; "));
     return gaps;
   }
+}
+
+const PARTY_LETTER: Record<string, "R" | "D" | "I"> = { Republican: "R", Democrat: "D", Democratic: "D" };
+
+/**
+ * A member as they were on `day`: the party, state, district and chamber of the term that covers it (or the last
+ * term before it), so a bill shows who a member was then. Rows without terms keep their own fields.
+ */
+export function asOf(m: AnyRow, day: string): AnyRow {
+  const terms = (m.terms ?? []) as AnyRow[];
+  const term = terms.find((t) => t.start <= day && day <= t.end) ?? terms.filter((t) => t.start <= day).at(-1);
+  if (!term) return m;
+  const party = PARTY_LETTER[term.party] ?? "I";
+  return { ...m, party, state: term.state, district: term.district ?? null, chamber: term.chamber, term };
 }
 
 function step(h: AnyRow): Section["history"][string] {

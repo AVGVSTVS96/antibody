@@ -247,9 +247,15 @@ export const TEMPLATES: Record<string, Template> = {
     };
   },
 
-  members: (r) => ({
-    text: `${r.name} is ${r.party === "I" ? "an" : "a"} ${PARTY[r.party as "R"]} ${r.chamber === "Senate" ? "senator" : "representative"} from ${STATES[r.state] ?? r.state}${r.district ? `'s ${ordinal(r.district)} district` : ""}.`,
-  }),
+  members: (r, facet) => {
+    const t = facet ? (r.terms as AnyRow[] | undefined)?.find((x) => x.start === facet) : null;
+    const m = t ? { party: t.party, state: t.state, district: t.district, chamber: t.chamber } : r;
+    const party = PARTY[m.party as "R"] ?? (/^Democrat/.test(m.party) ? "Democratic" : m.party);
+    const role = `${/^[AEIOUaeiou]/.test(party) ? "an" : "a"} ${party} ${m.chamber === "Senate" ? "senator" : "representative"}`;
+    const where = `${STATES[m.state] ?? m.state}${m.district ? `'s ${ordinal(m.district)} district` : ""}`;
+    if (t) return { text: `${r.name} served as ${role} from ${where} from ${day(t.start)} to ${day(t.end)}.` };
+    return { text: `${r.name} is ${role} from ${where}.` };
+  },
 
   committees: (r) => ({ text: `The ${r.name} is a ${r.chamber} committee (${r.id}).` }),
 

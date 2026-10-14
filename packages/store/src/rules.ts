@@ -30,6 +30,14 @@ export const RULES: Record<string, { version: string; text: string }> = {
     version: "1",
     text: "A lobbyist is drawn when a filing that names the bill lists a covered (former government) position for them, quoted as filed; every lobbyist is counted.",
   },
+  "lda-bill-share": {
+    version: "1",
+    text: "A client's lobbying spend on a bill is estimated as each filing's reported amount times the share of its issue lines that name the bill; the factual total is always shown beside it.",
+  },
+  "lda-topic-only": {
+    version: "1",
+    text: "An issue line that describes a bill's subject without naming any bill is taken to be about it only as a dashed inference, off by default.",
+  },
   "cbo-even-split": {
     version: "1",
     text: "When one CBO line covers several sections, each section is shown an even share of it, labeled an inference: CBO did not split it.",

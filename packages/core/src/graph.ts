@@ -69,6 +69,8 @@ export const EDGE_PROPS = {
     phases: Phases,
     spendTotalUsd: z.number().nullable(),
     shareEstimateUsd: z.number().nullable(),
+    /** The inference behind shareEstimateUsd; kept off `claims` so the factual edge isn't drawn dashed. */
+    shareClaim: ClaimId.nullable().optional(),
     issueQuote: z.string().nullable(),
     topicOnly: z.boolean(),
   }),

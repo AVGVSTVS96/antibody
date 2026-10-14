@@ -50,3 +50,27 @@ test("billStats counts the index card numbers", () => {
     deficitMusd: 120,
   });
 });
+
+test("checkBundle also follows *Claim props, like a lobbied edge's shareClaim", () => {
+  const b = Bundle.parse(fixture);
+  const broken = structuredClone(b);
+  broken.edges.push({
+    id: "lobbied:x",
+    kind: "lobbied",
+    src: b.edges[0]!.src,
+    dst: b.edges[0]!.dst,
+    basis: "fact",
+    claims: [b.edges[0]!.claims[0]!],
+    props: {
+      reports: 1,
+      quarters: 1,
+      phases: { bill: 1, enactmentQuarter: 0, law: 0 },
+      spendTotalUsd: null,
+      shareEstimateUsd: 1,
+      shareClaim: "lda_spend/missing#share",
+      issueQuote: null,
+      topicOnly: false,
+    },
+  });
+  expect(checkBundle(broken)).toEqual([".edges[4].props.shareClaim: unknown claim lda_spend/missing#share"]);
+});

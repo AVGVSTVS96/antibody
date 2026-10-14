@@ -91,8 +91,23 @@ describe("GENIUS bundle from contract rows", () => {
     expect(toSection.src).toBe("client:coinbase");
     expect(toSection.dst).toBe("section:119-s-1582@pcs:sec:4");
     expect(claim(`lda_bill_refs/9beeca5f-74bd-4012-8957-7053df57e67a#0#119-s-1582`).text).toBe(
-      "PORTERFIELD, FETTIG & SEARS, LLC reported lobbying for COINBASE, INC. in Q1 2025 on S.1582 (GENIUS Act).",
+      'PORTERFIELD, FETTIG & SEARS, LLC reported lobbying for COINBASE, INC. in Q1 2025 on S.1582 (GENIUS Act) (the filing says "S.1582").',
     );
+  });
+
+  test("lobbying dollars: the factual total on the edge, the bill-share estimate beside it as an inference", () => {
+    const e = edges("lobbied").find((x) => x.id === "lobbied:coinbase")!;
+    if (e.kind !== "lobbied") throw new Error("not lobbied");
+    expect(e.basis).toBe("fact");
+    expect(e.props).toMatchObject({ spendTotalUsd: 60000, shareEstimateUsd: 20000 });
+    expect(e.claims).toContain("lda_spend/119-s-1582:coinbase#total");
+    const share = claim(e.props.shareClaim!);
+    expect(share).toMatchObject({ kind: "inference", restsOn: ["lda_spend/119-s-1582:coinbase#total"] });
+    expect(claim("lda_spend/119-s-1582:coinbase#total").restsOn).toEqual([
+      "lda_filings/9beeca5f-74bd-4012-8957-7053df57e67a",
+    ]);
+    expect(b.lobbying).toMatchObject({ spendTotalUsd: 1_580_000, shareEstimateUsd: 526_667 });
+    expect(b.rules.find((r) => r.id === "lda-bill-share")!.text).toContain("issue lines");
   });
 
   test("lobbyists are drawn only with a covered position, quoted as filed", () => {

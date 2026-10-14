@@ -342,7 +342,7 @@ export function checkBundle(b: Bundle): string[] {
     } else if (v && typeof v === "object") {
       for (const [k, x] of Object.entries(v)) {
         if (path === "" && k === "claims") continue;
-        if ((k === "claim" || k === "claims" || k === "restsOn") && x != null)
+        if ((k === "claim" || k === "claims" || k === "restsOn" || k.endsWith("Claim")) && x != null)
           for (const id of [x].flat() as string[])
             if (!(id in b.claims)) problems.push(`${path}.${k}: unknown claim ${id}`);
         walk(x, `${path}.${k}`);
