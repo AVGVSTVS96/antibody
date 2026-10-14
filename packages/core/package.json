@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./claim-shards": "./src/claim-shards.ts",
     "./ids": "./src/ids.ts",
     "./node": "./src/node.ts"
   },

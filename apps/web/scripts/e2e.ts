@@ -276,12 +276,22 @@ const sample = [...new Set(["119-s-1582", ids.find((i) => i === "117-hr-5376") ?
   Boolean,
 ) as string[];
 
+const claimsOf = async (id: string) =>
+  Object.assign(
+    {},
+    ...(await Promise.all(
+      readdirSync(bundlesDir)
+        .filter((f) => f.startsWith(`${id}.claims.`))
+        .map((f) => Bun.file(join(bundlesDir, f)).json() as Promise<Record<string, Claim>>),
+    )),
+  ) as Record<string, Claim>;
+
 const slugOf = (b: Bundle, sec: Bundle["sections"][number]) =>
   b.sections.filter((s) => s.num === sec.num).length > 1 ? sec.id : sec.num;
 
 for (const id of sample) {
   const bundle = (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
-  const claims = (await Bun.file(join(bundlesDir, `${id}.claims.json`)).json()) as Record<string, Claim>;
+  const claims = await claimsOf(id);
   const texts = new Set(Object.values(claims).map((c) => c.text));
   const section = bundle.sections.find((s) => s.inFinal);
   const member = bundle.nodes.find((n) => n.kind === "member");
@@ -304,8 +314,14 @@ for (const id of sample) {
       check(over <= 0, `${id} ${name} at ${width}: no horizontal overflow (${over}px)`);
     }
     await page.setViewportSize({ width: 1440, height: 900 });
+    const touched = Math.min(await page.locator("a.src").count(), 20);
+    for (let i = 0; i < touched; i++) await page.locator("a.src").nth(i).hover();
     await page
-      .waitForFunction(() => !document.querySelector("a.src.ghost, span.src.ghost"), null, { timeout: 60000 })
+      .waitForFunction(
+        (n) => [...document.querySelectorAll("a.src")].slice(0, n).every((a) => a.hasAttribute("href")),
+        touched,
+        { timeout: 60000 },
+      )
       .catch(() => {});
     const hrefs = await page.$$eval("a.src[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href));
     const bad = hrefs.filter((h) => !/^https:\/\/[^/]+\/./.test(h));
@@ -316,10 +332,17 @@ for (const id of sample) {
 
   {
     const { page } = await open(`/bill/${id}/story`);
-    await page.waitForSelector("a.src:not(.ghost)", { timeout: 60000 });
-    const chip = page.locator("a.src:not(.ghost)").first();
-    const href = await chip.getAttribute("href");
+    const chip = page.locator("a.src").first();
+    await chip.waitFor();
+    const fetched = () =>
+      page.evaluate(
+        () => performance.getEntriesByType("resource").filter((e) => /\.claims\.\d+\.json/.test(e.name)).length,
+      );
+    check((await fetched()) === 0, `${id} no claims are fetched until a chip is touched`);
     await chip.focus();
+    await page.waitForFunction(() => document.querySelector("a.src")?.hasAttribute("href"), null, { timeout: 60000 });
+    check((await fetched()) > 0, `${id} focusing a chip fetches its claim, and its link to the record appears`);
+    const href = await chip.getAttribute("href");
     await chip.click();
     await page.waitForSelector("[role=dialog] #rcpt-claim");
     const heading = () => page.locator("#rcpt-claim").innerText();
@@ -415,7 +438,7 @@ await phone.page.close();
 await browser.close();
 
 const urls = new Map<string, string>();
-for (const f of readdirSync(bundlesDir).filter((f) => f.endsWith(".claims.json"))) {
+for (const f of readdirSync(bundlesDir).filter((f) => /\.claims\.\d+\.json$/.test(f))) {
   const claims = Object.values((await Bun.file(join(bundlesDir, f)).json()) as Bundle["claims"]);
   const step = Math.max(1, Math.floor(claims.length / 6));
   for (let i = 0; i < claims.length; i += step) urls.set(claims[i]!.sourceUrl, claims[i]!.id);

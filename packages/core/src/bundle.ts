@@ -258,6 +258,15 @@ export const Gap = z.object({
 /** A published rule (threshold, outlet list, tied-stock rule): one text, applied the same to every bill and party. */
 export const Rule = z.object({ id: z.string(), version: z.string(), text: z.string(), url: z.url().nullable() });
 
+/** Where a published bundle's claims went, and what kind each table's claims are: see `claim-shards.ts`. */
+export const ClaimShards = z.object({
+  /** First claim id of each shard, ascending. Shard `i` holds the ids from `starts[i]` up to, not including, `starts[i + 1]`. */
+  starts: z.array(ClaimId),
+  /** Whether each table's claims are all facts, all inferences or both, so a chip can be drawn right before its shard arrives. */
+  kinds: z.record(z.string(), z.enum(["fact", "inference", "mixed"])),
+});
+export type ClaimShards = z.infer<typeof ClaimShards>;
+
 export const Bundle = z.object({
   schema: z.literal(1),
   generatedAt: z.iso.datetime({ offset: true }),
@@ -291,7 +300,9 @@ export const Bundle = z.object({
   }),
   nodes: z.array(Node),
   edges: z.array(Edge),
+  /** Empty in a published bundle, whose claims are in the shard files `claimShards` describes; null when `claims` is whole. */
   claims: z.record(ClaimId, Claim),
+  claimShards: ClaimShards.nullable().default(null),
   gaps: z.array(Gap),
   rules: z.array(Rule),
 });
@@ -391,7 +402,6 @@ export const BundleIndex = z.object({
       congress: z.number().int().default(0),
       latestActionOn: date.nullable(),
       file: z.string(),
-      claimsFile: z.string().nullable().default(null),
       /** `<bill>.articles.json`: every counted article per section (see `ArticleList`); null when the bill has none. */
       articlesFile: z.string().nullable().default(null),
       stats: BillStats.nullable().default(null),

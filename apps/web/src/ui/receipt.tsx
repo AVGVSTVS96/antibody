@@ -3,6 +3,7 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useM
 import { createPortal } from "react-dom";
 import { loadClaims } from "../lib/data.ts";
 import { sourceName } from "../lib/format.ts";
+import { claimTable } from "../lib/receipt-copy.ts";
 import { ReceiptDrawer } from "./ReceiptDrawer.tsx";
 
 export interface OpenOptions {
@@ -12,15 +13,21 @@ export interface OpenOptions {
   at?: number;
 }
 
+/** A claim; null when the bundle has none by that id; absent while the shard that would hold it is on its way. */
+type Known = Record<string, Claim | null>;
+
 interface Receipt {
-  /** The bill's claims; null until its sidecar has loaded. */
-  claims: Record<string, Claim> | null;
+  claim: (id: string) => Claim | null | undefined;
+  /** Whether a mark is dashed: known from the claim once it is here, from its table's kind before. */
+  inference: (id: string) => boolean;
+  /** Starts fetching the shards that hold these claims (a no-op for the ones already here). */
+  request: (ids: readonly string[]) => void;
   /** Opens the drawer on the first id; previous and next walk the rest, in the order given. */
   open: (ids: string | readonly string[], options?: OpenOptions) => void;
   close: () => void;
 }
 
-const Ctx = createContext<Receipt>({ claims: null, open() {}, close() {} });
+const Ctx = createContext<Receipt>({ claim: () => null, inference: () => false, request() {}, open() {}, close() {} });
 export const useReceipt = () => useContext(Ctx);
 
 interface Walk {
@@ -37,23 +44,43 @@ interface Session {
 
 const EXIT_MS = 220;
 
-/** Wraps one bill's pages: loads its claims and owns the receipt drawer every source chip and mark opens. */
+/** Wraps one bill's pages: loads claims as chips and receipts ask for them, and owns the drawer every chip and mark opens. */
 export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children: ReactNode }) {
-  const [claims, setClaims] = useState<Record<string, Claim> | null>(null);
+  const [claims, setClaims] = useState<Known>(bundle.claims);
+  const current = useRef({ bundle, claims });
+  current.current = { bundle, claims };
   const [session, setSession] = useState<Session | null>(null);
   const opener = useRef<Element | null>(null);
   const isOpen = session !== null;
 
-  useEffect(() => {
-    let live = true;
-    setClaims(null);
-    loadClaims(bundle.bill.id)
-      .then((c) => live && setClaims(c))
-      .catch(() => live && setClaims({}));
-    return () => {
-      live = false;
-    };
-  }, [bundle.bill.id]);
+  useEffect(() => setClaims(bundle.claims), [bundle.claims]);
+
+  const request = useCallback<Receipt["request"]>(
+    (ids) => {
+      const want = ids.filter((id) => !current.current.claims[id]);
+      if (!want.length) return;
+      const settle = (found: Record<string, Claim>) => {
+        if (current.current.bundle !== bundle) return;
+        const missing = want.filter((id) => !found[id]);
+        setClaims((prev) => ({ ...prev, ...found, ...Object.fromEntries(missing.map((id) => [id, null])) }));
+      };
+      loadClaims(bundle, want).then(settle, () => settle({}));
+    },
+    [bundle],
+  );
+
+  const claim = useCallback<Receipt["claim"]>(
+    (id) => claims[id] ?? (id in claims || !bundle.claimShards ? null : undefined),
+    [claims, bundle.claimShards],
+  );
+
+  const inference = useCallback<Receipt["inference"]>(
+    (id) => {
+      const known = claim(id);
+      return known ? known.kind === "inference" : bundle.claimShards?.kinds[claimTable(id)] === "inference";
+    },
+    [claim, bundle.claimShards],
+  );
 
   const open = useCallback<Receipt["open"]>((ids, options = {}) => {
     const list = typeof ids === "string" ? [ids] : ids;
@@ -95,7 +122,10 @@ export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children
     };
   }, [isOpen]);
 
-  const api = useMemo<Receipt>(() => ({ claims, open, close }), [claims, open, close]);
+  const api = useMemo<Receipt>(
+    () => ({ claim, inference, request, open, close }),
+    [claim, inference, request, open, close],
+  );
   const walk = session?.walks.at(-1);
 
   const step = (delta: number) =>
@@ -110,7 +140,7 @@ export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children
     setSession((s) => {
       if (!s) return s;
       const top = s.walks.at(-1)!;
-      const rests = claims?.[top.ids[top.at]!]?.restsOn;
+      const rests = claim(top.ids[top.at]!)?.restsOn;
       return rests?.length ? { ...s, walks: [...s.walks, { ids: rests, at: i }] } : s;
     });
 
@@ -121,7 +151,8 @@ export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children
         walk &&
         createPortal(
           <ReceiptDrawer
-            claims={claims}
+            lookup={claim}
+            request={request}
             rules={bundle.rules}
             walk={walk}
             label={session.walks.length === 1 ? session.label : undefined}
@@ -138,9 +169,12 @@ export function ReceiptProvider({ bundle, children }: { bundle: Bundle; children
   );
 }
 
+const PREFETCH = 8;
+
 /**
- * A source chip: the record behind one claim, or behind a mark made of several. Click opens the receipt;
- * the link itself still points at the record, so middle-click and copy-link work.
+ * A source chip: the record behind one claim, or behind a mark made of several. It is drawn and clickable at once;
+ * hovering, focusing or touching it fetches its claim, and its link to the record appears when that arrives.
+ * Click opens the receipt; once the link is there, middle-click and copy-link work.
  */
 export function Src({
   ids,
@@ -153,33 +187,35 @@ export function Src({
   context?: string;
   at?: number;
 }) {
-  const { claims, open } = useReceipt();
+  const { claim, inference, request, open } = useReceipt();
   const list = typeof ids === "string" ? [ids] : ids;
-  if (!claims)
-    return (
-      <span className="src ghost" aria-hidden="true">
-        {label ?? "source"}
-      </span>
-    );
-  const found = list.map((id) => claims[id]).filter((c): c is Claim => !!c);
-  const first = found[0];
-  if (!first) return <span className="src gone">no record</span>;
-  const inference = found.some((c) => c.kind === "inference");
+  const found = list.map(claim);
+  if (found.every((c) => c === null)) return <span className="src gone">no record</span>;
+  const first = found.find((c) => !!c);
+  const show = () => open(list, { label: context, at });
+  const prefetch = () => request(list.slice(0, PREFETCH));
   return (
     <a
-      className={`src${inference ? " inference" : ""}`}
-      href={first.sourceUrl}
+      className={`src${list.some(inference) ? " inference" : ""}`}
+      href={first?.sourceUrl}
+      role={first ? undefined : "button"}
+      tabIndex={first ? undefined : 0}
       target="_blank"
       rel="noopener noreferrer"
       aria-haspopup="dialog"
-      aria-label={label ? undefined : `${sourceName(first.sourceUrl)}: ${first.text}`}
+      aria-label={label || !first ? undefined : `${sourceName(first.sourceUrl)}: ${first.text}`}
+      onPointerEnter={prefetch}
+      onFocus={prefetch}
+      onKeyDown={(e) => {
+        if (!first && e.key === "Enter") show();
+      }}
       onClick={(e) => {
         if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         e.preventDefault();
-        open(list, { label: context, at });
+        show();
       }}
     >
-      {label ?? sourceName(first.sourceUrl)}
+      {label ?? (first ? sourceName(first.sourceUrl) : "source")}
       {list.length > 1 && <span className="src-n">×{list.length}</span>}
     </a>
   );
