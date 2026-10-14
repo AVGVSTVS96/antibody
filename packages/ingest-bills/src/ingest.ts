@@ -15,7 +15,7 @@ import { type BillStatus, parseBillStatus } from "./billstatus.ts";
 import { type CounterpartStep, canRun, counterparts } from "./counterparts.ts";
 import type { AmendmentText } from "./crec.ts";
 import { cached, NotFound } from "./fetch.ts";
-import { isLate, type Lineage, type ParsedVersion, PURE_SPLIT, trace } from "./lineage.ts";
+import { isLate, type Lineage, type ParsedVersion, PURE_SPLIT, trace, wholesaleReason } from "./lineage.ts";
 import { findPredecessor } from "./predecessor.ts";
 import { PartialAmendment, parseSections, type Sec, sectionNum } from "./sections.ts";
 import { textVersions, type VersionRef } from "./versions.ts";
@@ -92,8 +92,10 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
 
   const { lineages, steps } = trace(bill, versions);
   const byCode = new Map(versions.map((v) => [v.code, v]));
-  const late = new Map(lineages.map((l) => [l.id, isLate(l, versions)]));
+  const lateUnavailable = wholesaleReason(lineages, versions);
+  const late = new Map(lineages.map((l) => [l.id, !lateUnavailable && isLate(l, versions)]));
   log(`${lineages.length} section lineages, ${[...late.values()].filter(Boolean).length} late`);
+  if (lateUnavailable) log(`late flags withheld: ${lateUnavailable}`);
 
   const rows: BillRows = {};
   const src = billstatusUrl(bill);
@@ -113,6 +115,7 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
       law: status.law,
       law_on: status.lawOn,
       latest_action: status.latestAction?.text ?? null,
+      late_unavailable: lateUnavailable,
       url: congressGovUrl(bill),
       source_url: src,
       source_locator: null,

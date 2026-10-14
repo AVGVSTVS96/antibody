@@ -13,6 +13,7 @@ import {
   type Edge,
   type EdgeKind,
   type EdgeOf,
+  lobbyingQuery,
   type Node,
   type NodeId,
   nodeId,
@@ -72,6 +73,7 @@ class Builder {
     estimate: new Map<string, AnyRow>(),
   };
   private rulesUsed = new Set<string>();
+  private lateUnavailable: string | null = null;
   private display: string;
 
   constructor(
@@ -99,6 +101,16 @@ class Builder {
       return f
         ? { registrant: f.registrant_name, client: f.client_name, when: `${quarter(f.period)} ${f.year}` }
         : null;
+    },
+    lobbyingList: (key) => {
+      const node = key ? this.nodes.get(`client:${key}`) : null;
+      const id = node?.kind === "client" ? node.props.ldaClientIds[0] : null;
+      if (key && !id) return undefined;
+      const q = new URLSearchParams({
+        ...(id && { client_id: String(id) }),
+        filing_specific_lobbying_issues: lobbyingQuery(this.bill),
+      });
+      return `https://lda.gov/api/v1/filings/?${q}`;
     },
     clientFiling: (key) => [...this.filings.values()].find((f) => f.client_key === key)?.url,
     committee: (id) => this.labels.committee.get(committeeKey(id)) ?? `committee ${id}`,
@@ -217,6 +229,7 @@ class Builder {
 
     const [bill] = await this.select("bills", "id = $id", { id: this.bill });
     if (!bill) throw new BuildError(`no bills row for ${this.bill}: run the bills stage first`);
+    this.lateUnavailable = bill.late_unavailable ?? null;
     this.names.display = this.display;
     this.names.bill = `${this.display}${bill.short_title ? ` (${bill.short_title})` : ""}`;
 
@@ -250,6 +263,7 @@ class Builder {
       law: bill.law ? `P.L. ${lawNumber(bill.law)}` : null,
       lawOn: bill.law_on,
       latestAction: bill.latest_action,
+      lateUnavailable: bill.late_unavailable ?? null,
       url: bill.url ?? congressGovUrl(this.bill),
       billstatusUrl: billstatusUrl(this.bill),
       claims: [...(await this.cites("bills", [bill])), ...(await this.cites("cbo_notes", notes))],
@@ -1081,6 +1095,8 @@ class Builder {
       claim: ClaimId | null = null,
     ) => gaps.push({ id, kind, text, nodes, claim });
 
+    if (this.lateUnavailable)
+      gap("late-unavailable", "late_unavailable", `Late flag unavailable: ${this.lateUnavailable}`);
     if (!x.unread.loaded)
       gap("trades-not-loaded", "other", "Member trade filings aren't loaded yet, so no trades show here.");
     else if (x.unread.members.length) {

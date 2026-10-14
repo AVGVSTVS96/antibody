@@ -45,6 +45,8 @@ export const TABLES = {
     law: z.string().nullable(),
     law_on: date.nullable(),
     latest_action: z.string().nullable(),
+    /** Why `sections.late` is withheld for this bill (it began as a shell, or was rewritten wholesale); null when late flags stand. */
+    late_unavailable: z.string().nullable().default(null),
     url: z.url(),
     ...fact,
   }),

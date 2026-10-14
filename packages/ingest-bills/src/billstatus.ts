@@ -113,6 +113,7 @@ function committeeSponsor(a: Element): string | null {
 function shortTitle(titles: { type: string; title: string }[]): string | null {
   const whole = titles.filter((t) => !/portions/i.test(t.type));
   return (
+    titles.find((t) => t.type === "Override Display Title")?.title ??
     whole.find((t) => /^Short Titles? .*as Enacted/i.test(t.type))?.title ??
     whole.find((t) => /^Short Title/i.test(t.type))?.title ??
     titles.find((t) => t.type === "Popular Titles")?.title ??

@@ -35,6 +35,8 @@ export interface Names {
   committee(id: string): string;
   /** A filing that names this lobbying client, for the client's own claim (lda_clients rows have no source). */
   clientFiling(key: string): string | undefined;
+  /** An lda.gov query that lists every filing naming the bill, for one client or (null) for all of them. */
+  lobbyingList(key: string | null): string | undefined;
   roll(id: string): string;
   amendment(id: string): string;
   estimate(id: string): AnyRow | null;
@@ -226,11 +228,16 @@ export const TEMPLATES: Record<string, Template> = {
         text: `An estimated ${usd(r.share_usd ?? 0)} of that spending was about ${n.bill}: the total times the share of issue lines that name it.`,
         restsOn: [`lda_spend/${r.id}#total`],
       };
+    const list = r.topic_only ? undefined : n.lobbyingList(r.client_key);
     return {
       text: `${whom} reported ${usd(r.total_usd ?? 0)} in lobbying spending in the ${count(r.quarters, "quarter")} whose filings named ${n.bill}${r.topic_only ? " by topic only" : ""}.`,
       kind: "fact",
       rule: null,
       restsOn: r.total_rests_on ?? [],
+      ...(list && {
+        sourceUrl: list,
+        sourceLocator: `lda.gov's list of ${r.client_key ? "this client's" : "all"} filings naming the bill; the total adds ${count(r.reports, "report")}, each one cited under "rests on"`,
+      }),
     };
   },
 

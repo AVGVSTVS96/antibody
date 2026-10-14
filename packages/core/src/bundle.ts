@@ -26,6 +26,8 @@ export const BillCard = z.object({
   law: z.string().nullable(),
   lawOn: date.nullable(),
   latestAction: z.string().nullable(),
+  /** Why "added late" is withheld for this bill (it began as a shell or was rewritten wholesale); null when late flags stand. */
+  lateUnavailable: z.string().nullable().default(null),
   url: z.url(),
   billstatusUrl: z.url(),
   claims: z.array(ClaimId),
@@ -228,7 +230,14 @@ export type NodeOf<K extends EntityKind> = Extract<Node, { kind: K }>;
 
 export const Gap = z.object({
   id: z.string(),
-  kind: z.enum(["paper_filings_unread", "no_section_dollars", "attention_partial", "entity_recall", "other"]),
+  kind: z.enum([
+    "paper_filings_unread",
+    "no_section_dollars",
+    "attention_partial",
+    "entity_recall",
+    "late_unavailable",
+    "other",
+  ]),
   /** Plain sentence shown where the missing data would be. */
   text: z.string(),
   nodes: z.array(NodeId),

@@ -93,3 +93,18 @@ export function ordinal(n: number): string {
   if (n % 100 >= 11 && n % 100 <= 13) return "th";
   return ["th", "st", "nd", "rd"][n % 10] ?? "th";
 }
+
+const SPELLINGS: Record<string, string[]> = {
+  hr: ["H.R. #", "H.R.#", "HR #", "HR#", "H. R. #"],
+  s: ["S. #", "S.#"],
+  hjres: ["H.J.Res. #", "H.J. Res. #", "H.J.Res.#", "HJRES #"],
+  sjres: ["S.J.Res. #", "S.J. Res. #", "S.J.Res.#", "SJRES #"],
+  hconres: ["H.Con.Res. #", "H. Con. Res. #", "HCONRES #"],
+  sconres: ["S.Con.Res. #", "S. Con. Res. #", "SCONRES #"],
+};
+
+/** The lda.gov full-text query for filings that name the bill by number, in every spelling filers use. */
+export function lobbyingQuery(id: BillId): string {
+  const { type, number } = billRef(id);
+  return (SPELLINGS[type] ?? []).map((s) => `"${s.replace("#", String(number))}"`).join(" OR ");
+}

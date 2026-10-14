@@ -183,6 +183,27 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
   return { lineages, steps };
 }
 
+/**
+ * A bill whose text was replaced wholesale gets no late flags: they would mark nearly every section and say nothing
+ * about any one. Two cases, one rule for every bill and party: it began as a shell (its first own text is under a
+ * tenth of the final words), or 80% or more of its final sections would be flagged late.
+ */
+export const WHOLESALE = { shellShare: 0.1, lateShare: 0.8 };
+
+export function wholesaleReason(lineages: Lineage[], versions: ParsedVersion[]): string | null {
+  const words = (v?: ParsedVersion) => v?.secs.reduce((n, s) => n + s.words, 0) ?? 0;
+  const own = versions.filter((v) => !v.predecessor);
+  const first = own[0];
+  const finalWords = words(own.at(-1));
+  if (first && finalWords && words(first) < WHOLESALE.shellShare * finalWords)
+    return `The bill began as a short shell (${words(first).toLocaleString("en-US")} words, against ${finalWords.toLocaleString("en-US")} in the final text), so its real text arrived late as a whole and "added late" says nothing about any one section.`;
+  const final = lineages.filter((l) => !l.removedIn);
+  const late = final.filter((l) => isLate(l, versions)).length;
+  if (final.length && late / final.length >= WHOLESALE.lateShare)
+    return `${Math.round((100 * late) / final.length)}% of the final sections first appear after a chamber had passed the bill (its text was rewritten wholesale), so "added late" says nothing about any one section.`;
+  return null;
+}
+
 const PASSED = new Set(["eh", "es", "ath", "ats", "eah", "eas", "enr", "plaw"]);
 
 /** A split keeping at least this share of its parent's wording is a move, not new text. */
