@@ -38,4 +38,6 @@ The design comes from three proposals drawn in Paper (A "The Tape", B "Paper Tra
 - Some headings keep lowercase names where no source spells them (25 of 4,788 final headings, mostly in the 2023 omnibus).
 - The library puts bills the quiet test could not run on after tested ones, so IIJA sits behind "+ more".
 - Committee rosters are one snapshot per Congress; members who joined or left mid-term are named in the `seats-unlisted` gap.
-- Judge reviews of the build: three rounds; the last one passed it as ready.
+- On H.R.1 chapter 3 the three tiles sum to $14.59T while the sentence says $14.58T (no single rounding makes trillions and billions agree; no tile total is printed). Chapter 2's net reads "$39.90B" where "$39.9B" would do.
+- The e2e check "a link with ?receipt= opens that receipt" can race the claim shard on a cold page (failed once in four production runs).
+- An Opus judge reviewed the build in four rounds on real previews and production; the last two passed it as ready.
