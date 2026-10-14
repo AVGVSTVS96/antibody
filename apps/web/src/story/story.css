@@ -6,6 +6,10 @@
   touch-action: pan-y pinch-zoom;
 }
 
+.story:has(.ch[data-inference]) {
+  --now-style: dashed;
+}
+
 .story:has(.ch[data-tone="quiet"]) {
   --story-bg: var(--quiet);
   --paper: #ffffff;
@@ -116,7 +120,7 @@
   position: relative;
   display: block;
   height: 10px;
-  border: 2px solid var(--ink);
+  border: 2px var(--step-style, solid) var(--ink);
   background: var(--paper);
 }
 
@@ -141,12 +145,8 @@
   background: var(--mid);
 }
 
-.story-steps [data-state="now"] a {
-  border-color: var(--ink);
-}
-
-.story:has(.ch[data-inference]) .story-steps [data-state="now"] a {
-  border-style: dashed;
+.story-steps [data-state="now"] {
+  --step-style: var(--now-style, solid);
 }
 
 .story-steps a:hover {
@@ -340,8 +340,7 @@
   gap: 14px;
 }
 
-.ch section > p,
-.ch-body > p {
+:where(.ch section, .ch-body) > p {
   max-width: 62ch;
 }
 
@@ -447,7 +446,6 @@
 
 .num {
   font: 500 12px / 16px var(--mono);
-  white-space: nowrap;
 }
 
 /* Chapter 1 */
@@ -481,8 +479,8 @@
   text-align: left;
 }
 
-.squares:hover .grid i {
-  background: var(--link);
+.squares:hover {
+  --square: var(--link);
 }
 
 .squares .grid {
@@ -495,7 +493,7 @@
 .squares i {
   width: 13px;
   height: 13px;
-  background: var(--ink);
+  background: var(--square, var(--ink));
   transition: opacity 140ms;
 }
 
@@ -526,12 +524,12 @@
   gap: 2px;
 }
 
-.sq-open li a {
+.sq-open :where(li) a {
   font: 700 15px / 19px var(--display);
   letter-spacing: -0.01em;
 }
 
-.sq-open li span {
+.sq-open :where(li) span {
   font: 500 11px / 14px var(--mono);
   letter-spacing: 0.06em;
   color: var(--muted);
@@ -544,29 +542,32 @@
   letter-spacing: 0.04em;
 }
 
-.outlet-bar {
+.outlet-bar,
+.move-bar,
+.phase-bar {
   display: flex;
+  gap: 2px;
   height: 30px;
   border: 2px solid var(--ink);
+  background: var(--ink);
+}
+
+:is(.outlet-bar, .move-bar, .phase-bar) button {
+  min-width: 4px;
+  border: 0;
 }
 
 .outlet-bar button {
-  min-width: 4px;
-  border: 0;
   background: var(--ink);
   transition: box-shadow 120ms;
 }
 
+:is(.outlet-bar, .move-bar, .phase-bar) button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 4px var(--link);
+}
+
 .outlet-bar button:nth-child(even) {
   background: var(--paper);
-}
-
-.outlet-bar button + button {
-  border-left: 2px solid var(--ink);
-}
-
-.outlet-bar button[aria-pressed="true"] {
-  box-shadow: inset 0 0 0 4px var(--link);
 }
 
 .outlet-key {
@@ -711,10 +712,6 @@
   gap: 4px 8px;
   font: 600 16px / 20px var(--display);
   letter-spacing: -0.015em;
-}
-
-.q-row > .title a {
-  color: var(--ink);
 }
 
 .q-track {
@@ -914,23 +911,8 @@
   background: color-mix(in srgb, currentColor 16%, transparent);
 }
 
-.moves > p {
-  max-width: 62ch;
-}
-
 .move-bar {
-  display: flex;
   height: 34px;
-  border: 2px solid var(--ink);
-}
-
-.move-bar button {
-  min-width: 4px;
-  border: 0;
-}
-
-.move-bar button + button {
-  border-left: 2px solid var(--ink);
 }
 
 .move-bar [data-kind="other"] {
@@ -943,10 +925,6 @@
 
 .move-bar [data-kind="quiet"] {
   background: var(--quiet);
-}
-
-.move-bar button[aria-pressed="true"] {
-  box-shadow: inset 0 0 0 4px var(--link);
 }
 
 .ch .stats {
@@ -992,50 +970,21 @@
 
 /* Chapter 4 */
 
-.phase-bar {
-  display: flex;
-  height: 30px;
-  border: 2px solid var(--ink);
+.ch [data-phase="bill"] {
+  --phase: var(--loud);
 }
 
-.phase-bar button {
-  min-width: 4px;
-  border: 0;
+.ch [data-phase="enactmentQuarter"] {
+  --phase: var(--mid);
 }
 
-.phase-bar button + button {
-  border-left: 2px solid var(--ink);
+.ch [data-phase="law"] {
+  --phase: var(--other);
 }
 
-.phase-bar [data-phase="bill"],
-.cl-sq [data-phase="bill"],
-.ch .legend [data-phase="bill"] i {
-  background: var(--loud);
-}
-
-.phase-bar [data-phase="enactmentQuarter"],
-.cl-sq [data-phase="enactmentQuarter"],
-.ch .legend [data-phase="enactmentQuarter"] i {
-  background: var(--mid);
-}
-
-.phase-bar [data-phase="law"],
-.cl-sq [data-phase="law"],
-.ch .legend [data-phase="law"] i {
-  background: var(--other);
-}
-
-.phase-bar button[aria-pressed="true"] {
-  box-shadow: inset 0 0 0 4px var(--link);
-}
-
-.ch .legend {
-  justify-content: flex-start;
-}
-
-.ch .legend i {
-  width: 10px;
-  height: 10px;
+.phase-bar [data-phase],
+.cl-sq [data-phase] {
+  background: var(--phase);
 }
 
 .cl-rows {
@@ -1067,9 +1016,13 @@
   font-weight: 500;
 }
 
-.cl-head:hover b {
-  text-decoration: underline 2px;
+.cl-head b {
+  text-decoration: var(--underline, none);
   text-underline-offset: 3px;
+}
+
+.cl-head:hover {
+  --underline: underline 2px;
 }
 
 .cl-sq {
@@ -1126,7 +1079,7 @@
   font: 700 13px / 16px var(--mono);
 }
 
-.sec-rows b .src {
+.sec-rows .src {
   color: inherit;
   font: inherit;
   letter-spacing: 0;
@@ -1134,7 +1087,7 @@
   text-underline-offset: 3px;
 }
 
-.sec-rows b .src::after {
+.sec-rows .src::after {
   content: none;
 }
 
@@ -1390,10 +1343,6 @@
   white-space: nowrap;
 }
 
-.num {
-  white-space: normal;
-}
-
 .num small {
   display: block;
   font-size: 9.5px;
@@ -1405,4 +1354,16 @@
 
 .miles .src {
   white-space: normal;
+}
+
+/* The shell's legend, resized for chapter 4: last, so it outranks the plain `i` rules above */
+
+.ch .legend {
+  justify-content: flex-start;
+}
+
+.ch .legend i {
+  width: 10px;
+  height: 10px;
+  background: var(--phase);
 }
