@@ -42,14 +42,22 @@ export function tradeType(raw: string): TradeType | null {
   return null;
 }
 
-/** MM/DD/YYYY (or M/D/YY, or with dashes) to ISO, only when it is a real calendar date; anything else stays as filed and gives null. */
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+/** MM/DD/YYYY (or M/D/YY, with dashes, or D-Mon-YY) to ISO, only when it is a real calendar date; anything else stays as filed and gives null. */
 export function isoDate(raw: string | null | undefined): string | null {
-  const m = (raw ?? "").trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
-  if (!m) return null;
-  const [, mm = "", dd = "", yy = ""] = m;
+  const s = (raw ?? "").trim();
+  const num = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
+  const word = s.match(/^(\d{1,2})[ -]([A-Za-z]{3})[a-z]*[\s,.-]*(\d{2}|\d{4})$/);
+  const [mm, dd, yy] = num
+    ? [Number(num[1]), Number(num[2]), num[3]!]
+    : word && MONTHS.includes(word[2]!.toLowerCase())
+      ? [MONTHS.indexOf(word[2]!.toLowerCase()) + 1, Number(word[1]), word[3]!]
+      : [];
+  if (!mm || !dd || !yy) return null;
   const year = yy.length === 2 ? 2000 + Number(yy) : Number(yy);
-  const d = new Date(Date.UTC(year, Number(mm) - 1, Number(dd)));
-  if (d.getUTCFullYear() !== year || d.getUTCMonth() !== Number(mm) - 1 || d.getUTCDate() !== Number(dd)) return null;
+  const d = new Date(Date.UTC(year, mm - 1, dd));
+  if (d.getUTCFullYear() !== year || d.getUTCMonth() !== mm - 1 || d.getUTCDate() !== dd) return null;
   return d.toISOString().slice(0, 10);
 }
 

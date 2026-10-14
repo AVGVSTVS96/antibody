@@ -66,6 +66,7 @@ function visionTrades(
         continue;
       }
       const src = sourceFor(page.page);
+      const incomplete = !isoDate(values.date) || amountRange(values.amount ?? "").min === null;
       out.push({
         id: `${docId}-p${page.page}-${i + 1}`,
         document_id: docId,
@@ -81,7 +82,7 @@ function visionTrades(
         page: page.page,
         read_by: "vision",
         confidence,
-        needs_second_read: flagged,
+        needs_second_read: flagged || incomplete,
         raw: {
           as_read: r,
           rechecked: checks,
@@ -90,7 +91,7 @@ function visionTrades(
           ...(r.note ? { note: r.note } : {}),
         },
         source_url: src.url,
-        source_locator: `${src.where}, row ${i + 1} (vision read${flagged ? ", uncertain cells" : ""})`,
+        source_locator: `${src.where}, row ${i + 1} (vision read${flagged ? ", uncertain cells" : incomplete ? ", date or amount unreadable" : ""})`,
       });
     }
   }

@@ -44,6 +44,9 @@ describe("normalize", () => {
     expect(isoDate("09/11/2025")).toBe("2025-09-11");
     expect(isoDate("10/20/23")).toBe("2023-10-20");
     expect(isoDate("10-01-2020")).toBe("2020-10-01");
+    expect(isoDate("26-Oct-22")).toBe("2022-10-26");
+    expect(isoDate("7 Dec 2023")).toBe("2023-12-07");
+    expect(isoDate("31-Feb-23")).toBeNull();
     expect(isoDate("09/1_/26")).toBeNull();
     expect(isoDate("02/30/2025")).toBeNull();
   });
