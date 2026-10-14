@@ -1,32 +1,36 @@
-const UPPER_FIXES: [RegExp, string][] = [
+const MIXED_CASE: [RegExp, string][] = [
   [/\bJpmorgan\b/g, "JPMorgan"],
-  [/\bPnc\b/g, "PNC"],
-  [/\bCme\b/g, "CME"],
-  [/\bHsbc\b/g, "HSBC"],
-  [/\bUs Bancorp\b/g, "US Bancorp"],
-  [/\bH&r\b/g, "H&R"],
-  [/\bS&p\b/g, "S&P"],
   [/\bPwc\b/g, "PwC"],
-  [/\bDao\b/g, "DAO"],
-  [/\bPac\b/g, "PAC"],
-  [/\bUsa\b/g, "USA"],
-  [/\bLlc\b/g, "LLC"],
-  [/\bInc\b/g, "Inc"],
-  [/\bAt&t\b/g, "AT&T"],
   [/\bAmazon Com\b/g, "Amazon.com"],
-  [/\bCsx\b/g, "CSX"],
-  [/\bUcb\b/g, "UCB"],
 ];
 
-/** SEC and LDA names arrive in caps with suffixes like "/DE/"; show them the way the company writes itself. */
+/** Initialisms with a vowel in them; the ones without (CMS, PNC, CSX) are found by shape. */
+const ACRONYMS = new Set(
+  "AARP ABB ADR AES AFL AHIP AI AKA AMC AMD AON ASML ATI AVX BAE BASF BMO CGI CIO CME CNA CNO CTIA DAO DBA DTE EDP EDPR ENI EPC EQT FKA FNA GE HCA IBM ITC KLA MGIC MUFG NXP OGE PAC PRA RELX RWE SAP SES TE TIAA TSMC UBS UCB UFJ UK UPS US USA UTC WEC".split(
+    " ",
+  ),
+);
+const ABBREVIATIONS = new Set("BLDG CTR DR FT GRP HLDG HLDGS JR MGMT MR MRS MT PKWY SR ST SVCS SYS TRST".split(" "));
+const ROMAN = /^(?:II|III|IV|VI|VII|VIII|IX|XI|XII)$/;
+
+const isAcronym = (w: string) =>
+  ACRONYMS.has(w) ||
+  ROMAN.test(w) ||
+  (/^[B-DF-HJ-NP-TV-Z]{2,5}$/.test(w) && !ABBREVIATIONS.has(w)) ||
+  /^[A-Z]{1,2}&[A-Z]{1,2}$/.test(w);
+
+const capitalise = (w: string) => (isAcronym(w) ? w : w[0] + w.slice(1).toLowerCase());
+
+/** SEC, FEC and LDA names arrive in caps with suffixes like "/DE/"; show them the way the company writes itself. */
 export function nice(name: string): string {
   let s = name
     .replace(/\s*\/[A-Z]{2,3}\/?$/, "")
     .replace(/\s*\/NEW\/$/, "")
     .replace(/ DE$/, "");
-  if (s === s.toUpperCase())
-    s = s.toLowerCase().replace(/(^|[\s(&/-])(\w)/g, (_m, a: string, b: string) => a + b.toUpperCase());
-  for (const [re, to] of UPPER_FIXES) s = s.replace(re, to);
+  if (s === s.toUpperCase()) s = s.replace(/[A-Z]+(?:&[A-Z]+)?/g, capitalise);
+  for (const [re, to] of MIXED_CASE) s = s.replace(re, to);
+  const unclosed = s.split("(").length - s.split(")").length;
+  if (unclosed > 0) s += ")".repeat(unclosed);
   return s.replace(/ S A De C V$/, " S.A. de C.V.");
 }
 
@@ -111,7 +115,7 @@ export function plainName(label: string, max = 22): string {
     for (let prev = ""; prev !== x; ) {
       prev = x;
       x = x
-        .replace(/[/\s]+$/, "")
+        .replace(/[,/\s]+$/, "")
         .replace(TRAILING, "")
         .replace(/\s*&$/, "");
     }
@@ -119,10 +123,14 @@ export function plainName(label: string, max = 22): string {
   };
   const s = strip(nice(label).replace(/^the\s+/i, ""));
   if (s.length <= max) return s;
+  const outsideParens = (x: string) => {
+    const open = x.lastIndexOf("(");
+    return open > x.lastIndexOf(")") ? x.slice(0, open) : x;
+  };
   let out = "";
   for (const w of s.split(" ")) {
     if (out && out.length + w.length + 1 > max) break;
     out = out ? `${out} ${w}` : w;
   }
-  return `${strip(out).slice(0, max)}…`;
+  return `${strip(outsideParens(out)).slice(0, max)}…`;
 }

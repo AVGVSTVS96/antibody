@@ -445,8 +445,9 @@ export function memberShort(m: NodeOf<"member">): string {
   const name = m.label.replace(/^(Sen|Rep)\.\s+/, "").replace(/\s*\(.*\)$/, "");
   const last =
     name
+      .replace(/,/g, "")
       .split(" ")
-      .filter((w) => !/^[A-Z]\.$/.test(w) && !/^(Jr|Sr|II|III)\.?$/.test(w))
+      .filter((w) => !/^[A-Z]\.$/.test(w) && !/^(Jr|Sr|II|III|IV)\.?$/.test(w))
       .at(-1) ?? name;
   return `${last} ${m.props.party}`;
 }

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { Bundle, checkBundle } from "@antibody/core";
 import genius from "../fixtures/119-s-1582.bundle.json";
-import { plainName } from "../src/lib/format.ts";
+import { nice, plainName } from "../src/lib/format.ts";
 import { buildModel, memberShort } from "../src/lib/model.ts";
 
 const b = Bundle.parse(genius);
@@ -38,6 +38,20 @@ test("every display edge cites claims that exist", () => {
   for (const e of m.edges) for (const c of e.claims) expect(b.claims[c]).toBeDefined();
 });
 
+test("FEC and SEC names keep their acronyms and numerals, and never leave a parenthesis open", () => {
+  expect(nice("CMS ENERGY CORPORATION EMPLOYEES FOR BETTER GOVERNMENT- FEDERAL")).toBe(
+    "CMS Energy Corporation Employees For Better Government- Federal",
+  );
+  expect(nice("DTE ENERGY COMPANY POLITICAL ACTION COMMITTEE")).toBe("DTE Energy Company Political Action Committee");
+  expect(nice("WELLS FARGO AND COMPANY EMPLOYEES GOOD GOVERNMENT FEDERAL FUND II")).toContain("Federal Fund II");
+  expect(nice("AT&T INC.")).toBe("AT&T Inc.");
+  expect(nice("FRANKLIN TEMPLETON INC. POLITICAL ACTION COMMITTEE (FRANKLIN TEMPLETON PAC")).toBe(
+    "Franklin Templeton Inc. Political Action Committee (Franklin Templeton PAC)",
+  );
+  expect(nice("Already Mixed Case Inc")).toBe("Already Mixed Case Inc");
+  expect(plainName("PNC FINANCIAL SERVICES GROUP, INC. (PNC PAC)", 30)).toBe("PNC Financial Services Group…");
+});
+
 test("short labels", () => {
   expect(plainName("GENERAL MOTORS CO")).toBe("General Motors");
   expect(plainName("JOHNSON & JOHNSON")).toBe("Johnson & Johnson");
@@ -45,4 +59,8 @@ test("short labels", () => {
   expect(plainName("Pharmaceutical Research and Manufacturers of America", 18)).toBe("Pharmaceutical…");
   expect(plainName("THE CLEARING HOUSE ASSOCIATION")).toBe("Clearing House…");
   expect(memberShort(b.nodes.find((n) => n.id === "member:H000601") as never)).toBe("Hagerty R");
+  const member = (label: string, party: string) => ({ label, props: { party } }) as never;
+  expect(memberShort(member("Rep. Frank Pallone, Jr. (D-NJ)", "D"))).toBe("Pallone D");
+  expect(memberShort(member("Rep. Rudy Yakym III (R-IN)", "R"))).toBe("Yakym R");
+  expect(memberShort(member("Rep. William R. Timmons IV (R-SC)", "R"))).toBe("Timmons R");
 });
