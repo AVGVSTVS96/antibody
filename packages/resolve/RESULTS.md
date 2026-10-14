@@ -23,7 +23,7 @@ No Splink: name is the only usable field for companies, and ticker + exact + typ
 | donors' employers | 207,498 | name_exact 1,263, llm_same 406, fuzzy 115, llm_subsidiary 68 (model only sees employers with >= $25k from donors) |
 | stock trades (rows) | 8,071 distinct assets | ticker 34,153, llm_same 638, name_exact 272, llm_subsidiary 45, fuzzy 2 |
 
-GENIUS (119-s-1582): 41 companies tied by lobbying; S.146: 11. About 87% of the unresolved lobbying clients are associations, governments, nonprofits or private firms, which have no stock to tie.
+GENIUS (119-s-1582): 41 companies tied by lobbying; S.146: 11. Most unresolved lobbying clients are associations, governments, nonprofits or private firms, which have no stock to tie (all 30 unresolved names in the sample were that or unlisted).
 
 ## Precision on a fresh hand-checked sample
 
