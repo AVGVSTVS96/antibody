@@ -8,7 +8,7 @@ import { useModel } from "../ui/BillGate.tsx";
 /** "Lisa C. McClain": the name without the title and without the party and state. */
 export const memberName = (n: NodeOf<"member">) => n.label.replace(/^(Sen|Rep)\.\s+/, "").replace(/\s*\(.*\)$/, "");
 
-export const lastName = (n: NodeOf<"member">) => memberShort(n).split(" ")[0]!;
+export const lastName = (n: NodeOf<"member">) => memberShort(n).split(" ")[0]!.replace(/,$/, "");
 
 /** "Rep. McClain R-MI": how every member is named in a list. */
 export const chipName = (n: NodeOf<"member">) =>
