@@ -407,6 +407,200 @@ for (const id of sample) {
   }
 }
 
+/** The x-ray's own behavior: the head's baseline toggle, filters, tape and chart links, keys, hash links, lazy articles, CSV. */
+async function xray(id: string) {
+  const bundle = (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
+  const finals = bundle.sections.filter((s) => s.inFinal);
+  const quiet = finals.filter((s) => s.score?.label === "buried").length;
+  const slug = (sec: Bundle["sections"][number]) =>
+    bundle.sections.filter((s) => s.num === sec.num).length > 1 ? sec.id : sec.num;
+  const { page, errors } = await open(`/bill/${id}`);
+  const tapeBottom = () => page.evaluate(() => document.querySelector(".xray > .tape")!.getBoundingClientRect().bottom);
+  const openRows = () => page.locator(".x-row[data-open]");
+  const listed = async () =>
+    +(
+      (await page.locator(".x-list-head").first().locator("span").innerText())
+        .match(/OF ([\d,]+)/)?.[1]
+        ?.replace(",", "") ?? -1
+    );
+
+  const pressed = await page.locator(".x-filters [aria-pressed=true]").getAttribute("data-filter");
+  check(
+    pressed === (quiet ? "quiet" : "all"),
+    `${id} x-ray opens on ${quiet ? "the quiet-and-costly" : "all"} sections`,
+  );
+  for (const f of ["all", "loud", "quiet", "late", "lobbied"]) {
+    const button = page.locator(`.x-filters [data-filter=${f}]`);
+    if (await button.isDisabled()) continue;
+    await button.click();
+    const n = +(await button.locator("b").innerText()).replace(",", "");
+    check((await listed()) === n, `${id} filter ${f}: the list holds the ${n} the button counts`);
+  }
+  await page.locator(".x-filters [data-filter=all]").click();
+  check((await listed()) === finals.length, `${id} all sections: ${finals.length} listed`);
+  const rowsDrawn = await page.locator(".x-row").count();
+  check(rowsDrawn <= 40, `${id} the list pages: ${rowsDrawn} rows drawn of ${finals.length}`);
+
+  const chart = await page.locator(".x-chart svg").count();
+  const hasCost = finals.some((s) => s.dollars.length > 0 && s.dollars.some((d) => d.baseline === "current-law"));
+  check(chart === 1, `${id} the gap chart is drawn`);
+  check(
+    (await page.getByText("NO COST AXIS").count()) === (hasCost ? 0 : 1),
+    `${id} says why when the chart has no cost axis`,
+  );
+
+  const fig = page.locator(".x-cost-fig strong");
+  if (await fig.count()) {
+    const toggles = page.locator(".x-toggle button:not(:disabled)");
+    if ((await toggles.count()) > 1) {
+      const before = await fig.innerText();
+      await toggles.nth(1).click();
+      check(
+        (await fig.innerText()) !== before,
+        `${id} the baseline toggle changes the whole-bill figure (${before} -> ${await fig.innerText()})`,
+      );
+      const labels = await toggles.allInnerTexts();
+      check(
+        bundle.dollars.estimates.some((e) => labels[1]!.toLowerCase() === e.baselineLabel.toLowerCase()),
+        `${id} the toggle names the baseline as the bundle does`,
+      );
+      await toggles.nth(0).click();
+    }
+  }
+
+  const stage = page.locator(".xray > .tape .tape-stage");
+  const box = (await stage.boundingBox())!;
+  await page.evaluate(() => scrollTo(0, 0));
+  await stage.click({ position: { x: box.width * 0.6, y: box.height / 2 } });
+  await page
+    .waitForFunction(
+      () => {
+        const row = document.querySelector(".x-row[data-open]")?.getBoundingClientRect().top ?? 1e9;
+        return Math.abs(row - (document.querySelector(".xray > .tape")!.getBoundingClientRect().bottom + 12)) < 3;
+      },
+      null,
+      { timeout: 8000 },
+    )
+    .catch(() => {});
+  check((await openRows().count()) === 1, `${id} a tape click opens that section's row`);
+  const rowTop = await openRows()
+    .first()
+    .evaluate((el) => el.getBoundingClientRect().top);
+  const bottom = await tapeBottom();
+  check(
+    rowTop >= bottom - 2 && rowTop < bottom + 80,
+    `${id} the tape click scrolls the row just under the pinned tape (${Math.round(rowTop)} vs ${Math.round(bottom)})`,
+  );
+  check((await page.locator(".xray > .tape .tape-current").count()) > 0, `${id} the tape marks the row being read`);
+
+  const second = await openRows().first().getAttribute("id");
+  await page.keyboard.press("j");
+  await page.waitForTimeout(900);
+  const afterJ = await openRows().first().getAttribute("id");
+  check(!!afterJ && afterJ !== second, `${id} J opens the next section (${second} -> ${afterJ})`);
+  await page.keyboard.press("k");
+  await page.waitForTimeout(900);
+  check((await openRows().first().getAttribute("id")) === second, `${id} K goes back`);
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur());
+  await page.keyboard.press("Enter");
+  await page.waitForFunction(() => location.pathname.includes("/section/"), null, { timeout: 5000 }).catch(() => {});
+  check(
+    page.url().includes(`/bill/${id}/section/`),
+    `${id} Enter opens the section's money page (${new URL(page.url()).pathname})`,
+  );
+  await page.goBack();
+  await page.waitForSelector(".x-row");
+
+  const first = finals.find((s) => s.attention && s.attention.hits > 0 && s.inFinal)!;
+  await page.goto(`${base}/bill/${id}#section-${encodeURIComponent(slug(first))}`);
+  await page.waitForSelector(".x-row[data-open]", { timeout: 30000 });
+  await page.waitForTimeout(900);
+  check(
+    (await openRows().first().getAttribute("id")) === `section-${slug(first)}`,
+    `${id} a #section-<slug> link opens and scrolls to that row`,
+  );
+  const reading = await page
+    .locator(".xray > .tape .tape-current-label")
+    .innerText()
+    .catch(() => "");
+  check(reading.includes(`§${first.num}`), `${id} the tape marks it "${reading}"`);
+
+  const other = finals.find((s) => s.id !== first.id && s.num !== first.num)!;
+  await page.evaluate(
+    (h) => {
+      history.pushState(null, "", h);
+      dispatchEvent(new PopStateEvent("popstate"));
+    },
+    `#section-${encodeURIComponent(slug(other))}`,
+  );
+  await page
+    .waitForFunction((want) => document.querySelector(".x-row[data-open]")?.id === want, `section-${slug(other)}`, {
+      timeout: 8000,
+    })
+    .catch(() => {});
+  check(
+    (await openRows().first().getAttribute("id")) === `section-${slug(other)}`,
+    `${id} a hash link followed inside the page opens that row too`,
+  );
+  await page.goto(`${base}/bill/${id}#section-${encodeURIComponent(slug(first))}`);
+  await page.waitForSelector(".x-row[data-open]", { timeout: 30000 });
+
+  const requests: string[] = [];
+  page.on("request", (r) => r.url().includes(".articles.json") && requests.push(r.url()));
+  check(requests.length === 0, `${id} the article list is not fetched until asked for`);
+  const show = openRows().first().locator("button.linkbtn");
+  await show.click();
+  await page.waitForSelector(".x-articles li");
+  const items = await page.locator(".x-articles li a.src").count();
+  check(items === first.attention!.hits, `${id} the open row lists its ${first.attention!.hits} articles (${items})`);
+  check(requests.length === 1, `${id} the articles file loaded once, on request`);
+  const news = openRows().first().locator(".x-note", { hasText: "NEWS" }).locator("a.src").first();
+  await page.waitForSelector("a.src:not(.ghost)");
+  await news.click();
+  await page.waitForSelector("[role=dialog] #rcpt-claim");
+  check(true, `${id} the news count opens its receipt`);
+  await page.keyboard.press("Escape");
+  await page.waitForSelector("[role=dialog]", { state: "detached" });
+
+  await page.evaluate(() => document.querySelector(".x-gap")!.scrollIntoView());
+  const dot = page.locator(".x-dot-other, .x-dot-loud, .x-dot-quiet").nth(2);
+  await dot.hover({ force: true });
+  check((await page.locator(".x-tip").count()) === 1, `${id} hovering a dot shows its section`);
+  check((await page.locator(".xray > .tape [data-lit]").count()) > 0, `${id} and lifts its mark on the tape`);
+  check((await page.locator(".x-dot-lift").count()) === 1, `${id} and grows the dot`);
+  await page.mouse.move(2, 2);
+  await dot.click({ force: true });
+  await page.waitForTimeout(900);
+  check((await openRows().count()) === 1, `${id} clicking a dot jumps to that section`);
+
+  const download = page.waitForEvent("download");
+  await page.locator(".x-list-foot .btn", { hasText: "CSV" }).click();
+  const file = await download;
+  const text = await Bun.file((await file.path())!).text();
+  const lines = text.trim().split("\n").length - 1;
+  check(
+    file.suggestedFilename().startsWith(id) && text.startsWith("section,heading") && lines === (await listed()),
+    `${id} CSV export: ${file.suggestedFilename()}, ${lines} rows`,
+  );
+
+  const more = page.locator(".x-list-foot .btn", { hasText: "LOAD" });
+  if (await more.count()) {
+    const before = await page.locator(".x-row").count();
+    await more.click();
+    await page.waitForTimeout(300);
+    check((await page.locator(".x-row").count()) > before, `${id} load more adds rows`);
+  }
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(150);
+    check((await overflow(page)) <= 0, `${id} x-ray after use at ${width}: no horizontal overflow`);
+  }
+  check(errors.length === 0, `${id} x-ray use: no console errors ${errors.slice(0, 2).join(" | ")}`);
+  await page.close();
+}
+
+for (const id of ["119-hr-1", "119-s-1582", "119-hr-4405", "119-s-1071"]) if (ids.includes(id)) await xray(id);
+
 {
   const id = "119-s-1582";
   const { page } = await open(`/bill/${id}?view=money&focus=member:H000601`);

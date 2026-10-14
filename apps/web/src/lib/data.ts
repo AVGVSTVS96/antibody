@@ -1,4 +1,4 @@
-import type { Bundle, BundleIndex, Claim } from "@antibody/core";
+import type { ArticleList, Bundle, BundleIndex, Claim } from "@antibody/core";
 import { claimShardFile, claimShardOf } from "@antibody/core/claim-shards";
 
 /**
@@ -52,4 +52,10 @@ export async function loadClaims(bundle: Bundle, ids: readonly string[]): Promis
     [...files].map((shard) => load<Record<string, Claim>>(`/bundles/${claimShardFile(bundle.bill.id, shard)}`)),
   );
   return Object.assign({}, ...shards);
+}
+
+/** Every news article counted for a bill's sections, or null when the bill has no list. */
+export async function loadArticles(id: string): Promise<ArticleList | null> {
+  const entry = (await loadIndex()).bills.find((b) => b.id === id);
+  return entry?.articlesFile ? load<ArticleList>(`/bundles/${entry.articlesFile}`) : null;
 }
