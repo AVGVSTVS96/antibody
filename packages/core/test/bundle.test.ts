@@ -141,3 +141,37 @@ test("an appropriations act's deficit is marked as direct spending and revenue o
   b.bill.shortTitle = null;
   expect(billStats(b).deficitDirectOnly).toBe(true);
 });
+
+test("the fingerprint and the tape list final sections in bill order, not the order the bundle holds them", () => {
+  const b = structuredClone(Bundle.parse(fixture));
+  const [only] = b.sections;
+  const at = (path: string, label: "headline" | "buried" | "normal", late: boolean) => ({
+    ...only!,
+    id: path,
+    path,
+    inFinal: true,
+    late,
+    score: {
+      label,
+      buried: null,
+      components: {
+        dollarsMusd: null,
+        dollarsSplit: null,
+        attentionPct: null,
+        late,
+        offTopic: null,
+        lobbyingReports: 0,
+      },
+      claim: Object.keys(b.claims)[0]!,
+    },
+  });
+  b.sections = [
+    at("division:B/title:I/sec:1", "buried", false),
+    at("division:A/title:II/sec:1", "normal", true),
+    at("division:A/title:I/sec:2", "headline", false),
+    at("division:A/title:I/sec:1", "normal", false),
+  ];
+  const stats = billStats(b);
+  expect(stats.fingerprint).toBe("nhnb");
+  expect(stats.tape.late).toBe("..l.");
+});

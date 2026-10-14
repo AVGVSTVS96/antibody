@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Claim, ClaimId } from "./claim.ts";
 import { Edge, NodeId, nodeId } from "./graph.ts";
+import { inBillOrder } from "./order.ts";
 import { QuietCost, QuietRun, Tape, tapeOf } from "./tape.ts";
 import { IndexTotals } from "./totals.ts";
 
@@ -348,7 +349,7 @@ export const BillStats = z.object({
   lateShare: z.number().nullable().default(null),
   vehicle: z.boolean().default(false),
   deficitMusd: z.number().nullable(),
-  /** One letter per final section in order: h headline, b buried, n normal, u unscored. Drawn as the card's ring. */
+  /** One letter per final section in bill order: h headline, b buried, n normal, u unscored. Drawn as the card's ring. */
   fingerprint: z.string().regex(/^[hbnu]*$/),
   /** The same sections' late flags and dollar size classes, so the card's tape can be drawn from the index alone. */
   tape: Tape.default({ late: "", dollars: "", evenSplit: [] }),
@@ -511,7 +512,7 @@ export function activeSpan(b: Bundle): [string, string] | null {
 export const isAppropriations = (b: Bundle) => /appropriations/i.test(`${b.bill.title} ${b.bill.shortTitle ?? ""}`);
 
 export function billStats(b: Bundle): z.infer<typeof BillStats> {
-  const final = b.sections.filter((s) => s.inFinal);
+  const final = inBillOrder(b.sections.filter((s) => s.inFinal));
   const deficit = headlineDeficit(b, "current-law");
   const traders = b.edges.filter((e) => e.kind === "traded");
   const span = activeSpan(b);
