@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type BillRoute, billHref, onLink, STORY_CHAPTERS, storyHref } from "../lib/router.ts";
+import { type BillRoute, billHref, landHref, onLink, STORY_CHAPTERS, storyHref } from "../lib/router.ts";
 import { StoryContext } from "../story/ChapterPage.tsx";
 import { CHAPTERS } from "../story/chapters.ts";
 import { clock } from "../story/read.ts";
@@ -32,9 +32,9 @@ export default function StoryPage({ route }: { route: Extract<BillRoute, { page:
       <div className="story" ref={stage}>
         <header className="story-head">
           <div className="story-bar">
-            <span className="story-mark" aria-hidden="true">
+            <a className="story-mark plain" href={landHref()} onClick={onLink} aria-label="antibody, home">
               ✱
-            </span>
+            </a>
             <span className="story-bill">
               {bill.display} · {bill.shortTitle ?? bill.title}
             </span>

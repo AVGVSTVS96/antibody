@@ -5,7 +5,7 @@ import { billHref, sectionHref } from "../lib/router.ts";
 import { Note, Stat, StatRow, Tag } from "../ui/primitives.tsx";
 import { Src, useReceipt } from "../ui/receipt.tsx";
 import { ChapterPage } from "./ChapterPage.tsx";
-import { type Ch4Data, ch4, landedOf, spend } from "./data.ts";
+import { type Ch4Data, ch4, glue, landedOf, spend } from "./data.ts";
 import { Cap, Num } from "./parts.tsx";
 
 type Phase = keyof Ch4Data["phases"];
@@ -46,7 +46,7 @@ export default function Ch4({ m }: { m: BillModel }) {
   const names: Record<Phase, string> = {
     bill: "AS A BILL",
     enactmentQuarter: "ENACTMENT QUARTER",
-    law: data.lawName ? `AS ${data.lawName.toUpperCase()}` : "AS A LAW",
+    law: data.lawName ? glue(`AS ${data.lawName.toUpperCase()}`) : "AS A LAW",
   };
   const topId = data.top[0];
   const id = m.b.bill.id;

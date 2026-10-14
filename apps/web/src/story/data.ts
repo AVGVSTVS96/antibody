@@ -26,32 +26,25 @@ const pct = (a: number, b: number) => Math.round((100 * a) / b);
 export const shortDay = (iso: string) => day(iso).replace(/, \d{4}$/, "");
 const year = (iso: string) => iso.slice(0, 4);
 
-/** `$3.39T`, `$254B`, `$120M`: the unsigned size of CBO millions, two decimals on trillions. */
+/** `$3.39T`, `$12.5B`, `$254B`, `$120M`: the unsigned size of CBO millions, three digits at most. The one money format of the story. */
 export function bigUsd(m: number): string {
   const a = Math.abs(m);
   if (a >= 1e6) return `$${(a / 1e6).toFixed(2)}T`;
-  if (a >= 1e3) return `$${Math.round(a / 1e3).toLocaleString("en-US")}B`;
+  if (a >= 1e3) return `$${a < 1e5 ? (a / 1e3).toFixed(1) : Math.round(a / 1e3).toLocaleString("en-US")}B`;
   return `$${Math.round(a)}M`;
 }
 
-/** `+$3,394B`: a signed total in whole billions. */
-export const signedB = (m: number) =>
-  `${m < 0 ? "−" : "+"}$${Math.abs(m) >= 1e3 ? `${Math.round(Math.abs(m) / 1e3).toLocaleString("en-US")}B` : `${Math.round(Math.abs(m))}M`}`;
-
-/** A section's CBO figure as the boards print it: one decimal on billions, the sign always spelled out. */
-export function figure(m: number): string {
-  const a = Math.abs(m);
-  const sign = m < 0 ? "−" : "+";
-  if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(2)}T`;
-  if (a >= 1e3) return `${sign}$${(a / 1e3).toFixed(1)}B`;
-  return `${sign}$${Math.round(a)}M`;
-}
+/** `+$3.39T`, `−$12.5B`: the same size with its sign always spelled out. */
+export const figure = (m: number) => `${m < 0 ? "−" : "+"}${bigUsd(m)}`;
 
 /** Client spending with one decimal: `$41.2M`. */
 export function spend(n: number): string {
   const [unit, div] = n >= 1e9 ? ["B", 1e9] : n >= 1e6 ? ["M", 1e6] : ["K", 1e3];
   return `$${(n / div).toFixed(n >= div * 100 ? 0 : 1)}${unit}`;
 }
+
+/** Digits joined by a hyphen (`2023-2032`, `P.L. 117-169`) with a non-breaking one, so a number never splits across lines. */
+export const glue = (s: string) => s.replace(/(?<=\d)-(?=\d)/g, "\u2011");
 
 export function listAnd(xs: string[], word = "and"): string {
   if (xs.length < 3) return xs.join(` ${word} `);
@@ -80,10 +73,26 @@ const chapter = <T>(head: HeadLine[], lede: string, data: T, ...more: (string | 
 
 const gapText = (b: Bundle, test: (g: Bundle["gaps"][number]) => boolean) => b.gaps.find(test)?.text ?? null;
 
+/**
+ * A gap sentence that counts "N lobbying clients", labelled when N is not the bundle's own client count, so two
+ * unexplained totals never share a screen. Bundles that count clients one way pass through unchanged.
+ */
+function pooled(b: Bundle, sentence: string | null): string | null {
+  const pool = Number(/ of ([\d,]+) lobbying clients/.exec(sentence ?? "")?.[1]?.replaceAll(",", ""));
+  if (!sentence || !pool || pool === b.lobbying.clients) return sentence;
+  return `${sentence} (${pool.toLocaleString("en-US")} counts every client in the filings the bundle read, including ones that only touch the bill's topic; ${b.lobbying.clients.toLocaleString("en-US")} is the clients whose filings name the bill.)`;
+}
+
 /** The first sentence of a gap's text. */
 const firstSentence = (s: string) => s.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? s;
 
 const ruleOf = (b: Bundle, id: string) => b.rules.find((r) => r.id === id) ?? null;
+
+/** Why the quiet-and-costly rule could not run on this bill, or null when it did: every chapter that would state a quiet-section result says this instead. */
+const untestedWhy = (b: Bundle) => {
+  const { tested, why } = billStats(b).buriedTest;
+  return tested ? null : (why ?? "the rule could not run on it");
+};
 
 export { ruleOf };
 
@@ -96,8 +105,8 @@ export interface Ch1Data {
   rows: SectionView[];
   groups: { group: Group; hits: number }[];
   outletList: string | null;
-  quietHits: number;
-  quietCount: number;
+  /** The box that hands over to chapter 2: a figure and the sentence under it. */
+  handoff: { value: string; text: string };
   claims: string[];
 }
 
@@ -145,9 +154,15 @@ export function ch1(m: BillModel): Chapter<Ch1Data> {
     ];
   }
 
-  const quiet = m.buried.length
-    ? `${count(quietHits, "mention")} reached the ${m.buried.length} sections that went through quietly. Next chapter.`
-    : "No section met the quiet-and-costly rule. Next chapter says what came closest.";
+  const untested = untestedWhy(b);
+  const handoff = untested
+    ? { value: "—", text: `We couldn't test this bill for quiet sections: ${untested}. Next chapter.` }
+    : m.buried.length
+      ? {
+          value: String(quietHits),
+          text: `${quietHits === 1 ? "mention" : "mentions"} reached the ${m.buried.length} sections that went through quietly. Next chapter.`,
+        }
+      : { value: "0", text: "No section met the quiet-and-costly rule. Next chapter says what came closest." };
 
   return chapter(
     head,
@@ -159,11 +174,10 @@ export function ch1(m: BillModel): Chapter<Ch1Data> {
       rows,
       groups,
       outletList: b.attention.outletListVersion,
-      quietHits,
-      quietCount: m.buried.length,
+      handoff,
       claims: rows.flatMap((v) => (v.s.attention ? [v.s.attention.claim] : [])),
     },
-    quiet,
+    `${handoff.value} ${handoff.text}`,
     mentions
       ? `Outlet groups come from one published outlet list${b.attention.outletListVersion ? ` (${b.attention.outletListVersion})` : ""}. They describe the outlet, not the bill, and carry no party color here.`
       : undefined,
@@ -228,11 +242,13 @@ export function ch2(m: BillModel): Chapter<Ch2Data> {
       all.flatMap((v) => (v.figure && !rows.find((r) => r.v === v)?.evenSplit ? [v.figure.estimate.claim] : [])),
     ),
   ];
-  const closest = !all.length
-    ? (m.sections
-        .filter((v) => v.s.inFinal && v.kind !== "buried" && v.kind !== "headline" && v.s.score?.buried != null)
-        .sort((x, y) => y.s.score!.buried! - x.s.score!.buried!)[0] ?? null)
-    : null;
+  const untested = untestedWhy(b);
+  const closest =
+    !all.length && !untested
+      ? (m.sections
+          .filter((v) => v.s.inFinal && v.kind !== "buried" && v.kind !== "headline" && (v.s.score?.buried ?? 0) > 0)
+          .sort((x, y) => y.s.score!.buried! - x.s.score!.buried!)[0] ?? null)
+      : null;
 
   const data: Ch2Data = {
     rows,
@@ -249,16 +265,19 @@ export function ch2(m: BillModel): Chapter<Ch2Data> {
   const n = all.length;
 
   if (!n) {
-    const why = !stats.buriedTest.tested
-      ? `The rule could not be tested on this bill: ${stats.buriedTest.why}.`
-      : `None of the ${stats.sections} sections had big stakes, little coverage and a late or off-topic arrival all at once.`;
-    const near = closest ? ` Closest: ${m.secLabel(closest)} ${closest.s.heading}, which ${quietWord(closest)}.` : "";
     const dollars = !stats.buriedTest.dollarsMeasured
       ? " CBO gave no section its own dollar figure, so only lobbying could show big stakes."
       : "";
+    if (untested)
+      return chapter(
+        [{ text: "We couldn't test" }, { text: "this bill for", tone: "label" }, { text: "quiet sections." }],
+        `The quiet-and-costly rule did not run: ${untested}.${dollars}`,
+        data,
+      );
+    const near = closest ? ` Closest: ${m.secLabel(closest)} ${closest.s.heading}, which ${quietWord(closest)}.` : "";
     return chapter(
       [{ text: "No section" }, { text: "went through", tone: "label" }, { text: "quietly." }],
-      `${why}${near}${dollars}`,
+      `None of the ${stats.sections} sections had big stakes, little coverage and a late or off-topic arrival all at once.${near}${dollars}`,
       data,
     );
   }
@@ -279,7 +298,7 @@ export function ch2(m: BillModel): Chapter<Ch2Data> {
 
   return chapter(
     [
-      { text: count(n, "section") + "." },
+      { text: `${count(n, "section")}.` },
       {
         text: `${hits ? count(hits, "mention") : `0 of ${articles.toLocaleString("en-US")} articles`}.`,
         tone: "label",
@@ -307,6 +326,7 @@ export interface SectionDollar {
 
 export interface Ch3Data {
   baselines: Baseline[];
+  quietTested: boolean;
   kicker: string | null;
   movement: { loud: number; quiet: number; other: number } | null;
   added: number;
@@ -360,6 +380,7 @@ export function ch3(m: BillModel): Chapter<Ch3Data> {
 
   const data: Ch3Data = {
     baselines,
+    quietTested: stats.buriedTest.tested,
     kicker: baselines[0] ? `CBO · ${baselines[0].est.versionScored} · ${baselines[0].d.period}` : null,
     movement: figured.length
       ? { loud: gross(byKind.loud), quiet: gross(byKind.quiet), other: gross(byKind.other) }
@@ -430,7 +451,7 @@ export interface Ch4Data {
   limited: string | null;
 }
 
-const reportsOf = (v: SectionView) => v.s.score?.components.lobbyingReports ?? 0;
+const reportsOf = (v: SectionView) => v.named;
 
 export function ch4(m: BillModel): Chapter<Ch4Data> {
   const b = m.b;
@@ -475,7 +496,10 @@ export function ch4(m: BillModel): Chapter<Ch4Data> {
     topCount: topThree.length,
     articles,
     claims: L.claims,
-    limited: gapText(b, (g) => g.id === "clients-limited"),
+    limited: pooled(
+      b,
+      gapText(b, (g) => g.id === "clients-limited"),
+    ),
   };
 
   if (!L.reports)
@@ -592,10 +616,21 @@ export function ch5(m: BillModel): Chapter<Ch5Data> {
     rest,
     restTraded: rest.some((t) => t.members.length),
     listed,
-    recall: recall && firstSentence(recall),
+    recall: pooled(b, recall && firstSentence(recall)),
     window: m.span,
   };
 
+  const untested = untestedWhy(b);
+  if (untested)
+    return chapter(
+      [
+        { text: "We couldn't test" },
+        { text: "for quiet sections,", tone: "label" },
+        { text: "so no company is tied." },
+      ],
+      `The rule that finds quiet sections did not run: ${untested}. No company can be tied to one. ${tiedWhole(listed)}`,
+      data,
+    );
   if (!ties.length)
     return chapter(
       [{ text: "No listed company" }, { text: "named a quiet section.", tone: "label" }],
@@ -747,7 +782,7 @@ export function ch6(m: BillModel): Chapter<Ch6Data> {
   return chapter(
     [
       { text: String(traders.size), tone: "big" },
-      { text: count(traders.size, "member").replace(/^\d+ /, "") + " traded", tone: "label" },
+      { text: `${count(traders.size, "member").replace(/^\d+ /, "")} traded`, tone: "label" },
       { text: "tied stocks." },
     ],
     `Between ${range}, ${parties} made ${count(inWin.length, "trade")} in companies that lobbied on this bill. Same rule for every party.`,

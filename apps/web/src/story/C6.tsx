@@ -8,10 +8,19 @@ import { Src } from "../ui/receipt.tsx";
 import { useWidth } from "../ui/useWidth.ts";
 import { ChapterPage } from "./ChapterPage.tsx";
 import { type Ch6Data, ch6, shortDay } from "./data.ts";
-import { Cap } from "./parts.tsx";
+import { Cap, Person } from "./parts.tsx";
 
 const H = 128;
 const PAD_TOP = 34;
+const PIN = 22;
+
+/** Pin centers left to right, kept inside the chart and at least a pin apart, nudged from the right edge first. */
+function spreadPins(xs: number[], width: number): number[] {
+  const out = [...xs];
+  for (let i = out.length - 1; i >= 0; i--) out[i] = Math.min(out[i]!, (out[i + 1] ?? width) - PIN - 2);
+  for (let i = 0; i < out.length; i++) out[i] = Math.max(out[i]!, PIN / 2 + i * (PIN + 2));
+  return out;
+}
 
 function DayChart({ c }: { c: Ch6Data }) {
   const box = useRef<HTMLDivElement>(null);
@@ -29,6 +38,8 @@ function DayChart({ c }: { c: Ch6Data }) {
   const date = shown == null ? null : c.days[shown]!;
   const mark = c.milestones.filter((x) => x.date === date);
   const peakAt = c.peak ? c.days.indexOf(c.peak.date) : -1;
+  const atDay = c.milestones.map((x) => Math.round(c.days.indexOf(x.date) * slot + slot / 2));
+  const pins = spreadPins(atDay, width);
   const tail = (i: number) => (i < n * 0.15 ? "start" : i > n * 0.85 ? "end" : "middle");
   return (
     <div className="day-chart" ref={box} data-noswipe>
@@ -42,18 +53,15 @@ function DayChart({ c }: { c: Ch6Data }) {
           onPointerMove={(e) => (e.buttons ? setPinned(at(e)) : setHover(at(e)))}
           onPointerLeave={() => setHover(null)}
         >
-          {c.milestones.map((x) => {
-            const cx = Math.round(c.days.indexOf(x.date) * slot + slot / 2);
-            return (
-              <g key={x.letter} className="pin">
-                <line x1={cx} x2={cx} y1={18} y2={H + PAD_TOP} />
-                <circle cx={Math.min(Math.max(cx, 11), width - 11)} cy={11} r={11} />
-                <text x={Math.min(Math.max(cx, 11), width - 11)} y={15}>
-                  {x.letter}
-                </text>
-              </g>
-            );
-          })}
+          {c.milestones.map((x, i) => (
+            <g key={x.letter} className="pin">
+              <path d={`M${atDay[i]} ${H + PAD_TOP}V${PAD_TOP - 4}L${pins[i]} ${PIN}`} />
+              <circle cx={pins[i]} cy={PIN / 2} r={PIN / 2} />
+              <text x={pins[i]} y={PIN / 2 + 4}>
+                {x.letter}
+              </text>
+            </g>
+          ))}
           {c.perDay.map((v, i) => (
             <rect
               // biome-ignore lint/suspicious/noArrayIndexKey: one bar per day
@@ -131,7 +139,7 @@ function MonthChart({ m, c }: { m: BillModel; c: Ch6Data }) {
       )}
       <div className="day-axis">
         <span>{months[0] && monthName(months[0].month)}</span>
-        {win && <span className="gray">GRAY = THE {count(c.days.length, "DAY")} ABOVE</span>}
+        {win && <span className="gray">GRAY = THE {count(c.days.length, "day").toUpperCase()} ABOVE</span>}
         <span>{months.at(-1) && monthName(months.at(-1)!.month)}</span>
       </div>
     </div>
@@ -244,7 +252,7 @@ export default function Ch6({ m }: { m: BillModel }) {
               {data.leaders.map((l) => (
                 <li key={l.id}>
                   <a className="plain" href={memberHref(id, l.id.slice(7))} onClick={onLink}>
-                    {l.label}
+                    <Person label={l.label} />
                   </a>
                   <i style={{ width: `${(100 * l.trades) / maxLead}%` }} />
                   <b>{l.trades}</b>

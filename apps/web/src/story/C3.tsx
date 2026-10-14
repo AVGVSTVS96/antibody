@@ -5,12 +5,11 @@ import { Note, Stat, StatRow } from "../ui/primitives.tsx";
 import { Src } from "../ui/receipt.tsx";
 import { DollarRow } from "./Bars.tsx";
 import { ChapterPage } from "./ChapterPage.tsx";
-import { bigUsd, ch3, ch3Head, signedB } from "./data.ts";
+import { bigUsd, ch3, ch3Head, figure } from "./data.ts";
 import { Cap } from "./parts.tsx";
 import { useTween } from "./tween.ts";
 
 type Kind = "loud" | "quiet" | "other";
-const signed = (m: number) => `${m < 0 ? "−" : "+"}${bigUsd(m)}`;
 const KIND_LABEL: Record<Kind, string> = { loud: "LOUD", quiet: "QUIET", other: "OTHER" };
 
 export default function Ch3({ m }: { m: BillModel }) {
@@ -31,11 +30,12 @@ export default function Ch3({ m }: { m: BillModel }) {
   const gap =
     data.gap != null && data.billTotal != null ? (
       <Note title="GAP SHOWN · SECTIONS ≠ BILL TOTAL" tone="dashed">
-        Section lines add up to {signed(data.sectionSum)}. CBO's bill total is {signed(data.billTotal)}.{" "}
+        Section lines add up to {figure(data.sectionSum)}. CBO's bill total is {figure(data.billTotal)}.{" "}
         {Math.abs(data.sectionSum) <= Math.abs(data.billTotal)
           ? `The ${bigUsd(data.gap)} gap is dollars CBO did not pin to one section.`
           : `The two differ by ${bigUsd(data.gap)}: CBO prints some dollars only for the whole bill or for a group of sections.`}{" "}
-        {data.noFigure} sections have no CBO figure at all, and {data.evenSplit} show an even share of a shared line.
+        {data.noFigure.toLocaleString("en-US")} sections have no CBO figure at all, and {data.evenSplit} show an even
+        share of a shared line.
       </Note>
     ) : data.gaps.length && !mv && m.b.dollars.estimates.length ? (
       <Note title="GAP SHOWN · NO DOLLARS PER SECTION" tone="dashed">
@@ -76,7 +76,7 @@ export default function Ch3({ m }: { m: BillModel }) {
                   {b.label}
                   {i === pick && data.baselines.length > 1 ? " ✓" : ""}
                 </small>
-                <strong>{signedB(b.d.amountMusd)}</strong>
+                <strong>{figure(b.d.amountMusd)}</strong>
               </button>
               <Src ids={b.d.claim} label={`CBO ${b.est.id.replace(/^.*cbo-/, "")}`} />
             </div>
@@ -113,7 +113,11 @@ export default function Ch3({ m }: { m: BillModel }) {
                 key={k}
                 tone={k === "quiet" && data.byKind.quiet.length ? "quiet" : undefined}
                 value={bigUsd(mv[k])}
-                label={`${data.byKind[k].length} ${k} section${data.byKind[k].length === 1 ? "" : "s"}${k === "quiet" ? ` (${share(mv.quiet)})` : ""}`}
+                label={
+                  k === "quiet" && !data.quietTested
+                    ? "quiet sections: bill not tested"
+                    : `${data.byKind[k].length} ${k} section${data.byKind[k].length === 1 ? "" : "s"}${k === "quiet" ? ` (${share(mv.quiet)})` : ""}`
+                }
               />
             ))}
           </StatRow>
