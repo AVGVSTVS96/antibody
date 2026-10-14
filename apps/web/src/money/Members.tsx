@@ -8,11 +8,11 @@ import { useModel } from "../ui/BillGate.tsx";
 /** "Lisa C. McClain": the name without the title and without the party and state. */
 export const memberName = (n: NodeOf<"member">) => n.label.replace(/^(Sen|Rep)\.\s+/, "").replace(/\s*\(.*\)$/, "");
 
+export const lastName = (n: NodeOf<"member">) => memberShort(n).split(" ")[0]!;
+
 /** "Rep. McClain R-MI": how every member is named in a list. */
-export function chipName(n: NodeOf<"member">) {
-  const [last] = memberShort(n).split(" ");
-  return `${n.label.slice(0, 4)} ${last} ${n.props.party}-${n.props.state}`;
-}
+export const chipName = (n: NodeOf<"member">) =>
+  `${n.label.slice(0, 4)} ${lastName(n)} ${n.props.party}-${n.props.state}`;
 
 /** Members as link chips, in the order given, with how many of the companies each traded. `current` is marked. */
 export function MemberChips({ ranked, current }: { ranked: readonly Ranked[]; current?: string }) {

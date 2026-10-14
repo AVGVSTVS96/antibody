@@ -66,7 +66,7 @@ function stacksOf(trades: readonly Trade[], domain: readonly [string, string]): 
 
 const GEOM = {
   row: { h: 44, w: 1, base: 5, step: 3, max: 19 },
-  chart: { h: 30, w: 4, base: 5, step: 2, max: 13 },
+  chart: { h: 34, w: 4, base: 9, step: 3, max: 15 },
 } as const;
 
 function height(n: number, size: "row" | "chart") {
