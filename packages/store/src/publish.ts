@@ -1,6 +1,6 @@
 import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type BillId, type Bundle, BundleIndex, billDisplay, billStats } from "@antibody/core";
+import { type BillId, type Bundle, BundleIndex, billDisplay, billStats, type Row } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 
 const STAMP = /"generatedAt":"[^"]*"/;
@@ -62,8 +62,8 @@ export function indexEntry(b: Bundle): BundleIndex["bills"][number] {
 }
 
 /** The watcher's latest picks (its "hot" events from the newest run), linked to a bundle when one is published. */
-async function watchPicks(bundles: Map<string, Bundle>): Promise<BundleIndex["watch"]> {
-  const hot = (await readRows("watch_events")).filter((e) => e.kind === "hot");
+async function watchPicks(bundles: Map<string, Bundle>, events: Row<"watch_events">[]): Promise<BundleIndex["watch"]> {
+  const hot = events.filter((e) => e.kind === "hot");
   const latest = hot
     .map((e) => e.seen_at)
     .sort()
@@ -91,7 +91,11 @@ async function watchPicks(bundles: Map<string, Bundle>): Promise<BundleIndex["wa
  * Rebuilds `index.json` from every bundle in `dir`: the ids in `order` first (the curated list), then the rest
  * newest first, plus the watcher's latest picks.
  */
-export async function writeIndex(dir = paths.published, order: string[] = []): Promise<BundleIndex> {
+export async function writeIndex(
+  dir = paths.published,
+  order: string[] = [],
+  events?: Row<"watch_events">[],
+): Promise<BundleIndex> {
   const files = (await readdir(dir).catch(() => [] as string[])).filter(
     (f) => f.endsWith(".json") && f !== "index.json",
   );
@@ -103,7 +107,11 @@ export async function writeIndex(dir = paths.published, order: string[] = []): P
   const bills = [...bundles.values()].map(indexEntry);
   const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length);
   bills.sort((a, b) => rank(a.id) - rank(b.id) || (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""));
-  const index = BundleIndex.parse({ generatedAt: new Date().toISOString(), bills, watch: await watchPicks(bundles) });
+  const index = BundleIndex.parse({
+    generatedAt: new Date().toISOString(),
+    bills,
+    watch: await watchPicks(bundles, events ?? (await readRows("watch_events"))),
+  });
   await mkdir(dir, { recursive: true });
   await Bun.write(join(dir, "index.json"), `${JSON.stringify(index, null, 1)}\n`);
   return index;
