@@ -72,3 +72,4 @@ export const stages: Stage[] = [
     },
   },
 ];
+export { norm, parseAsset, tokens } from "./normalize.ts";

@@ -161,6 +161,25 @@ describe("GENIUS bundle from contract rows", () => {
     expect(edges("resolves_to").every((e) => e.basis === "inference")).toBe(true);
   });
 
+  test("a gift is split into before and after the member's vote", () => {
+    for (const e of edges("funded")) {
+      if (e.kind !== "funded") continue;
+      expect(e.props.beforeUsd + e.props.afterUsd).toBe(e.props.amountUsd);
+    }
+    const g = edges("funded").find((e) => e.dst === "member:G000555")!;
+    expect(g.kind === "funded" && g.props).toMatchObject({
+      cutoff: "2025-06-17",
+      cutoffKind: "vote",
+      beforeUsd: 1000,
+      afterUsd: 0,
+    });
+  });
+
+  test("a trade joins its company by ticker, and says when the asset name differs", () => {
+    const events = edges("traded").flatMap((e) => (e.kind === "traded" ? e.props.events : []));
+    expect(events.every((t) => t.nameMatch === true)).toBe(true);
+  });
+
   test("unread paper filings become a gap that counts every party", () => {
     const gap = b.gaps.find((g) => g.kind === "paper_filings_unread")!;
     expect(gap.text).toContain("1 member (0 R, 1 D, 0 I)");
@@ -262,4 +281,14 @@ test("a member shows the party and chamber of the term that covers the bill", as
 
 test("a bill with no rows says so", async () => {
   await expect(buildBundle(await load({}), "119-s-1582")).rejects.toThrow(/no bills row/);
+});
+
+test("a differing asset name is marked, not hidden", async () => {
+  const rows = structuredClone(GENIUS_ROWS);
+  const moore = rows.trades!.find((t) => t.id === "20032256#1")!;
+  moore.asset = "Banana Holdings Common Stock (COIN) [ST]";
+  const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+  const events = bundle.edges.flatMap((e) => (e.kind === "traded" ? e.props.events : []));
+  expect(events.find((t) => t.asset.startsWith("Banana"))!.nameMatch).toBe(false);
+  expect(events.find((t) => t.asset.startsWith("Coinbase"))!.nameMatch).toBe(true);
 });

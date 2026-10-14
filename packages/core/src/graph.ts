@@ -40,6 +40,8 @@ export const TradeEvent = z.object({
   ticker: z.string().nullable(),
   asset: z.string(),
   readBy: z.enum(["text", "html", "vision"]),
+  /** False when the asset name on the disclosure shares no word with the company's SEC name; the join was by ticker alone. */
+  nameMatch: z.boolean().optional(),
   claim: ClaimId,
 });
 export type TradeEvent = z.infer<typeof TradeEvent>;
@@ -80,6 +82,11 @@ export const EDGE_PROPS = {
   employs: z.object({ reports: z.number() }),
   /** pac → member */
   funded: z.object({
+    /** The member's passage vote, or the bill's enactment (or last dated action) when they cast none. Gifts on or before it are "before". */
+    cutoff: z.iso.date(),
+    cutoffKind: z.enum(["vote", "enactment"]),
+    beforeUsd: z.number(),
+    afterUsd: z.number(),
     amountUsd: z.number(),
     contributions: z.number(),
     first: z.iso.date(),

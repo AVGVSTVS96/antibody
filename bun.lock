@@ -124,6 +124,7 @@
       "name": "@antibody/store",
       "dependencies": {
         "@antibody/core": "workspace:*",
+        "@antibody/resolve": "workspace:*",
         "@duckdb/node-api": "1.5.6-r.1",
       },
     },

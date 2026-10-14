@@ -779,7 +779,17 @@ for (const m of G.members as Member[]) {
           f.url,
         ),
       ],
-      props: { amountUsd: f.amount, contributions: f.contributions, first, last, allTxnsUrl: f.all_txns },
+      props: {
+        cutoff: last,
+        cutoffKind: "enactment",
+        beforeUsd: f.amount,
+        afterUsd: 0,
+        amountUsd: f.amount,
+        contributions: f.contributions,
+        first,
+        last,
+        allTxnsUrl: f.all_txns,
+      },
     });
   }
 }

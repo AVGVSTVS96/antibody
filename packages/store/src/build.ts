@@ -25,6 +25,7 @@ import { type Db, type Param, query, tableNames } from "./db.ts";
 import { limitGraph } from "./limit.ts";
 import { ruleFor } from "./rules.ts";
 import { count, day, lawNumber, memberLabel, quarter } from "./text.ts";
+import { nameMatches, reusedTicker } from "./trades.ts";
 import { trimEvidence } from "./trim.ts";
 
 export interface BuildResult {
@@ -73,6 +74,8 @@ class Builder {
     estimate: new Map<string, AnyRow>(),
   };
   private rulesUsed = new Set<string>();
+  /** The date of each member's first recorded passage vote (not "Not Voting"). */
+  private votedOn = new Map<string, string>();
   private lateUnavailable: string | null = null;
   private display: string;
 
@@ -478,9 +481,12 @@ class Builder {
         });
     }
     const passage = rolls.filter((r) => PASSAGE.test(r.question)).map((r) => r.id);
+    const rollDate = new Map(rolls.map((r) => [r.id, r.date as string]));
     if (passage.length) this.rulesUsed.add("member-votes");
     for (const v of await this.select("member_votes", "list_contains($ids, roll_id)", { ids: passage })) {
       if (!this.members.has(v.bioguide)) continue;
+      const on = rollDate.get(v.roll_id)!;
+      if (v.vote !== "Not Voting" && on < (this.votedOn.get(v.bioguide) ?? "9")) this.votedOn.set(v.bioguide, on);
       const claim = await this.cite("member_votes", v);
       if (claim)
         this.edge(
@@ -869,11 +875,12 @@ class Builder {
       },
       "traded_on",
     );
-    const known = trades.filter((t) => t.bioguide && this.members.has(t.bioguide));
-    if (known.length < trades.length)
-      this.warnings.push(
-        `${trades.length - known.length} trades in tied stocks are from filers not matched to a member`,
-      );
+    const fits = trades.filter((t) => !reusedTicker(t.ticker, t.asset));
+    if (fits.length < trades.length)
+      this.warnings.push(`${trades.length - fits.length} trades left out: the ticker belonged to a different company`);
+    const known = fits.filter((t) => t.bioguide && this.members.has(t.bioguide));
+    if (known.length < fits.length)
+      this.warnings.push(`${fits.length - known.length} trades in tied stocks are from filers not matched to a member`);
     for (const [pair, ts] of groupBy(known, (t) => `${t.bioguide}|${tied.get(t.ticker.toUpperCase())}`)) {
       const [bioguide, company] = pair.split("|") as [string, string];
       const events: EdgeOf<"traded">["props"]["events"] = [];
@@ -888,6 +895,7 @@ class Builder {
             ticker: t.ticker,
             asset: t.asset,
             readBy: t.read_by,
+            nameMatch: nameMatches(t.asset, this.nodes.get(`company:${company}`)?.label ?? ""),
             claim,
           });
       }
@@ -904,7 +912,7 @@ class Builder {
   }
 
   /** PACs that resolve to a tied company, and what they gave members in the bill's FEC cycles. */
-  private async buildMoney(tied: Map<string, string>, w: { cycles: number[] }) {
+  private async buildMoney(tied: Map<string, string>, w: { cycles: number[]; end: string }) {
     const companies = [...new Set(tied.values())];
     if (!companies.length) return;
     const res = await this.select("resolutions", "src LIKE 'pac:%' AND list_contains($c, company_id)", {
@@ -952,6 +960,9 @@ class Builder {
       const periods = w.cycles.map((c) => `&two_year_transaction_period=${c}`).join("");
       const recipients = [...new Set(gs.map((g) => g.recipient_committee_id).filter(Boolean))];
       const to = recipients.length === 1 ? `&recipient_committee_id=${recipients[0]}` : "";
+      const cutoff = this.votedOn.get(bioguide) ?? w.end;
+      const before = gs.filter((g) => g.date <= cutoff);
+      const sum = (list: AnyRow[]) => list.reduce((a, g) => a + g.amount_usd, 0);
       this.edge(
         "funded",
         `funded:${pac}:${bioguide}`,
@@ -959,7 +970,11 @@ class Builder {
         nodeId("member", bioguide),
         await this.cites("contributions", gs),
         {
-          amountUsd: gs.reduce((a, g) => a + g.amount_usd, 0),
+          cutoff,
+          cutoffKind: this.votedOn.has(bioguide) ? "vote" : "enactment",
+          beforeUsd: sum(before),
+          afterUsd: sum(gs) - sum(before),
+          amountUsd: sum(gs),
           contributions: gs.length,
           first: gs[0]!.date,
           last: gs.at(-1)!.date,
