@@ -31,7 +31,9 @@ export const sponsorsStage: Stage = {
   needs: [],
   writes: ["sponsorships"],
   async run({ bill, refresh, log }) {
-    const rows = sponsorRows(bill!, await billstatus(bill!, refresh));
+    const status = await billstatus(bill!, refresh);
+    if (!status) return log("GovInfo has no BILLSTATUS for this bill yet");
+    const rows = sponsorRows(bill!, status);
     await writeRows("sponsorships", bill!, rows);
     log(
       `${rows.filter((r) => r.role === "cosponsor").length} cosponsors, ${rows.filter((r) => r.withdrawn_on).length} withdrawn`,

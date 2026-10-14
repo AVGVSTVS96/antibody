@@ -136,8 +136,10 @@ async function readRoll(v: RecordedVote, bill: BillId, lookup: Lookup): Promise<
 }
 
 /** Roll calls on the bill and its amendments, as BILLSTATUS lists them, read from the House Clerk and senate.gov XML. */
-export async function billRolls(bill: BillId, lookup: Lookup, refresh: boolean): Promise<ParsedRoll[]> {
-  const listed = recordedVotes(await billstatus(bill, refresh));
+export async function billRolls(bill: BillId, lookup: Lookup, refresh: boolean): Promise<ParsedRoll[] | null> {
+  const status = await billstatus(bill, refresh);
+  if (!status) return null;
+  const listed = recordedVotes(status);
   const out: ParsedRoll[] = [];
   for (const v of listed) out.push(await readRoll(v, bill, lookup));
   return out.sort((a, b) => a.roll.date.localeCompare(b.roll.date) || a.roll.number - b.roll.number);

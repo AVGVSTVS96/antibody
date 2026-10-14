@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { type BillId, billRef, billstatusUrl } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 import { XMLParser } from "fast-xml-parser";
-import { cached } from "./fetch.ts";
+import { cached, FetchError } from "./fetch.ts";
 
 const LISTS = new Set(["item", "recordedVote", "amendment", "action"]);
 export const xml = new XMLParser({
@@ -12,12 +12,18 @@ export const xml = new XMLParser({
   isArray: (name) => LISTS.has(name),
 });
 
-/** GovInfo BILLSTATUS for a bill, cached in data/bills/billstatus/ (shared with ingest-bills). */
-export async function billstatus(bill: BillId, refresh = false) {
+/**
+ * GovInfo BILLSTATUS for a bill, cached in data/bills/billstatus/ (shared with ingest-bills).
+ * Null while GovInfo has not published it yet (a bill introduced today).
+ */
+export async function billstatus(bill: BillId, refresh = false): Promise<BillStatus | null> {
   const { congress, type, number } = billRef(bill);
   const file = join(paths.raw("bills"), "billstatus", `BILLSTATUS-${congress}${type}${number}.xml`);
-  const doc = xml.parse(await cached(billstatusUrl(bill), file, refresh));
-  return doc.billStatus.bill as BillStatus;
+  const text = await cached(billstatusUrl(bill), file, refresh).catch((e) => {
+    if (e instanceof FetchError && e.status === 404) return null;
+    throw e;
+  });
+  return text === null ? null : (xml.parse(text).billStatus.bill as BillStatus);
 }
 
 export interface RecordedVote {

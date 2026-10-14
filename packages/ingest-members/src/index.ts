@@ -46,6 +46,7 @@ export const stages: Stage[] = [
     writes: ["roll_calls", "member_votes"],
     async run({ bill, refresh, log }) {
       const rolls = await billRolls(bill!, await memberLookup(), refresh);
+      if (!rolls) return log("GovInfo has no BILLSTATUS for this bill yet");
       const shards = Map.groupBy(rolls, (r) => `${r.roll.chamber.toLowerCase()}-${r.roll.congress}-${r.roll.session}`);
       for (const [shard, group] of shards) {
         await upsertRows(
