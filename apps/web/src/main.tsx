@@ -6,9 +6,11 @@ import "./styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
+import { loadIndex } from "./lib/data.ts";
 import { initTheme } from "./lib/theme.ts";
 
 initTheme();
+loadIndex().catch(() => {});
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />

@@ -19,7 +19,7 @@ const browser = await chromium.launch({
 
 const bill = "/bill/119-s-1582";
 const openReceipt = (kind: "fact" | "inference") => async (page: Page) => {
-  await page.waitForFunction(() => document.querySelector("a.src:not(.ghost)"));
+  await page.waitForFunction(() => document.querySelector("a.src"));
   const chips = page.locator(kind === "inference" ? "a.src.inference" : "a.src:not(.inference)");
   await chips.first().click();
   await page.waitForSelector(".rcpt");
