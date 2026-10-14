@@ -368,13 +368,14 @@ def per_section_pdf(pdf_path):
 
 
 def pdf_summary(pdf_path):
-    """Whole-bill totals from the summary pages before Table 1: total direct spending, total revenues, deficit."""
-    rows, years, after = [], None, None
+    """Whole-bill totals printed in a PDF's tables, before any per-title 'Table N.': total direct spending,
+    total discretionary spending, total revenues and the effect on the deficit."""
+    rows, years, after = [], None, ""
     with pdfplumber.open(pdf_path) as pdf:
         for pno, page in enumerate(pdf.pages, 1):
             clean = page.filter(lambda o: o.get("object_type") != "char" or o["size"] > SUPERSCRIPT_MAX)
             lines = [l.strip() for l in (clean.extract_text() or "").splitlines()]
-            if any(re.match(r"^Table \d+\.$", l) for l in lines):
+            if rows and any(re.match(r"^Table \d+\.$", l) for l in lines):
                 break
             for line in lines:
                 if YEARS.match(line):
@@ -383,15 +384,22 @@ def pdf_summary(pdf_path):
                 if not years:
                     continue
                 label, nums = split_numbers(line, len(years))
-                if label.startswith(("Total Changes in Direct Spending", "Net Increase or Decrease", "Increases or Decreases")):
+                if label.startswith(("Total Changes in", "Net Increase or Decrease", "Increases or Decreases", "Increases in", "Decreases in")):
                     after = label
                 if not nums:
                     continue
-                wanted = (label.startswith("Total Changes in Revenues")
-                          or (after or "").startswith("Total Changes in Direct Spending") and label in ("Budget Authority", "Estimated Outlays")
-                          or (after or "").startswith("Net Increase or Decrease") and label == "Effect on the Deficit")
-                if wanted and not any(r["measure"] == label for r in rows):
-                    rows.append({"block": None, "measure": label, "measure_kind": measure_kind(label),
+                direct = after.startswith("Total Changes in Direct Spending")
+                discretionary = after.startswith("Total Changes in") and ("Discretionary" in after or "Subject to Appropriation" in after)
+                if label.startswith("Total Changes in Revenues"):
+                    block = "revenues"
+                elif (direct or discretionary) and label in ("Budget Authority", "Estimated Budget Authority", "Estimated Outlays"):
+                    block = "discretionary" if discretionary else "direct_spending"
+                elif after.startswith("Net Increase or Decrease") and label == "Effect on the Deficit":
+                    block = "deficit"
+                else:
+                    continue
+                if not any(r["block"] == block and r["measure"] == label for r in rows):
+                    rows.append({"block": block, "measure": label, "measure_kind": measure_kind(label),
                                  "values": dict(zip(years, [value(t) for t in nums])), "raw": dict(zip(years, nums)),
                                  "range": f"page {pno}"})
     return {"sheet": "Summary", "years": years, "rows": rows} if rows else None

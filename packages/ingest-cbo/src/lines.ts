@@ -274,7 +274,8 @@ function deficit(id: string, outlays?: Line, revenues?: Line): Line | null {
   };
 }
 
-const WHOLE: [RegExp, Measure, Spending][] = [
+const WHOLE: [RegExp, Measure | null, Spending][] = [
+  [/authorization/i, null, null],
   [/subject to appropriation.*outlays/i, "outlays", "discretionary"],
   [/subject to appropriation/i, "budget_authority", "discretionary"],
   [/on-budget|off-budget/i, "deficit", null],
@@ -287,7 +288,7 @@ const WHOLE: [RegExp, Measure, Spending][] = [
 function classify(label: string, block?: string | null): [Measure, Spending] | null {
   const text = block === "discretionary" ? `subject to appropriation ${label}` : label;
   for (const [re, measure, spending] of WHOLE)
-    if (re.test(text)) return /on-budget|off-budget/i.test(text) ? null : [measure, spending];
+    if (re.test(text)) return !measure || /on-budget|off-budget/i.test(text) ? null : [measure, spending];
   return null;
 }
 

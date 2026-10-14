@@ -54,15 +54,15 @@ async function read(files: Fetched[], bill: BillId): Promise<Read> {
     const main = { format: "xlsx" as const, sheets: workbooks.flatMap((w) => w.p.sheets), summary: lead.p.summary };
     return { main: { ...main, from: lead.f }, pdf, glance };
   }
-  if (pdf) {
-    const p = await parse<Parsed>("pdf", pdf.file);
-    if (p?.sheets.some((s) => s.rows.some((r) => r.line_kind === "section")))
-      return { main: { ...tagged(p, pdf), from: pdf }, pdf, glance };
-  }
+  const tables = pdf ? await parse<Parsed>("pdf", pdf.file) : null;
+  if (pdf && tables?.sheets.some((s) => s.rows.some((r) => r.line_kind === "section")))
+    return { main: { ...tagged(tables, pdf), from: pdf }, pdf, glance };
   for (const f of sheets.filter((f) => /table1/i.test(f.url))) {
     const p = await parse<Parsed>("table1", f.file);
     if (p?.summary?.rows.length) return { main: { ...tagged(p, f), from: f }, pdf, glance };
   }
+  if (pdf && tables?.summary?.rows.length)
+    return { main: { ...tagged({ ...tables, sheets: [] }, pdf), from: pdf }, pdf, glance };
   return { main: null, pdf, glance };
 }
 

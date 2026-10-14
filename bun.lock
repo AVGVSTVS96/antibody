@@ -66,6 +66,7 @@
       "name": "@antibody/ingest-cbo",
       "dependencies": {
         "@antibody/core": "workspace:*",
+        "@antibody/ingest-bills": "workspace:*",
       },
     },
     "packages/ingest-fec": {
