@@ -34,6 +34,8 @@ export interface BuildResult {
   warnings: string[];
 }
 
+const DESCRIPTION = /^(?:an act|a bill|to )\b/i;
+
 /** What filers type in the covered-position box when they have none. */
 const NO_POSITION = /^(?:n\/?a|none|no|yes|nil|see form ld-?1.*|[-.\s]*)\.?$/i;
 
@@ -161,7 +163,7 @@ class Builder {
       return id;
     } catch (e) {
       this.claims.delete(id);
-      this.warnings.push(`claim ${id}: ${(e as Error).message.split("\n")[0]}`);
+      this.warnings.push(`claim ${id}: ${(e as Error).message.replace(/\s+/g, " ").slice(0, 300)}`);
       return null;
     }
   }
@@ -236,6 +238,7 @@ class Builder {
     const [bill] = await this.select("bills", "id = $id", { id: this.bill });
     if (!bill) throw new BuildError(`no bills row for ${this.bill}: run the bills stage first`);
     this.lateUnavailable = bill.late_unavailable ?? null;
+    bill.short_title = await this.shortTitle(bill);
     this.names.display = this.display;
     this.names.bill = `${this.display}${bill.short_title ? ` (${bill.short_title})` : ""}`;
 
@@ -373,6 +376,19 @@ class Builder {
       const claim = await this.cite("cbo_notes", n);
       if (claim) this.sections.get(n.section_id)?.claims.push(claim);
     }
+  }
+
+  /** BILLSTATUS sometimes lists only a description ("An act to provide for reconciliation…") where the bill names itself in its first section. */
+  private async shortTitle(bill: AnyRow): Promise<string | null> {
+    if (bill.short_title && !DESCRIPTION.test(bill.short_title)) return bill.short_title;
+    const [first] = await this.select(
+      "sections",
+      "bill_id = $b AND regexp_matches(heading, '^short titles?\\b', 'i')",
+      { b: this.bill },
+      "in_final DESC, id",
+    );
+    const cited = first?.preview?.match(/may be cited as the (.+?)\s*\.?\s*$/i)?.[1];
+    return cited?.replace(/\s+/g, " ").replace(/[“”"]/g, "").trim() || bill.short_title;
   }
 
   /** The bill's active span: introduction (or first text) through enactment (or the last dated record). */

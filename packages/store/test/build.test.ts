@@ -292,3 +292,13 @@ test("a differing asset name is marked, not hidden", async () => {
   expect(events.find((t) => t.asset.startsWith("Banana"))!.nameMatch).toBe(false);
   expect(events.find((t) => t.asset.startsWith("Coinbase"))!.nameMatch).toBe(true);
 });
+
+test("a bill listed only by a description takes the name its first section gives it", async () => {
+  const rows = structuredClone(GENIUS_ROWS);
+  rows.bills![0]!.short_title = "An act to provide for reconciliation pursuant to title II of H. Con. Res. 14.";
+  const first = rows.sections!.find((s) => s.num === "1")!;
+  first.heading = "Short title";
+  first.preview = "This Act may be cited as the One Big Beautiful Bill Act .";
+  const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+  expect(bundle.bill.shortTitle).toBe("One Big Beautiful Bill Act");
+});

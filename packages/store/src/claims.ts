@@ -243,7 +243,7 @@ export const TEMPLATES: Record<string, Template> = {
 
   lda_clients: (r, _f, n) => ({
     text: `${r.name} files as a lobbying client under ${r.names.map((x: string) => quote(x, 80)).join(", ")} (LDA client ${r.lda_client_ids.length > 1 ? "ids" : "id"} ${r.lda_client_ids.join(", ")}).`,
-    sourceUrl: n.clientFiling(r.id),
+    sourceUrl: n.clientFiling(r.id) ?? `https://lda.gov/api/v1/filings/?client_id=${r.lda_client_ids[0]}`,
   }),
 
   ptr_documents: (r) => ({
