@@ -158,7 +158,7 @@ export function Trail({ trades, scope }: { trades: Trade[]; scope: Scope }) {
               <span>
                 fell inside the window, {day(book[0])} to {day(book[1])}
               </span>
-              <Src ids={trades.filter((t) => t.inWindow).map((t) => t.event.claim)} label="filings" />
+              {inside > 0 && <Src ids={trades.filter((t) => t.inWindow).map((t) => t.event.claim)} label="filings" />}
             </p>
           )}
           <p className="trail-who">

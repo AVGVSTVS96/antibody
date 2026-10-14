@@ -23,7 +23,11 @@ export function Seats({ member }: { member: NodeOf<"member"> }) {
           ))}
         </ul>
       ) : (
-        <p>{unlisted ? unlisted.text : "No committee seat for this member is in the roster snapshot."}</p>
+        <p>
+          {unlisted
+            ? "This member has no seat in the roster snapshot (a member who joined or left mid-term may not). A missing seat is not a fact."
+            : "No committee seat for this member is in the roster snapshot."}
+        </p>
       )}
       <p className="kicker">
         A seat is a seat in this Congress, not a role on this bill. Seats come from one roster snapshot, dated in each

@@ -34,6 +34,8 @@ function MonthChart({
   const n = months.length;
   const peak = months.reduce((a, x) => (x.trades > a.trades ? x : a), months[0]!);
   const w = 100 / n;
+  const at = months.indexOf(peak) / n;
+  const edge = at < 0.2 ? "start" : at > 0.75 ? "end" : null;
   const band =
     window &&
     ([
@@ -57,13 +59,13 @@ function MonthChart({
         <line className="months-base" x1="0" x2="100%" y1={HEIGHT - 0.5} y2={HEIGHT - 0.5} />
       </svg>
       <figcaption>
-        {!(peak.trades > 0 && months.indexOf(peak) < n * 0.25) && <span>{monthLabel(months[0]!.month)}</span>}
+        {!(peak.trades > 0 && edge === "start") && <span>{monthLabel(months[0]!.month)}</span>}
         {peak.trades > 0 && (
-          <span style={{ left: `${(months.indexOf(peak) + 0.5) * w}%` }} data-peak="">
+          <span style={edge ? undefined : { left: `${(months.indexOf(peak) + 0.5) * w}%` }} data-peak={edge ?? ""}>
             {monthLabel(peak.month)} · {count(peak.trades, "trade")}
           </span>
         )}
-        {!(peak.trades > 0 && months.indexOf(peak) > n * 0.75) && <span>{monthLabel(months.at(-1)!.month)}</span>}
+        {!(peak.trades > 0 && edge === "end") && <span>{monthLabel(months.at(-1)!.month)}</span>}
       </figcaption>
     </figure>
   );

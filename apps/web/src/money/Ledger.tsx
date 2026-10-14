@@ -237,7 +237,9 @@ export function Ledger({ rows }: { rows: LedgerRow[] }) {
       {rest.length > 0 && (
         <div className="lrest">
           <p className="kicker">
-            {count(rest.length, "more client")} · rows collapsed · open one to see its trail
+            {rest.some((r) => r.tie.company)
+              ? `${count(rest.length, "more client")} · rows collapsed · open one to see its trail`
+              : `${count(rest.length, "client")} matched no listed company`}
             {rest.length > shown && (
               <>
                 {" · "}

@@ -663,3 +663,13 @@
     grid-template-columns: 1fr;
   }
 }
+
+.months figcaption [data-peak="start"] {
+  left: 0;
+  transform: none;
+}
+
+.months figcaption [data-peak="end"] {
+  right: 0;
+  transform: none;
+}

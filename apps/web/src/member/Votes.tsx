@@ -47,7 +47,7 @@ export function Votes({ member }: { member: NodeOf<"member"> }) {
           <p className="votes-none">
             {all.length
               ? "No passage vote of this bill is recorded for this member."
-              : "No roll-call vote on this bill is recorded for this member (a chamber that passes a bill by consent casts none)."}
+              : "No roll-call vote on this bill is recorded for this member. A member not yet in office, or a chamber that passed the bill by consent, has none."}
           </p>
         )}
       </div>

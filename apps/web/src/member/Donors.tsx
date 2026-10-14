@@ -76,7 +76,7 @@ export function Donors({ member }: { member: NodeOf<"member"> }) {
       <p className="kicker">
         Only each member's 5 largest tied donors are kept, so this is a floor: smaller gifts are in the FEC files.
         {edges.length > 0 &&
-          ` "Before" covers ${day(firstGift)} to the cutoff and "after" the cutoff to ${day(lastGift)}, spans of different length: these are not rates.`}
+          `${edges.some((e) => e.props.amountUsd < 0) ? " A negative amount is a gift the campaign returned." : ""} "Before" covers ${day(firstGift)} to the cutoff and "after" the cutoff to ${day(lastGift)}, spans of different length: these are not rates.`}
       </p>
     </div>
   );

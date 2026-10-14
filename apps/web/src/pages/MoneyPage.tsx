@@ -192,26 +192,33 @@ function Follow({ v }: { v: SectionView }) {
       {rows.length > 0 && (
         <Section kicker="6 · The members behind the ticks">
           <div className="behind">
-            <div className="behind-who">
-              <p className="behind-n">
-                <strong>{ranked.length}</strong>
-                <span>
-                  {ranked.length === 1 ? "member traded" : "members traded"} at least one of these{" "}
-                  {count(companies.size, "stock")} in the data. {inWindow.length} did it inside the window (
-                  {party(inWindow)}). {party(ranked)} overall.
-                </span>
+            {companies.size > 0 ? (
+              <div className="behind-who">
+                <p className="behind-n">
+                  <strong>{ranked.length}</strong>
+                  <span>
+                    {ranked.length === 1 ? "member traded" : "members traded"} at least one of these{" "}
+                    {count(companies.size, "stock")} in the data. {inWindow.length} did it inside the window (
+                    {party(inWindow)}). {party(ranked)} overall.
+                  </span>
+                </p>
+                <MemberChips ranked={all ? ranked : ranked.slice(0, SHOWN)} />
+                {ranked.length > SHOWN && (
+                  <button type="button" className="linkbtn" onClick={() => setAll((x) => !x)}>
+                    {all ? "show fewer" : `show all ${ranked.length}`}
+                  </button>
+                )}
+                <p className="kicker">
+                  Ordered by one rule for everyone: how many of these {count(companies.size, "company", "companies")} a
+                  member traded, then by name. The number beside a name is that count. Not by party, not by dollars.
+                </p>
+              </div>
+            ) : (
+              <p className="lead">
+                No client matched a listed company, so there is no stock to follow from {m.secLabel(v)} and no member to
+                list.
               </p>
-              <MemberChips ranked={all ? ranked : ranked.slice(0, SHOWN)} />
-              {ranked.length > SHOWN && (
-                <button type="button" className="linkbtn" onClick={() => setAll((x) => !x)}>
-                  {all ? "show fewer" : `show all ${ranked.length}`}
-                </button>
-              )}
-              <p className="kicker">
-                Ordered by one rule for everyone: how many of these {count(companies.size, "company", "companies")} a
-                member traded, then by name. The number beside a name is that count. Not by party, not by dollars.
-              </p>
-            </div>
+            )}
             <Note title="The weakest link: client → company" tone="dashed">
               <InferenceTag small />
               <p>
@@ -233,7 +240,7 @@ function Follow({ v }: { v: SectionView }) {
         </Section>
       )}
 
-      {rows.length > 0 && (
+      {companies.size > 0 && (
         <Section kicker="How common is this" title="Every tie, beside how common it is">
           <Common
             rate={rate}
