@@ -18,6 +18,7 @@ import { cached, NotFound } from "./fetch.ts";
 import { isLate, type Lineage, type ParsedVersion, PURE_SPLIT, trace, wholesaleReason } from "./lineage.ts";
 import { findPredecessor } from "./predecessor.ts";
 import { PartialAmendment, parseSections, type Sec, sectionNum } from "./sections.ts";
+import { capitalizeNames, namesIn } from "./text.ts";
 import { textVersions, type VersionRef } from "./versions.ts";
 
 export interface IngestOptions {
@@ -42,12 +43,27 @@ const locator = (path: string) =>
     .map((p) => p.replace(":", " ").replace(/^sec /, "sec. "))
     .join(", ");
 
-/** The last heading that isn't in all caps (enrolled bills and laws print some headings in caps). */
-const heading = (l: Lineage) =>
-  Object.values(l.history)
+/** A heading with a long word in lowercase: not Title Case, whose capitals say nothing about names. */
+const sentenceCase = (h: string) =>
+  h
+    .split(" ")
+    .slice(1)
+    .some((w) => w.length > 3 && /^[a-z]/.test(w));
+
+/**
+ * The last heading that isn't in all caps (enrolled bills and laws print some headings in caps), with the names the
+ * bill's titles capitalize, and those an earlier version's sentence-case heading capitalized that the bill's text
+ * spells the same way: GPO sometimes lowercases a name in one version and not another.
+ */
+function heading(l: Lineage, titles: Map<string, string>, text: Map<string, string>): string {
+  const printed = Object.values(l.history)
     .map((s) => s.heading)
-    .reverse()
-    .find((h) => h !== h.toUpperCase()) ?? l.last.heading;
+    .filter((h) => h !== h.toUpperCase());
+  const last = printed.at(-1);
+  if (last === undefined) return l.last.heading;
+  const earlier = printed.filter(sentenceCase).flatMap((h) => [...namesIn([`in ${h}`])]);
+  return capitalizeNames(last, new Map([...titles, ...earlier.filter(([lower]) => text.has(lower))]));
+}
 
 export async function loadStatus(bill: BillId, refresh = false): Promise<BillStatus> {
   const { congress, type, number } = billRef(bill);
@@ -137,13 +153,15 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   }));
 
   const final = versions.at(-1)?.code;
+  const titles = namesIn([status.title, status.shortTitle]);
+  const text = namesIn(versions.flatMap((v) => v.secs.map((s) => s.text)));
   rows.sections = lineages.map((l) => {
     const firstPath = l.history[l.firstVersion]!.path;
     return {
       id: l.id,
       bill_id: bill,
       num: sectionNum(l.last.path),
-      heading: heading(l),
+      heading: heading(l, titles, text),
       path: l.last.path,
       first_version: l.firstVersion,
       in_final: l.lastVersion === final,

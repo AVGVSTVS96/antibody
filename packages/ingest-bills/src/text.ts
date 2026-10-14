@@ -28,6 +28,30 @@ export function normHeading(s: string): string {
     .toLowerCase();
 }
 
+/**
+ * Runs of two or more capitalized words in mid-sentence ("Jeffrey Epstein", "Department of Energy"), keyed by their
+ * lowercase form: the names a text spells out. GPO prints some headings in lowercase even for these.
+ */
+export function namesIn(texts: Iterable<string | null>): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const t of texts)
+    for (const m of (t ?? "").matchAll(/(?<=[a-z,] )[A-Z][a-z]+(?:(?: of| and| for)? [A-Z][a-z]+)+/g))
+      names.set(m[0].toLowerCase(), m[0]);
+  return names;
+}
+
+/** `heading` with each of `names` spelled as given. */
+export function capitalizeNames(heading: string, names: Map<string, string>): string {
+  let out = heading;
+  for (const [lower, cased] of names) {
+    const at = out.toLowerCase().indexOf(lower);
+    const edge = (i: number) => !/[A-Za-z]/.test(out[i] ?? " ");
+    if (at >= 0 && edge(at - 1) && edge(at + lower.length))
+      out = out.slice(0, at) + cased + out.slice(at + lower.length);
+  }
+  return out;
+}
+
 /** `SEC. 70114.` → `70114`, `TITLE VII—` → `VII`. */
 export function normEnum(s: string): string {
   return norm(s)

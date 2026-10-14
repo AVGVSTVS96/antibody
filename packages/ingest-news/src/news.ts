@@ -88,6 +88,20 @@ const hash = (s: string) => createHash("sha1").update(s).digest("hex").slice(0, 
 const stratumOf = (o: Outlet | null): Stratum | null =>
   !o ? null : o.group === "trade-legal" ? "trade-legal" : (sideOf(o.group) satisfies Side | null);
 
+/** The same story run by one outlet's regional sites has several URLs; it is one article: outlet + title + day. */
+export function dedupeSyndicated<
+  T extends { id: string; url: string; title: string; published: string | null; outlet: Outlet | null },
+>(items: T[], preferred: Set<string>): T[] {
+  const kept = new Map<string, T>();
+  for (const it of items) {
+    const title = it.title.trim().replace(/\s+/g, " ").toLowerCase();
+    const key = title ? [it.outlet?.domain ?? new URL(it.url).hostname, title, it.published].join("|") : it.url;
+    const prior = kept.get(key);
+    if (!prior || (preferred.has(it.id) && !preferred.has(prior.id))) kept.set(key, it);
+  }
+  return [...kept.values()];
+}
+
 export function sample<T extends { id: string; stratum: Stratum | null }>(items: T[]): T[] {
   const out: T[] = [];
   for (const s of Object.keys(SAMPLE) as Stratum[]) {
@@ -112,11 +126,23 @@ export async function collect(ctx: StageContext) {
 
   const byUrl = new Map<string, Found>();
   for (const f of found) if (!byUrl.has(f.url)) byUrl.set(f.url, f);
-  const items = [...byUrl.values()].map((f) => ({ ...f, id: `${bill}:${hash(f.url)}`, stratum: stratumOf(f.outlet) }));
-
-  const picked = sample(items);
+  const distinct = [...byUrl.values()].map((f) => ({
+    ...f,
+    id: `${bill}:${hash(f.url)}`,
+    stratum: stratumOf(f.outlet),
+  }));
   const dir = textDir(bill);
   await mkdir(dir, { recursive: true });
+  const alreadyRead = new Set(
+    (
+      await Promise.all(
+        distinct.map(async (i) => ((await Bun.file(join(dir, `${i.id.split(":")[1]}.txt`)).exists()) ? i.id : "")),
+      )
+    ).filter(Boolean),
+  );
+  const items = dedupeSyndicated(distinct, alreadyRead);
+
+  const picked = sample(items);
   const need = [];
   for (const p of picked)
     if (ctx.refresh || !(await Bun.file(join(dir, `${p.id.split(":")[1]}.txt`)).exists())) need.push(p);
