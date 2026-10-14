@@ -244,6 +244,8 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+  z-index: 1;
+  background: var(--paper);
 }
 
 .tape-card {
