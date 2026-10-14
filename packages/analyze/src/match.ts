@@ -5,7 +5,7 @@ import { paths, python } from "@antibody/core/node";
 import { claude, parseJson, pool } from "./llm.ts";
 
 /** Bumped whenever the prompt or the menu format changes; old matches are then re-done. */
-export const MATCHER = "section-matcher-v4";
+export const MATCHER = "section-matcher-v5";
 export const MATCH_MODEL = process.env.ANTIBODY_MATCH_MODEL ?? "sonnet";
 const BATCH = 8;
 const PARALLEL = 4;
@@ -53,6 +53,8 @@ export function menu(sections: Row<"sections">[]) {
 
 /** Sections shown per article. A short bill is shown whole. */
 export const SHORTLIST = 15;
+/** Extra sections per article added by word overlap with the section heading (py/candidates.py). */
+export const LEXICAL = 8;
 /** A bill with this many sections or fewer is shown whole to the matcher: no shortlist step. */
 export const WHOLE_MENU = 40;
 
@@ -111,7 +113,7 @@ export async function matchArticles(
   const model = opts.model ?? MATCH_MODEL;
   const byId = new Map(sections.map((x) => [x.id, x]));
   const menuHash = createHash("sha1")
-    .update(`${sections.length <= WHOLE_MENU ? 0 : SHORTLIST}\n${menu(sections).text}`)
+    .update(`${sections.length <= WHOLE_MENU ? 0 : `${SHORTLIST}+${LEXICAL}`}\n${menu(sections).text}`)
     .digest("hex")
     .slice(0, 12);
   const file = Bun.file(join(paths.raw("analyze"), "match", `${bill}.${model}.json`));
