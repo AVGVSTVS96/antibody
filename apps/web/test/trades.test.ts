@@ -4,6 +4,8 @@ import genius from "../fixtures/119-s-1582.bundle.json";
 import { buildModel } from "../src/lib/model.ts";
 import {
   baseRate,
+  byAmount,
+  byOwner,
   companiesTiedTo,
   daysBetween,
   medianPerTrader,
@@ -158,4 +160,15 @@ test("the trade gaps are the notes about what the trade counts leave out", () =>
   const gaps = tradeGaps(raw);
   expect(gaps.length).toBeGreaterThan(0);
   expect(gaps.every((g) => g.kind === "paper_filings_unread" || /trades/.test(g.text))).toBe(true);
+});
+
+test("trades group by owner, most first, and by amount range, smallest first", () => {
+  const book = tradeBook(model());
+  const owners = byOwner(book.all);
+  expect(owners.reduce((n, o) => n + o.count, 0)).toBe(book.all.length);
+  expect(owners.map((o) => o.count)).toEqual([...owners.map((o) => o.count)].sort((a, b) => b - a));
+  const amounts = byAmount(book.all);
+  expect(amounts.reduce((n, a) => n + a.count, 0)).toBe(book.all.length);
+  expect(amounts[0]!.amount.startsWith("$1,001")).toBe(true);
+  expect(byAmount([]).length).toBe(0);
 });

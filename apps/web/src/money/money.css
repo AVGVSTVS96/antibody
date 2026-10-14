@@ -1,0 +1,661 @@
+.money > .tape {
+  padding: 24px var(--pad);
+  border-block: 2px solid var(--ink);
+}
+
+.money > .tape[data-pinned] {
+  padding-block: 10px;
+  border-top: 0;
+}
+
+.money-head {
+  padding-bottom: 40px;
+}
+
+.money-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 40px;
+  width: 100%;
+}
+
+.money-top > div:first-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.money-top .note {
+  flex: 0 0 380px;
+  margin-top: 8px;
+}
+
+.money-sec {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  font: 500 12px / 16px var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.legend-trade {
+  gap: 8px 18px;
+}
+
+.legend-trade i {
+  width: 3px;
+  height: 18px;
+  background: var(--loud);
+}
+
+.legend-trade i[data-out] {
+  background: var(--mid);
+}
+
+.legend-trade i[data-mark="band"] {
+  width: 22px;
+  height: 14px;
+  background: var(--window);
+}
+
+@media (max-width: 1000px) {
+  .money-top {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .money-top .note {
+    flex: none;
+    width: 100%;
+    margin-top: 0;
+  }
+}
+
+/* The ledger */
+
+.ledger {
+  --cols: 272px 232px minmax(0, 1fr) 176px 176px;
+}
+
+.lhead {
+  display: grid;
+  grid-template-columns: var(--cols);
+  gap: 20px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+}
+
+.lhead p {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: 500 10px / 12px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lhead b {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+}
+
+.lrows {
+  border-bottom: 1px solid var(--rule);
+}
+
+.lrow {
+  display: grid;
+  grid-template-columns: var(--cols);
+  align-items: center;
+  gap: 4px 20px;
+  padding-block: 14px;
+  border-top: 1px solid var(--rule);
+}
+
+.lrow:first-child {
+  border-top: 0;
+}
+
+.lab {
+  display: none;
+  font: 700 10px / 12px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lc {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lc h3 {
+  font: 800 17px / 19px var(--display);
+  letter-spacing: -0.02em;
+}
+
+.lc .meta,
+.lc-who span,
+.lc-pac span {
+  font: 500 10px / 14px var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lc-who b,
+.lc-pac b {
+  font: 700 12px / 14px var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lc-pac b {
+  font-size: 13px;
+}
+
+.cbox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--ink);
+}
+
+.cbox[data-inference] {
+  border-style: dashed;
+}
+
+.cbox b {
+  font: 700 12px / 15px var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cbox span {
+  font: 500 9px / 12px var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cbox.none {
+  border-style: dotted;
+  border-color: var(--mid);
+}
+
+.lrow-open {
+  grid-column: 1 / -1;
+  padding: 10px 0 4px;
+}
+
+.rowmembers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 6px 24px;
+}
+
+.rowmembers li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+  font: 700 12px / 16px var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.rowmembers span {
+  font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lrest {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 20px;
+}
+
+.lchips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px 24px;
+}
+
+.lchip {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 0 0 12px;
+  border: 0;
+  border-left: 3px solid var(--ink);
+  background: none;
+  text-align: left;
+}
+
+button.lchip:hover {
+  background: var(--soft);
+}
+
+.lchip[data-none] {
+  border-left-style: dotted;
+  border-left-color: var(--mid);
+}
+
+.lchip b {
+  font: 800 16px / 19px var(--display);
+  letter-spacing: -0.02em;
+}
+
+.lchip span {
+  font: 500 10px / 13px var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.who b {
+  text-decoration: underline 1px;
+  text-underline-offset: 0.2em;
+}
+
+.who:hover b {
+  text-decoration-thickness: 2px;
+}
+
+.who span {
+  font: 500 10px / 14px var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.lfloor {
+  margin-top: 16px;
+}
+
+@media (max-width: 1000px) {
+  .lhead {
+    display: none;
+  }
+
+  .lrow {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 14px 24px;
+    padding-block: 22px;
+  }
+
+  .lab {
+    display: block;
+  }
+
+  .lc-strip {
+    grid-column: 1 / -1;
+  }
+
+  .lc-who,
+  .lc-pac {
+    padding-top: 4px;
+    border-top: 1px solid var(--rule);
+  }
+}
+
+@media (max-width: 720px) {
+  .lrow {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    border-top: 2px solid var(--ink);
+  }
+
+  .lrow:first-child {
+    border-top: 0;
+  }
+
+  .lrow-open {
+    padding-top: 0;
+  }
+
+  .rowmembers {
+    grid-template-columns: 1fr;
+  }
+
+  .lc h3 {
+    font-size: 24px;
+    line-height: 26px;
+  }
+
+  .lc-who,
+  .lc-pac {
+    flex-direction: column;
+  }
+}
+
+/* The trade strip and its card */
+
+.strip {
+  position: relative;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  cursor: crosshair;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.strip:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+
+.strip-svg {
+  display: block;
+  overflow: visible;
+}
+
+.strip-band {
+  fill: var(--window);
+  transition: fill 120ms var(--ease);
+}
+
+.strip:has(.strip-tick[data-on]) .strip-band {
+  fill: color-mix(in srgb, var(--window), var(--ink) 12%);
+}
+
+.strip-base {
+  stroke: var(--mid);
+  stroke-width: 1;
+}
+
+.strip-tick {
+  fill: var(--loud);
+}
+
+.strip-tick[data-out] {
+  fill: var(--mid);
+}
+
+.strip-tick[data-on] {
+  fill: var(--link);
+}
+
+.tcard {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 40;
+  display: flex;
+  width: 300px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  cursor: default;
+  pointer-events: none;
+  animation: drop 100ms var(--ease) both;
+}
+
+.tcard[data-pinned] {
+  pointer-events: auto;
+}
+
+.tcard-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tcard-entry + .tcard-entry {
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+}
+
+.tcard-kicker {
+  font: 500 10px / 12px var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.tcard-who {
+  font: 800 17px / 19px var(--display);
+  letter-spacing: -0.02em;
+}
+
+.tcard-amount {
+  font: 500 11px / 15px var(--mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.tcard-tie,
+.tcard-more {
+  font: 700 10px / 14px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tcard-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font: 500 11px / 14px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tcard-x {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  font: 700 20px / 20px var(--mono);
+}
+
+@media (max-width: 720px) {
+  .tcard[data-pinned] {
+    position: fixed;
+    inset: auto 0 0;
+    width: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+    border-inline: 0;
+    border-bottom: 0;
+    box-shadow: 0 -6px 0 var(--ink);
+    animation: rise 220ms var(--ease) both;
+  }
+
+  .tcard:not([data-pinned]) {
+    display: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+/* The members behind the ticks */
+
+.behind {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 0.8fr);
+  align-items: start;
+  gap: 32px;
+}
+
+.behind-who {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.behind-n {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.behind-n strong {
+  font: 800 64px / 64px var(--display);
+  letter-spacing: -0.05em;
+}
+
+.behind-n span {
+  max-width: 380px;
+  padding-top: 4px;
+  font-size: 17px;
+  line-height: 23px;
+}
+
+.behind .note {
+  max-width: none;
+}
+
+.behind .note p + p {
+  margin-top: 8px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip {
+  display: inline-flex;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  font: 700 11px / 14px var(--mono);
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  transition:
+    background-color 120ms var(--ease),
+    color 120ms var(--ease);
+}
+
+.chip:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.chip span {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.chip:hover span {
+  color: inherit;
+}
+
+.chip[aria-current] {
+  background: var(--window);
+}
+
+@media (max-width: 1000px) {
+  .behind {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .behind-n strong {
+    font-size: 56px;
+  }
+}
+
+/* How common */
+
+.common {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 16px 48px;
+}
+
+.common table {
+  grid-row: span 3;
+  border-collapse: collapse;
+  font: 500 12px / 16px var(--mono);
+  letter-spacing: 0.04em;
+}
+
+.common caption {
+  padding-bottom: 8px;
+  text-align: left;
+}
+
+.common th,
+.common td {
+  padding: 9px 12px 9px 0;
+  border-top: 1px solid var(--rule);
+  text-align: left;
+}
+
+.common thead th {
+  border-top: 2px solid var(--ink);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.common tbody th {
+  font-weight: 700;
+}
+
+@media (max-width: 1000px) {
+  .common {
+    grid-template-columns: 1fr;
+  }
+
+  .common table {
+    grid-row: auto;
+  }
+}
+
+.behind details {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.behind summary {
+  cursor: pointer;
+  font: 500 11px / 14px var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--link);
+}
