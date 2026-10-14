@@ -513,6 +513,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       name: "Test Lobbyist",
       covered_position: "Legislative Assistant, Sen. Test",
       bill_ids: [BILL],
+      named_members: [],
       ...fact("https://lda.gov/filings/public/filing/9beeca5f-74bd-4012-8957-7053df57e67a/print/", "lobbyists"),
     },
     {
@@ -522,6 +523,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       name: "Test Lobbyist Two",
       covered_position: null,
       bill_ids: [BILL],
+      named_members: [],
       ...fact("https://lda.gov/filings/public/filing/9beeca5f-74bd-4012-8957-7053df57e67a/print/", "lobbyists"),
     },
   ],
