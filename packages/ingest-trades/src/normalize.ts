@@ -55,7 +55,20 @@ export function isoDate(raw: string | null | undefined): string | null {
 
 const dollars = (s: string) => Number(s.replace(/[$,\s]/g, ""));
 
-/** Disclosure ranges (a few paper forms print the lowest as "$1,000 - $15,000"; the statutory range starts at $1,001) ("$1,001 - $15,000", "Over $50,000,000", "Spouse/DC Over $1,000,000") or an exact amount as filed. */
+/** The statutory value ranges, by upper bound; a printed lower bound that disagrees ("$1,000", "$1,0001") is a form variant or typo for the bucket's real floor. */
+const BUCKET_FLOOR = new Map([
+  [15000, 1001],
+  [50000, 15001],
+  [100000, 50001],
+  [250000, 100001],
+  [500000, 250001],
+  [1000000, 500001],
+  [5000000, 1000001],
+  [25000000, 5000001],
+  [50000000, 25000001],
+]);
+
+/** Disclosure ranges ("$1,001 - $15,000", "Over $50,000,000", "Spouse/DC Over $1,000,000") or an exact amount as filed. */
 export function amountRange(raw: string): { min: number | null; max: number | null } {
   const s = raw
     .replace(/[\u00ad\u2010-\u2014]/g, "-")
@@ -63,8 +76,8 @@ export function amountRange(raw: string): { min: number | null; max: number | nu
     .trim();
   const range = s.match(/\$\s?([\d,]+(?:\.\d+)?)\s?-+\s?\$\s?([\d,]+(?:\.\d+)?)/);
   if (range) {
-    const min = dollars(range[1]!);
-    return { min: min === 1000 ? 1001 : min, max: dollars(range[2]!) };
+    const max = dollars(range[2]!);
+    return { min: BUCKET_FLOOR.get(max) ?? dollars(range[1]!), max };
   }
   const over = s.match(/over \$\s?([\d,]+)/i);
   if (over) return { min: dollars(over[1]!) + 1, max: null };
