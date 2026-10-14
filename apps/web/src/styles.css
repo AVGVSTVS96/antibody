@@ -460,9 +460,18 @@ main:focus {
   background: var(--paper);
 }
 
-.search input {
-  min-width: 0;
+.search-field {
+  display: grid;
   flex: 1;
+  min-width: 0;
+}
+
+.search-field > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.search input {
   border: 0;
   outline: 0;
   background: none;
@@ -474,9 +483,17 @@ main:focus {
   appearance: none;
 }
 
-.search input::placeholder {
+.search-ph {
+  overflow: hidden;
   color: var(--muted);
-  opacity: 1;
+  font: 400 13px / 16px var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.search-ph[data-typed] {
+  visibility: hidden;
 }
 
 .search input::-webkit-search-cancel-button {
@@ -505,7 +522,8 @@ main:focus {
   box-shadow: var(--shadow);
 }
 
-.search[data-size="hero"] input {
+.search[data-size="hero"] input,
+.search[data-size="hero"] .search-ph {
   font-size: 16px;
   line-height: 20px;
 }
@@ -603,10 +621,15 @@ main:focus {
     padding: 0;
   }
 
-  .search[data-size="hero"] input {
+  .search[data-size="hero"] input,
+  .search[data-size="hero"] .search-ph {
     padding: 16px 18px;
     font-size: 14px;
     line-height: 18px;
+  }
+
+  .search[data-size="hero"] .search-ph {
+    white-space: normal;
   }
 
   .search[data-size="hero"] button {
@@ -708,17 +731,11 @@ main:focus {
   text-decoration-style: dashed;
 }
 
-.src.ghost,
 .src.gone {
   color: var(--muted);
   text-decoration: none;
 }
 
-.src.ghost {
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.src.ghost::after,
 .src.gone::after {
   content: none;
 }
@@ -726,12 +743,6 @@ main:focus {
 .src-n {
   margin-left: 0.5em;
   color: var(--muted);
-}
-
-@keyframes pulse {
-  50% {
-    opacity: 0.45;
-  }
 }
 
 /* Primitives */
@@ -1532,8 +1543,7 @@ main:focus {
     scroll-behavior: auto !important;
   }
 
-  .bone,
-  .src.ghost {
+  .bone {
     animation: none;
   }
 

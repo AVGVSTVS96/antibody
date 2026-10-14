@@ -11,6 +11,15 @@ const words = (s: string) =>
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
 
+const SMALL_WORDS = new Set(["a", "an", "and", "for", "in", "of", "on", "the", "to"]);
+
+/** "Inflation Reduction Act of 2022" is IRA: the initials of a short title, without small words and years. */
+const acronym = (title: string) =>
+  words(title)
+    .filter((w) => !SMALL_WORDS.has(w) && !/^\d+$/.test(w))
+    .map((w) => w[0])
+    .join("");
+
 /** A bill number the way a person types it: `S.1582`, `H.R. 1`, `119-hr-1` or a congress.gov link. Congress null = not given. */
 function typedBill(q: string): { id: BillId; congress: number | null } | null {
   try {
@@ -33,6 +42,7 @@ function scoreBill(b: IndexBill, q: string, ws: string[]): number {
   const name = words(`${b.shortTitle ?? ""} ${b.title} ${b.law ?? ""}`);
   const short = squash(b.shortTitle ?? "");
   if (flat && short.startsWith(flat)) return 60;
+  if (flat.length >= 3 && acronym(b.shortTitle ?? "").startsWith(flat)) return 55;
   if (ws.every((w) => name.some((n) => n.startsWith(w)))) return 40;
   return 0;
 }

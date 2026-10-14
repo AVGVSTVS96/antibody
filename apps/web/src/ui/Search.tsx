@@ -65,7 +65,7 @@ export function SearchBox({
     return () => removeEventListener("keydown", slash);
   }, [size]);
 
-  const { items, missing } = useMemo(() => {
+  const { items, missing, empty } = useMemo(() => {
     const bills = index ? searchBills(index.bills, q) : [];
     const sections = model && model.id === openId ? searchSections(model.m, q) : [];
     const items: Item[] = [
@@ -95,7 +95,10 @@ export function SearchBox({
         ),
       })),
     ];
-    return { items, missing: index && !items.length && q.trim() ? missingBill(index.bills, q) : null };
+    const asked = index && !items.length && q.trim();
+    const missing = asked ? missingBill(index.bills, q) : null;
+    const loading = openId && model?.id !== openId;
+    return { items, missing, empty: !!asked && !missing && !loading };
   }, [index, model, openId, q, renderBill]);
 
   const go = (item: Item | undefined) => {
@@ -133,31 +136,35 @@ export function SearchBox({
           go(items[active]);
         }}
       >
-        <input
-          ref={input}
-          type="search"
-          role="combobox"
-          aria-expanded={open}
-          aria-controls={listId}
-          aria-activedescendant={open && items[active] ? `${listId}-${active}` : undefined}
-          aria-label={placeholder}
-          autoComplete="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          enterKeyHint="go"
-          placeholder={placeholder}
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setActive(0);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          onKeyDown={onKey}
-        />
+        <div className="search-field">
+          <span className="search-ph" aria-hidden="true" data-typed={q ? "" : undefined}>
+            {placeholder}
+          </span>
+          <input
+            ref={input}
+            type="search"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-activedescendant={open && items[active] ? `${listId}-${active}` : undefined}
+            aria-label={placeholder}
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            enterKeyHint="go"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setActive(0);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKey}
+          />
+        </div>
         {size === "hero" && <button type="submit">X-RAY IT</button>}
       </form>
-      {open && (items.length > 0 || missing) && (
+      {open && (items.length > 0 || missing || empty) && (
         <div className="results" id={listId} role="listbox" aria-label="Results">
           {items.map((it, i) => (
             <div key={it.key} id={`${listId}-${i}`} role="option" tabIndex={-1} aria-selected={i === active}>
@@ -182,6 +189,11 @@ export function SearchBox({
               <a href={congressGovUrl(missing.id)} target="_blank" rel="noopener noreferrer">
                 Read it on congress.gov ↗
               </a>
+            </p>
+          )}
+          {empty && (
+            <p className="missing">
+              No {openId ? "bill or section" : "bill"} matches “{q.trim()}”.
             </p>
           )}
         </div>

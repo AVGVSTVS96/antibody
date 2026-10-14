@@ -54,6 +54,13 @@ test("bills by title words", () => {
   expect(searchBills(bills, "zzzz")).toEqual([]);
 });
 
+test("a short title's initials find it", () => {
+  expect(searchBills(bills, "IRA").map((b) => b.id)).toEqual(["117-hr-5376"]);
+  expect(searchBills(bills, "arpa").map((b) => b.id)).toEqual(["117-hr-1319"]);
+  expect(searchBills(bills, "obbba").map((b) => b.id)).toEqual(["119-hr-1"]);
+  expect(searchBills(bills, "ir")).toEqual([]);
+});
+
 test("no query lists the library, newest first", () => {
   expect(searchBills(bills, "").map((b) => b.id)).toEqual([
     "119-s-1582",
