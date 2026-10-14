@@ -9,6 +9,7 @@
     "format": "biome check --write .",
     "typecheck": "tsc",
     "test": "bun test",
+    "test:nodata": "mkdir -p .nodata && ANTIBODY_DATA=$PWD/.nodata bun test",
     "ci": "biome ci . && tsc && bun test",
     "deploy": "scripts/deploy.sh",
     "e2e": "bun apps/web/scripts/e2e.ts"

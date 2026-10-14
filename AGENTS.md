@@ -7,6 +7,7 @@ Nonpartisan X-ray of US federal bills: headline vs. buried provisions, lobbying,
 - Raw downloads go in `data/` (gitignored, on disk, shared by every worktree). Heavy jobs (bulk downloads, OCR/vision, big parses, DuckDB loads) run memory-capped: `heavy()` / `python()` from `@antibody/core/node` wrap `systemd-run --user --scope -p MemoryMax=4G -p CPUWeight=20`, so they use idle CPU without starving the rest of the server.
 - Stack: TypeScript on Bun 1.4, TypeScript 7, Biome, DuckDB (`@duckdb/node-api`), React 19 + Vite 8. Python only where its library is clearly best (PDF, openpyxl): it lives in the package's `py/` with its own `pyproject.toml`, runs through `python()` with `-I`, and talks JSON/JSONL.
 - Commits are signed, small and often. `bun run ci` = Biome + tsc + bun test; GitHub Actions runs the same plus the web build.
+- To run tests as CI does (no downloads), use `bun run test:nodata`: it points `ANTIBODY_DATA` at an empty folder. Moving `data/` is slow and risky, since /tmp is RAM and data/ is 27G.
 
 ## Layout
 
