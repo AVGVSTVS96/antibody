@@ -1,12 +1,12 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { type BillId, billDisplay, type Row } from "@antibody/core";
-import { paths } from "@antibody/core/node";
+import { paths, python } from "@antibody/core/node";
 import { claude, parseJson, pool } from "./llm.ts";
 
 /** Bumped whenever the prompt or the menu format changes; old matches are then re-done. */
 export const MATCHER = "section-matcher-v2";
-export const MATCH_MODEL = process.env.ANTIBODY_MATCH_MODEL ?? "opus";
+export const MATCH_MODEL = process.env.ANTIBODY_MATCH_MODEL ?? "sonnet";
 const BATCH = 10;
 const PARALLEL = 4;
 const ARTICLE_WORDS = 900;
@@ -116,5 +116,50 @@ export async function matchArticles(
     await Bun.write(file, JSON.stringify(run));
   });
   await Bun.write(file, JSON.stringify(run));
+  const missing = articles.filter((a) => !run.matches[a.id]).length;
+  if (missing) throw new Error(`${missing} of ${articles.length} articles could not be matched; re-run to finish`);
   return run;
+}
+
+export const EMBED_MATCHER = "section-matcher-embed-v1";
+
+/** True when a tiny claude -p call goes through (no spend limit, logged in). */
+export async function claudeAvailable(model = MATCH_MODEL): Promise<boolean> {
+  try {
+    await claude('Reply with {"ok":true}', { system: "Reply with JSON only.", model });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The fallback matcher: local embeddings (py/match_embed.py), no model calls. Weaker than the claude matcher (it
+ * can't tell a passing mention from a main subject, and has no outside-the-text lane), so a bill is matched by one
+ * or the other, never a mix, and the attention rows say which.
+ */
+export async function matchEmbed(
+  bill: BillId,
+  title: string,
+  names: string[],
+  sections: Row<"sections">[],
+  articles: ArticleIn[],
+): Promise<MatchRun> {
+  const dir = join(paths.raw("analyze"), "match");
+  const input = join(dir, `${bill}.embed.in.json`);
+  const output = join(dir, `${bill}.embed.json`);
+  const payload = {
+    bill_title: title,
+    names,
+    sections: sections.map((s) => ({ id: s.id, text: `${s.heading}. ${lead(s.preview, 30)}` })),
+    articles: articles.map((a) => ({ id: a.id, title: a.title, text: a.text ? lead(a.text, ARTICLE_WORDS) : "" })),
+  };
+  const key = JSON.stringify(payload);
+  const prev = Bun.file(input);
+  if (!(await prev.exists()) || (await prev.text()) !== key || !(await Bun.file(output).exists())) {
+    await Bun.write(input, key);
+    await python(join(import.meta.dir, ".."), "match_embed.py", [input, output], { memoryMax: "3G" });
+  }
+  const r = await Bun.file(output).json();
+  return { matcher: EMBED_MATCHER, model: r.model, menuHash: "", costUsd: 0, matches: r.matches };
 }

@@ -1,13 +1,13 @@
 import { join } from "node:path";
 import type { BillId, Row, Stage, StageContext } from "@antibody/core";
 import { paths, python, readRows, writeRows } from "@antibody/core/node";
-import { articleText, OUTLETS } from "@antibody/ingest-news";
+import { articleText, OUTLETS, searchPlan } from "@antibody/ingest-news";
 import { attention } from "./attention.ts";
-import { matchArticles } from "./match.ts";
+import { claudeAvailable, matchArticles, matchEmbed } from "./match.ts";
 import { BOILERPLATE, SCORE, SCORE_TEXT, scoreRows, sectionDollars, sectionReports } from "./score.ts";
 
 export { ATTENTION_RULE, attention, MIN_ARTICLES, percentile } from "./attention.ts";
-export { MATCH_MODEL, MATCHER } from "./match.ts";
+export { EMBED_MATCHER, MATCH_MODEL, MATCHER } from "./match.ts";
 export { buried, label, SCORE, SCORE_RULE, SCORE_TEXT, stakes } from "./score.ts";
 
 const PKG = join(import.meta.dir, "..");
@@ -42,11 +42,18 @@ async function runAttention(ctx: StageContext) {
       text: a.text_chars ? await articleText(bill, a.id) : null,
     })),
   );
-  const run = await matchArticles(bill, b?.short_title ?? b?.title ?? bill, sections, input, {
-    refresh: ctx.refresh,
-    log: ctx.log,
-    signal: ctx.signal,
-  });
+  const title = b?.short_title ?? b?.title ?? bill;
+  const useClaude = process.env.ANTIBODY_MATCHER !== "embed" && (await claudeAvailable());
+  if (!useClaude) ctx.log("claude -p unavailable: matching with local embeddings (the weaker fallback)");
+  const run = useClaude
+    ? await matchArticles(bill, title, sections, input, { refresh: ctx.refresh, log: ctx.log, signal: ctx.signal })
+    : await matchEmbed(
+        bill,
+        title,
+        (await searchPlan(bill)).query.match(/"([^"]+)"/g)?.map((q) => q.slice(1, -1)) ?? [],
+        sections,
+        input,
+      );
   const res = attention(bill, sections, articles, run);
   await writeRows("attention", bill, res.rows);
   ctx.log(`${res.rows.length} attention rows from ${res.relevant} relevant articles (matcher ${run.model})`);
