@@ -25,4 +25,10 @@ await pool([...parsed], 8, async ([docId, { year, n }]) => {
   ours += n;
   if (count !== n) mismatch.push([`${year}/${docId}`, count, n]);
 });
-console.log(JSON.stringify({ docs: parsed.size, poppler, parsed: ours, mismatched: mismatch.length, sample: mismatch.slice(0, 15) }, null, 1));
+console.log(
+  JSON.stringify(
+    { docs: parsed.size, poppler, parsed: ours, mismatched: mismatch.length, sample: mismatch.slice(0, 15) },
+    null,
+    1,
+  ),
+);

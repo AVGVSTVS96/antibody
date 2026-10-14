@@ -59,6 +59,7 @@ function visionTrades(
       const { values, confidence, flagged, checks } = settle(r, i, page);
       const own = owner(values.owner);
       const type = tradeType(values.type ?? "");
+      if (!type && !values.date?.trim() && !values.amount?.trim()) continue;
       if (!own || !type) {
         dropped.push({ document: docId, row: r, why: !own ? `owner "${values.owner}"` : `type "${values.type}"` });
         continue;

@@ -17,6 +17,7 @@ describe("normalize", () => {
       "joint",
       "dependent",
     ]);
+    expect(["S", "(J)", "(DC)"].map(owner)).toEqual(["spouse", "joint", "dependent"]);
     expect(owner("Trust")).toBeNull();
   });
 
@@ -42,6 +43,7 @@ describe("normalize", () => {
   test("dates parse only when they are real calendar dates", () => {
     expect(isoDate("09/11/2025")).toBe("2025-09-11");
     expect(isoDate("10/20/23")).toBe("2023-10-20");
+    expect(isoDate("10-01-2020")).toBe("2020-10-01");
     expect(isoDate("09/1_/26")).toBeNull();
     expect(isoDate("02/30/2025")).toBeNull();
   });
@@ -51,6 +53,8 @@ describe("normalize", () => {
     expect(amountRange("Over $50,000,000")).toEqual({ min: 50000001, max: null });
     expect(amountRange("Spouse/DC Over $1,000,000")).toEqual({ min: 1000001, max: null });
     expect(amountRange("$360.00")).toEqual({ min: 360, max: 360 });
+    expect(amountRange("$.25")).toEqual({ min: 0.25, max: 0.25 });
+    expect(amountRange("$15,001 \u00ad $50,000")).toEqual({ min: 15001, max: 50000 });
     expect(amountRange("")).toEqual({ min: null, max: null });
   });
 });

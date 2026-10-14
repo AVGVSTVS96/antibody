@@ -19,7 +19,10 @@ const VisionRow = z.object({
   date: z.string(),
   notified: z.string().nullable(),
   amount: z.string(),
-  uncertain: z.array(Field),
+  /** Models sometimes explain ("date: last digit smudged"); keep the field name, drop the rest. */
+  uncertain: z
+    .array(z.string())
+    .transform((xs) => [...new Set(xs.flatMap((x) => FIELDS.filter((f) => x.trim().toLowerCase().startsWith(f))))]),
   note: z.string().nullable().optional(),
 });
 export type VisionRow = z.infer<typeof VisionRow>;

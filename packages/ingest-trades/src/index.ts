@@ -15,6 +15,8 @@ const SENATE_SINCE = "01/01/2019";
 
 /** Pages a single run may send to the vision model; the daily run keeps up with new paper filings within it. */
 const visionBudget = () => Number(process.env.ANTIBODY_VISION_PAGES ?? 200);
+/** Only filings on or after this date go to the vision model (ISO); unset reads every year, newest first. */
+const visionSince = () => process.env.ANTIBODY_VISION_SINCE ?? "";
 
 interface Scanned {
   doc: string;
@@ -46,9 +48,11 @@ async function unreadPages(house: HouseFiling[], pagesOf: (docId: string) => num
     });
   }
   const time = (d: string) => Date.parse(d) || 0;
+  const since = visionSince() ? Date.parse(visionSince()) : 0;
   scanned.sort((a, b) => time(b.filed) - time(a.filed));
   const jobs: (VisionJob & { s: Scanned })[] = [];
   for (const s of scanned) {
+    if (time(s.filed) < since) continue;
     const done = new Set(await cachedPages(s.doc));
     for (let p = 1; p <= s.pages; p++) if (!done.has(p)) jobs.push({ doc: s.doc, page: p, s });
   }
@@ -69,7 +73,7 @@ export async function ingestTrades(ctx: Pick<StageContext, "log" | "refresh">) {
   const batch = unread.slice(0, budget);
   ctx.log(`vision: ${unread.length} scanned pages unread, reading ${batch.length} now`);
   for (const j of batch) await prepare(j.doc, j.s.src(j.page), j.s.perImage ? j.page : undefined);
-  const { failed: visionFailed } = await readPages(batch, 4, ctx.log);
+  const { failed: visionFailed } = await readPages(batch, Number(process.env.ANTIBODY_VISION_WORKERS ?? 4), ctx.log);
   for (const f of visionFailed) ctx.log(`vision failed ${f.job.doc} p${f.job.page}: ${f.error}`);
 
   const built = await buildRows(house, parsed, reports);

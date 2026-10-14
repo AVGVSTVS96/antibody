@@ -7,6 +7,8 @@ const OWNERS: Record<string, Owner> = {
   "": "self",
   self: "self",
   sp: "spouse",
+  s: "spouse",
+  j: "joint",
   spouse: "spouse",
   jt: "joint",
   joint: "joint",
@@ -16,9 +18,19 @@ const OWNERS: Record<string, Owner> = {
   "dependent child": "dependent",
 };
 
-/** House codes (blank/SP/JT/DC), Senate words (Self/Spouse/Joint/Child) and vision output map to one owner. */
+/**
+ * House codes (blank/SP/JT/DC), the Senate paper form's (S)/(J)/(DC), Senate eFD words (Self/Spouse/Joint/Child)
+ * and vision output map to one owner. A blank owner cell means the filer, per both forms' instructions.
+ */
 export function owner(raw: string | null | undefined): Owner | null {
-  return OWNERS[(raw ?? "").trim().toLowerCase()] ?? null;
+  return (
+    OWNERS[
+      (raw ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/^\((.*)\)$/, "$1")
+    ] ?? null
+  );
 }
 
 export function tradeType(raw: string): TradeType | null {
@@ -30,9 +42,9 @@ export function tradeType(raw: string): TradeType | null {
   return null;
 }
 
-/** MM/DD/YYYY (or M/D/YY) to ISO, only when it is a real calendar date; anything else stays as filed and gives null. */
+/** MM/DD/YYYY (or M/D/YY, or with dashes) to ISO, only when it is a real calendar date; anything else stays as filed and gives null. */
 export function isoDate(raw: string | null | undefined): string | null {
-  const m = (raw ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  const m = (raw ?? "").trim().match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/);
   if (!m) return null;
   const [, mm = "", dd = "", yy = ""] = m;
   const year = yy.length === 2 ? 2000 + Number(yy) : Number(yy);
@@ -45,12 +57,15 @@ const dollars = (s: string) => Number(s.replace(/[$,\s]/g, ""));
 
 /** Disclosure ranges ("$1,001 - $15,000", "Over $50,000,000", "Spouse/DC Over $1,000,000") or an exact amount as filed. */
 export function amountRange(raw: string): { min: number | null; max: number | null } {
-  const s = raw.replace(/\s+/g, " ").trim();
-  const range = s.match(/\$\s?([\d,]+(?:\.\d+)?)\s?-\s?\$\s?([\d,]+(?:\.\d+)?)/);
+  const s = raw
+    .replace(/[\u00ad\u2010-\u2014]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  const range = s.match(/\$\s?([\d,]+(?:\.\d+)?)\s?-+\s?\$\s?([\d,]+(?:\.\d+)?)/);
   if (range) return { min: dollars(range[1]!), max: dollars(range[2]!) };
   const over = s.match(/over \$\s?([\d,]+)/i);
   if (over) return { min: dollars(over[1]!) + 1, max: null };
-  const exact = s.match(/^\$\s?([\d,]+(?:\.\d+)?)$/);
-  if (exact) return { min: dollars(exact[1]!), max: dollars(exact[1]!) };
+  const exact = s.match(/^\$\s?([\d,]*(?:\.\d+)?)$/);
+  if (exact?.[1]) return { min: dollars(exact[1]), max: dollars(exact[1]) };
   return { min: null, max: null };
 }
