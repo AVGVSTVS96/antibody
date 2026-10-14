@@ -1,5 +1,5 @@
 import { inBillOrder } from "@antibody/core";
-import { count, usd } from "./format.ts";
+import { count } from "./format.ts";
 import type { BillModel, SectionView } from "./model.ts";
 
 export type TapeKind = "headline" | "quiet" | "other";
@@ -222,6 +222,12 @@ export function quietRun(tape: Tape): TapeRun | null {
   return { from, to, rows: tape.rows.slice(from, to + 1).filter((r) => r.kind === "quiet") };
 }
 
+/** Signed CBO millions as a short figure with one decimal: "$29.7B", the way the designs print a range. */
+const short = (m: number) => {
+  const a = Math.abs(m);
+  return a < 1e3 ? `$${Math.round(a)}M` : a < 1e6 ? `$${(a / 1e3).toFixed(1)}B` : `$${(a / 1e6).toFixed(2)}T`;
+};
+
 const WORDS = [
   "zero",
   "one",
@@ -251,7 +257,7 @@ export function runNote(run: TapeRun, tape: Tape): string {
   if (figured.length) {
     parts.push(
       [adds && `${adds} add`, cuts && `${cuts} cut`].filter(Boolean).join(", "),
-      lo === hi ? `${usd(hi * 1e6)} each` : `${usd(lo * 1e6)} to ${usd(hi * 1e6)} each`,
+      lo === hi ? `${short(hi)} each` : `${short(lo)} to ${short(hi)} each`,
     );
   }
   const unfigured = n - figured.length;
