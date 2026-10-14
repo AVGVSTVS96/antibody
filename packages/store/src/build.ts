@@ -21,6 +21,7 @@ import {
 } from "@antibody/core";
 import { type AnyRow, mintClaim, type Names, restsOnOf } from "./claims.ts";
 import { type Db, type Param, query, tableNames } from "./db.ts";
+import { limitGraph } from "./limit.ts";
 import { ruleFor } from "./rules.ts";
 import { count, day, lawNumber, memberLabel, quarter } from "./text.ts";
 import { trimEvidence } from "./trim.ts";
@@ -266,6 +267,7 @@ class Builder {
       rules: [],
     };
     bundle.claims = Object.fromEntries(this.claims);
+    limitGraph(bundle);
     trimEvidence(bundle);
     bundle.rules = [...this.rulesUsed].map(ruleFor).filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i);
 
