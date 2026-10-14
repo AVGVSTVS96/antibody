@@ -26,18 +26,22 @@ export async function buildAliases(bill: BillId, extra: BillId[] = [], signal?: 
 
   const names = new Map<string, Aliases["names"][number]>();
   for (const s of statuses) {
-    const { whole, portions } = billNames(s);
-    const add = (title: string, level: "high" | "medium", why: string) => {
-      for (const form of nameForms(title)) {
+    for (const n of billNames(s)) {
+      const level = n.kind === "current" ? "high" : "medium";
+      const why =
+        n.kind === "current"
+          ? `short title of ${billDisplay(s.id)}`
+          : n.kind === "earlier"
+            ? `an earlier title of ${billDisplay(s.id)}; other bills may have used it`
+            : `title of a portion of ${billDisplay(s.id)}; another bill may share it`;
+      for (const form of nameForms(n.title)) {
         const prev = names.get(lc(form));
-        const since = [prev?.since, s.introduced].filter((d): d is string => !!d).sort()[0] ?? null;
+        const since = [prev?.since, n.since].filter((d): d is string => !!d).sort()[0] ?? null;
         if (!prev || (prev.level === "medium" && level === "high"))
-          names.set(lc(form), { text: form, title, level, since, why });
+          names.set(lc(form), { text: form, title: n.title, level, since, why });
         else prev.since = since;
       }
-    };
-    for (const t of whole) add(t, "high", `short title of ${billDisplay(s.id)}`);
-    for (const t of portions) add(t, "medium", `title of a portion of ${billDisplay(s.id)}; another bill may share it`);
+    }
   }
   for (const [k, n] of names)
     if ([...names.keys()].some((other) => other !== k && k.startsWith(other) && names.get(other)!.level === n.level))
@@ -50,7 +54,8 @@ export async function buildAliases(bill: BillId, extra: BillId[] = [], signal?: 
       if (other === c) continue;
       const r = await billStatus(billId({ congress: other, type, number }), signal);
       if (!r) continue;
-      for (const t of billNames(r).whole) for (const f of nameForms(t)) if (!names.has(lc(f))) rivals.add(f);
+      for (const t of billNames(r))
+        if (t.kind !== "portion") for (const f of nameForms(t.title)) if (!names.has(lc(f))) rivals.add(f);
       for (const law of r.laws) rivals.add(law);
     }
   }
@@ -123,5 +128,5 @@ export function coCited(filings: LdaFiling[], m: Matcher, min = 2): BillId[] {
 /** A candidate is an alias only when its own BILLSTATUS carries one of the bill's whole-bill short titles. */
 export function sameTitle(a: Aliases, candidate: BillStatus): boolean {
   const ours = new Set(a.names.filter((n) => n.level === "high").map((n) => lc(n.text)));
-  return billNames(candidate).whole.some((t) => nameForms(t).some((f) => ours.has(lc(f))));
+  return billNames(candidate).some((t) => t.kind !== "portion" && nameForms(t.title).some((f) => ours.has(lc(f))));
 }

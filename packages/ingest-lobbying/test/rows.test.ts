@@ -93,7 +93,7 @@ test("spend counts in-house expenses over outside income per client-quarter, and
   expect(whole.rests_on).toEqual(["lda_spend/119-s-1582:visa#share", "lda_spend/119-s-1582:tether#total"]);
 });
 
-test("BILLSTATUS: whole-bill and portion titles, law and enactment date", () => {
+test("BILLSTATUS: current and portion titles, law and enactment date", () => {
   const xml = `<billStatus><bill><introducedDate>2021-09-27</introducedDate>
     <titles>
       <item><titleType>Display Title</titleType><title>Inflation Reduction Act of 2022</title></item>
@@ -104,8 +104,33 @@ test("BILLSTATUS: whole-bill and portion titles, law and enactment date", () => 
     <actions><item><actionDate>2022-08-16</actionDate><text>Became Public Law No: 117-169.</text></item></actions>
   </bill></billStatus>`;
   const s = parseBillStatus("117-hr-5376", xml);
+  expect(s.versions).toEqual([]);
   expect(s.introduced).toBe("2021-09-27");
   expect(s.laws).toEqual(["117-169"]);
   expect(s.enactedOn).toBe("2022-08-16");
-  expect(billNames(s)).toEqual({ whole: ["Inflation Reduction Act of 2022"], portions: ["Build Back Better Act"] });
+  expect(billNames(s)).toEqual([
+    { title: "Inflation Reduction Act of 2022", kind: "current", since: "2021-09-27" },
+    { title: "Build Back Better Act", kind: "portion", since: "2021-09-27" },
+  ]);
+});
+
+test("a renamed vehicle's first title is an earlier name, dated by the version that carried it", () => {
+  const xml = `<billStatus><bill><introducedDate>2021-07-01</introducedDate>
+    <titles>
+      <item><titleType>Display Title</titleType><title>Chips and Science Act</title></item>
+      <item><titleType>Short Title(s) as Reported to House</titleType><title>Legislative Branch Appropriations Act, 2022</title><billTextVersionName>Reported in House</billTextVersionName></item>
+      <item><titleType>Other Short Titles for portions of a bill</titleType><title>CHIPS Act of 2022</title></item>
+    </titles>
+    <laws><item><number>117-167</number></item></laws>
+    <actions><item><actionDate>2022-08-09</actionDate><text>Became Public Law No: 117-167.</text></item></actions>
+    <textVersions>
+      <item><type>Engrossed Amendment Senate</type><date>2022-07-27T04:00:00Z</date></item>
+      <item><type>Reported in House</type><date>2021-07-01T04:00:00Z</date></item>
+    </textVersions>
+  </bill></billStatus>`;
+  expect(billNames(parseBillStatus("117-hr-4346", xml))).toEqual([
+    { title: "Chips and Science Act", kind: "current", since: "2021-07-01" },
+    { title: "Legislative Branch Appropriations Act, 2022", kind: "earlier", since: "2021-07-01" },
+    { title: "CHIPS Act of 2022", kind: "portion", since: "2022-07-27" },
+  ]);
 });

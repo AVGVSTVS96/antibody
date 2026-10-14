@@ -6,6 +6,8 @@ import { paths } from "@antibody/core/node";
 export interface BillTitle {
   type: string;
   title: string;
+  /** The text version the title comes from ("Engrossed in House"), when CRS says. */
+  version: string | null;
 }
 
 export interface BillStatus {
@@ -16,6 +18,8 @@ export interface BillStatus {
   /** Public law numbers, e.g. "119-27". */
   laws: string[];
   enactedOn: string | null;
+  /** Text versions with their dates ("Engrossed Amendment Senate", 2022-07-27). */
+  versions: { type: string; date: string | null }[];
   policyArea: string | null;
   /** CRS's latest summary as plain text. */
   summary: string | null;
@@ -64,6 +68,7 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
   const titles = items(bill, "titles").map((x) => ({
     type: decode(tag(x, "titleType") ?? ""),
     title: decode(tag(x, "title") ?? ""),
+    version: tag(x, "billTextVersionName") ?? null,
   }));
   const laws = items(bill, "laws")
     .map((x) => tag(x, "number"))
@@ -78,6 +83,10 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
     titles,
     laws,
     enactedOn: enacted ? (tag(enacted, "actionDate") ?? null) : null,
+    versions: items(bill, "textVersions").map((x) => ({
+      type: decode(tag(x, "type") ?? ""),
+      date: tag(x, "date")?.slice(0, 10) ?? null,
+    })),
     policyArea: bill.match(/<policyArea>\s*<name>([^<]*)<\/name>/)?.[1] ?? null,
     summary: summary ? decode(summary.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ")).replace(/\s+/g, " ") : null,
   };
@@ -85,17 +94,41 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
 
 const OFFICIAL = /^(A bill|An act|To |A joint resolution|A resolution|A concurrent resolution|Joint resolution)/i;
 
-/** Names the whole bill went by (short, popular and display titles), and titles of portions of it. */
-export function billNames(s: BillStatus): { whole: string[]; portions: string[] } {
-  const whole = new Set<string>();
-  const portions = new Set<string>();
+export interface BillName {
+  title: string;
+  /** current: what the bill is called at the end; earlier: a title it dropped; portion: a title for part of it. */
+  kind: "current" | "earlier" | "portion";
+  /** When a filing could first have used it for this bill: the date of the text version that carried it. */
+  since: string | null;
+}
+
+const PORTION = /portions? of (?:this|a) bill/i;
+const CURRENT = /display title|popular title|as enacted|enrolled/i;
+
+/**
+ * Names the bill went by. For a law, its display, popular and enacted titles are current and the rest are
+ * earlier names (a vehicle like CHIPS began as the Legislative Branch Appropriations Act, 2022). Portion titles
+ * count only from the latest dated text version when CRS doesn't say which version carried them.
+ */
+export function billNames(s: BillStatus): BillName[] {
+  const dated = s.versions.filter((v) => v.date).map((v) => v.date!);
+  const versionDate = (name: string | null) => s.versions.find((v) => v.type === name)?.date ?? null;
+  const latest = dated.sort().at(-1) ?? s.introduced;
+  const out = new Map<string, BillName>();
+  const rank = { current: 2, earlier: 1, portion: 0 };
   for (const t of s.titles) {
-    if (!t.title || OFFICIAL.test(t.title)) continue;
-    if (/portions? of this bill/i.test(t.type)) portions.add(t.title);
-    else if (/short title|popular title|display title/i.test(t.type)) whole.add(t.title);
+    if (!t.title || OFFICIAL.test(t.title) || !/title/i.test(t.type)) continue;
+    const kind: BillName["kind"] = PORTION.test(t.type)
+      ? "portion"
+      : !s.enactedOn || CURRENT.test(t.type) || /enrolled/i.test(t.version ?? "")
+        ? "current"
+        : "earlier";
+    const since = versionDate(t.version) ?? (kind === "portion" ? latest : s.introduced);
+    const prev = out.get(t.title);
+    if (!prev || rank[kind] > rank[prev.kind]) out.set(t.title, { title: t.title, kind, since });
+    else if (rank[kind] === rank[prev.kind] && since && (!prev.since || since < prev.since)) prev.since = since;
   }
-  for (const w of whole) portions.delete(w);
-  return { whole: [...whole], portions: [...portions] };
+  return [...out.values()];
 }
 
 export const officialTitles = (s: BillStatus) =>
