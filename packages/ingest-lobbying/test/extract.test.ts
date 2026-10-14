@@ -110,6 +110,8 @@ test("a filer's 'companion bill' of another named Act is held out; hyphenated na
   expect(level("H.R. 471, Fix Our Forests Act (and companion bill S. 5); all provisions", laken, p)).toBe("low");
   expect(level("NETWORK opposed S. 5, the Laken-Riley Act.", laken, p)).toBe("high");
   expect(level("NETWORK opposed S. 5, the Laken-Riley Bill.", laken, p)).toBe("medium");
+  expect(level("budget reconciliation process. (HR 1, PL 119-1) Met with staff", laken, p)).toBe("low");
+  expect(level("Laken Riley Act, PL 119-1", laken, p)).toBe("high");
 });
 
 test("a possessive s is not a Senate bill", () => {

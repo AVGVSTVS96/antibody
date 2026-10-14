@@ -214,15 +214,26 @@ export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
   }
 
   let lawCited = false;
-  for (const l of text.matchAll(LAW))
-    if (a.laws.includes(`${l[1]}-${l[2]}`)) {
-      lawCited = true;
-      refs.push({ how: "public-law", text: l[0], level: "high", why: "public law number" });
-    }
+  const ours = (n: { type: string; number: number }) => m.numbers.has(`${n.type}${n.number}`);
+  const conflict = (at: number, len: number) => {
+    const near = text.slice(Math.max(0, at - 40), at + len + 40);
+    const numbers = billNumbers(near);
+    return numbers.some((n) => !ours(n)) && !numbers.some(ours) && !m.names.some((x) => x.re.test(near));
+  };
+  for (const l of text.matchAll(LAW)) {
+    if (!a.laws.includes(`${l[1]}-${l[2]}`)) continue;
+    lawCited = true;
+    refs.push(
+      conflict(l.index!, l[0].length)
+        ? { how: "public-law", text: l[0], level: "low", why: "the public law sits next to another bill's number" }
+        : { how: "public-law", text: l[0], level: "high", why: "public law number" },
+    );
+  }
   if (!lawCited)
     for (const law of a.laws) {
       const hit = text.match(new RegExp(`(?<![\\d-])${law}(?![\\d-])`));
-      if (hit) refs.push({ how: "public-law", text: hit[0], level: "medium", why: "bare public law number" });
+      if (hit && !conflict(hit.index!, hit[0].length))
+        refs.push({ how: "public-law", text: hit[0], level: "medium", why: "bare public law number" });
     }
   return refs;
 }
