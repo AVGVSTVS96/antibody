@@ -1,0 +1,129 @@
+stratum|source|name|context|edgar_name|ticker|method|confidence|reason|check
+ticker|trade|KLA Corporation - Common Stock||KLA CORP|KLAC|ticker|0.99||ok
+ticker|trade|Pepsico Inc||PEPSICO INC|PEP|ticker|0.99||ok
+ticker|trade|Quest Diagnostics Incorporated Common Stock (DGX) [ST]||QUEST DIAGNOSTICS INC|DGX|ticker|0.99||ok
+ticker|trade|Vistra Corp. Common Stock (VST) [ST]||Vistra Corp.|VST|ticker|0.99||ok
+ticker|trade|FedEx Corporation Common Stock||FEDEX CORP|FDX|ticker|0.99||ok
+ticker|trade|Oracle Corporation Common Stock||ORACLE CORP|ORCL|ticker|0.99||ok
+ticker|trade|Heico Corporation Common Stock (HEI) [ST]||HEICO CORP|HEI|ticker|0.99||ok
+ticker|trade|United Parcel Service, Inc. Common Stock (UPS) [ST]||UNITED PARCEL SERVICE INC|UPS|ticker|0.99||ok
+ticker|trade|Home BancShares, Inc. Common Stock (HOMB) [ST]||HOME BANCSHARES INC|HOMB|ticker|0.99||ok
+ticker|trade|Ameriprise Financial, Inc. Common Stock||AMERIPRISE FINANCIAL INC|AMP|ticker|0.99||ok
+ticker|trade|Perion Network Ltd - Ordinary Shares (PERI) [ST]||Perion Network Ltd.|PERI|ticker|0.99||ok
+ticker|trade|Neurocrine Biosciences, Inc. - Common Stock (NBIX) [ST]||NEUROCRINE BIOSCIENCES INC|NBIX|ticker|0.99||ok
+ticker|trade|AngioDynamics, Inc. - Common Stock (ANGO) [ST]||ANGIODYNAMICS INC|ANGO|ticker|0.99||ok
+ticker|trade|Accenture Plc||Accenture plc|ACN|ticker|0.99||ok
+ticker|trade|Home Depot, Inc. (The) Common Stock||HOME DEPOT, INC.|HD|ticker|0.99||ok
+name_exact|client|NORTHROP GRUMMAN CORPORATION|NORTHROP GRUMMAN   Aerospace & Defense|NORTHROP GRUMMAN CORP /DE/|NOC|name_exact|0.95||ok
+name_exact|pac|ENCORE CAPITAL GROUP, INC. POLITICAL ACTION COMMITTEE||ENCORE CAPITAL GROUP INC|ECPG|name_exact|0.95||ok
+name_exact|pac|CARDINAL HEALTH INC. PAC||CARDINAL HEALTH INC|CAH|name_exact|0.95||ok
+name_exact|pac|AXON ENTERPRISE INC|PAC name: AXON ENTERPRISE INC POLITICAL ACTION COMMITTEE|AXON ENTERPRISE, INC.|AXON|name_exact|0.95||ok
+name_exact|client|RED ROCK RESORTS, INC.|Hospitality company|Red Rock Resorts, Inc.|RRR|name_exact|0.95||ok
+name_exact|client|EDISON INTERNATIONAL||EDISON INTERNATIONAL|EIX|name_exact|0.95||ok
+name_exact|pac|MERIT MEDICAL SYSTEMS INC|PAC name: MERIT MEDICAL SYSTEMS INC EMPLOYEE GOOD GOVERNANCE PAC|MERIT MEDICAL SYSTEMS INC|MMSI|name_exact|0.95||ok
+name_exact|client|CF INDUSTRIES INC||CF Industries Holdings, Inc.|CF|name_exact|0.95||ok: CF Industries Inc is the operating company under CF Industries Holdings
+name_exact|pac|MARATHON PETROLEUM CORPORATION|PAC name: MARATHON PETROLEUM CORPORATION EMPLOYEES POLITICAL ACTION COMMITTEE (MPAC)|Marathon Petroleum Corp|MPC|name_exact|0.95||ok
+name_exact|pac|AVIS BUDGET GROUP, INC.|PAC name: AVIS BUDGET GROUP, INC. PAC|AVIS BUDGET GROUP, INC.|CAR|name_exact|0.95||ok
+name_exact|pac|OSI SYSTEMS INC.|PAC name: OSI SYSTEMS INC PAC OSI PAC|OSI SYSTEMS INC|OSIS|name_exact|0.95||ok
+name_exact|trade|Bank of New York Mellon Corp||Bank of New York Mellon Corp|BNY|name_exact|0.95||ok
+name_exact|client|SMITHFIELD FOODS, INC.|Pork processor and hog producer|SMITHFIELD FOODS INC|SFD|name_exact|0.95||ok
+name_exact|client|DTE ENERGY||DTE ENERGY CO|DTE|name_exact|0.95||ok
+name_exact|pac|PERIMETER SOLUTIONS INC. POLITICAL ACTION COMMITTEE||Perimeter Solutions, Inc.|PRM|name_exact|0.95||ok
+name_exact|pac|FLOWERS FOODS INC.|PAC name: FLOWERS FOODS, INC. POLITICAL ACTION COMMITTEE|FLOWERS FOODS INC|FLO|name_exact|0.95||ok
+name_exact|client|SL GREEN REALTY CORP.|Real estate investment trust|SL GREEN REALTY CORP|SLG|name_exact|0.95||ok
+name_exact|pac|PENN ENTERTAINMENT INC POLITICAL ACTION COMMITTEE|PAC name: PENN ENTERTAINMENT INC POLITICAL ACTION COMMITTEE|PENN Entertainment, Inc.|PENN|name_exact|0.95||ok
+name_exact|client|SABLE OFFSHORE CORP.|independent upstream company|Sable Offshore Corp.|SOC|name_exact|0.95||ok
+name_exact|pac|H&R BLOCK INC.|PAC name: H&R BLOCK INC. POLITICAL ACTION COMMITTEE (BLOCKPAC)|H&R BLOCK INC|HRB|name_exact|0.95||ok
+fuzzy|client|T-MOBILE USA, INC.|T-MOBILE; T-MOBILE US, INC.; ML STRATEGIES, LLC (ON BEHALF OF T-MOBILE USA, INC.)   American wireless network operator|T-Mobile US, Inc.|TMUS|fuzzy|0.9||ok: T-Mobile USA is the operating sub of T-Mobile US
+fuzzy|pac|UNITED COMMUNITY BANK|PAC name: BETTER GOVERNMENT COMMITTEE OF UNITED COMMUNITY BANKS, INC.|UNITED COMMUNITY BANKS INC|UCB|fuzzy|0.9||ok
+fuzzy|pac|USANA HEATLH SCIENCES, INC.|PAC name: USANA HEALTH SCIENCES, INC PAC|USANA HEALTH SCIENCES INC|USNA|fuzzy|0.9||ok
+llm_same|pac|UNITI GROUP INC.|PAC name: UNITI GROUP INC. PAC (UNITI PAC)|Uniti Group Inc.|UNIT|llm_same|0.95|The name exactly matches the listed Uniti Group Inc.|ok
+llm_same|trade|Hensoldt AG ADR (HAGHY)||Hensoldt AG/ADR|HNSDF|llm_same|0.95|This is the Hensoldt AG ADR.|ok
+llm_same|client|MERCARI, INC.||Mercari, Inc./ADR|MRCIF|llm_same|0.9|Same company, Mercari, Inc., whose US ADR listing is the candidate.|ok
+llm_same|pac|INTEL CORPORATION|PAC name: INTEL CORPORATION POLITICAL ACTION COMMITTEE|INTEL CORP|INTC|llm_same|0.98|Intel Corporation is Intel Corp.|ok
+llm_same|client|PEPSICO INC|PEPSICO, INC.; PEPSICO|PEPSICO INC|PEP|llm_same|0.98|Same company.|ok
+llm_same|trade|Softbank Group Corp ADR (SFTBY)||SOFTBANK GROUP CORP.|SFTBF|llm_same|0.96|This is the SoftBank Group Corp ADR.|ok
+llm_same|client|TRIMBLE INC|Provider of advanced positioning equipment|TRIMBLE INC.|TRMB|llm_same|0.99|The name matches Trimble Inc.|ok
+llm_same|client|OVINTIV INC.||Ovintiv Inc.|OVV|llm_same|0.98|Same company, Ovintiv Inc.|ok
+llm_same|client|CIENA CORPORATION|Telecommunications network infrastructure provider.|CIENA CORP|CIEN|llm_same|0.99|Ciena Corporation is Ciena Corp.|ok
+llm_same|pac|NEXTDECADE CORPORATION|PAC name: NEXTDECADE CORPORATION POLITICAL ACTION COMMITTEE|NextDecade Corp|NEXT|llm_same|0.97|Same company as NextDecade Corp.|ok
+llm_same|client|CELANESE CORPORATION||Celanese Corp|CE|llm_same|0.98|Same company, Celanese.|ok
+llm_same|client|ARRAY TECH, INC.|American company and global provider of utility-scale solar tracker technology|Array Technologies, Inc.|ARRY|llm_same|0.93|Array Tech is Array Technologies, the solar tracker maker.|ok
+llm_same|trade|Weyerhaeuser Company Common Stock When Distibuted (WY.Z) [ST]||WEYERHAEUSER CO|WY|llm_same|0.95|These are when-distributed Weyerhaeuser common shares.|ok
+llm_same|pac|ALLIANT ENERGY CORPORATION EMPLOYEE'S POLITICAL ACTION COMM||ALLIANT ENERGY CORP|LNT|llm_same|0.97|Employee PAC of Alliant Energy Corp.|ok
+llm_same|pac|INTERDIGITAL, INC., PAC||InterDigital, Inc.|IDCC|llm_same|0.95|The PAC sponsor is InterDigital, Inc.|ok
+llm_same|pac|VISA INC|PAC name: VISA, INC. POLITICAL ACTION COMMITTEE|VISA INC.|V|llm_same|0.97|The name is Visa Inc.|ok
+llm_same|pac|HALLIBURTON COMPANY|PAC name: HALLIBURTON COMPANY PAC|HALLIBURTON CO|HAL|llm_same|0.98|Halliburton Company matches the candidate.|ok
+llm_same|client|BLOCK INC.|BLOCK, INC.   technology company|Block, Inc.|XYZ|llm_same|0.97|This is Block, Inc., the former Square.|ok
+llm_same|pac|VISTRA CORP.|PAC name: VISTRA EMPLOYEE POLITICAL ACTION COMMITTEE OF VISTRA CORP.|Vistra Corp.|VST|llm_same|0.98|Exact match to Vistra Corp.|ok
+llm_same|client|EINRIDE|An autonomous electric vehicle company.|Einride AB|ENRD|llm_same|0.85|Einride the autonomous electric trucking company is Einride AB.|ok: Einride AB listed (ENRD) via SPAC
+llm_subsidiary|client|VISTRA CORPORATE SERVICES COMPANY F/K/A VISTRA ENERGY|Energy|Vistra Corp.|VST|llm_subsidiary|0.93|Vistra Corporate Services Company is a subsidiary of Vistra Corp.|ok
+llm_subsidiary|pac|IHG SIX CONTINENTS HOTELS INC. POLITICAL ACTION COMMITTEE (IHG PAC)||INTERCONTINENTAL HOTELS GROUP PLC /NEW/|IHG|llm_subsidiary|0.93|Six Continents Hotels Inc. is the US operating subsidiary of InterContinental Hotels Group PLC.|ok
+llm_subsidiary|client|ACCENTURE LLP|ACCENTURE|Accenture plc|ACN|llm_subsidiary|0.95|Accenture LLP is the US operating arm of Accenture plc.|ok
+llm_subsidiary|pac|ACCENTURE INC. POLITICAL ACTION COMMITTEE||Accenture plc|ACN|llm_subsidiary|0.95|Accenture Inc. is the US subsidiary of Accenture plc.|ok
+llm_subsidiary|client|SIEMENS GAMESA RENEWABLE ENERGY, INC.|Original equipment manufacturer designing and manufacturing renewable energy equipment.|Siemens Energy AG/ADR|SMERY|llm_subsidiary|0.9|Siemens Gamesa has been wholly owned by Siemens Energy AG since 2023.|ok
+llm_subsidiary|client|NOVOCURE INC.|Oncology company with novel therapy for solid tumors|NovoCure Ltd|NVCR|llm_subsidiary|0.85|Novocure Inc. is the US operating arm of NovoCure Ltd.|ok
+llm_subsidiary|client|D-WAVE GOVERNMENT INC.|535 GROUP, LLC ON BEHALF OF D-WAVE GOVERNMENT INC.|D-Wave Quantum Inc.|QBTS|llm_subsidiary|0.93|D-Wave Government Inc. is the US public-sector subsidiary of D-Wave Quantum.|ok
+llm_subsidiary|pac|BLACKROCK FUNDS SERVICES GROUP LLC|PAC name: BLACKROCK FUNDS SERVICES GROUP LLC POLITICAL ACTION COMMITTEE (BLACKROCK PAC)|BlackRock, Inc.|BLK|llm_subsidiary|0.9|BlackRock Funds Services Group LLC is an operating subsidiary of BlackRock, Inc.|ok
+llm_subsidiary|pac|PHOENIX EDUCATION PARTNERS, INC. GOVERNANCE FUND||Phoenix Education Partners, Inc.|PXED|llm_subsidiary|0.88|This is the PAC of Phoenix Education Partners.|ok
+llm_subsidiary|pac|JBS USA FOOD COMPANY PAC||JBS N.V.|JBS|llm_subsidiary|0.93|JBS USA is the US arm of JBS N.V.|ok
+llm_subsidiary|pac|TENABLE, INC.|PAC name: TENABLE, INC. POLITICAL ACTION COMMITTEE (TENABLE PAC)|Tenable Holdings, Inc.|TENB|llm_subsidiary|0.93|Tenable, Inc. is the operating subsidiary of Tenable Holdings, Inc.|ok
+llm_subsidiary|pac|INVESCO HOLDING COMPANY (US), INC.|PAC name: INVESCO HOLDING COMPANY (US), INC. EMPLOYEE POLITICAL ACTION COMMITTEE|Invesco Ltd.|IVZ|llm_subsidiary|0.92|Invesco Holding Company (US) is the US holding subsidiary of Invesco Ltd.|ok
+llm_subsidiary|pac|AEROJET ROCKETDYNE AN L3HARRIS TECHNOLOGIES COMPANY PAC||L3HARRIS TECHNOLOGIES, INC. /DE/|LHX|llm_subsidiary|0.96|Aerojet Rocketdyne has been owned by L3Harris since 2023.|ok
+llm_subsidiary|pac|UBS AMERICAS INC.|PAC name: UBS AMERICAS INC. POLITICAL ACTION COMMITTEE (UBS PAC)|UBS Group AG|UBS|llm_subsidiary|0.92|UBS Americas Inc. is the US holding subsidiary of UBS Group AG.|ok
+llm_subsidiary|pac|FIDELITY NATIONAL FINANCIAL INC PAC 2001||Fidelity National Financial, Inc.|FNF|llm_subsidiary|0.94|This is the corporate PAC of Fidelity National Financial, Inc.|ok
+llm_subsidiary|pac|ZILLOW GROUP, INC. POLITICAL ACTION COMMITTEE (ZG PAC)||ZILLOW GROUP, INC.|ZG|llm_subsidiary|0.95|This is the corporate PAC of Zillow Group.|ok
+llm_subsidiary|client|JOHNSON & JOHNSON SERVICES, INC.|JOHNSON & JOHNSON SERVICES INC; JOHNSON & JOHNSON SERVICES, INC|JOHNSON & JOHNSON|JNJ|llm_subsidiary|0.97|Johnson & Johnson Services is J&J's US services subsidiary.|ok
+llm_subsidiary|client|HITACHI ENERGY USA INC|HITACHI ENERGY USA INC.|HITACHI LTD|HTHIY|llm_subsidiary|0.93|Hitachi Energy USA is the US arm of Hitachi Energy, owned by Hitachi Ltd.|ok
+llm_subsidiary|pac|GERDAU AMERISTEEL US INC.|PAC name: GERDAU AMERISTEEL US INC. (GERDAU PAC)|GERDAU S.A.|GGB|llm_subsidiary|0.9|Gerdau Ameristeel US is the US steel subsidiary of Gerdau S.A.|ok
+llm_subsidiary|client|HARLEY-DAVIDSON MOTOR COMPANY INC|Manufacturing motorcycles|HARLEY-DAVIDSON, INC.|HOG|llm_subsidiary|0.96|Harley-Davidson Motor Company is the operating subsidiary of Harley-Davidson, Inc.|ok
+llm_parent|client|SOO LINE CORPORATION DBA CPKC|Railway|CANADIAN PACIFIC KANSAS CITY LTD/CN|CP|llm_parent|0.93|Soo Line Corporation is the US subsidiary of CPKC, which is NYSE-listed as CP.|ok
+llm_parent|pac|ALABAMA POWER COMPANY|PAC name: ALABAMA POWER CO EMPLOYEES FEDERAL POLITICAL ACTION CMTE (APC EMPLOYEES FEDERAL PAC)|SOUTHERN CO|SO|llm_parent|0.95|Alabama Power is a wholly owned utility subsidiary of Southern Company.|ok
+llm_parent|client|WILLIS NORTH AMERICA INC.|WILLIS NORTH AMERICA INC|WILLIS TOWERS WATSON PLC|WTW|llm_parent|0.9|Willis North America is the US arm of WTW.|ok
+llm_parent|client|TENET BUSINESS SERVICES CORPORATION|BROWNSTEIN HYATT FARBER SCHRECK LLP OBO TENET BUSINESS SERVICES CORPORATION   Healthcare|TENET HEALTHCARE CORP|THC|llm_parent|0.88|Tenet Business Services Corporation is a Tenet Healthcare subsidiary.|ok
+llm_parent|pac|ABIOMED INC POLITICAL ACTION COMMITTEE (ABIOMED PAC)||JOHNSON & JOHNSON|JNJ|llm_parent|0.9|Abiomed was acquired by Johnson & Johnson in December 2022.|ok
+llm_parent|pac|RBC USA HOLDCO CORPORATION FEDERAL POLITICAL ACTION COMMITTEE||ROYAL BANK OF CANADA|RY|llm_parent|0.9|RBC USA Holdco is the US holding company of Royal Bank of Canada.|ok
+llm_parent|client|BMO BANK N.A. (FKA BMO HARRIS BANK N.A.)||BANK OF MONTREAL /CAN/|BMO|llm_parent|0.92|BMO Bank N.A. is the US banking subsidiary of NYSE-listed Bank of Montreal.|ok
+llm_parent|client|HORIZON THERAPEUTICS USA, INC. (FKA HORIZON PHARMA USA, INC.)|HORIZON THERAPEUTICS USA, INC. (FORMERLY KNOWN AS HORIZON PHARMA USA, INC.); HORIZON THERAPEUTICS|AMGEN INC|AMGN|llm_parent|0.88|Horizon Therapeutics was acquired by Amgen in October 2023.|ok
+llm_parent|pac|GLAXOSMITHKLINE LLC|PAC name: GLAXOSMITHKLINE LLC PAC (GSK PAC)|GSK plc|GSK|llm_parent|0.9|GlaxoSmithKline LLC is the US operating subsidiary of GSK plc.|ok
+llm_parent|client|LYONDELL CHEMICAL COMPANY|LYONDELL CHEMICAL CO|LyondellBasell Industries N.V.|LYB|llm_parent|0.9|Lyondell Chemical Company is a subsidiary of LyondellBasell.|ok
+llm_parent|client|GOVERNMENT EMPLOYEES INSURANCE COMPANY|Auto insurance provider|BERKSHIRE HATHAWAY INC|BRK-B|llm_parent|0.93|Government Employees Insurance Company (GEICO) is wholly owned by Berkshire Hathaway.|ok
+llm_parent|pac|MISSISSIPPI POWER COMPANY FEDERAL PAC||SOUTHERN CO|SO|llm_parent|0.9|Mississippi Power is a Southern Company utility subsidiary, not part of Entergy Mississippi.|ok
+llm_parent|pac|ZENECA INC.|PAC name: ZENECA INC. POLITICAL ACTION COMMITTEE (AZPAC)|ASTRAZENECA PLC|AZN|llm_parent|0.88|Zeneca Inc. is AstraZeneca's US operating subsidiary (AZPAC).|ok
+llm_parent|client|RBC CAPITAL MARKETS, LLC||ROYAL BANK OF CANADA|RY|llm_parent|0.92|RBC Capital Markets is the US broker-dealer arm of NYSE-listed Royal Bank of Canada.|ok
+llm_parent|client|BOARDWALK PIPELINE, LP|provides transportation and storage of natural gas and liquids|LOEWS CORP|L|llm_parent|0.9|Boardwalk Pipelines has been wholly owned by Loews Corporation since 2018.|ok
+llm_parent|client|OSCAR MANAGEMENT CORPORATION|Health Insurance Payer|Oscar Health, Inc.|OSCR|llm_parent|0.85|Oscar Management Corporation is a subsidiary of Oscar Health.|ok
+llm_parent|client|MIZUHO AMERICAS SERVICES LLC|Financial Institution|MIZUHO FINANCIAL GROUP INC|MFG|llm_parent|0.92|Mizuho Americas is the US arm of Mizuho Financial Group.|ok
+llm_parent|pac|BUNGE NORTH AMERICA INC POLITICAL ACTION COMMITTEE||Bunge Global SA|BG|llm_parent|0.85|Bunge North America is the US arm of NYSE-listed Bunge Global SA.|ok
+llm_parent|client|MODERNATX, INC.|Pharmaceutical and biotechnology company.|Moderna, Inc.|MRNA|llm_parent|0.92|ModernaTX, Inc. is Moderna's operating subsidiary.|ok
+llm_parent|pac|GRAND TRUNK WESTERN RAILROAD CO|PAC name: GRAND TRUNK WESTERN RAILROAD CO- ILLINOIS CENTRAL RAILROAD CO GTW-IC PAC (CN PAC)|CANADIAN NATIONAL RAILWAY CO|CNI|llm_parent|0.92|Grand Trunk Western is a US subsidiary of CN, which is NYSE-listed.|ok
+none|pac|TRELLIX SKYHIGH PAC||||||no close SEC name|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|SSA MARINE|Port Operations and Stevedoring Services|||||no close SEC name|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|NATIONAL ASSN OF BROADCASTERS||||||reads as an association, government or school, and no SEC name is close|ok: correctly unresolved (no SEC-listed company or parent)
+none|pac|GPS CONSERVATIVES FOR ACTION||||||no close SEC name|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|ROCKY MOUNTAIN ELK FOUNDATION|Non-profit conservation organization|||||reads as an association, government or school, and no SEC name is close|ok: correctly unresolved (no SEC-listed company or parent)
+none|pac|AMERICAN ASSOCIATION OF BIOANALYSTS|PAC name: AMERICAN ASSOCIATION OF BIOANALYSTS POLITICAL ACTION COMMITTEE (AAB*PAC)|||||reads as an association, government or school, and no SEC name is close|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|CITY OF OCALA, FLORIDA|Municipal Government.|||||no close SEC name|ok: correctly unresolved (no SEC-listed company or parent)
+none|trade|Sumitomo Metal Mining Co Ltd Unsponsored ADR (SMMYY)||||||no close SEC name|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|COINFLIP|Cryptocurrency ATM Operator|||||no close SEC name|ok: correctly unresolved (no SEC-listed company or parent)
+none|pac|AMERICAN PUBLIC POWER ASSOCIATION|PAC name: AMERICAN PUBLIC POWER ASSOCIATION, PUBLIC OWNERSHIP OF ELECTRIC RESOURCES PAC|||||reads as an association, government or school, and no SEC name is close|ok: correctly unresolved (no SEC-listed company or parent)
+none|pac|INTERNATIONAL LIQUID TERMINALS ASSOCIATION PAC (ILTA-PAC)||||||no close SEC name|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|THE TRANSPORT PROJECT|National transportation coalition dedicated to use of low-carbon gaseous motor fuels|||||reads as an association, government or school, and no SEC name is close|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|1AU TECHNOLOGIES|Technology Research and Development|||||no close SEC name|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|COUNTY OF CUMBERLAND, NC|County Government|||||reads as an association, government or school, and no SEC name is close|ok: correctly unresolved (no SEC-listed company or parent)
+none|client|CREDIT UNION NATIONAL ASSOCIATION, INC. DBA AMERICA'S CREDIT UNIONS||||||reads as an association, government or school, and no SEC name is close|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|pac|SOUTHERN MINNESOTA BEET SUGAR COOPERATIVE|PAC name: SOUTHERN MINNESOTA BEET SUGAR COOPERATIVE POLITICAL ACTION COMMITTEE|||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|pac|MARTINFEDERAL CONSULTING, LLC POLITICAL ACTION COMMITTEE (MARTINFED PAC)||||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|client|WORKMONEY, INC (DBA WORKMONEY)||||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|client|APPLIED RESEARCH ASSOCIATES, INC.||||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|pac|AMERICAN VICTORY COMMITTEE||||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|client|NORSK HYDRO USA, LLC|Aluminum manufacturing and renewable energy.|||||model confidence 0.55 < 0.8|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|client|ESHARES, INC. D/B/A CARTA, INC.||||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|pac|TRIUMPH FOODS PAC||||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|pac|RHEEM MANUFACTURING COMPANY|PAC name: RHEEM MANUFACTURING COMPANY POLITICAL ACTION COMMITTEE (RHEEM PAC)|||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|client|INLAND REAL ESTATE GROUP LLC|Real Estate Investments and Management.|||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|client|GENERAL ATOMICS|Nuclear industry|||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|pac|MARQUETTE PAC LLC||||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|pac|TRIDENT SEAFOODS CORPORATION|PAC name: FRIENDS OF TRIDENT SEAFOODS CORPORATION PAC|||||model: none|ok: correctly unresolved (no SEC-listed company or parent)
+rejected|pac|CALPINE LLC|PAC name: CALPINE LLC PAC|||||proposed parent not confirmed in SEC's list|miss: Constellation (CEG) closed the Calpine deal in early 2026; model said 0.8, under the 0.85 parent floor
+rejected|client|ARKANSAS LITHIUM CORPORATION|Direct Lithium Extraction from Brine Technology / Demonstration Plant in South Arkansas|||||model: none|unsure: ownership not confirmed
