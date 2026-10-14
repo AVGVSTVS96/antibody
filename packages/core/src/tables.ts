@@ -24,6 +24,7 @@ const Party = z.enum(["R", "D", "I"]);
 const Chamber = z.enum(["House", "Senate"]);
 const Baseline = z.enum(["current-law", "current-policy"]);
 const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit"]);
+const Spending = z.enum(["direct", "discretionary"]);
 
 const table = <S extends z.ZodRawShape>(owner: string, shape: S) => ({
   owner,
@@ -130,6 +131,9 @@ export const TABLES = {
     per_section: z.boolean(),
     mandate_private: z.string().nullable(),
     mandate_intergovernmental: z.string().nullable(),
+    /** The estimate's PDF (mandate box, prose that cbo_notes quote by page) and the archive copy we read. */
+    pdf_url: z.url().nullable(),
+    pdf_archive_url: z.url().nullable(),
     ...fact,
   }),
   cbo_lines: table("@antibody/ingest-cbo", {
@@ -140,6 +144,8 @@ export const TABLES = {
     section_ids: z.array(z.string()),
     title: z.string().nullable(),
     measure: Measure,
+    /** direct = mandatory spending (counts toward the deficit); discretionary = subject to future appropriation. Null for revenues and deficit. */
+    spending: Spending.nullable(),
     period: z.string(),
     /** $ millions, sign as CBO prints it. Deficit: positive = adds to the deficit. */
     total_musd: z.number(),

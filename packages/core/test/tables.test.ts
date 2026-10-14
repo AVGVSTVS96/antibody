@@ -32,3 +32,28 @@ test("rows are strict: an unknown column fails", () => {
   expect(TABLES.pacs.schema.safeParse(ok).success).toBe(true);
   expect(TABLES.pacs.schema.safeParse({ ...ok, extra: 1 }).success).toBe(false);
 });
+
+test("cbo lines name their spending kind and estimates keep the PDF they quote", () => {
+  const line = {
+    id: "119-s-1582.cbo-61551:bill:outlays:discretionary",
+    estimate_id: "119-s-1582.cbo-61551",
+    bill_id: "119-s-1582",
+    line_kind: "whole-bill",
+    section_nums: [],
+    section_ids: [],
+    title: null,
+    measure: "outlays",
+    spending: "discretionary",
+    period: "2025-2030",
+    total_musd: 0,
+    values: { "2025-2030": 0 },
+    split: "exact",
+    archive_url: null,
+    rests_on: [],
+    source_url: "https://www.cbo.gov/system/files/2025-07/s1582.pdf",
+    source_locator: "page 1, At a Glance",
+  };
+  expect(TABLES.cbo_lines.schema.safeParse(line).success).toBe(true);
+  expect(TABLES.cbo_lines.schema.safeParse({ ...line, spending: "other" }).success).toBe(false);
+  expect(Object.fromEntries(columns("cbo_estimates")).pdf_url).toBe("VARCHAR");
+});
