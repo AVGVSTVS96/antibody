@@ -162,10 +162,14 @@ export function SearchBox({
             onKeyDown={onKey}
           />
         </div>
-        {size === "hero" && <button type="submit">X-RAY IT</button>}
+        {size === "hero" && (
+          <button type="submit" className="search-go">
+            X-RAY IT
+          </button>
+        )}
       </form>
       {open && (items.length > 0 || missing || empty) && (
-        <div className="results" id={listId} role="listbox" aria-label="Results">
+        <div className="results" id={listId} role="listbox" aria-label="Results" tabIndex={-1}>
           {items.map((it, i) => (
             <div key={it.key} id={`${listId}-${i}`} role="option" tabIndex={-1} aria-selected={i === active}>
               <a

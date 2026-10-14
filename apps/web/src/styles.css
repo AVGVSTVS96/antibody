@@ -344,18 +344,6 @@ main:focus {
   animation: drop 160ms var(--ease) both;
 }
 
-.top-sheet .results {
-  position: static;
-  width: auto;
-  max-height: none;
-  margin-top: 12px;
-  box-shadow: none;
-}
-
-.top-sheet .box-btn {
-  align-self: flex-start;
-}
-
 @keyframes drop {
   from {
     opacity: 0;
@@ -421,6 +409,10 @@ main:focus {
     background-color 120ms var(--ease),
     color 120ms var(--ease),
     opacity 120ms;
+}
+
+.top-sheet .box-btn {
+  align-self: flex-start;
 }
 
 .box-btn svg {
@@ -528,7 +520,7 @@ main:focus {
   line-height: 20px;
 }
 
-.search[data-size="hero"] button {
+.search-go {
   height: 46px;
   padding-inline: 24px;
   border: 0;
@@ -539,7 +531,7 @@ main:focus {
   transition: transform 100ms var(--ease);
 }
 
-.search[data-size="hero"] button:active {
+.search-go:active {
   transform: translate(1px, 1px);
 }
 
@@ -556,6 +548,14 @@ main:focus {
   box-shadow: var(--shadow);
   text-align: left;
   animation: drop 120ms var(--ease) both;
+}
+
+.top-sheet .results {
+  position: static;
+  width: auto;
+  max-height: none;
+  margin-top: 12px;
+  box-shadow: none;
 }
 
 .search-wrap[data-size="hero"] .results {
@@ -632,7 +632,7 @@ main:focus {
     white-space: normal;
   }
 
-  .search[data-size="hero"] button {
+  .search-go {
     height: 52px;
     margin: 0 -2px -2px;
   }
@@ -1416,7 +1416,7 @@ main:focus {
   font-size: 12px;
 }
 
-.rcpt-nav span {
+.rcpt-pos {
   margin-left: 4px;
 }
 

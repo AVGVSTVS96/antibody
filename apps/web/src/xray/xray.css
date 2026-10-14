@@ -130,7 +130,7 @@ fieldset.x-sorts {
     color 120ms var(--ease);
 }
 
-.x-toggle button + button {
+.x-toggle > * + * {
   border-left: 2px solid var(--ink);
 }
 
@@ -573,11 +573,11 @@ fieldset.x-sorts {
   color: var(--muted);
 }
 
-.x-filters button b {
+.x-filters b {
   font-size: 12px;
 }
 
-.x-filters button span {
+.x-filters span {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1238,12 +1238,12 @@ fieldset.x-sorts {
     display: none;
   }
 
-  .x-filters button b {
+  .x-filters b {
     font-size: 10px;
     font-weight: inherit;
   }
 
-  .x-filters button span {
+  .x-filters span {
     gap: 5px;
   }
 
@@ -1383,6 +1383,10 @@ fieldset.x-sorts {
     border-left: 0;
   }
 
+  .x-note {
+    padding: 12px 14px;
+  }
+
   .x-notes-pair {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1394,10 +1398,6 @@ fieldset.x-sorts {
 
   .x-notes-pair .x-note + .x-note {
     border-left: 1px solid var(--ink);
-  }
-
-  .x-note {
-    padding: 12px 14px;
   }
 
   .x-big {

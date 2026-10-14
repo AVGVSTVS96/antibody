@@ -97,7 +97,7 @@ export function nameRegex(name: string): RegExp {
     const forms = isAcronymWord(bare) ? [bare, ...transpositions(bare)] : [bare];
     return `(?:${forms.map(escapeRe).join("|")})[.,:]?`;
   });
-  return new RegExp(String.raw`(?<![A-Za-z])${words.join(String.raw`[\s,.\-–]+`)}(?![A-Za-z])`, "i");
+  return new RegExp(`(?<![A-Za-z])${words.join(String.raw`[\s,.\-–]+`)}(?![A-Za-z])`, "i");
 }
 
 /** "One Big Beautiful Bill Act" → OBBBA (and OBBB): only for 4+ capitalized words, so IRA never collides. */

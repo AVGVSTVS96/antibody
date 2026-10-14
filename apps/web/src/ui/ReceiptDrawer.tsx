@@ -193,7 +193,7 @@ export function ReceiptDrawer({
               >
                 →
               </button>
-              <span aria-live="polite">
+              <span className="rcpt-pos" aria-live="polite">
                 {nested ? "RECORD" : "MARK"} {walk.at + 1} OF {count}
               </span>
             </div>
