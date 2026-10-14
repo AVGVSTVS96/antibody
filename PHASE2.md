@@ -66,3 +66,14 @@ Still open:
 - No throttled-network skeleton test.
 - Live e2e retries source URLs, but a flaky DNS failure is still possible.
 - 768 tablet shots and the phone list view on live were not re-reviewed.
+
+## Watcher and curated set: done and still open
+
+Done: flag cutoff of 25 (moving is worth at most 20 points, so a bill that only moved never clears it; at most 25 flagged, a quiet week flags none, the digest prints the highest score below the cutoff); lobbying counts are checked filings (lda.gov search finds candidates, each filing's issue lines must cite the exact bill number in its own Congress; the digest says "read N of M search hits"); a party symmetry audit over the last 14 digest days of moved bills, flagged and not (needs 10 flagged bills before it tests for a gap, otherwise it shows the rates); stale `hot` rows no longer survive a same-day rerun. The curated set gains the 117th Republican-led Ukraine Democracy Defense Lend-Lease Act (S.3522, P.L. 117-118) and the 119th Democratic-led Epstein Files Transparency Act (H.R.4405, P.L. 119-38), published on the site (14 bills, 7 per party).
+
+Still open:
+- The audit only has days from the first run of this version on; older digests lack the moved-bill list.
+- Both new bills are short with no CBO estimate, so their dollars and buried tests say "not measured". The Bipartisan Safer Communities Act (S.2938, a Rubio courthouse bill as vehicle) is a bigger 117th Republican-vehicle candidate; adding it needs a Democratic-led 119th bill beside it to keep the list balanced.
+- The enrich shortlist (top 25 by the cheap score) breaks ties alphabetically among enrolled bills.
+- Lobbying checks read at most 8 pages (200 filings) a year per bill; a busier bill shows "N of M read".
+- news fetch (trafilatura in threads) crashed once with a native "double free"; a rerun succeeded.

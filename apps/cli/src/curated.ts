@@ -10,9 +10,9 @@ export interface Pick {
 }
 
 /**
- * The bills `antibody build` x-rays for the site: six led by each party, alternating. "Led by" is the sponsor's
+ * The bills `antibody build` x-rays for the site: seven led by each party, alternating. "Led by" is the sponsor's
  * party on the measure that became law (a vehicle bill's sponsor counts, as BILLSTATUS records it). Every id,
- * sponsor and law number was checked against GovInfo BILLSTATUS on 2026-10-13.
+ * sponsor and law number was checked against GovInfo BILLSTATUS on 2026-10-13 (the last two on 2026-10-14).
  */
 export const CURATED: Pick[] = [
   { id: "119-s-1582", name: "GENIUS Act", ledBy: "R", sponsor: "Sen. Hagerty [R-TN]", law: "119-27" },
@@ -68,5 +68,19 @@ export const CURATED: Pick[] = [
     ledBy: "D",
     sponsor: "Rep. Connolly [D-VA-11]",
     law: "117-328",
+  },
+  {
+    id: "117-s-3522",
+    name: "Ukraine Democracy Defense Lend-Lease Act of 2022",
+    ledBy: "R",
+    sponsor: "Sen. Cornyn [R-TX]",
+    law: "117-118",
+  },
+  {
+    id: "119-hr-4405",
+    name: "Epstein Files Transparency Act",
+    ledBy: "D",
+    sponsor: "Rep. Khanna [D-CA-17]",
+    law: "119-38",
   },
 ];
