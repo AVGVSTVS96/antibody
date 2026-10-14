@@ -6,7 +6,7 @@ import { attention } from "./attention.ts";
 import { claudeAvailable, matchArticles, matchEmbed } from "./match.ts";
 import { BOILERPLATE, SCORE, SCORE_TEXT, scoreRows, sectionDollars, sectionReports } from "./score.ts";
 
-export { ATTENTION_RULE, attention, MIN_ARTICLES, percentile } from "./attention.ts";
+export { ATTENTION_RULE, attention, MIN_ARTICLES, MIN_SIDE_ARTICLES, MIN_TEXT_CHARS, percentile } from "./attention.ts";
 export { EMBED_MATCHER, MATCH_MODEL, MATCHER } from "./match.ts";
 export { buried, label, SCORE, SCORE_RULE, SCORE_TEXT, stakes } from "./score.ts";
 

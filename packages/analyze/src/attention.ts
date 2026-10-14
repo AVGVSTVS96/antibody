@@ -9,6 +9,14 @@ export const ATTENTION_RULE =
 
 /** Below this many sampled, relevant articles a bill's percentiles are not shown. */
 export const MIN_ARTICLES = 20;
+/**
+ * An article with less text than this (a paywall stub, a failed fetch, a headline) is not counted: a matcher cannot
+ * tell which sections it covers, and outlets differ in how much of their text a script can read, so counting them
+ * would shrink one side's attention for reasons that have nothing to do with the bill.
+ */
+export const MIN_TEXT_CHARS = 1000;
+/** A side with fewer relevant, readable articles than this is left out of the equal weighting and named as a gap. */
+export const MIN_SIDE_ARTICLES = 10;
 const EXAMPLES = 3;
 const SIDE_NAMES = Object.keys(SIDES) as Side[];
 
@@ -36,7 +44,7 @@ export function attention(
   articles: Row<"articles">[],
   run: MatchRun,
 ): AttentionResult {
-  const read = articles.filter((a) => a.text_chars !== null && run.matches[a.id]);
+  const read = articles.filter((a) => (a.text_chars ?? 0) >= MIN_TEXT_CHARS && run.matches[a.id]);
   const match = (a: Row<"articles">) => run.matches[a.id] as Match;
   const relevant = read.filter((a) => match(a).about !== "unrelated");
   const counted = relevant.filter((a) => a.outlet_id && sideOf(groupOf.get(a.outlet_id)!));
@@ -53,7 +61,13 @@ export function attention(
   const sampled = Object.fromEntries(
     SIDE_NAMES.map((s) => [s, read.filter((a) => a.outlet_id && sideOf(groupOf.get(a.outlet_id)!) === s).length]),
   );
-  const activeSides = SIDE_NAMES.filter((s) => perSide[s] > 0);
+  const fetched = Object.fromEntries(
+    SIDE_NAMES.map((s) => [
+      s,
+      articles.filter((a) => a.text_chars !== null && a.outlet_id && sideOf(groupOf.get(a.outlet_id)!) === s).length,
+    ]),
+  );
+  const activeSides = SIDE_NAMES.filter((s) => perSide[s] >= MIN_SIDE_ARTICLES);
 
   const balanced = (hitters: Row<"articles">[]) => {
     if (!activeSides.length) return 0;
@@ -104,7 +118,9 @@ export function attention(
     outlet_list_version: OUTLET_LIST.version,
     via: [...new Set(articles.map((a) => a.via))],
     found_by_side: found,
-    read_by_side: sampled,
+    sampled_by_side: fetched,
+    readable_by_side: sampled,
+    sides_weighted: activeSides,
     relevant_by_side: perSide,
     relevant_trade_legal: trade.length,
   };

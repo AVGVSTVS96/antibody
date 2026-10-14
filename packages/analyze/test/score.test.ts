@@ -99,7 +99,7 @@ test("section dollars are a signed deficit effect and remember even splits", () 
 
 const section = (id: string, in_final = true) => ({ id, in_final }) as Row<"sections">;
 const article = (id: string, outlet: string) =>
-  ({ id, outlet_id: outlet, text_chars: 100, via: "mediacloud" }) as Row<"articles">;
+  ({ id, outlet_id: outlet, text_chars: 2000, via: "mediacloud" }) as Row<"articles">;
 
 test("each side weighs the same, however many articles it publishes", () => {
   const arts = [
@@ -120,4 +120,42 @@ test("each side weighs the same, however many articles it publishes", () => {
   expect(row("a").pct).toBe(row("b").pct);
   expect(row("a").hits).toBe(30);
   expect(row("b").hits).toBe(10);
+});
+
+test("articles too short to read are not counted, so paywalls cannot shrink one side", () => {
+  const arts = [
+    ...Array.from({ length: 12 }, (_, i) => article(`L${i}`, "rawstory.com")),
+    ...Array.from({ length: 12 }, (_, i) => article(`R${i}`, "foxnews.com")),
+    ...Array.from({ length: 40 }, (_, i) => ({ ...article(`P${i}`, "foxnews.com"), text_chars: 300 })),
+  ];
+  const matches: MatchRun["matches"] = {};
+  for (const a of arts)
+    matches[a.id] = { about: "bill", sections: a.id.startsWith("P") ? [] : ["a"], whole: false, outside: null };
+  const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
+  const res = attention("119-hr-1", [section("a"), section("b")], arts, run);
+  expect(res.share.get("a")).toBe(1);
+  expect(res.relevant).toBe(24);
+});
+
+test("swapping the left and right outlets changes nothing", () => {
+  const make = (leftOutlet: string, rightOutlet: string) => {
+    const arts = [
+      ...Array.from({ length: 15 }, (_, i) => article(`L${i}`, leftOutlet)),
+      ...Array.from({ length: 15 }, (_, i) => article(`R${i}`, rightOutlet)),
+    ];
+    const matches: MatchRun["matches"] = {};
+    for (const a of arts)
+      matches[a.id] = {
+        about: "bill",
+        sections: a.id.startsWith("L") ? ["a", "b"] : ["a"],
+        whole: false,
+        outside: null,
+      };
+    const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
+    return attention("119-hr-1", [section("a"), section("b")], arts, run);
+  };
+  const one = make("rawstory.com", "foxnews.com");
+  const two = make("foxnews.com", "rawstory.com");
+  expect(two.share.get("b")).toBe(one.share.get("b")!);
+  expect(two.rows.map((r) => r.pct)).toEqual(one.rows.map((r) => r.pct));
 });

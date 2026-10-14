@@ -5,7 +5,7 @@ import { paths, python } from "@antibody/core/node";
 import { claude, parseJson, pool } from "./llm.ts";
 
 /** Bumped whenever the prompt or the menu format changes; old matches are then re-done. */
-export const MATCHER = "section-matcher-v2";
+export const MATCHER = "section-matcher-v3";
 export const MATCH_MODEL = process.env.ANTIBODY_MATCH_MODEL ?? "sonnet";
 const BATCH = 10;
 const PARALLEL = 4;
@@ -13,6 +13,7 @@ const ARTICLE_WORDS = 900;
 
 export interface ArticleIn {
   id: string;
+  /** Not shown to the matcher: it judges the text, never who published it. */
   outlet: string;
   title: string;
   text: string | null;
@@ -58,11 +59,11 @@ For each article:
 - "whole": true when the article covers the bill as a whole (its passage, a vote, its politics, its total cost), whether or not it also discusses sections.
 - "outside": when the article is about this bill's debate but its main subject is something that is not in the bill's text (an issue the bill leaves out, a failed amendment, a conflict of interest tied to it), name that subject in at most eight plain, neutral words; otherwise null.
 
-Judge every article by the same standard, whatever its outlet or point of view. Reply with JSON only: an array with one object per article, {"a": <article number>, "about": "bill"|"mention"|"unrelated", "s": [...], "whole": true|false, "outside": string|null}.`;
+Judge every article by the same standard, whatever its point of view. Reply with JSON only: an array with one object per article, {"a": <article number>, "about": "bill"|"mention"|"unrelated", "s": [...], "whole": true|false, "outside": string|null}.`;
 }
 
 const articleBlock = (a: ArticleIn, n: number) =>
-  `ARTICLE ${n} (${a.outlet})\nTitle: ${a.title}\n${a.text ? lead(a.text, ARTICLE_WORDS) : "(only the headline could be read)"}`;
+  `ARTICLE ${n}\nTitle: ${a.title}\n${a.text ? lead(a.text, ARTICLE_WORDS) : "(only the headline could be read)"}`;
 
 export async function matchArticles(
   bill: BillId,

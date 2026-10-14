@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { type BillId, parseBillId } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 import { OUTLETS, sideOf } from "@antibody/ingest-news";
+import { MIN_TEXT_CHARS } from "../src/attention.ts";
 
 const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group]));
 const pct = (n: number, d: number) => (d ? `${((100 * n) / d).toFixed(0)}%` : "-");
@@ -29,7 +30,11 @@ for (const arg of Bun.argv.slice(2)) {
   console.log("\nmatcher by side (articles read):");
   for (const side of ["left", "center", "right"] as const) {
     const read = articles.filter(
-      (a) => a.text_chars && a.outlet_id && sideOf(groupOf.get(a.outlet_id)!) === side && matches[a.id],
+      (a) =>
+        (a.text_chars ?? 0) >= MIN_TEXT_CHARS &&
+        a.outlet_id &&
+        sideOf(groupOf.get(a.outlet_id)!) === side &&
+        matches[a.id],
     );
     const rel = read.filter((a) => matches[a.id]!.about !== "unrelated");
     const main = read.filter((a) => matches[a.id]!.about === "bill");
