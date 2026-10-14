@@ -17,9 +17,8 @@ export interface Ctx {
 
 /** FACT or INFERENCE as the claims themselves say, so a label never promises more than the record. */
 function Kind({ ids, note }: { ids: readonly string[]; note?: string }) {
-  const { claims } = useReceipt();
-  if (!claims) return <span className="x-kind">&nbsp;</span>;
-  const inference = ids.some((id) => claims[id]?.kind === "inference");
+  const { inference: isInference } = useReceipt();
+  const inference = ids.some(isInference);
   return inference ? (
     <span className="x-kind">
       <InferenceTag small />
