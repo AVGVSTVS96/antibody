@@ -1,0 +1,1403 @@
+{
+ "version": "2026-10",
+ "built": "2026-10-14",
+ "rule": [
+  "Counted outlets are US national news sites that cover Congress.",
+  "An outlet's group is its Media Cloud 2019 US partisanship quintile: which politicians' followers shared its stories on Twitter (left, center-left, center, center-right, right). When Media Cloud lists an outlet in several quintiles, its group is the midpoint, rounded toward center.",
+  "An outlet is counted only if Media Cloud collects it (at least 20 stories mentioning Congress in one of the probe windows) and it has a partisanship rating.",
+  "Attention weighs the left side (left + center-left), the center, and the right side (center-right + right) equally, so no side counts more because it has more outlets or publishes more stories.",
+  "Trade and legal press (law firms, industry and policy trade outlets) is collected and shown apart; it never counts toward attention."
+ ],
+ "sources": {
+  "left": "https://search.mediacloud.org/collections/200363061",
+  "center-left": "https://search.mediacloud.org/collections/200363048",
+  "center": "https://search.mediacloud.org/collections/200363050",
+  "center-right": "https://search.mediacloud.org/collections/200363062",
+  "right": "https://search.mediacloud.org/collections/200363049"
+ },
+ "probes": [
+  {
+   "start": "2022-07-01",
+   "end": "2022-09-30"
+  },
+  {
+   "start": "2025-05-01",
+   "end": "2025-07-31"
+  }
+ ],
+ "outlets": [
+  {
+   "domain": "rawstory.com",
+   "name": "rawstory.com",
+   "group": "left",
+   "mediacloud_id": 1127,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    1298,
+    883
+   ]
+  },
+  {
+   "domain": "alternet.org",
+   "name": "alternet.org",
+   "group": "left",
+   "mediacloud_id": 1140,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    440,
+    583
+   ]
+  },
+  {
+   "domain": "dailykos.com",
+   "name": "dailykos.com",
+   "group": "left",
+   "mediacloud_id": 115,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    698,
+    480
+   ]
+  },
+  {
+   "domain": "commondreams.org",
+   "name": "commondreams.org",
+   "group": "left",
+   "mediacloud_id": 1133,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    274,
+    489
+   ]
+  },
+  {
+   "domain": "newrepublic.com",
+   "name": "newrepublic.com",
+   "group": "left",
+   "mediacloud_id": 366670,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    140,
+    317
+   ]
+  },
+  {
+   "domain": "salon.com",
+   "name": "salon.com",
+   "group": "left",
+   "mediacloud_id": 1757,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    304,
+    171
+   ]
+  },
+  {
+   "domain": "slate.com",
+   "name": "slate.com",
+   "group": "left",
+   "mediacloud_id": 19643,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    132,
+    147
+   ]
+  },
+  {
+   "domain": "thenation.com",
+   "name": "thenation.com",
+   "group": "left",
+   "mediacloud_id": 1008,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    127,
+    140
+   ]
+  },
+  {
+   "domain": "motherjones.com",
+   "name": "motherjones.com",
+   "group": "left",
+   "mediacloud_id": 1112,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    100,
+    145
+   ]
+  },
+  {
+   "domain": "talkingpointsmemo.com",
+   "name": "talkingpointsmemo.com",
+   "group": "left",
+   "mediacloud_id": 113,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    142,
+    131
+   ]
+  },
+  {
+   "domain": "newyorker.com",
+   "name": "newyorker.com",
+   "group": "left",
+   "mediacloud_id": 1101,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    62,
+    89
+   ]
+  },
+  {
+   "domain": "propublica.org",
+   "name": "propublica.org",
+   "group": "left",
+   "mediacloud_id": 20639,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    35,
+    41
+   ]
+  },
+  {
+   "domain": "huffpost.com",
+   "name": "huffpost.com",
+   "group": "center-left",
+   "mediacloud_id": 314,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    446,
+    428
+   ]
+  },
+  {
+   "domain": "nbcnews.com",
+   "name": "nbcnews.com",
+   "group": "center-left",
+   "mediacloud_id": 25499,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    368,
+    572
+   ]
+  },
+  {
+   "domain": "pbs.org",
+   "name": "pbs.org",
+   "group": "center-left",
+   "mediacloud_id": 1093,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    323,
+    422
+   ]
+  },
+  {
+   "domain": "vox.com",
+   "name": "vox.com",
+   "group": "center-left",
+   "mediacloud_id": 104828,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    120,
+    106
+   ]
+  },
+  {
+   "domain": "time.com",
+   "name": "time.com",
+   "group": "center-left",
+   "mediacloud_id": 4419,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    271,
+    192
+   ]
+  },
+  {
+   "domain": "theweek.com",
+   "name": "theweek.com",
+   "group": "center-left",
+   "mediacloud_id": 21542,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    134,
+    212
+   ]
+  },
+  {
+   "domain": "theintercept.com",
+   "name": "theintercept.com",
+   "group": "center-left",
+   "mediacloud_id": 366870,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    67,
+    209
+   ]
+  },
+  {
+   "domain": "theatlantic.com",
+   "name": "theatlantic.com",
+   "group": "center-left",
+   "mediacloud_id": 1110,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    140,
+    210
+   ]
+  },
+  {
+   "domain": "csmonitor.com",
+   "name": "csmonitor.com",
+   "group": "center-left",
+   "mediacloud_id": 3,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    84,
+    91
+   ]
+  },
+  {
+   "domain": "npr.org",
+   "name": "npr.org",
+   "group": "center-left",
+   "mediacloud_id": 1096,
+   "quintiles": [
+    "left",
+    "center-left"
+   ],
+   "media_type": "video_broadcast",
+   "congress_stories": [
+    427,
+    524
+   ]
+  },
+  {
+   "domain": "theguardian.com",
+   "name": "theguardian.com",
+   "group": "center-left",
+   "mediacloud_id": 300560,
+   "quintiles": [
+    "left",
+    "center-left"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    696,
+    764
+   ]
+  },
+  {
+   "domain": "cnn.com",
+   "name": "cnn.com",
+   "group": "center-left",
+   "mediacloud_id": 1095,
+   "quintiles": [
+    "left",
+    "center-left",
+    "center"
+   ],
+   "media_type": "video_broadcast",
+   "congress_stories": [
+    928,
+    773
+   ]
+  },
+  {
+   "domain": "nytimes.com",
+   "name": "nytimes.com",
+   "group": "center-left",
+   "mediacloud_id": 1,
+   "quintiles": [
+    "left",
+    "center-left",
+    "center"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    1514,
+    812
+   ]
+  },
+  {
+   "domain": "washingtonpost.com",
+   "name": "washingtonpost.com",
+   "group": "center-left",
+   "mediacloud_id": 2,
+   "quintiles": [
+    "left",
+    "left",
+    "center-left",
+    "center"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    2135,
+    0
+   ]
+  },
+  {
+   "domain": "thedailybeast.com",
+   "name": "thedailybeast.com",
+   "group": "center-left",
+   "mediacloud_id": 1707,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    213,
+    0
+   ]
+  },
+  {
+   "domain": "thehill.com",
+   "name": "thehill.com",
+   "group": "center",
+   "mediacloud_id": 209455,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1923,
+    343
+   ]
+  },
+  {
+   "domain": "abcnews.go.com",
+   "name": "abcnews.go.com",
+   "group": "center",
+   "mediacloud_id": 19260,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    653,
+    780
+   ]
+  },
+  {
+   "domain": "cbsnews.com",
+   "name": "cbsnews.com",
+   "group": "center",
+   "mediacloud_id": 1752,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": "video_broadcast",
+   "congress_stories": [
+    841,
+    1417
+   ]
+  },
+  {
+   "domain": "cnbc.com",
+   "name": "cnbc.com",
+   "group": "center",
+   "mediacloud_id": 1755,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": "video_broadcast",
+   "congress_stories": [
+    240,
+    308
+   ]
+  },
+  {
+   "domain": "bloomberg.com",
+   "name": "bloomberg.com",
+   "group": "center",
+   "mediacloud_id": 18482,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    4,
+    347
+   ]
+  },
+  {
+   "domain": "businessinsider.com",
+   "name": "businessinsider.com",
+   "group": "center",
+   "mediacloud_id": 18710,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    697,
+    188
+   ]
+  },
+  {
+   "domain": "marketwatch.com",
+   "name": "marketwatch.com",
+   "group": "center",
+   "mediacloud_id": 19562,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    257,
+    58
+   ]
+  },
+  {
+   "domain": "rollcall.com",
+   "name": "rollcall.com",
+   "group": "center",
+   "mediacloud_id": 19854,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    312,
+    353
+   ]
+  },
+  {
+   "domain": "usatoday.com",
+   "name": "usatoday.com",
+   "group": "center",
+   "mediacloud_id": 4,
+   "quintiles": [
+    "left",
+    "center",
+    "center-right"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    662,
+    776
+   ]
+  },
+  {
+   "domain": "latimes.com",
+   "name": "latimes.com",
+   "group": "center-left",
+   "mediacloud_id": 6,
+   "quintiles": [
+    "left",
+    "center"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    422,
+    548
+   ]
+  },
+  {
+   "domain": "wsj.com",
+   "name": "wsj.com",
+   "group": "center",
+   "mediacloud_id": 22732,
+   "quintiles": [
+    "center",
+    "center-right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    146,
+    1
+   ]
+  },
+  {
+   "domain": "nypost.com",
+   "name": "nypost.com",
+   "group": "center-right",
+   "mediacloud_id": 7,
+   "quintiles": [
+    "center-right",
+    "right"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    615,
+    680
+   ]
+  },
+  {
+   "domain": "foxnews.com",
+   "name": "foxnews.com",
+   "group": "right",
+   "mediacloud_id": 1092,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "video_broadcast",
+   "congress_stories": [
+    1532,
+    1295
+   ]
+  },
+  {
+   "domain": "breitbart.com",
+   "name": "breitbart.com",
+   "group": "right",
+   "mediacloud_id": 19334,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    789,
+    676
+   ]
+  },
+  {
+   "domain": "dailycaller.com",
+   "name": "dailycaller.com",
+   "group": "right",
+   "mediacloud_id": 18775,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    471,
+    783
+   ]
+  },
+  {
+   "domain": "townhall.com",
+   "name": "townhall.com",
+   "group": "right",
+   "mediacloud_id": 19763,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    567,
+    680
+   ]
+  },
+  {
+   "domain": "redstate.com",
+   "name": "redstate.com",
+   "group": "right",
+   "mediacloud_id": 128,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    394,
+    458
+   ]
+  },
+  {
+   "domain": "washingtonexaminer.com",
+   "name": "washingtonexaminer.com",
+   "group": "right",
+   "mediacloud_id": 19690,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    56,
+    1527
+   ]
+  },
+  {
+   "domain": "washingtontimes.com",
+   "name": "washingtontimes.com",
+   "group": "right",
+   "mediacloud_id": 101,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    1060,
+    0
+   ]
+  },
+  {
+   "domain": "reason.com",
+   "name": "reason.com",
+   "group": "right",
+   "mediacloud_id": 18966,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    293,
+    372
+   ]
+  },
+  {
+   "domain": "realclearpolitics.com",
+   "name": "realclearpolitics.com",
+   "group": "right",
+   "mediacloud_id": 1040,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    0,
+    439
+   ]
+  },
+  {
+   "domain": "pjmedia.com",
+   "name": "pjmedia.com",
+   "group": "right",
+   "mediacloud_id": 19082,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    307,
+    271
+   ]
+  },
+  {
+   "domain": "hotair.com",
+   "name": "hotair.com",
+   "group": "right",
+   "mediacloud_id": 117,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    333,
+    209
+   ]
+  },
+  {
+   "domain": "zerohedge.com",
+   "name": "zerohedge.com",
+   "group": "right",
+   "mediacloud_id": 21509,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    389,
+    426
+   ]
+  },
+  {
+   "domain": "justthenews.com",
+   "name": "justthenews.com",
+   "group": "right",
+   "mediacloud_id": 1370244,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    106,
+    55
+   ]
+  },
+  {
+   "domain": "freebeacon.com",
+   "name": "freebeacon.com",
+   "group": "right",
+   "mediacloud_id": 25649,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    123,
+    78
+   ]
+  },
+  {
+   "domain": "dailywire.com",
+   "name": "dailywire.com",
+   "group": "right",
+   "mediacloud_id": 269352,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    300,
+    23
+   ]
+  },
+  {
+   "domain": "spectator.org",
+   "name": "spectator.org",
+   "group": "right",
+   "mediacloud_id": 21919,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    123,
+    66
+   ]
+  },
+  {
+   "domain": "oann.com",
+   "name": "oann.com",
+   "group": "right",
+   "mediacloud_id": 127733,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    109,
+    73
+   ]
+  },
+  {
+   "domain": "theblaze.com",
+   "name": "theblaze.com",
+   "group": "right",
+   "mediacloud_id": 22088,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    206,
+    14
+   ]
+  },
+  {
+   "domain": "investors.com",
+   "name": "investors.com",
+   "group": "right",
+   "mediacloud_id": 27011,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    15,
+    49
+   ]
+  },
+  {
+   "domain": "law360.com",
+   "name": "law360.com",
+   "group": "trade-legal",
+   "mediacloud_id": 32090,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ]
+  },
+  {
+   "domain": "jdsupra.com",
+   "name": "jdsupra.com",
+   "group": "trade-legal",
+   "mediacloud_id": 19878,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    6,
+    0
+   ]
+  },
+  {
+   "domain": "natlawreview.com",
+   "name": "natlawreview.com",
+   "group": "trade-legal",
+   "mediacloud_id": 29762,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    6,
+    0
+   ]
+  },
+  {
+   "domain": "lexology.com",
+   "name": "lexology.com",
+   "group": "trade-legal",
+   "mediacloud_id": 30592,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1,
+    0
+   ]
+  },
+  {
+   "domain": "bloomberglaw.com",
+   "name": "bloomberglaw.com",
+   "group": "trade-legal",
+   "mediacloud_id": 1276186,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    2,
+    0
+   ]
+  },
+  {
+   "domain": "americanbanker.com",
+   "name": "americanbanker.com",
+   "group": "trade-legal",
+   "mediacloud_id": 71271,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1,
+    0
+   ]
+  },
+  {
+   "domain": "coindesk.com",
+   "name": "coindesk.com",
+   "group": "trade-legal",
+   "mediacloud_id": 1623417,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    68,
+    89
+   ]
+  },
+  {
+   "domain": "cointelegraph.com",
+   "name": "cointelegraph.com",
+   "group": "trade-legal",
+   "mediacloud_id": 145631,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    49,
+    0
+   ]
+  },
+  {
+   "domain": "decrypt.co",
+   "name": "decrypt.co",
+   "group": "trade-legal",
+   "mediacloud_id": 1295865,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ]
+  },
+  {
+   "domain": "pymnts.com",
+   "name": "pymnts.com",
+   "group": "trade-legal",
+   "mediacloud_id": 89680,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1,
+    0
+   ]
+  },
+  {
+   "domain": "statnews.com",
+   "name": "statnews.com",
+   "group": "trade-legal",
+   "mediacloud_id": 270003,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    74,
+    94
+   ]
+  },
+  {
+   "domain": "fiercehealthcare.com",
+   "name": "fiercehealthcare.com",
+   "group": "trade-legal",
+   "mediacloud_id": 87579,
+   "quintiles": [
+    "left",
+    "left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ]
+  },
+  {
+   "domain": "modernhealthcare.com",
+   "name": "modernhealthcare.com",
+   "group": "trade-legal",
+   "mediacloud_id": 98597,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    44,
+    0
+   ]
+  },
+  {
+   "domain": "healthcaredive.com",
+   "name": "healthcaredive.com",
+   "group": "trade-legal",
+   "mediacloud_id": 237030,
+   "quintiles": [
+    "center-right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ]
+  },
+  {
+   "domain": "biopharmadive.com",
+   "name": "biopharmadive.com",
+   "group": "trade-legal",
+   "mediacloud_id": 179873,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ]
+  },
+  {
+   "domain": "fiercepharma.com",
+   "name": "fiercepharma.com",
+   "group": "trade-legal",
+   "mediacloud_id": 19722,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ]
+  },
+  {
+   "domain": "utilitydive.com",
+   "name": "utilitydive.com",
+   "group": "trade-legal",
+   "mediacloud_id": 178063,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    1
+   ]
+  },
+  {
+   "domain": "eenews.net",
+   "name": "eenews.net",
+   "group": "trade-legal",
+   "mediacloud_id": 67012,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    3,
+    0
+   ]
+  },
+  {
+   "domain": "agri-pulse.com",
+   "name": "agri-pulse.com",
+   "group": "trade-legal",
+   "mediacloud_id": 221796,
+   "quintiles": [
+    "right",
+    "right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1,
+    0
+   ]
+  },
+  {
+   "domain": "agweb.com",
+   "name": "agweb.com",
+   "group": "trade-legal",
+   "mediacloud_id": 157643,
+   "quintiles": [
+    "center-right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ]
+  },
+  {
+   "domain": "accountingtoday.com",
+   "name": "accountingtoday.com",
+   "group": "trade-legal",
+   "mediacloud_id": 71493,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1,
+    0
+   ]
+  },
+  {
+   "domain": "thinkadvisor.com",
+   "name": "thinkadvisor.com",
+   "group": "trade-legal",
+   "mediacloud_id": 71856,
+   "quintiles": [
+    "center-right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1,
+    0
+   ]
+  },
+  {
+   "domain": "freightwaves.com",
+   "name": "freightwaves.com",
+   "group": "trade-legal",
+   "mediacloud_id": 592005,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1,
+    0
+   ]
+  },
+  {
+   "domain": "defensenews.com",
+   "name": "defensenews.com",
+   "group": "trade-legal",
+   "mediacloud_id": 39177,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    134,
+    62
+   ]
+  },
+  {
+   "domain": "govexec.com",
+   "name": "govexec.com",
+   "group": "trade-legal",
+   "mediacloud_id": 704383,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    1,
+    0
+   ]
+  },
+  {
+   "domain": "federalnewsnetwork.com",
+   "name": "federalnewsnetwork.com",
+   "group": "trade-legal",
+   "mediacloud_id": 911600,
+   "quintiles": [
+    "center"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    581,
+    174
+   ]
+  },
+  {
+   "domain": "insidehighered.com",
+   "name": "insidehighered.com",
+   "group": "trade-legal",
+   "mediacloud_id": 23785,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    124,
+    91
+   ]
+  },
+  {
+   "domain": "spglobal.com",
+   "name": "spglobal.com",
+   "group": "trade-legal",
+   "mediacloud_id": 387162,
+   "quintiles": [
+    "center-right"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ]
+  }
+ ],
+ "left_out": [
+  {
+   "domain": "ms.now",
+   "name": "ms.now",
+   "group": "left",
+   "mediacloud_id": 293951,
+   "quintiles": [
+    "left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    0,
+    0
+   ],
+   "why": "fewer than 20 Congress stories collected in each probe window"
+  },
+  {
+   "domain": "axios.com",
+   "name": "axios.com",
+   "group": "center-left",
+   "mediacloud_id": 372870,
+   "quintiles": [
+    "center-left"
+   ],
+   "media_type": null,
+   "congress_stories": [
+    13,
+    0
+   ],
+   "why": "fewer than 20 Congress stories collected in each probe window"
+  },
+  {
+   "domain": "newsmax.com",
+   "name": "newsmax.com",
+   "group": "right",
+   "mediacloud_id": 25349,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "digital_native",
+   "congress_stories": [
+    0,
+    0
+   ],
+   "why": "fewer than 20 Congress stories collected in each probe window"
+  },
+  {
+   "domain": "nationalreview.com",
+   "name": "nationalreview.com",
+   "group": "right",
+   "mediacloud_id": 1117,
+   "quintiles": [
+    "right"
+   ],
+   "media_type": "print_native",
+   "congress_stories": [
+    0,
+    0
+   ],
+   "why": "fewer than 20 Congress stories collected in each probe window"
+  },
+  {
+   "domain": "forbes.com",
+   "name": "forbes.com",
+   "group": null,
+   "mediacloud_id": 1871556,
+   "quintiles": [],
+   "media_type": null,
+   "congress_stories": [
+    701,
+    892
+   ],
+   "why": "no 2019 partisanship rating in Media Cloud"
+  },
+  {
+   "domain": "newsweek.com",
+   "name": "newsweek.com",
+   "group": null,
+   "mediacloud_id": 1098,
+   "quintiles": [],
+   "media_type": null,
+   "congress_stories": [
+    714,
+    905
+   ],
+   "why": "no 2019 partisanship rating in Media Cloud"
+  },
+  {
+   "domain": "epochtimes.com",
+   "name": "epochtimes.com",
+   "group": null,
+   "mediacloud_id": 246487,
+   "quintiles": [],
+   "media_type": null,
+   "congress_stories": [
+    14,
+    57
+   ],
+   "why": "no 2019 partisanship rating in Media Cloud"
+  },
+  {
+   "domain": "dailysignal.com",
+   "name": "dailysignal.com",
+   "group": null,
+   "mediacloud_id": 366790,
+   "quintiles": [],
+   "media_type": null,
+   "congress_stories": [
+    229,
+    440
+   ],
+   "why": "no 2019 partisanship rating in Media Cloud"
+  },
+  {
+   "domain": "thefederalist.com",
+   "name": "thefederalist.com",
+   "group": null,
+   "mediacloud_id": 366282,
+   "quintiles": [],
+   "media_type": null,
+   "congress_stories": [
+    205,
+    221
+   ],
+   "why": "no 2019 partisanship rating in Media Cloud"
+  },
+  {
+   "domain": "foxbusiness.com",
+   "name": "foxbusiness.com",
+   "group": null,
+   "mediacloud_id": 21515,
+   "quintiles": [],
+   "media_type": null,
+   "congress_stories": [
+    222,
+    134
+   ],
+   "why": "no 2019 partisanship rating in Media Cloud"
+  },
+  {
+   "domain": "thefp.com",
+   "name": "thefp.com",
+   "group": null,
+   "mediacloud_id": 1912636,
+   "quintiles": [],
+   "media_type": "digital_native",
+   "congress_stories": [
+    0,
+    21
+   ],
+   "why": "no 2019 partisanship rating in Media Cloud"
+  }
+ ]
+}
