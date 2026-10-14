@@ -111,3 +111,19 @@ An earlier bill with the same short title and sponsor whose sections match this 
 ## substitute-adds
 
 A section first seen in the text right after an agreed substitute came in with that substitute.
+
+## landing-order
+
+How the front page orders the library and picks the featured bill. These choices are not inferences about any bill; they only decide what is shown first, and the same three keys apply to every bill whatever its party or sponsor:
+
+1. Bills the quiet-and-costly test could run on come before bills it could not run on (a bill with no test result never ranks by its zero).
+2. Then the bill with the most quiet and costly sections.
+3. Then the bill whose last action is newest.
+
+The first bill in that order is the featured bill: its tape is drawn in full on the front page, and the phone's lead story is told about it.
+
+## landing-exhibit
+
+How the front page picks the one section it shows beside the headline. From the featured bill's quiet and costly sections: the one that most lobbying reports name; then the one with the larger CBO figure (cuts and costs count the same); then the earlier one in bill order. A bill with no quiet and costly section has no exhibit, and the card says so.
+
+The "first appeared" line under it is a fact from the bill's version history: the text it first appears in and its date. For a section flagged as added late it also counts the days from the first chamber passage vote before that text.
