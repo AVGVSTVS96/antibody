@@ -138,7 +138,8 @@ function Member({ member }: { member: NodeOf<"member"> }) {
         <p className="member-context">
           Context: {last}'s filings list {count(mine.length, "trade")} in{" "}
           {count(new Set(mine.map((t) => t.company)).size, "tied company", "tied companies")}; the median member who
-          traded filed {medianPerTrader(book)}.
+          traded filed {medianPerTrader(book)}.{" "}
+          {mine.length > 0 && <Src ids={mine.map((t) => t.event.claim)} label="filings" />}
           {tied.length > 0 &&
             ` The ${stocks.size} ${stocks.size === 1 ? "stock" : "stocks"} below ${stocks.size === 1 ? "is" : "are"} the subset tied to ${where}.`}
         </p>

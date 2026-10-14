@@ -195,6 +195,14 @@
 .lrow-open {
   grid-column: 1 / -1;
   padding: 10px 0 4px;
+  animation: open 200ms var(--ease) both;
+}
+
+@keyframes open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 
 .rowmembers {

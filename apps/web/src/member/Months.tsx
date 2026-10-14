@@ -1,5 +1,6 @@
 import type { NodeOf } from "@antibody/core";
 import { count } from "../lib/format.ts";
+import { ruleUrl } from "../lib/receipt-copy.ts";
 import {
   type Month,
   medianPerTrader,
@@ -111,7 +112,10 @@ export function Months({ member }: { member: NodeOf<"member"> }) {
         Across all members, {ws.inside.toLocaleString("en-US")} of {ws.trades.toLocaleString("en-US")} trades (
         {share(ws.inside, ws.trades)}) fall in those {ws.windowDays} days, and {ws.windowDays} of{" "}
         {ws.days.toLocaleString("en-US")} days is {share(ws.windowDays, ws.days)}. The median member who traded filed{" "}
-        {medianPerTrader(book)}. {mine.length > 0 && <Src ids={mine.map((t) => t.event.claim)} label="filings" />}
+        {medianPerTrader(book)}. {mine.length > 0 && <Src ids={mine.map((t) => t.event.claim)} label="filings" />}{" "}
+        <a href={ruleUrl("trade-window")} target="_blank" rel="noopener noreferrer">
+          Rule: trade window ↗
+        </a>
       </p>
     </div>
   );

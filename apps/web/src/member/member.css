@@ -79,10 +79,6 @@
   padding: 12px 14px;
 }
 
-.votes-list li + li {
-  border-left: 2px solid var(--ink);
-}
-
 .votes-list p {
   font: 500 11px / 14px var(--mono);
   letter-spacing: 0.06em;
@@ -341,12 +337,6 @@
   letter-spacing: -0.05em;
 }
 
-.trail-big[data-tone="window"] strong {
-  align-self: flex-start;
-  padding-inline: 4px;
-  background: var(--window);
-}
-
 .trail-big span,
 .trail-who span {
   font: 500 11px / 15px var(--mono);
@@ -369,6 +359,14 @@
 }
 
 @media (max-width: 1000px) {
+  .trail-mark {
+    display: none;
+  }
+
+  .trail-events {
+    display: block;
+  }
+
   .trail-body {
     grid-template-columns: 1fr;
   }
@@ -394,14 +392,6 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     overflow-wrap: anywhere;
-  }
-
-  .trail-mark {
-    display: none;
-  }
-
-  .trail-events {
-    display: block;
   }
 
   .trail-legend {
@@ -672,4 +662,14 @@
 .months figcaption [data-peak="end"] {
   right: 0;
   transform: none;
+}
+
+.votes-list li + li {
+  border-left: 2px solid var(--ink);
+}
+
+.trail-big[data-tone="window"] strong {
+  align-self: flex-start;
+  padding-inline: 4px;
+  background: var(--window);
 }

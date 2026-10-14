@@ -247,7 +247,7 @@ export function tradeGaps(b: Bundle): Bundle["gaps"] {
 }
 
 const OWNER: Record<Owner, string> = {
-  self: "own account",
+  self: "member's own account",
   spouse: "spouse's account",
   joint: "joint account",
   dependent: "dependent's account",

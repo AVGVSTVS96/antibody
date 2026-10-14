@@ -113,6 +113,7 @@ function Follow({ v }: { v: SectionView }) {
                   <Src ids={v.figure.claims} label="CBO" />
                 </>
               )}
+              {!v.s.inFinal && <Tag>NOT IN THE FINAL TEXT</Tag>}
               {!v.figure && <span>{m.secLabel(v)} · no CBO figure</span>}
               <Src ids={`sections/${v.s.id}`} label="SECTION" />
               <a href={billHref(card.id)} onClick={onLink}>
