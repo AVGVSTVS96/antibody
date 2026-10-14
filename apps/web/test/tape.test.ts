@@ -79,7 +79,7 @@ test("signed dollars, the even-split flag and the no-figure stub", () => {
   expect(t.evenSplit).toBe(1);
 });
 
-test("a section number shared by two sections routes by full id", () => {
+test("a section number shared by two sections of the final text routes by full id", () => {
   const b = fresh();
   b.sections[1]!.num = b.sections[0]!.num;
   const t = tapeOf(b);
@@ -115,6 +115,15 @@ test("marks never overlap on a roomy tape, never get thinner than 2px on a crowd
   const crowded = layout(t, 30, geometry(true, true));
   expect(crowded.every((m) => m.w >= 2)).toBe(true);
   expect(roomy.at(-1)!.x + roomy.at(-1)!.w).toBeLessThanOrEqual(1328);
+});
+
+test("a flat tape of plain marks only has no room above them", () => {
+  const t = tapeOf(fresh());
+  const plain = geometry(false, true, false);
+  const [mark] = layout({ ...t, rows: t.rows.filter((r) => r.kind === "other") }, 1328, plain);
+  expect(mark!.y).toBeGreaterThan(0);
+  expect(mark!.y).toBeLessThanOrEqual(6);
+  expect(plain.height).toBeLessThan(geometry(false, true).height);
 });
 
 test("a flat tape shows kind, not cost: normal marks short, headline and quiet full", () => {

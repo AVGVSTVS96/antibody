@@ -1,5 +1,5 @@
 import { BIG_STAKES } from "@antibody/core";
-import { memo, type ReactNode, useEffect, useRef } from "react";
+import { memo, type ReactNode, useEffect, useRef, useState } from "react";
 import { RULES_URL, usd } from "../lib/format.ts";
 import { geometry, logHeight, quietRun, type TapeRow } from "../lib/tape.ts";
 import { Tag } from "../ui/primitives.tsx";
@@ -21,7 +21,7 @@ function Mark({ row, flat }: { row: TapeRow; flat: boolean }) {
   const h = flat ? (row.kind === "other" ? 28 : 46) : stub ? 2 : Math.min(logHeight(row.musd!, GEO), 52);
   const cut = !flat && (row.musd ?? 0) < 0;
   return (
-    <svg className="x-mark-svg" width="96" height="92" aria-hidden="true">
+    <svg className="x-mark-svg" width="96" height={cut ? BASE + h + 6 : 92} aria-hidden="true">
       <rect
         className={stub ? "x-mark-stub" : `x-mark-bar x-mark-${row.kind}`}
         x="41"
@@ -36,7 +36,7 @@ function Mark({ row, flat }: { row: TapeRow; flat: boolean }) {
 
 function Stats({ row, ctx }: { row: TapeRow; ctx: Ctx }) {
   const f = row.view.figure;
-  const l = lobbyingOf(ctx.m, row.id);
+  const l = lobbyingOf(ctx.m, row.view);
   const period =
     f && row.view.s.dollars.find((d) => d.estimateId === f.estimateId && d.baseline === "current-law")?.period;
   const quiet = row.kind === "quiet";
@@ -53,8 +53,8 @@ function Stats({ row, ctx }: { row: TapeRow; ctx: Ctx }) {
         {row.view.s.attention ? <Src ids={row.view.s.attention.claim} label="ARTICLES" /> : <span>NOT MEASURED</span>}
       </div>
       <div>
-        <strong data-hot={(quiet && l.reports >= BIG_STAKES.reports) || undefined}>{l.reports}</strong>
-        {l.reports ? <Src ids={l.claims} label="LOBBY REPORTS" /> : <span>LOBBY REPORTS</span>}
+        <strong data-hot={(quiet && l.named >= BIG_STAKES.reports) || undefined}>{l.named}</strong>
+        {l.named ? <Src ids={l.namedClaims} label="LOBBY REPORTS" /> : <span>LOBBY REPORTS</span>}
       </div>
     </div>
   );
@@ -201,6 +201,23 @@ function Panel({ r, ctx, why }: { r: Reader; ctx: Ctx; why: string | null }) {
   );
 }
 
+/** Whether the list is shorter than the panel beside it, where pinning the panel would only clip it. */
+function useShort() {
+  const root = useRef<HTMLDivElement>(null);
+  const [short, setShort] = useState(false);
+  useEffect(() => {
+    const panel = root.current!.querySelector<HTMLElement>(".x-panel")!;
+    const list = root.current!.querySelector<HTMLElement>(".x-list")!;
+    const measure = () => setShort(list.offsetHeight < panel.scrollHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(list);
+    ro.observe(panel);
+    return () => ro.disconnect();
+  }, []);
+  return [root, short] as const;
+}
+
 /** Loads the next page when it scrolls near; the button is the same thing for keyboards. */
 function Sentinel({ onSeen, children }: { onSeen: () => void; children: ReactNode }) {
   const el = useRef<HTMLSpanElement>(null);
@@ -230,8 +247,9 @@ export function ReadIt({
   const shown = r.list.slice(0, r.shown);
   const filter = FILTERS.find((f) => f.id === r.filter)!;
   const more = r.shown < r.list.length;
+  const [root, short] = useShort();
   return (
-    <div className="x-read">
+    <div className="x-read" ref={root} data-short={short || undefined}>
       <Panel r={r} ctx={ctx} why={why} />
       <div className="x-list">
         <header className="x-list-head">

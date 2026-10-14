@@ -22,7 +22,7 @@ function Card({
       <b>{row.heading}</b>
       <strong>{signed(row.musd!)}</strong>
       <span className="x-mono x-bold">
-        {count(row.articles ?? 0, "ARTICLE")} OF {read.toLocaleString("en-US")} READ
+        {count(row.articles ?? 0, "ARTICLE", "ARTICLES")} OF {read.toLocaleString("en-US")} READ
       </span>
     </button>
   );

@@ -79,8 +79,6 @@ function placeOf(path: string) {
 }
 
 export function buildTape(m: BillModel): Tape {
-  const numCount = new Map<string, number>();
-  for (const v of m.sections) numCount.set(v.s.num, (numCount.get(v.s.num) ?? 0) + 1);
   const lateKnown = !m.b.bill.lateUnavailable;
 
   const groups: TapeGroup[] = [];
@@ -100,7 +98,7 @@ export function buildTape(m: BillModel): Tape {
         index,
         view: v,
         id: v.s.id,
-        routeId: numCount.get(v.s.num) === 1 ? v.s.num : v.s.id,
+        routeId: m.sectionSlug(v),
         num: v.s.num,
         label: m.secLabel(v),
         heading: v.s.heading,
@@ -134,11 +132,11 @@ export function buildTape(m: BillModel): Tape {
 export const LOG_MAX = 6.6;
 const MIN_MUSD = 10;
 
-export const REFERENCES = [
-  { musd: 1e3, label: "$1B" },
-  { musd: 1e5, label: "$100B" },
-  { musd: 1e6, label: "$1T" },
-] as const;
+/** A power-of-ten figure as both scales label it: "$10M", "$1B", "$10T". */
+export const scaleLabel = (musd: number) =>
+  musd >= 1e6 ? `$${musd / 1e6}T` : musd >= 1e3 ? `$${musd / 1e3}B` : `$${musd}M`;
+
+export const REFERENCES = [1e3, 1e5, 1e6].map((musd) => ({ musd, label: scaleLabel(musd) }));
 
 export interface Geometry {
   height: number;
@@ -151,10 +149,11 @@ export interface Geometry {
   flat: boolean;
 }
 
-export function geometry(compact: boolean, flat: boolean): Geometry {
+/** `marked` is false for a flat tape with only plain marks, which then needs no room above them for taller ones. */
+export function geometry(compact: boolean, flat: boolean, marked = true): Geometry {
   const [pad, maxh, gap] = compact ? [4, 34, 12] : [6, 60, 18];
   const lateH = 6;
-  const span = flat ? maxh * 2 : maxh;
+  const span = flat ? (marked ? maxh * 2 : Math.round((maxh * 2) / 3)) : maxh;
   const mid = pad + span;
   const lateY = mid + (flat ? 0 : maxh) + gap;
   return { height: lateY + lateH, mid, maxh, lateY, lateH, flat };

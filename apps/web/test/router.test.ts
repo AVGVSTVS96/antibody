@@ -31,7 +31,12 @@ test("old map links land on the nearest new page", () => {
   expect(parseRoute("/bill/119-s-1582?view=money&focus=section:119-s-1582@es:sec:19")).toEqual({
     page: "money",
     id: "119-s-1582",
-    section: "119-s-1582@es:sec:19",
+    section: "19",
+  });
+  expect(parseRoute("/bill/119-hr-1?view=money&focus=section:119-hr-1@eas:title:VII/subtitle:A/sec:70322")).toEqual({
+    page: "money",
+    id: "119-hr-1",
+    section: "70322",
   });
   expect(parseRoute("/bill/119-s-1582?focus=company:1403161")).toEqual({ page: "xray", id: "119-s-1582" });
 });
