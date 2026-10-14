@@ -243,11 +243,11 @@ export function rankMembers(m: BillModel, companies: ReadonlySet<NodeId>): Ranke
 
 /** The bundle's notes on what the trade counts leave out: paper filings not read, options and bonds, unmatched filers. */
 export function tradeGaps(b: Bundle): Bundle["gaps"] {
-  return b.gaps.filter((g) => g.kind === "paper_filings_unread" || /\btrades\b/.test(g.text));
+  return b.gaps.filter((g) => g.kind === "paper_filings_unread" || /^[\d,]+ trades /.test(g.text));
 }
 
 const OWNER: Record<Owner, string> = {
-  self: "own account",
+  self: "member's own account",
   spouse: "spouse's account",
   joint: "joint account",
   dependent: "dependent's account",
@@ -259,8 +259,24 @@ export const ownerWords = (owner: Owner) => OWNER[owner];
 const VERB: Record<TradeEvent["type"], string> = {
   purchase: "bought",
   sale: "sold",
-  sale_partial: "sold part of",
+  sale_partial: "part-sold",
   exchange: "exchanged",
 };
 
 export const tradeVerb = (type: TradeEvent["type"]) => VERB[type];
+
+/** Trades grouped by whose account they were in, the most first: shown beside every member's trades. */
+export function byOwner(trades: readonly Trade[]): { owner: Owner; count: number }[] {
+  const counts = new Map<Owner, number>();
+  for (const t of trades) counts.set(t.event.owner, (counts.get(t.event.owner) ?? 0) + 1);
+  return [...counts].map(([owner, count]) => ({ owner, count })).sort((a, b) => b.count - a.count);
+}
+
+const floor = (amount: string) => Number(/\$([\d,]+)/.exec(amount)?.[1]?.replace(/,/g, "") ?? 0);
+
+/** Trades grouped by the amount range the filing gives (it is a range, never a value), smallest range first. */
+export function byAmount(trades: readonly Trade[]): { amount: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const t of trades) counts.set(t.event.amount, (counts.get(t.event.amount) ?? 0) + 1);
+  return [...counts].map(([amount, count]) => ({ amount, count })).sort((a, b) => floor(a.amount) - floor(b.amount));
+}

@@ -921,6 +921,185 @@ for (const id of ["119-hr-1", "119-s-1582", "119-hr-4405", "119-s-1071"]) if (id
   }
 }
 
+for (const id of ["119-hr-1", "117-hr-5376", "119-s-1582"].filter((i) => ids.includes(i))) {
+  const bundle = (await Bun.file(join(bundlesDir, `${id}.json`)).json()) as Bundle;
+  const edges = bundle.edges;
+  const resolves = new Map<string, string>(
+    edges.flatMap((e) => (e.kind === "resolves_to" ? [[e.src, e.dst] as const] : [])),
+  );
+  const company = (id: string) => {
+    let cur = id;
+    for (let i = 0; i < 4 && resolves.has(cur); i++) cur = resolves.get(cur)!;
+    return cur.startsWith("company:") ? cur : null;
+  };
+  const traded = edges.filter((e) => e.kind === "traded");
+  const eventsOf = new Map<string, number>();
+  for (const e of traded) eventsOf.set(e.src, (eventsOf.get(e.src) ?? 0) + e.props.events.length);
+
+  const byCount = new Map<string, number>();
+  for (const e of edges)
+    if (e.kind === "lobbied" && e.dst.startsWith("section:")) byCount.set(e.dst, (byCount.get(e.dst) ?? 0) + 1);
+  const [secNode] = [...byCount].sort((a, b) => b[1] - a[1])[0] ?? [];
+  const sec = bundle.sections.find((s) => `section:${s.id}` === secNode);
+
+  if (sec && secNode) {
+    const companies = new Set(
+      edges
+        .flatMap((e) => (e.kind === "lobbied" && e.dst === secNode ? [company(e.src)] : []))
+        .filter((c): c is string => !!c),
+    );
+    const traders = new Set(traded.filter((e) => companies.has(e.dst)).map((e) => e.src));
+    const { page, errors } = await open(`/bill/${id}/section/${encodeURIComponent(slugOf(bundle, sec))}`);
+    check(
+      companies.size === 0 || (await page.locator(".lrow").count()) > 0,
+      `${id} money: a row for each client with a listed company`,
+    );
+    check(
+      traders.size === 0 || (await page.locator(".behind-n strong").innerText()) === String(traders.size),
+      `${id} money: ${traders.size} members traded the tied stocks, as counted from the bundle`,
+    );
+    check(
+      (await page.locator(".cbox[data-inference]").count()) === (await page.locator(".cbox:not(.none)").count()),
+      `${id} money: every matched company is drawn dashed as an inference`,
+    );
+    check(
+      /tie, not\s+proof/i.test(await page.locator(".note").first().innerText()),
+      `${id} money: says a tie is not proof`,
+    );
+    check(
+      (await page.locator(".lfloor").innerText()).toLowerCase().includes("floor"),
+      `${id} money: the PAC column says it is a floor`,
+    );
+
+    const strip = page.locator(".lrow .strip[tabindex='0']").first();
+    if (await strip.count()) {
+      await strip.focus();
+      await page.keyboard.press("ArrowRight");
+      await page.waitForSelector(".tcard");
+      const hover = await page.locator(".tcard").innerText();
+      check(
+        /\$[\d,]+/.test(hover),
+        `${id} money: the hover card shows the amount range (${hover.split("\n").slice(0, 3).join(" | ")})`,
+      );
+      check(/spouse|own|joint|dependent/i.test(hover), `${id} money: the hover card shows whose account`);
+      await page.keyboard.press("Enter");
+      await page.waitForSelector(".tcard[data-pinned]");
+      check(
+        (await page.locator(".tcard[data-pinned] a.src").count()) > 0,
+        `${id} money: the pinned card links its filing`,
+      );
+      await page.waitForFunction(() => !document.querySelector(".tcard a.src.ghost"));
+      await page.locator(".tcard[data-pinned] a.src").first().click();
+      await page.waitForSelector("[role=dialog] #rcpt-claim");
+      await page.keyboard.press("Escape");
+      await page.waitForSelector("[role=dialog]", { state: "detached" });
+      check(true, `${id} money: the card's filing opens its receipt`);
+    }
+    check(
+      (await overflow(page)) <= 0 && errors.length === 0,
+      `${id} money: no overflow or errors ${errors.slice(0, 2).join(" | ")}`,
+    );
+    await page.close();
+
+    const phoneMoney = await open(`/bill/${id}/section/${encodeURIComponent(slugOf(bundle, sec))}`, 390);
+    const phoneStrip = phoneMoney.page.locator(".lrow .strip[tabindex='0']").first();
+    if (await phoneStrip.count()) {
+      await phoneStrip.scrollIntoViewIfNeeded();
+      const box = (await phoneStrip.boundingBox())!;
+      await phoneMoney.page.mouse.click(box.x + box.width * 0.02, box.y + box.height / 2);
+      const hit = await phoneMoney.page.waitForSelector(".tcard[data-pinned]", { timeout: 2000 }).catch(() => null);
+      if (hit) {
+        await phoneMoney.page.waitForTimeout(400);
+        const card = (await hit.boundingBox())!;
+        check(
+          Math.abs(card.y + card.height - 900) < 2 && card.width >= 389,
+          `${id} money: a tapped tick opens a bottom sheet on a phone`,
+        );
+      }
+    }
+    await phoneMoney.page.close();
+  }
+
+  const bare = bundle.sections.find((s) => s.inFinal && !byCount.has(`section:${s.id}`));
+  if (bare) {
+    const { page } = await open(`/bill/${id}/section/${encodeURIComponent(slugOf(bundle, bare))}`);
+    check(
+      (await page.locator("h1").innerText()).startsWith("No lobbying client named"),
+      `${id} money: a section no client named says so`,
+    );
+    check(
+      (await page.locator(".lrow").count()) === 0 && (await page.getByText("Show the bill-wide view").count()) === 1,
+      `${id} money: and offers the bill-wide view`,
+    );
+    await page.click("button.btn.go");
+    await page.waitForSelector(".lrow");
+    check(true, `${id} money: the bill-wide view lists the clients that named the bill`);
+    await page.close();
+  }
+
+  const members = bundle.nodes.filter((n) => n.kind === "member");
+  const traders = members
+    .filter((n) => (eventsOf.get(n.id) ?? 0) > 0)
+    .sort((a, b) => eventsOf.get(b.id)! - eventsOf.get(a.id)!);
+  const pick = (party: string, chamber: string) =>
+    traders.find((n) => n.kind === "member" && n.props.party === party && n.props.chamber === chamber);
+  const chosen = [pick("R", "House"), pick("D", "House"), pick("R", "Senate") ?? pick("D", "Senate")].filter(
+    (n) => !!n,
+  );
+  const heads: string[][] = [];
+  for (const n of chosen) {
+    if (n.kind !== "member") continue;
+    const { page, errors } = await open(`/bill/${id}/member/${n.props.bioguide}`);
+    const total = eventsOf.get(n.id)!;
+    const context = await page.locator(".member-context").innerText();
+    check(
+      context.includes(`${total.toLocaleString("en-US")} TRADES`.toLowerCase()) ||
+        context.toLowerCase().includes(`list ${total.toLocaleString("en-US")} trades`),
+      `${id} member ${n.props.bioguide} (${n.props.party}, ${n.props.chamber}): the page counts ${total} trades as the bundle does`,
+    );
+    const median = [...eventsOf.values()].sort((a, b) => a - b);
+    const mid = median.length >> 1;
+    const expect = median.length % 2 ? median[mid]! : (median[mid - 1]! + median[mid]!) / 2;
+    check(
+      context.toLowerCase().includes(`filed ${expect}.`),
+      `${id} member ${n.props.bioguide}: the median member who traded filed ${expect}`,
+    );
+    check((await page.locator(".votes").count()) === 1, `${id} member ${n.props.bioguide}: the votes card is there`);
+    const owners = await page.locator(".trail-who b").allInnerTexts();
+    check(
+      owners.length === 0 || /account/.test(owners[0]!),
+      `${id} member ${n.props.bioguide}: the owner is shown on the trades`,
+    );
+    const donors = await page.locator(".donors").innerText();
+    check(/floor/i.test(donors), `${id} member ${n.props.bioguide}: the PAC donors say they are a floor`);
+    const name = (await page.locator("main h1").innerText())
+      .split(/[\s,]+/)
+      .filter((w) => w.length > 3 && !w.endsWith("."));
+    const who = new RegExp(`(${name.join("|")})`, "gi");
+    heads.push(
+      (await page.locator(".member h2, .member-rule").allInnerTexts())
+        .map((t) =>
+          t
+            .replace(who, "X")
+            .replace(/(: \$[\d,.]+[KMB]?)?\.?$/, "")
+            .replace(/[\d,.$]+[KMB]?/g, "#"),
+        )
+        .filter((t) => !/in th(is|ese)/.test(t)),
+    );
+    check(
+      (await overflow(page)) <= 0 && errors.length === 0,
+      `${id} member ${n.props.bioguide}: no overflow or errors ${errors.slice(0, 2).join(" | ")}`,
+    );
+    await page.close();
+  }
+  if (heads.length > 1)
+    check(
+      heads.every((h) => h.join("|") === heads[0]!.join("|")),
+      `${id} member: the same headings for a Republican, a Democrat and a senator`,
+    );
+  check(chosen.length > 0, `${id} member: picked traders to check`);
+}
+
 const phone = await open("/bill/119-s-1582", 390);
 await phone.page.click(".top-find");
 check((await phone.page.locator("#top-sheet input").count()) === 1, "phone: the bill button opens the search");
