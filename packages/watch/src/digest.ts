@@ -167,17 +167,15 @@ export function digestJson(r: WatchResult) {
       subScores: c.sub,
       facts: c.facts,
       reasons: reasons(c),
-      events: c.events
-        .slice(0, 8)
-        .map(({ id, kind, step, date, text, url, tally }) => ({
-          kind,
-          step,
-          date,
-          text,
-          url,
-          tally,
-          new: c.fresh.has(id),
-        })),
+      events: c.events.slice(0, 8).map(({ id, kind, step, date, text, url, tally }) => ({
+        kind,
+        step,
+        date,
+        text,
+        url,
+        tally,
+        new: c.fresh.has(id),
+      })),
       xray: c.xray && {
         ...c.xray,
         bundle: c.evidence.xray?.bundle ?? null,
