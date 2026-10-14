@@ -1,3 +1,23 @@
 import type { Stage } from "@antibody/core";
+import { stages as bills } from "@antibody/ingest-bills";
+import { notes } from "./notes.ts";
+import { xray } from "./xray.ts";
 
-export const stages: Stage[] = [];
+const sectionStages = bills.filter((s) => s.writes.includes("sections")).map((s) => s.name);
+
+export const stages: Stage[] = [
+  {
+    name: "cbo",
+    scope: "bill",
+    needs: sectionStages,
+    writes: ["cbo_estimates", "cbo_lines"],
+    run: xray,
+  },
+  {
+    name: "cbo-notes",
+    scope: "bill",
+    needs: ["cbo", ...sectionStages],
+    writes: ["cbo_notes"],
+    run: notes,
+  },
+];

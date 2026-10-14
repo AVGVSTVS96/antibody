@@ -2,6 +2,11 @@
   "name": "@antibody/ingest-cbo",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@antibody/core": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@antibody/core": "workspace:*",
+    "@antibody/ingest-bills": "workspace:*"
+  }
 }
