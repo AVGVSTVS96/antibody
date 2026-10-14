@@ -12,7 +12,7 @@ import {
   runNote,
   slot,
   type Tape as TapeData,
-  type TapeRow,
+  type TapeMark,
 } from "../lib/tape.ts";
 import { useWidth } from "./useWidth.ts";
 import "./tape.css";
@@ -20,10 +20,10 @@ import "./tape.css";
 const COMPACT_BELOW = 640;
 const KIND_NAME = { headline: "Headline", quiet: "Quiet and costly", other: "" } as const;
 
-export interface TapeProps {
-  tape: TapeData;
+export interface TapeProps<R extends TapeMark> {
+  tape: TapeData<R>;
   /** A mark was clicked, tapped, lifted from after a drag, or chosen with Enter. */
-  onSelect?: (row: TapeRow) => void;
+  onSelect?: (row: R) => void;
   /** Section id: draws the blue "you are here" marker on it. */
   current?: string;
   currentLabel?: string;
@@ -43,7 +43,7 @@ export interface TapeProps {
 const rect = (m: Mark) => `M${m.x} ${m.y}h${m.w}v${m.h}h-${m.w}z`;
 const dashedRect = (m: Mark) => `M${m.x - 0.5} ${m.y - 0.5}h${m.w + 1}v${m.h + 1}h-${m.w + 1}z`;
 
-function pathsOf(rows: TapeRow[], marks: Mark[], g: Geometry) {
+function pathsOf(rows: TapeMark[], marks: Mark[], g: Geometry) {
   const d = { stub: "", other: "", loud: "", quiet: "", late: "", split: "" };
   for (const r of rows) {
     const m = marks[r.index]!;
@@ -61,7 +61,7 @@ function Layer({
   dim,
   lit,
 }: {
-  rows: TapeRow[];
+  rows: TapeMark[];
   marks: Mark[];
   g: Geometry;
   dim?: boolean;
@@ -92,11 +92,11 @@ const Marks = memo(function Marks({
   width,
   lit,
 }: {
-  tape: TapeData;
+  tape: TapeData<TapeMark>;
   marks: Mark[];
   g: Geometry;
   width: number;
-  lit: TapeRow[] | null;
+  lit: TapeMark[] | null;
 }) {
   const bands = useMemo(() => {
     const out: { x0: number; x1: number }[] = [];
@@ -143,17 +143,17 @@ const Marks = memo(function Marks({
   );
 });
 
-const dollars = (r: TapeRow) =>
+const dollars = (r: TapeMark) =>
   r.musd == null
     ? "No CBO figure for this section"
     : r.musd === 0
       ? "$0"
       : `${musd(r.musd)} ${r.musd < 0 ? "cuts the deficit" : "adds to the deficit"}`;
 
-const coverage = (r: TapeRow, tape: TapeData) =>
+const coverage = (r: TapeMark, tape: TapeData<TapeMark>) =>
   r.articles == null ? "coverage not measured" : `${r.articles} of ${tape.read.toLocaleString("en-US")} articles read`;
 
-const describe = (r: TapeRow, tape: TapeData) =>
+const describe = (r: TapeMark, tape: TapeData<TapeMark>) =>
   [
     r.label,
     KIND_NAME[r.kind],
@@ -166,7 +166,7 @@ const describe = (r: TapeRow, tape: TapeData) =>
     .filter(Boolean)
     .join(", ");
 
-function Card({ row, tape, compact }: { row: TapeRow; tape: TapeData; compact: boolean }) {
+function Card({ row, tape, compact }: { row: TapeMark; tape: TapeData<TapeMark>; compact: boolean }) {
   const kind = [row.label, KIND_NAME[row.kind], row.late && "Added late"].filter(Boolean).join(" · ");
   if (compact)
     return (
@@ -205,7 +205,7 @@ function Card({ row, tape, compact }: { row: TapeRow; tape: TapeData; compact: b
   );
 }
 
-function Legend({ tape }: { tape: TapeData }) {
+function Legend({ tape }: { tape: TapeData<TapeMark> }) {
   return (
     <ul className="tape-legend">
       <li>
@@ -245,7 +245,7 @@ function Legend({ tape }: { tape: TapeData }) {
 
 const CHAR = 7.5;
 
-function axisLabels(tape: TapeData, width: number) {
+function axisLabels(tape: TapeData<TapeMark>, width: number) {
   const bw = slot(width, tape.rows.length);
   const star = tape.groups.reduce<(typeof tape.groups)[number] | null>(
     (a, g) => (!a || g.quiet > a.quiet ? g : a),
@@ -265,7 +265,7 @@ function axisLabels(tape: TapeData, width: number) {
   return out;
 }
 
-export function Tape({
+export function Tape<R extends TapeMark>({
   tape,
   onSelect,
   current,
@@ -276,7 +276,7 @@ export function Tape({
   legend = true,
   axis,
   note,
-}: TapeProps) {
+}: TapeProps<R>) {
   const stage = useRef<HTMLDivElement>(null);
   const width = useWidth(stage);
   const compact = width > 0 && width < COMPACT_BELOW;

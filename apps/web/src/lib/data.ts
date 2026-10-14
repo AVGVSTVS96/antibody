@@ -40,11 +40,14 @@ export function loadBundle(id: string): Promise<Bundle | null> {
 
 export const prefetchBundle = (id: string) => void loadBundle(id).catch(() => {});
 
+/** What a receipt needs of a bill to find its claims: the bundle itself, or the front page's block for it. */
+export type ClaimSource = Pick<Bundle, "claims" | "claimShards"> & { bill: Pick<Bundle["bill"], "id"> };
+
 /**
  * The claims in the shards that hold `ids` (all of each shard, since it is downloaded anyway), or the bundle's own
  * claims when it has no shards. A shard is fetched once; an id no shard holds is simply absent from the result.
  */
-export async function loadClaims(bundle: Bundle, ids: readonly string[]): Promise<Record<string, Claim>> {
+export async function loadClaims(bundle: ClaimSource, ids: readonly string[]): Promise<Record<string, Claim>> {
   const { claimShards, claims } = bundle;
   if (!claimShards) return claims;
   const files = new Set(ids.map((id) => claimShardOf(claimShards, id)).filter((shard) => shard >= 0));

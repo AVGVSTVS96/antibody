@@ -374,6 +374,8 @@ export const BillStats = z.object({
   quietRun: QuietRun.nullable().default(null),
 });
 
+export type BillStats = z.infer<typeof BillStats>;
+
 /** A bill the daily watcher flagged (from `watch_events`), x-rayed or not yet. */
 export const WatchPick = z.object({
   billId: z.string(),
@@ -388,6 +390,58 @@ export const WatchPick = z.object({
   /** Set when a bundle exists for it. */
   file: z.string().nullable(),
 });
+
+const FeaturedRow = z.object({
+  id: z.string(),
+  /** What the x-ray's `#section-` links call the section: its number when no other section of the bill has it, else its id. */
+  slug: z.string(),
+  num: z.string(),
+  heading: z.string(),
+  path: z.string(),
+  kind: z.enum(["headline", "quiet", "other"]),
+  /** CBO's figure for the section in $ millions, signed; null when none lists it. */
+  musd: z.number().nullable(),
+  evenSplit: z.boolean(),
+  late: z.boolean(),
+  /** Articles that match the section; null when coverage was not measured for it. */
+  articles: z.number().int().nullable(),
+  /** Lobbying filings that name the section: the count its score used. */
+  named: z.number().int(),
+  scoreClaim: ClaimId.nullable(),
+  attentionClaim: ClaimId.nullable(),
+});
+
+/**
+ * What the front page draws about the first bill of the landing order beyond its stats: its tape rows, its exhibit and
+ * the records they cite (`claimShards` and `rules` let a chip open a receipt), so the page loads no bundle until a
+ * reader opens a bill. Built by `featuredOf` (landing.ts).
+ */
+export const Featured = z.object({
+  billId: z.string(),
+  /** Articles read for the bill: the sample the per-section counts come from. */
+  read: z.number().int(),
+  lateReason: z.string().nullable(),
+  /** The final sections in bill order. */
+  rows: z.array(FeaturedRow),
+  /** The quiet and costly section shown beside the headline: a position in `rows`, and what only the bundle knew. */
+  exhibit: z
+    .object({
+      row: z.number().int(),
+      /** The CBO figure's period, e.g. "2025-2034". */
+      period: z.string().nullable(),
+      figureClaims: z.array(ClaimId),
+      /** The text the section first appears in. */
+      firstText: z.object({ name: z.string(), date: date.nullable(), claim: ClaimId }).nullable(),
+      /** For a late section, the first chamber passage before that text. */
+      passed: z.object({ chamber: z.string(), date, claim: ClaimId }).nullable(),
+    })
+    .nullable(),
+  deficitClaims: z.array(ClaimId),
+  lateVersionClaims: z.array(ClaimId),
+  claimShards: ClaimShards.nullable(),
+  rules: z.array(Rule),
+});
+export type Featured = z.infer<typeof Featured>;
 
 export const BundleIndex = z.object({
   generatedAt: z.iso.datetime({ offset: true }),
@@ -410,6 +464,8 @@ export const BundleIndex = z.object({
   watch: z.array(WatchPick).default([]),
   /** Counts over every bill in `bills`, each record once; null in an index written before this field. */
   totals: IndexTotals.nullable().default(null),
+  /** The first bill of the landing order, drawn on the front page without its bundle; null in an index written before this field. */
+  featured: Featured.nullable().default(null),
 });
 export type BundleIndex = z.infer<typeof BundleIndex>;
 
@@ -521,7 +577,7 @@ export function activeSpan(b: Bundle): [string, string] | null {
 /** An annual appropriations act: CBO's estimate of it covers only the direct spending and revenue provisions. */
 export const isAppropriations = (b: Bundle) => /appropriations/i.test(`${b.bill.title} ${b.bill.shortTitle ?? ""}`);
 
-export function billStats(b: Bundle): z.infer<typeof BillStats> {
+export function billStats(b: Bundle): BillStats {
   const final = inBillOrder(b.sections.filter((s) => s.inFinal));
   const deficit = headlineDeficit(b, "current-law");
   const traders = b.edges.filter((e) => e.kind === "traded");
