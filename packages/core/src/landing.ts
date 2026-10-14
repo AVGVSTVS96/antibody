@@ -70,14 +70,14 @@ function exhibitOf(b: Bundle, rows: Row[]): Featured["exhibit"] {
 
 /** The front page's block for one bundle. `deficitMusd` is the bill's headline deficit (its stats), whose claims it cites. */
 export function featuredOf(b: Bundle, deficitMusd: number | null): Featured {
-  const nums = new Map<string, number>();
-  for (const s of b.sections) nums.set(s.num, (nums.get(s.num) ?? 0) + 1);
   const drawn = new Map<string, number>();
   for (const e of b.edges)
     if (e.kind === "lobbied" && e.dst.startsWith("section:"))
       drawn.set(e.dst.slice(8), (drawn.get(e.dst.slice(8)) ?? 0) + e.props.reports);
 
   const final = inBillOrder(b.sections.filter((s) => s.inFinal));
+  const nums = new Map<string, number>();
+  for (const s of final) nums.set(s.num, (nums.get(s.num) ?? 0) + 1);
   const lateKnown = !b.bill.lateUnavailable;
   const rows = final.map((s): Row => {
     const figure = shownFigure(b, s);
