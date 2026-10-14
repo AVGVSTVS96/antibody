@@ -1,0 +1,20 @@
+{
+  "name": "@antibody/cli",
+  "private": true,
+  "type": "module",
+  "bin": { "antibody": "./src/main.ts" },
+  "dependencies": {
+    "@antibody/analyze": "workspace:*",
+    "@antibody/core": "workspace:*",
+    "@antibody/ingest-bills": "workspace:*",
+    "@antibody/ingest-cbo": "workspace:*",
+    "@antibody/ingest-fec": "workspace:*",
+    "@antibody/ingest-lobbying": "workspace:*",
+    "@antibody/ingest-members": "workspace:*",
+    "@antibody/ingest-news": "workspace:*",
+    "@antibody/ingest-trades": "workspace:*",
+    "@antibody/resolve": "workspace:*",
+    "@antibody/store": "workspace:*",
+    "@antibody/watch": "workspace:*"
+  }
+}
