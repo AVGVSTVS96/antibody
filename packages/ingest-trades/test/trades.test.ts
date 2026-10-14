@@ -116,10 +116,13 @@ describe("Senate eFD", () => {
   test("paper reports list their page images in order", () => {
     const page = `<img style="margin-top: 110px;" class="filingImage"
       src="https://efd-media-public.senate.gov/media/2026/2/000/000/000000521.gif" alt="filing document" />
-      <img class="filingImage" src="https://efd-media-public.senate.gov/media/2026/2/000/000/000000522.gif" />`;
+      <img class="filingImage" src="https://efd-media-public.senate.gov/media/2026/2/000/000/000000522.gif" />
+      <img class="filingImage"  style="margin-top:220px;"
+        src="https://efd-media-public.senate.gov/media/2021/2/000/001/000001283.gif" alt="filing document" />`;
     expect(paperImages(page)).toEqual([
       "https://efd-media-public.senate.gov/media/2026/2/000/000/000000521.gif",
       "https://efd-media-public.senate.gov/media/2026/2/000/000/000000522.gif",
+      "https://efd-media-public.senate.gov/media/2021/2/000/001/000001283.gif",
     ]);
   });
 });

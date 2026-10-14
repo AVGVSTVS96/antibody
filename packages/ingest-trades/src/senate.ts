@@ -180,7 +180,7 @@ export function parseSenatePtr(html: string): SenateRow[] {
 
 /** The scanned page images of a paper report, in order. */
 export function paperImages(html: string): string[] {
-  return [...html.matchAll(/class="filingImage"\s+src="([^"]+)"/g)].map((m) => m[1]!);
+  return [...html.matchAll(/<img\b[^>]*class="filingImage"[^>]*?\ssrc="([^"]+)"/g)].map((m) => m[1]!);
 }
 
 export async function fetchPaperImages(reports: SenateReport[]) {
