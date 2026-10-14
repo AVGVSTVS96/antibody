@@ -37,7 +37,7 @@ Changing the contract: additive changes (a new column, table or edge prop) go st
 |---|---|---|
 | `spikes/bills` (sections.py, amendments.py) | `packages/ingest-bills` | bills, versions, sections, sponsorships, bill_committees, amendments, amendment_sections, counterparts |
 | `spikes/cbo` (parse_xlsx/pdf/table1, reconcile, map_sections) | `packages/ingest-cbo` | cbo_estimates, cbo_lines, cbo_notes |
-| `spikes/lobbying` (lda.ts, extract.ts, staff.ts, pull.ts) | `packages/ingest-lobbying` | lda_filings, lda_clients, lda_bill_refs, lda_lobbyists |
+| `spikes/lobbying` (lda.ts, extract.ts, staff.ts, pull.ts) | `packages/ingest-lobbying` | lda_filings, lda_clients, lda_bill_refs, lda_topic_refs, lda_lobbyists, lda_spend |
 | `spikes/trades` (fetch-house/senate, parse_house*, parse-senate, ocr_pages) | `packages/ingest-trades` | ptr_documents, trades |
 | `spikes/entities` members.py | `packages/ingest-members` | members, committees, committee_members, roll_calls, member_votes |
 | `spikes/entities` load_fec.py | `packages/ingest-fec` | pacs, contributions |

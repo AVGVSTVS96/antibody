@@ -63,3 +63,29 @@ test("cbo lines name their spending kind and estimates keep the PDF they quote",
   expect(TABLES.cbo_lines.schema.safeParse({ ...line, spending: "other" }).success).toBe(false);
   expect(Object.fromEntries(columns("cbo_estimates")).pdf_url).toBe("VARCHAR");
 });
+
+test("lobbying: topic-only refs are inference rows, spend rows carry both facets", () => {
+  const topic = {
+    id: "u#0#119-s-1582",
+    filing_id: "u",
+    bill_id: "119-s-1582",
+    line: 1,
+    issue_code: "BAN",
+    quote: "stablecoin legislation",
+    topic: "payment stablecoins",
+    phase: "bill",
+    source_url: "https://lda.gov/filings/public/filing/u/print/",
+    source_locator: "issue line 1 of 1",
+    rule: "topic-only",
+    confidence: 0.6,
+    rests_on: ["lda_filings/u"],
+    evidence: {},
+  };
+  expect(TABLES.lda_topic_refs.schema.safeParse(topic).success).toBe(true);
+  expect(TABLES.lda_topic_refs.schema.safeParse({ ...topic, rests_on: [] }).success).toBe(false);
+  const cols = Object.fromEntries(columns("lda_spend"));
+  expect(cols.client_key).toBe("VARCHAR");
+  expect(cols.total_rests_on).toBe("VARCHAR[] NOT NULL");
+  expect(Object.fromEntries(columns("lda_filings")).period_end).toBe("DATE NOT NULL");
+  expect(Object.fromEntries(columns("lda_lobbyists")).named_members).toBe("VARCHAR[] NOT NULL");
+});
