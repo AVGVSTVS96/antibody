@@ -5,7 +5,7 @@ import { paths, python } from "@antibody/core/node";
 import { claude, parseJson, pool } from "./llm.ts";
 
 /** Bumped whenever the prompt or the menu format changes; old matches are then re-done. */
-export const MATCHER = "section-matcher-v5";
+export const MATCHER = "section-matcher-v6";
 export const MATCH_MODEL = process.env.ANTIBODY_MATCH_MODEL ?? "sonnet";
 const BATCH = 8;
 const PARALLEL = 4;
