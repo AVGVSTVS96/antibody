@@ -1,5 +1,5 @@
 import type { Company } from "./edgar.ts";
-import { tokenSet, tokenSort } from "./fuzzy.ts";
+import { tokenSet, tokenSort, typoClose } from "./fuzzy.ts";
 import { CORPORATE, NON_COMPANY, norm, normTicker, parseAsset, tokens } from "./normalize.ts";
 
 /** One organization name found in a record, to be resolved to an SEC company. */
@@ -160,7 +160,7 @@ export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
   const best = bySort[0] ?? null;
   const margin = best ? best.sort - (bySort[1]?.sort ?? 0) : 0;
   const sameHead = best ? tokens(norm(best.name))[0] === tokens(normalized)[0] : false;
-  if (best && !single && best.sort >= 94 && margin >= 4 && sameHead)
+  if (best && !single && best.sort >= 94 && margin >= 4 && sameHead && typoClose(normalized, norm(best.name)))
     return match(m, best.cik, "fuzzy", 0.9, { normalized, score: best.sort, margin, candidates: cands });
 
   const bestSet = Math.max(0, ...cands.map((c) => c.set));

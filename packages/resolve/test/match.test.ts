@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import type { Row } from "@antibody/core";
 import type { Company } from "../src/edgar.ts";
-import { ratio, tokenSet, tokenSort } from "../src/fuzzy.ts";
+import { ratio, tokenSet, tokenSort, typoClose } from "../src/fuzzy.ts";
 import { CompanyIndex, type Mention, resolveMention } from "../src/match.ts";
 import { employerMentions, pacMentions, tradeMentions } from "../src/mentions.ts";
 import { norm, parseAsset } from "../src/normalize.ts";
@@ -163,4 +163,10 @@ test("donor employers merge across members; small ones skip review and keep only
   expect(big!.reviewable).toBe(true);
   expect(resolveMention(big!, index).kind).toBe("match");
   expect(resolveMention(small!, index).kind).toBe("none");
+});
+
+test("typoClose accepts spelling slips and rejects different words", () => {
+  expect(typoClose("sherwin williams", "sherwin william")).toBe(true);
+  expect(typoClose("community development", "community redevelopment")).toBe(false);
+  expect(typoClose("network technologies", "network 1 technologies")).toBe(false);
 });

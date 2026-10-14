@@ -36,3 +36,21 @@ export function tokenSet(a: string, b: string): number {
   const withB = [sect, ...onlyB].filter(Boolean).join(" ");
   return Math.max(ratio(sect, withA), ratio(sect, withB), ratio(withA, withB));
 }
+
+function edits(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++)
+      cur[j] = Math.min(prev[j]! + 1, cur[j - 1]! + 1, prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length]!;
+}
+
+/** Same words in the same order, each at most two typos apart and starting with the same letter ("sherwin williams" ~ "sherwin william"). */
+export function typoClose(a: string, b: string): boolean {
+  const ta = split(a);
+  const tb = split(b);
+  return ta.length === tb.length && ta.every((t, i) => t[0] === tb[i]![0] && edits(t, tb[i]!) <= 2);
+}
