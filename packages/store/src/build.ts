@@ -270,6 +270,7 @@ class Builder {
     const tied = await this.buildCompanies();
     await this.buildTrades(tied, window);
     await this.buildMoney(tied, window);
+    await this.buildSeats();
     const attention = await this.buildAttention();
     await this.buildScores();
     const unread = await this.buildMembers(window);
@@ -612,6 +613,34 @@ class Builder {
     })) {
       if (!this.members.has(m.bioguide)) continue;
       const key = committeeKey(m.committee_id);
+      const claim = await this.cite("committee_members", m);
+      if (claim)
+        this.edge(
+          "member_of",
+          `member_of:${m.bioguide}:${key}`,
+          nodeId("member", m.bioguide),
+          nodeId("committee", key),
+          [claim],
+          { role: m.role },
+        );
+    }
+  }
+
+  /**
+   * Every committee seat (not subcommittees) of each member in the graph, from the roster of the bill's Congress.
+   * A roster is one snapshot, so a member who joined or left mid-Congress can be missing; the gap says so.
+   */
+  private async buildSeats() {
+    const congress = billRef(this.bill).congress;
+    const seats = (
+      await this.select("committee_members", "congress = $c AND length(committee_id) = 4", { c: congress })
+    ).filter((m) => this.memberIds.has(m.bioguide) && this.members.has(m.bioguide));
+    for (const m of seats) {
+      const key = committeeKey(m.committee_id);
+      if (!(await this.committee(key))) {
+        this.warnings.push(`committee_members/${m.id}: no committees row for ${key}`);
+        continue;
+      }
       const claim = await this.cite("committee_members", m);
       if (claim)
         this.edge(
@@ -1277,6 +1306,17 @@ class Builder {
         x.unread.members.map((m) => nodeId("member", m.id)).filter((id) => this.nodes.has(id)),
       );
     }
+    const members = [...this.nodes.keys()].filter((k) => k.startsWith("member:"));
+    const seated = new Set([...this.edges.values()].filter((e) => e.kind === "member_of").map((e) => e.src));
+    if (members.length && !seated.size)
+      gap("no-seats", "other", "Committee rosters for this Congress aren't loaded, so no committee seats show here.");
+    else if (members.length > seated.size)
+      gap(
+        "seats-unlisted",
+        "other",
+        `Committee seats (full committees only) come from one roster snapshot of this Congress; each seat's source note gives its date. ${count(members.length - seated.size, "member")} here have no seat in it (they joined or left mid-term, or sit on none), so a missing seat is not a fact.`,
+        members.filter((k) => !seated.has(k)) as NodeId[],
+      );
     const { estimates } = x.dollars;
     if (!estimates.length)
       gap(

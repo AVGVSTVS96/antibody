@@ -395,3 +395,74 @@ describe("the article list", () => {
     expect(articles).toEqual({ schema: 1, billId: "119-s-1582", articles: [], bySection: {}, general: [] });
   });
 });
+
+describe("committee seats", () => {
+  const roster = "https://github.com/unitedstates/congress-legislators/blob/46b3d14/committee-membership-current.yaml";
+  const seat = (committee: string, bioguide: string, congress = 119, role: string | null = null) => ({
+    id: `${congress}:${committee}:${bioguide}`,
+    committee_id: committee,
+    bioguide,
+    role,
+    congress,
+    source_url: roster,
+    source_locator: `${committee}, roster as of 2026-09-02 (congress-legislators 46b3d14)`,
+  });
+  const rows = structuredClone(GENIUS_ROWS);
+  rows.committees!.push(
+    {
+      id: "SSAP",
+      name: "Senate Committee on Appropriations",
+      chamber: "Senate",
+      parent_id: null,
+      url: null,
+      source_url: roster,
+      source_locator: null,
+    },
+    {
+      id: "SSAP16",
+      name: "Subcommittee on Defense",
+      chamber: "Senate",
+      parent_id: "SSAP",
+      url: null,
+      source_url: roster,
+      source_locator: null,
+    },
+  );
+  rows.committee_members!.push(
+    seat("SSAP", "H000601", 119, "Chairman"),
+    seat("SSAP16", "H000601"),
+    seat("SSAP", "H000601", 118),
+  );
+
+  test("a member in the graph gets every full-committee seat of the bill's Congress, each with its roster claim", async () => {
+    const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+    const seats = bundle.edges
+      .filter((e) => e.kind === "member_of" && e.src === "member:H000601")
+      .toSorted((a, b) => a.dst.localeCompare(b.dst));
+    expect(seats.map((e) => [e.dst, e.kind === "member_of" && e.props.role])).toEqual([
+      ["committee:SSAP", "Chairman"],
+      ["committee:SSBK", null],
+    ]);
+    const claim = bundle.claims[seats[0]!.claims[0]!]!;
+    expect(claim).toMatchObject({ kind: "fact", sourceUrl: roster });
+    expect(claim.text).toContain("served on the Senate Committee on Appropriations as Chairman in the 119th Congress");
+    expect(claim.sourceLocator).toContain("roster as of 2026-09-02");
+    expect(bundle.nodes.some((n) => n.id === "committee:SSAP16")).toBe(false);
+    expect(checkBundle(bundle)).toEqual([]);
+  });
+
+  test("members with no seat in the roster are named in a gap, not shown as sitting nowhere", async () => {
+    const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+    const gap = bundle.gaps.find((g) => g.id === "seats-unlisted")!;
+    const seated = new Set(bundle.edges.filter((e) => e.kind === "member_of").map((e) => e.src));
+    expect(gap.nodes.length).toBeGreaterThan(0);
+    expect(gap.nodes.every((id) => id.startsWith("member:") && !seated.has(id))).toBe(true);
+  });
+
+  test("without any roster for the Congress the gap says no seats are loaded", async () => {
+    const none = { ...rows, committee_members: [] };
+    const { bundle } = await buildBundle(await load(none), "119-s-1582", { now: NOW });
+    expect(bundle.edges.some((e) => e.kind === "member_of")).toBe(false);
+    expect(bundle.gaps.map((g) => g.id)).toContain("no-seats");
+  });
+});
