@@ -52,4 +52,4 @@ The six fixes in `spikes/decisions.json` live in the contract: `sections.split_i
 
 ## Phase 1
 
-All parts are merged into main and the site is live; see `PHASE1.md` for what works, the URL, the ranked gaps and what each part left open. Published bundles (`apps/web/public/bundles/*.json`) are build output, gitignored; `bun run deploy` uploads them.
+All parts are merged into main and the site is live; see `PHASE1.md` for what works, the URL, the ranked gaps and what each part left open. Published bundles (`apps/web/public/bundles/*.json`) are build output, gitignored; `bun run deploy` uploads them. The Vercel project has no Git connection, because a build from the repo alone would ship without bundles; deploy with `bun run deploy`, or `vercel deploy --prebuilt` without `--prod` for a preview.
