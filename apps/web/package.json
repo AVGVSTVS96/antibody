@@ -9,10 +9,14 @@
   },
   "dependencies": {
     "@antibody/core": "workspace:*",
+    "graphology": "0.26.0",
+    "graphology-types": "0.24.8",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sigma": "4.0.1"
   },
   "devDependencies": {
+    "@duckdb/node-api": "1.5.6-r.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.1.2",

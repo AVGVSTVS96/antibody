@@ -69,6 +69,8 @@ export const EDGE_PROPS = {
     phases: Phases,
     spendTotalUsd: z.number().nullable(),
     shareEstimateUsd: z.number().nullable(),
+    /** The inference behind shareEstimateUsd; kept off `claims` so the factual edge isn't drawn dashed. */
+    shareClaim: ClaimId.nullable().optional(),
     issueQuote: z.string().nullable(),
     topicOnly: z.boolean(),
   }),
@@ -104,6 +106,8 @@ const edgeOf = <K extends EdgeKind>(kind: K) =>
     /** fact only if every claim behind it is a fact; inference edges draw dashed with an "inference" pill. */
     basis: ClaimKind,
     claims: z.array(ClaimId).min(1),
+    /** how many further claims back this edge beyond the ones listed (store keeps a few per edge, props carry the totals). */
+    moreClaims: z.number().int().positive().optional(),
     props: EDGE_PROPS[kind],
   });
 

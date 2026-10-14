@@ -275,6 +275,33 @@ export const Bundle = z.object({
 });
 export type Bundle = z.infer<typeof Bundle>;
 
+/** Counts shown on the index card, read from the bundle so the index never needs the bundle itself. */
+export const BillStats = z.object({
+  sections: z.number().int(),
+  headline: z.number().int(),
+  buried: z.number().int(),
+  late: z.number().int(),
+  lobbyingReports: z.number().int(),
+  companies: z.number().int(),
+  membersTraded: z.number().int(),
+  deficitMusd: z.number().nullable(),
+});
+
+/** A bill the daily watcher flagged (from `watch_events`), x-rayed or not yet. */
+export const WatchPick = z.object({
+  billId: z.string(),
+  display: z.string(),
+  title: z.string(),
+  kind: z.enum(["new_version", "enrolled", "new_bill", "floor_vote", "action", "cbo_estimate", "hot"]),
+  seenAt: z.iso.datetime({ offset: true }),
+  url: z.url(),
+  /** One plain sentence: why the watcher picked it. */
+  reason: z.string().nullable(),
+  sponsorParty: Party.nullable(),
+  /** Set when a bundle exists for it. */
+  file: z.string().nullable(),
+});
+
 export const BundleIndex = z.object({
   generatedAt: z.iso.datetime({ offset: true }),
   bills: z.array(
@@ -287,8 +314,10 @@ export const BundleIndex = z.object({
       sponsorParty: Party.nullable(),
       latestActionOn: date.nullable(),
       file: z.string(),
+      stats: BillStats.nullable().default(null),
     }),
   ),
+  watch: z.array(WatchPick).default([]),
 });
 export type BundleIndex = z.infer<typeof BundleIndex>;
 
@@ -313,7 +342,7 @@ export function checkBundle(b: Bundle): string[] {
     } else if (v && typeof v === "object") {
       for (const [k, x] of Object.entries(v)) {
         if (path === "" && k === "claims") continue;
-        if ((k === "claim" || k === "claims" || k === "restsOn") && x != null)
+        if ((k === "claim" || k === "claims" || k === "restsOn" || k.endsWith("Claim")) && x != null)
           for (const id of [x].flat() as string[])
             if (!(id in b.claims)) problems.push(`${path}.${k}: unknown claim ${id}`);
         walk(x, `${path}.${k}`);
@@ -324,4 +353,20 @@ export function checkBundle(b: Bundle): string[] {
   for (const c of Object.values(b.claims))
     for (const id of c.restsOn) if (!(id in b.claims)) problems.push(`claims.${c.id}.restsOn: unknown claim ${id}`);
   return problems;
+}
+
+/** The index card counts for one bundle; store calls this when it writes index.json. */
+export function billStats(b: Bundle): z.infer<typeof BillStats> {
+  const final = b.sections.filter((s) => s.inFinal);
+  const deficit = b.dollars.wholeBill.find((d) => d.measure === "deficit" && d.baseline === "current-law");
+  return {
+    sections: final.length,
+    headline: final.filter((s) => s.score?.label === "headline").length,
+    buried: final.filter((s) => s.score?.label === "buried").length,
+    late: final.filter((s) => s.late).length,
+    lobbyingReports: b.lobbying.reports,
+    companies: b.nodes.filter((n) => n.kind === "company").length,
+    membersTraded: new Set(b.edges.filter((e) => e.kind === "traded").map((e) => e.src)).size,
+    deficitMusd: deficit?.amountMusd ?? null,
+  };
 }

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import fixture from "../fixtures/genius-mini.bundle.json";
-import { Bundle, checkBundle } from "../src/bundle.ts";
+import { Bundle, BundleIndex, billStats, checkBundle } from "../src/bundle.ts";
 
 test("the fixture is a valid, sound bundle", () => {
   const parsed = Bundle.safeParse(fixture);
@@ -16,4 +16,61 @@ test("checkBundle catches a dangling claim and edge", () => {
     "edge x: unknown dst member:NOPE",
     ".edges[4].claims: unknown claim trades/missing",
   ]);
+});
+
+test("an index without stats or watch picks still parses", () => {
+  const index = BundleIndex.parse({
+    generatedAt: "2026-10-13T21:00:00-07:00",
+    bills: [
+      {
+        id: "119-s-1582",
+        display: "S.1582",
+        title: "GENIUS Act",
+        shortTitle: null,
+        law: null,
+        sponsorParty: "R",
+        latestActionOn: null,
+        file: "119-s-1582.json",
+      },
+    ],
+  });
+  expect(index.watch).toEqual([]);
+  expect(index.bills[0]!.stats).toBeNull();
+});
+
+test("billStats counts the index card numbers", () => {
+  expect(billStats(Bundle.parse(fixture))).toEqual({
+    sections: 1,
+    headline: 0,
+    buried: 0,
+    late: 1,
+    lobbyingReports: 757,
+    companies: 1,
+    membersTraded: 2,
+    deficitMusd: 120,
+  });
+});
+
+test("checkBundle also follows *Claim props, like a lobbied edge's shareClaim", () => {
+  const b = Bundle.parse(fixture);
+  const broken = structuredClone(b);
+  broken.edges.push({
+    id: "lobbied:x",
+    kind: "lobbied",
+    src: b.edges[0]!.src,
+    dst: b.edges[0]!.dst,
+    basis: "fact",
+    claims: [b.edges[0]!.claims[0]!],
+    props: {
+      reports: 1,
+      quarters: 1,
+      phases: { bill: 1, enactmentQuarter: 0, law: 0 },
+      spendTotalUsd: null,
+      shareEstimateUsd: 1,
+      shareClaim: "lda_spend/missing#share",
+      issueQuote: null,
+      topicOnly: false,
+    },
+  });
+  expect(checkBundle(broken)).toEqual([".edges[4].props.shareClaim: unknown claim lda_spend/missing#share"]);
 });
