@@ -61,6 +61,8 @@ export function palette() {
     violet: v("violet"),
     red: v("red"),
     gold: v("gold"),
+    teal: v("teal"),
+    steel: v("steel"),
     grey: v("grey"),
     seal: v("seal"),
   };

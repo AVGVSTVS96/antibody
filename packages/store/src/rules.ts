@@ -12,7 +12,7 @@ export const RULES: Record<string, { version: string; text: string }> = {
   },
   "trade-window": {
     version: "1",
-    text: "Trades in a tied company's stock count from one year before the bill was introduced to one year after it became law (or its last dated action).",
+    text: "Trades in a tied company's stock count from one year before the bill was introduced to one year after it became law (or its last dated action). Routine disclosures; no link to any vote is claimed, and large companies' shares are traded all the time.",
   },
   "affected-donors": {
     version: "1",
@@ -30,9 +30,9 @@ export const RULES: Record<string, { version: string; text: string }> = {
     version: "1",
     text: "A lobbyist is drawn when a filing that names the bill lists a covered (former government) position for them, quoted as filed; every lobbyist is counted.",
   },
-  "lda-bill-share": {
+  "counterpart-ref": {
     version: "1",
-    text: "A client's lobbying spend on a bill is estimated as each filing's reported amount times the share of its issue lines that name the bill; the factual total is always shown beside it.",
+    text: "A lobbying filing that names the other chamber's bill, or an earlier version of the same bill, is taken to be about this bill because the texts are the same bill.",
   },
   "lda-topic-only": {
     version: "1",
@@ -118,3 +118,4 @@ export function ruleFor(rule: string): Rule {
 }
 
 export const CBO_EVEN_SPLIT = `cbo-even-split: ${RULES["cbo-even-split"]!.text}`;
+export const COUNTERPART_REF = `counterpart-ref: ${RULES["counterpart-ref"]!.text}`;

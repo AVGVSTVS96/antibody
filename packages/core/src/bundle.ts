@@ -29,6 +29,8 @@ export const BillCard = z.object({
   latestAction: z.string().nullable(),
   /** Why "added late" is withheld for this bill (it began as a shell or was rewritten wholesale); null when late flags stand. */
   lateUnavailable: z.string().nullable().default(null),
+  /** Set when the law's text came from later versions, not the sponsor's original bill: the sponsor line reads as a vehicle. */
+  vehicle: z.string().nullable().default(null),
   url: z.url(),
   billstatusUrl: z.url(),
   claims: z.array(ClaimId),
@@ -264,6 +266,8 @@ export const Bundle = z.object({
     outletListVersion: z.string().nullable(),
     window: z.tuple([date, date]).nullable(),
     articles: z.number().int(),
+    /** Articles found for the bill, and how many of the ones read were judged to be about it: the sample section counts come from. */
+    sample: z.object({ found: z.number().int(), relevant: z.number().int() }).nullable().default(null),
     /** Coverage about the bill as a whole or about things outside its text. */
     general: SectionAttention.nullable(),
   }),
@@ -294,12 +298,32 @@ export const BillStats = z.object({
   late: z.number().int().nullable(),
   /** The last roll call members' votes are drawn for, so the card can say how it ended. */
   tally: z
-    .object({ chamber: z.string(), date, yeas: z.number().int(), nays: z.number().int(), result: z.string() })
+    .object({
+      chamber: z.string(),
+      date,
+      yeas: z.number().int(),
+      nays: z.number().int(),
+      result: z.string(),
+      /** Yea and Nay votes by party among the members drawn; null when the votes are not drawn per member. */
+      byParty: z
+        .partialRecord(Party, z.object({ yea: z.number().int(), nay: z.number().int() }))
+        .nullable()
+        .default(null),
+    })
     .nullable()
     .default(null),
   lobbyingReports: z.number().int(),
   companies: z.number().int(),
   membersTraded: z.number().int(),
+  /** Of those, members with a trade dated from the first text through signing (or the last dated action). */
+  membersTradedDuring: z.number().int().default(0),
+  /** Whether the buried label could be tested on this bill, and how many sections had stakes big enough to qualify. */
+  buriedTest: z
+    .object({ tested: z.boolean(), why: z.string().nullable(), bigStakes: z.number().int() })
+    .default({ tested: true, why: null, bigStakes: 0 }),
+  /** Share of final sections that arrived late; late counts for nothing at or above the score's late cutoff. */
+  lateShare: z.number().nullable().default(null),
+  vehicle: z.boolean().default(false),
   deficitMusd: z.number().nullable(),
   /** One letter per final section in order: h headline, b buried, n normal, u unscored. Drawn as the card's ring. */
   fingerprint: z.string().regex(/^[hbnu]*$/),
@@ -330,6 +354,7 @@ export const BundleIndex = z.object({
       shortTitle: z.string().nullable(),
       law: z.string().nullable(),
       sponsorParty: Party.nullable(),
+      congress: z.number().int().default(0),
       latestActionOn: date.nullable(),
       file: z.string(),
       claimsFile: z.string().nullable().default(null),
@@ -395,7 +420,7 @@ export function headlineDeficit(b: Bundle, baseline: Dollar["baseline"]): Dollar
     )[0];
 }
 
-/** The index card counts for one bundle; store calls this when it writes index.json. */
+/** The last roll call members' votes are drawn for, with how each party voted on it. */
 function finalVote(b: Bundle) {
   const voted = new Set(
     b.edges.filter((e) => e.kind === "voted").map((e) => (e.kind === "voted" ? e.props.rollId : "")),
@@ -404,14 +429,65 @@ function finalVote(b: Bundle) {
     .filter((v) => voted.has(v.id))
     .sort((x, y) => x.date.localeCompare(y.date) || x.number - y.number)
     .at(-1);
-  return roll
-    ? { chamber: roll.chamber, date: roll.date, yeas: roll.yeas, nays: roll.nays, result: roll.result }
-    : null;
+  if (!roll) return null;
+  const party = new Map(b.nodes.flatMap((n) => (n.kind === "member" ? [[n.id, n.props.party] as const] : [])));
+  const byParty: Partial<Record<"R" | "D" | "I", { yea: number; nay: number }>> = {};
+  for (const e of b.edges) {
+    if (e.kind !== "voted" || e.props.rollId !== roll.id || (e.props.vote !== "Yea" && e.props.vote !== "Nay"))
+      continue;
+    const p = party.get(e.src);
+    if (!p) continue;
+    const c = byParty[p] ?? { yea: 0, nay: 0 };
+    byParty[p] = c;
+    c[e.props.vote === "Yea" ? "yea" : "nay"]++;
+  }
+  return {
+    chamber: roll.chamber,
+    date: roll.date,
+    yeas: roll.yeas,
+    nays: roll.nays,
+    result: roll.result,
+    byParty: Object.keys(byParty).length ? byParty : null,
+  };
+}
+
+/** Stakes big enough for the buried label: $10B in a CBO figure CBO gave the section itself, or about 20 lobbying reports (buried-v1's 0.667 bar). */
+export const BIG_STAKES = { dollarsMusd: 10_000, reports: 22 };
+const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null; lobbyingReports: number }) =>
+  (c.dollarsMusd !== null && c.dollarsSplit !== "even_split" && Math.abs(c.dollarsMusd) >= BIG_STAKES.dollarsMusd) ||
+  c.lobbyingReports >= BIG_STAKES.reports;
+
+/** Trade dates from the first text through signing (or the last dated action): the span in which a trade could be about the bill. */
+export function activeSpan(b: Bundle): [string, string] | null {
+  const own = b.versions.filter((v) => !v.predecessor && v.date).map((v) => v.date!);
+  const start = own.sort()[0];
+  const end =
+    b.bill.lawOn ??
+    [...b.votes.map((v) => v.date), ...b.versions.map((v) => v.date)]
+      .filter((d): d is string => !!d)
+      .sort()
+      .at(-1);
+  return start && end ? [start, end] : null;
 }
 
 export function billStats(b: Bundle): z.infer<typeof BillStats> {
   const final = b.sections.filter((s) => s.inFinal);
   const deficit = headlineDeficit(b, "current-law");
+  const traders = b.edges.filter((e) => e.kind === "traded");
+  const span = activeSpan(b);
+  const during = new Set(
+    span
+      ? traders
+          .filter((e) => e.kind === "traded" && e.props.events.some((ev) => ev.date >= span[0] && ev.date <= span[1]))
+          .map((e) => e.src)
+      : [],
+  );
+  const ranked = final.some((s) => s.attention?.pct != null);
+  const why = !ranked
+    ? "too few news articles to rank this bill's sections"
+    : b.bill.lateUnavailable
+      ? "the late flag is unavailable on this bill, so only being off-topic can count"
+      : null;
   return {
     sections: final.length,
     headline: final.filter((s) => s.score?.label === "headline").length,
@@ -420,7 +496,15 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     tally: finalVote(b),
     lobbyingReports: b.lobbying.reports,
     companies: b.nodes.filter((n) => n.kind === "company").length,
-    membersTraded: new Set(b.edges.filter((e) => e.kind === "traded").map((e) => e.src)).size,
+    membersTraded: new Set(traders.map((e) => e.src)).size,
+    membersTradedDuring: during.size,
+    buriedTest: {
+      tested: ranked,
+      why,
+      bigStakes: final.filter((s) => s.score && bigStakes(s.score.components)).length,
+    },
+    lateShare: b.bill.lateUnavailable || !final.length ? null : final.filter((s) => s.late).length / final.length,
+    vehicle: !!b.bill.vehicle,
     deficitMusd: deficit?.amountMusd ?? null,
     fingerprint: final.map((s) => (s.score ? s.score.label[0] : "u")).join(""),
   };

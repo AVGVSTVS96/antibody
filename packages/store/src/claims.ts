@@ -1,5 +1,5 @@
 import { Claim, type ClaimId } from "@antibody/core";
-import { CBO_EVEN_SPLIT, DOCS } from "./rules.ts";
+import { CBO_EVEN_SPLIT, COUNTERPART_REF, DOCS } from "./rules.ts";
 
 const ATTENTION_LOCATOR = 'how attention is counted; the counted articles are under "rests on"';
 
@@ -41,6 +41,10 @@ export interface Names {
   roll(id: string): string;
   amendment(id: string): string;
   estimate(id: string): AnyRow | null;
+  /** Articles found for the bill, and how many of those read were judged to be about it. */
+  sample: { found: number; relevant: number };
+  /** Today as `YYYY-MM-DD`, to tell a term that is over from one still running. */
+  today: string;
 }
 
 /** The parts of a claim a template decides; the rest comes from the row (source, rule, confidence, restsOn). */
@@ -71,6 +75,14 @@ const lobbied = (n: Names, filingId: string) => {
     ? `${f.registrant} reported lobbying for ${f.client} in ${f.when}`
     : `Lobbying filing ${filingId} reports lobbying`;
 };
+/** Whether a bill reference in a filing ("H.R. 29", "S. 394") is a different bill number than the bill's own. */
+export function namesAnotherBill(said: string, display: string): boolean {
+  const norm = (x: string) => x.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const own = norm(display);
+  const m = norm(said).match(/(HR|S|HJRES|SJRES)(\d+)/);
+  return !!m && `${m[1]}${m[2]}` !== own;
+}
+
 const secNums = (nums: string[]) =>
   nums.length === 1 ? `section ${nums[0]}` : `sections ${nums.slice(0, -1).join(", ")} and ${nums.at(-1)}`;
 
@@ -207,10 +219,22 @@ export const TEMPLATES: Record<string, Template> = {
     text: `${r.registrant_name} filed ${r.form ? `an ${r.form}` : "a lobbying report"} for ${r.client_name} for ${quarter(r.period)} ${r.year}${r.amount_usd != null ? `, reporting ${usd(r.amount_usd)} in ${r.amount_kind ?? "spending"}` : ""}.`,
   }),
 
-  lda_bill_refs: (r, _f, n) => ({
-    text: `${lobbied(n, r.filing_id)} on ${n.bill}${r.matched ? ` (the filing says ${quote(r.matched.replace(/^\W+|[\s,;:.]+$/g, ""), 60)})` : ""}.`,
-    quote: r.quote,
-  }),
+  lda_bill_refs: (r, _f, n) => {
+    const said = r.matched ? r.matched.replace(/^\W+|[\s,;:.]+$/g, "") : "";
+    if (said && namesAnotherBill(said, n.display))
+      return {
+        text: `${lobbied(n, r.filing_id)} on ${quote(said, 60)}, taken to be ${n.bill} (the other chamber's or an earlier version of the same bill).`,
+        kind: "inference",
+        rule: COUNTERPART_REF,
+        restsOn: [`lda_filings/${r.filing_id}`],
+        confidence: 0.8,
+        quote: r.quote,
+      };
+    return {
+      text: `${lobbied(n, r.filing_id)} on ${n.bill}${said ? ` (the filing says ${quote(said, 60)})` : ""}.`,
+      quote: r.quote,
+    };
+  },
 
   lda_topic_refs: (r, _f, n) => ({
     text: `${lobbied(n, r.filing_id)} on ${quote(r.topic, 80)} without naming a bill; taken to be about ${n.bill}.`,
@@ -224,15 +248,10 @@ export const TEMPLATES: Record<string, Template> = {
     return { text: `${r.name} lobbied${where}${covered}.`, quote: r.covered_position };
   },
 
-  lda_spend: (r, facet, n) => {
+  lda_spend: (r, _facet, n) => {
     const whom = r.client_key ? n.client(r.client_key) : "All clients";
-    if (facet === "share")
-      return {
-        text: `An estimated ${usd(r.share_usd ?? 0)} of that spending was about ${n.bill}: the total times the share of issue lines that name it.`,
-        restsOn: [`lda_spend/${r.id}#total`],
-      };
     return {
-      text: `${whom} reported ${usd(r.total_usd ?? 0)} in lobbying spending in the ${count(r.quarters, "quarter")} whose filings named ${n.bill}${r.topic_only ? " by topic only" : ""}.`,
+      text: `${whom} reported ${usd(r.total_usd ?? 0)} in lobbying spending in the ${count(r.quarters, "quarter")} whose filings named ${n.bill}${r.topic_only ? " by topic only" : ""}. That is the filing's total for every issue it lists, not what was spent on this bill.`,
       kind: "fact",
       rule: null,
       restsOn: r.total_rests_on ?? [],
@@ -264,13 +283,18 @@ export const TEMPLATES: Record<string, Template> = {
     };
   },
 
-  members: (r, facet) => {
+  members: (r, facet, n) => {
     const t = facet ? (r.terms as AnyRow[] | undefined)?.find((x) => x.start === facet) : null;
     const m = t ? { party: t.party, state: t.state, district: t.district, chamber: t.chamber } : r;
     const party = PARTY[m.party as "R"] ?? (/^Democrat/.test(m.party) ? "Democratic" : m.party);
     const role = `${/^[AEIOUaeiou]/.test(party) ? "an" : "a"} ${party} ${m.chamber === "Senate" ? "senator" : "representative"}`;
     const where = `${STATES[m.state] ?? m.state}${m.district ? `'s ${ordinal(m.district)} district` : ""}`;
-    if (t) return { text: `${r.name} served as ${role} from ${where} from ${day(t.start)} to ${day(t.end)}.` };
+    if (t) {
+      const open = String(t.end) >= n.today;
+      return {
+        text: `${r.name} ${open ? "serves" : "served"} as ${role} from ${where} from ${day(t.start)}${open ? `; the term ends ${day(t.end)}` : ` to ${day(t.end)}`}.`,
+      };
+    }
     return { text: `${r.name} is ${role} from ${where}.` };
   },
 
@@ -329,7 +353,7 @@ export const TEMPLATES: Record<string, Template> = {
     const trade = r.trade_legal_hits ? ` Trade and legal press: ${count(r.trade_legal_hits, "more article")}.` : "";
     if (!r.hits)
       return {
-        text: `No article from the counted outlets matched ${subject}.${trade}`,
+        text: `None of the ${n.sample.relevant.toLocaleString("en-US")} relevant articles read (out of ${n.sample.found.toLocaleString("en-US")} found) matched ${subject}. Only a few hundred articles are read, so zero means none among those, not that nobody covered it.${trade}`,
         sourceLocator: ATTENTION_LOCATOR,
         sourceUrl: `${DOCS}#attention-v1`,
       };
@@ -342,7 +366,7 @@ export const TEMPLATES: Record<string, Template> = {
             ? ", among the least covered sections of this bill"
             : `, more than ${Math.round(r.pct * 100)}% of this bill's other sections`;
     return {
-      text: `${count(r.hits, "article")} from the counted outlets matched ${subject}${rank}.${trade}`,
+      text: `${r.hits.toLocaleString("en-US")} of the ${n.sample.relevant.toLocaleString("en-US")} relevant articles read (out of ${n.sample.found.toLocaleString("en-US")} found) matched ${subject}${rank}.${trade}`,
       sourceLocator: ATTENTION_LOCATOR,
       sourceUrl: `${DOCS}#attention-v1`,
     };
@@ -355,7 +379,7 @@ export const TEMPLATES: Record<string, Template> = {
   section_scores: (r, _f, n) => {
     const bits = [
       r.dollars_musd != null
-        ? `CBO dollars ${musd(r.dollars_musd)}${r.dollars_split === "even_split" ? " (even split)" : ""}`
+        ? `CBO says it ${r.dollars_musd < 0 ? "cuts" : "adds"} ${musd(r.dollars_musd)} ${r.dollars_musd < 0 ? "from" : "to"} the deficit${r.dollars_split === "even_split" ? " (even split)" : ""}`
         : "no CBO dollars",
       r.attention_pct != null
         ? `attention at the ${ordinal(Math.round(r.attention_pct * 100))} percentile`

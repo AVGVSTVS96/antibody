@@ -2,7 +2,7 @@ import type { BundleIndex } from "@antibody/core";
 import { type BillId, billDisplay, congressGovUrl, parseBillId } from "@antibody/core/ids";
 import { type FormEvent, use, useEffect, useState } from "react";
 import { loadIndex, prefetchBundle } from "../lib/data.ts";
-import { count, day, musd, stamp } from "../lib/format.ts";
+import { CONGRESS_TAG, count, day, deficitWords, musd, stamp } from "../lib/format.ts";
 import { billHref, navigate, onLink } from "../lib/router.ts";
 import { Search } from "../ui/icons.tsx";
 import { Top } from "../ui/Top.tsx";
@@ -10,6 +10,7 @@ import { Top } from "../ui/Top.tsx";
 type Entry = BundleIndex["bills"][number];
 
 const PARTY = { R: "Republican", D: "Democratic", I: "Independent" } as const;
+const START_HERE = "119-s-1582";
 
 export function IndexPage() {
   const index = use(loadIndex());
@@ -27,7 +28,9 @@ export function IndexPage() {
   const bills = [...index.bills]
     .filter(match)
     .sort((a, b) => (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""));
-  const byParty = (p: "R" | "D" | "I" | null) => bills.filter((b) => b.sponsorParty === p);
+  const byParty = (p: "R" | "D" | "I" | null) => bills.filter((b) => b.sponsorParty === p && !b.stats?.vehicle);
+  const vehicles = bills.filter((b) => b.stats?.vehicle);
+  const testable = index.bills.filter((b) => b.stats?.buriedTest.tested).length;
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -62,9 +65,9 @@ export function IndexPage() {
             See what rides along in a bill, <em>and who is behind it.</em>
           </h1>
           <p>
-            antibody x-rays federal bills: the headline fight, the sections added late and quietly, who lobbied, who
-            paid, who benefits, and which members traded the stock. Every line links its public record, inferences are
-            marked as inferences, and the same rules apply to every party.
+            antibody x-rays federal bills: the headline fight, the sections added after a chamber passed the bill, who
+            lobbied, who donated, and which members traded related stock. Every line links its public record, inferences
+            are marked as inferences, and the same rules apply to every party.
           </p>
           <form className="search" onSubmit={submit}>
             <Search />
@@ -89,8 +92,14 @@ export function IndexPage() {
 
         <div className="section-h">
           <span className="cap">Curated bills</span>
-          <span className="cap">grouped by sponsor’s party, so both sides sit side by side</span>
+          <span className="cap">grouped by the sponsor’s party</span>
         </div>
+        <p className="extra colnote">
+          Sponsor party is not who voted for it: the vote tally on each card shows how each party voted. The two columns
+          also differ in era (all six Democratic-sponsored bills are from the 117th Congress, when Democrats held the
+          House, Senate and White House), so read them as examples, not as a score between parties. {testable} of{" "}
+          {index.bills.length} bills had enough news and a late flag to test for buried candidates at all.
+        </p>
         <div className="cols">
           {parties.map((p) => {
             const list = byParty(p);
@@ -113,9 +122,27 @@ export function IndexPage() {
           })}
         </div>
 
+        {vehicles.length > 0 && (
+          <>
+            <div className="section-h">
+              <span className="cap">Vehicle bills</span>
+              <span className="cap">the sponsor introduced a different text than the law</span>
+            </div>
+            <div className="cols">
+              <div className="col">
+                {vehicles.map((b) => (
+                  <BillCard key={b.id} b={b} />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
         <div className="section-h">
           <span className="cap">Latest watcher picks</span>
-          <span className="cap">new text versions, enrolled bills and hot fights, checked daily</span>
+          <span className="cap">
+            bills that moved and scored highest on a cheap check, daily; worth a look, not a verdict
+          </span>
         </div>
         <div className="picks">
           {index.watch.length ? (
@@ -123,7 +150,9 @@ export function IndexPage() {
               <ul className="rows">
                 {index.watch.slice(0, 12).map((w) => (
                   <li key={`${w.billId}-${w.seenAt}-${w.kind}`} className="pick">
-                    <span className={`kind${w.kind === "hot" ? " hot" : ""}`}>{w.kind.replace("_", " ")}</span>
+                    <span className={`kind${w.kind === "hot" ? " hot" : ""}`}>
+                      {w.kind === "hot" ? "worth a look" : w.kind.replace("_", " ")}
+                    </span>
                     <span>
                       <b className="mono">{w.display}</b> {w.title}
                       {w.sponsorParty && <span className="row-meta"> · {PARTY[w.sponsorParty]} sponsor</span>}
@@ -162,10 +191,12 @@ export function IndexPage() {
             </p>
           </div>
           <div className="card">
-            <h2>Headline and buried</h2>
+            <h2>Headline and buried candidates</h2>
             <p>
-              Headline sections draw the most news attention. A buried candidate came in late and stayed quiet, or moves
-              money with little notice. The sub-scores sit next to every label, never just a verdict.
+              Headline sections are the top tenth of a bill by news attention. A buried candidate has big stakes (a CBO
+              figure of $10 billion or more, or about 20 lobbying reports), almost no news, and was added late or has
+              little to do with the rest of the bill. Lobbying alone can give a section big stakes. The sub-scores sit
+              next to every label, never just a verdict.
             </p>
           </div>
           <div className="card">
@@ -179,7 +210,9 @@ export function IndexPage() {
             <h2>Same rules for everyone</h2>
             <p>
               Thresholds, colors and wording are identical for every party and member. Party is a label, never a color.
-              What we couldn’t read yet is shown as missing, not left out.
+              What we couldn’t read yet is shown as missing, not left out. News attention weights left, center and right
+              outlets equally by side, but the sides are not built alike (the right side has fewer outlets, and the
+              groups come from 2019 sharing data), so a quiet section is a lead to check.
             </p>
           </div>
         </div>
@@ -196,8 +229,27 @@ export function IndexPage() {
   );
 }
 
+function hook(b: Entry): string {
+  const s = b.stats;
+  if (!s) return "";
+  const parts = [
+    s.deficitMusd != null ? `CBO says it ${deficitWords(s.deficitMusd)}` : null,
+    s.late ? `${s.late} ${s.late === 1 ? "section was" : "sections were"} added late` : null,
+    s.lobbyingReports ? `${s.lobbyingReports.toLocaleString("en-US")} lobbying reports name it` : null,
+  ].filter(Boolean);
+  return parts.length ? `${parts.join("; ")}.` : "";
+}
+
+function buriedLine(s: NonNullable<Entry["stats"]>) {
+  if (!s.buriedTest.tested) return `Buried candidates: not tested (${s.buriedTest.why}).`;
+  if (s.buried > 0)
+    return `Buried candidates: ${s.buried} of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}.`;
+  return `Buried candidates: 0 of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}${s.buriedTest.why ? ` (${s.buriedTest.why})` : ""}.`;
+}
+
 function BillCard({ b }: { b: Entry }) {
   const s = b.stats;
+  const party = s?.tally?.byParty;
   return (
     <a
       className="billcard"
@@ -213,41 +265,57 @@ function BillCard({ b }: { b: Entry }) {
           {b.sponsorParty ? ` · ${b.sponsorParty} sponsor` : ""}
           {b.law ? ` · ${b.law}` : ""}
           {b.latestActionOn ? ` · ${day(b.latestActionOn)}` : ""}
+          {b.id === START_HERE && <span className="badge-start">Start with this one</span>}
         </div>
         <h3>{b.shortTitle ?? b.title}</h3>
+        {s && hook(b) && <div className="hook">{hook(b)}</div>}
         {b.shortTitle && <div className="meta">{b.title}</div>}
         {s && (
-          <div className="nums">
-            <span>
-              <b>{s.sections}</b> sections
-            </span>
-            {s.buried > 0 && (
-              <span className="r">
-                <b>{s.buried}</b> buried
-              </span>
-            )}
-            <span>
-              <b>{s.lobbyingReports.toLocaleString("en-US")}</b> lobbying reports
-            </span>
-            {s.membersTraded > 0 && (
-              <span title="Members of Congress with a filed stock trade in a company tied to the bill, inside its trade window. Routine disclosures; no link to any vote is claimed.">
-                <b>{s.membersTraded}</b> members traded tied stock
-              </span>
-            )}
-            {s.tally && (
+          <>
+            <div className="tags">
+              {b.congress ? (
+                <span title={CONGRESS_TAG[b.congress]}>
+                  {CONGRESS_TAG[b.congress]?.split(" · ")[0] ?? `${b.congress}th Congress`}
+                </span>
+              ) : null}
+              {s.tally && (
+                <span>
+                  {s.tally.chamber} vote{" "}
+                  <b>
+                    {s.tally.yeas}-{s.tally.nays}
+                  </b>
+                  {party && (
+                    <>
+                      {" "}
+                      (
+                      {(["R", "D", "I"] as const)
+                        .filter((p) => party[p])
+                        .map((p) => `${p} ${party[p]!.yea}-${party[p]!.nay}`)
+                        .join(", ")}
+                      )
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
+            <div className="tests">{buriedLine(s)}</div>
+            <div className="nums">
               <span>
-                {s.tally.chamber} vote{" "}
-                <b>
-                  {s.tally.yeas}-{s.tally.nays}
-                </b>
+                <b>{s.sections}</b> sections
               </span>
-            )}
-            {s.deficitMusd != null && (
               <span>
-                <b>{musd(s.deficitMusd)}</b> deficit
+                <b>{s.lobbyingReports.toLocaleString("en-US")}</b> lobbying reports
               </span>
-            )}
-          </div>
+              <span title="Members of Congress with a stock trade dated from the bill's first text through its signing in a company tied to the bill. Routine disclosures; no link to any vote is claimed. Members trade large companies' shares all the time.">
+                <b>{s.membersTradedDuring}</b> of 535 members traded stock in affected companies while it moved
+              </span>
+              {s.deficitMusd != null && (
+                <span>
+                  <b>{musd(s.deficitMusd)}</b> deficit
+                </span>
+              )}
+            </div>
+          </>
         )}
       </div>
     </a>

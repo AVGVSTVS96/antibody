@@ -84,3 +84,16 @@ export function sourceName(url: string): string {
     return "source";
   }
 }
+
+/** A signed CBO deficit figure ($ millions) as words: "adds $3.4T to the deficit" / "cuts $63B from the deficit". */
+export const deficitWords = (m: number) =>
+  `${m < 0 ? "cuts" : "adds"} ${usd(Math.abs(m) * 1e6)} ${m < 0 ? "from" : "to"} the deficit`;
+
+export const RULES_URL = "https://github.com/AVGVSTVS96/antibody/blob/main/docs/rules.md";
+
+/** Who held Congress and the White House, so a card's era is visible next to its sponsor's party. */
+export const CONGRESS_TAG: Record<number, string> = {
+  117: "117th Congress · Democratic House, Senate and President",
+  118: "118th Congress · Republican House, Democratic Senate and President",
+  119: "119th Congress · Republican House, Senate and President",
+};

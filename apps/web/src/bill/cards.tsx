@@ -1,5 +1,6 @@
 import { type Dollar, headlineDeficit } from "@antibody/core";
-import { count, day, musd, nice, rank, usd } from "../lib/format.ts";
+import { useState } from "react";
+import { count, day, deficitWords, musd, nice, RULES_URL, rank, usd } from "../lib/format.ts";
 import type { Actor, BillModel, MemberView, SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
 import { useRowFocus } from "./focus.ts";
@@ -14,28 +15,99 @@ const MEASURE = {
 
 export const secId = (v: SectionView) => `section:${v.s.id}`;
 
-/** The ten-second read: what is loudest, what is quiet with big stakes, and how much money touches the bill. */
-export function Verdict({ m }: { m: BillModel }) {
+const jump = (id: string) => () => {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
+/** What makes a section's stakes big, in words: its CBO figure and its lobbying reports. */
+function stakesWords(v: SectionView): string {
+  const bits = [
+    v.dollarsMusd != null && v.s.score?.components.dollarsSplit !== "even_split" ? deficitWords(v.dollarsMusd) : null,
+    v.lobbied ? `${count(v.lobbied, "lobbying report")} name it` : null,
+  ].filter(Boolean);
+  return bits.join(" and ");
+}
+
+/** The section closest to the buried rule that did not meet it, so "none" never reads as "not measured". */
+function closest(m: BillModel): SectionView | undefined {
+  return m.sections
+    .filter((v) => v.s.inFinal && v.kind !== "buried" && v.kind !== "headline" && v.s.score?.buried != null)
+    .sort((x, y) => y.s.score!.buried! - x.s.score!.buried!)[0];
+}
+
+/** The ten-second read: the loud fight, what is quiet with big stakes, and the money, each with one number and a jump link. */
+export function Story({ m }: { m: BillModel }) {
   const loud = m.headline[0];
   const quiet = m.buried[0];
+  const near = closest(m);
+  const A = m.b.attention;
+  const ranked = m.sections.some((v) => v.s.attention?.pct != null);
   const companies = m.actors.filter((a) => a.lobbied.length).length;
-  const traders = m.members.filter((v) => v.tradeCount).length;
-  const sec = (v: SectionView) => (
-    <b>
-      §{v.s.num} {v.s.heading}
-    </b>
-  );
   return (
-    <div className="verdict">
-      <span>
-        <i>Loudest</i> {loud ? sec(loud) : "no section stands out"}
-      </span>
-      <span>
-        <i>Quiet, big stakes</i> {quiet ? sec(quiet) : "none meets the rule"}
-      </span>
-      <span>
-        <i>Money</i> {count(companies, "company", "companies")} lobbied · {count(traders, "member")} traded tied stock
-      </span>
+    <div className="story">
+      <div className="beat">
+        <i>The loud part</i>
+        {loud ? (
+          <p>
+            <b>
+              {m.secLabel(loud)} {loud.s.heading}
+            </b>{" "}
+            got the most news: {count(loud.s.attention?.hits ?? 0, "article")}
+            {A.sample ? ` of the ${A.sample.relevant.toLocaleString("en-US")} read` : ""}.
+          </p>
+        ) : (
+          <p>No section stands out in the news{ranked ? "." : ": too few articles to rank this bill’s sections."}</p>
+        )}
+        <button type="button" className="linkbtn" onClick={jump("card-headline")}>
+          See the loud sections
+        </button>
+      </div>
+      <div className="beat">
+        <i>The quiet part</i>
+        {quiet ? (
+          <p>
+            <b>
+              {m.secLabel(quiet)} {quiet.s.heading}
+            </b>{" "}
+            has big stakes ({stakesWords(quiet)}) and {count(quiet.s.attention?.hits ?? 0, "news article")}
+            {quiet.s.late ? ", and it was added late" : ""}.
+          </p>
+        ) : !ranked ? (
+          <p>Not tested: there are too few news articles to say which sections are quiet.</p>
+        ) : (
+          <p>
+            No section was both big-stakes, added late or off-topic, and ignored by the news.
+            {near && (
+              <>
+                {" "}
+                The closest is{" "}
+                <b
+                  title={`Scored ${near.s.score!.buried!.toFixed(2)}; the bar is 0.45. ${stakesWords(near) || "No big stakes"}.`}
+                >
+                  {m.secLabel(near)} {near.s.heading}
+                </b>
+                .{" "}
+                <a href={`${RULES_URL}#buried-v1`} target="_blank" rel="noopener">
+                  The rule
+                </a>
+              </>
+            )}
+          </p>
+        )}
+        <button type="button" className="linkbtn" onClick={jump("card-buried")}>
+          See the quiet sections
+        </button>
+      </div>
+      <div className="beat">
+        <i>The money</i>
+        <p>
+          <b>{count(companies, "company", "companies")}</b> lobbied on it. <b>{m.tradersDuring}</b> of 535 members
+          traded stock in a tied company while the bill moved. Routine disclosures; no link to any vote is claimed.
+        </p>
+        <button type="button" className="linkbtn" onClick={jump("card-lobby")}>
+          See who lobbied
+        </button>
+      </div>
     </div>
   );
 }
@@ -48,7 +120,7 @@ export function BillCard({ m }: { m: BillModel }) {
   const amend = b.amendments;
   const byStatus = (s: string) => amend.filter((a) => a.status === s).length;
   return (
-    <div className="card">
+    <div className="card" id="card-bill">
       <div className="cap">
         Bill{b.bill.law ? ` · ${b.bill.law}` : ""}
         {b.bill.lawOn ? ` · signed ${day(b.bill.lawOn)}` : ""}
@@ -61,7 +133,14 @@ export function BillCard({ m }: { m: BillModel }) {
       </h2>
       <p className="sub">
         {b.bill.shortTitle ? `${b.bill.title.replace(/\.+$/, "")}. ` : ""}
-        {m.sponsor && <>Sponsor {m.sponsor.label}. </>}
+        {m.sponsor &&
+          (b.bill.vehicle ? (
+            <>
+              Vehicle bill introduced by {m.sponsor.label}. {b.bill.vehicle}{" "}
+            </>
+          ) : (
+            <>Sponsor {m.sponsor.label}. </>
+          ))}
         {b.bill.claims.length ? (
           <Sources ids={b.bill.claims} />
         ) : (
@@ -72,12 +151,13 @@ export function BillCard({ m }: { m: BillModel }) {
       </p>
       <div className="stats">
         <div className="stat">
-          <div className="k">{lawDeficit ? `Deficit ${lawDeficit.period}` : "Deficit"}</div>
+          <div className="k">{lawDeficit ? `Deficit, ${lawDeficit.period}` : "Deficit"}</div>
           {lawDeficit ? (
             <>
               <div className="v">{musd(lawDeficit.amountMusd)}</div>
               <div className="n">
-                {lawDeficit.baseline} <Src id={lawDeficit.claim} label="CBO" />
+                {lawDeficit.baseline === "current-law" ? "current law" : "current policy"}{" "}
+                <Src id={lawDeficit.claim} label="CBO" />
               </div>
             </>
           ) : (
@@ -87,40 +167,27 @@ export function BillCard({ m }: { m: BillModel }) {
             </>
           )}
         </div>
-        {policyDeficit ? (
-          <div className="stat">
-            <div className="k">Same, current policy</div>
-            <div className="v">{musd(policyDeficit.amountMusd)}</div>
-            <div className="n">
-              baseline <Src id={policyDeficit.claim} label="CBO" />
-            </div>
-          </div>
-        ) : (
-          <div className="stat">
-            <div className="k">Mandates</div>
-            {est?.mandates ? (
-              <>
-                <div className="v small">{est.mandates.privateSector.replace(/^Yes, /, "")}</div>
-                <div className="n">
-                  private sector <Src id={est.mandates.claim} label="CBO" />
-                </div>
-              </>
-            ) : (
-              <div className="v missing">Not stated</div>
-            )}
-          </div>
-        )}
         <div className="stat">
-          <div className="k">$ per section</div>
-          {m.perSectionDollars ? (
+          <div className="k">Lobbying</div>
+          <div className="v">{b.lobbying.reports.toLocaleString("en-US")}</div>
+          <div className="n">reports from {count(b.lobbying.clients, "client")}</div>
+        </div>
+        <div className="stat">
+          <div className="k">Traded tied stock</div>
+          <div className="v">{m.tradersDuring}</div>
+          <div className="n">of 535 members, first text to signing</div>
+        </div>
+        <div className="stat">
+          <div className="k">Added late</div>
+          {m.lateShare == null ? (
             <>
-              <div className="v small">Published</div>
-              <div className="n">see the sections list</div>
+              <div className="v missing">Unknown</div>
+              <div className="n">shell or rewritten bill</div>
             </>
           ) : (
             <>
-              <div className="v missing">Not published</div>
-              <div className="n">CBO scored only the whole bill</div>
+              <div className="v">{m.sections.filter((v) => v.s.inFinal && v.s.late).length}</div>
+              <div className="n">of {count(m.sections.filter((v) => v.s.inFinal).length, "section")}</div>
             </>
           )}
         </div>
@@ -128,6 +195,11 @@ export function BillCard({ m }: { m: BillModel }) {
       {est && (
         <div className="row-meta" style={{ marginTop: 6 }}>
           Scored: {est.versionScored}. Baseline: <b>{est.baselineLabel}</b>.{" "}
+          {policyDeficit && (
+            <span>
+              Under current policy: {musd(policyDeficit.amountMusd)} <Src id={policyDeficit.claim} label="CBO" />{" "}
+            </span>
+          )}
           {b.dollars.wholeBill
             .filter((d) => d.measure !== "deficit" && d.baseline === est.baseline)
             .map((d: Dollar) => (
@@ -135,6 +207,12 @@ export function BillCard({ m }: { m: BillModel }) {
                 {MEASURE[d.measure]} {musd(d.amountMusd)} <Src id={d.claim} label="CBO" />{" "}
               </span>
             ))}
+          {est.mandates?.privateSector.startsWith("Yes") && (
+            <span>
+              CBO says it adds private-sector mandates above the legal threshold{" "}
+              <Src id={est.mandates.claim} label="CBO" />.
+            </span>
+          )}
         </div>
       )}
       {b.votes.length > 0 && (
@@ -247,6 +325,30 @@ function AttentionSplit({ a }: { a: NonNullable<SectionView["s"]["attention"]> }
   );
 }
 
+function HeadlineRow({ v, m }: { v: SectionView; m: BillModel }) {
+  const row = useRowFocus();
+  return (
+    <li {...row(secId(v))}>
+      <div className="row-top">
+        <span className="t">
+          {m.secLabel(v)} {v.s.heading}
+        </span>
+        <span className="num" title="0 to 100; 100 is the most-covered section of this bill">
+          loudness {rank(v.s.attention?.pct)}
+        </span>
+      </div>
+      <div className="bar">
+        <i style={{ width: `${(v.s.attention?.pct ?? 0) * 100}%` }} />
+      </div>
+      <div className="row-meta">{count(v.s.attention?.hits ?? 0, "article")} matched this section</div>
+      {v.s.attention && <AttentionSplit a={v.s.attention} />}
+      <Sources ids={[v.s.attention?.claim, ...(v.s.attention?.examples.map((e) => e.claim) ?? []), v.s.claims[0]]} />
+    </li>
+  );
+}
+
+const SHOWN = 5;
+
 export function HeadlineCard({ m }: { m: BillModel }) {
   const row = useRowFocus();
   const A = m.b.attention;
@@ -254,13 +356,17 @@ export function HeadlineCard({ m }: { m: BillModel }) {
   const via =
     A.via.map((v) => (v === "mediacloud" ? "Media Cloud" : "Google News")).join(" + ") || "no news source yet";
   return (
-    <div className="card">
+    <div className="card" id="card-headline">
       <h2>Headline</h2>
       <p className="sub">
         {scored
-          ? `Sections with the most news attention among ${scored} ranked`
+          ? `The sections with the most news attention, out of ${scored} ranked`
           : "Too few articles to rank sections; only raw counts are shown"}
-        , from {count(A.articles, "article")} via {via}
+        ,{" "}
+        {A.sample
+          ? `from ${A.sample.relevant.toLocaleString("en-US")} relevant articles read, out of ${A.sample.found.toLocaleString("en-US")} found`
+          : `from ${count(A.articles, "article")}`}{" "}
+        via {via}
         {A.outletListVersion ? (
           <>
             ,{" "}
@@ -269,35 +375,37 @@ export function HeadlineCard({ m }: { m: BillModel }) {
             </a>
           </>
         ) : null}
-        {A.window ? ` (${day(A.window[0])} to ${day(A.window[1])})` : ""}. News rank runs 0 to 100; 100 is the most
-        covered section of the bill.
+        {A.window ? ` (${day(A.window[0])} to ${day(A.window[1])})` : ""}. Loudness runs 0 to 100; 100 is the most
+        covered section of this bill. Headline means the top tenth of this bill’s sections by loudness, with at least 3
+        matching articles, so it is relative to this bill (
+        <a href={`${RULES_URL}#attention-v1`} target="_blank" rel="noopener">
+          how attention is counted
+        </a>
+        ).
       </p>
       <Gap m={m} kind="attention_partial" />
       <ul className="rows">
-        {m.headline.map((v) => (
-          <li key={v.s.id} {...row(secId(v))}>
-            <div className="row-top">
-              <span className="t">
-                §{v.s.num} {v.s.heading}
-              </span>
-              <span className="num">rank {rank(v.s.attention?.pct)}</span>
-            </div>
-            <div className="bar">
-              <i style={{ width: `${(v.s.attention?.pct ?? 0) * 100}%` }} />
-            </div>
-            <div className="row-meta">{count(v.s.attention?.hits ?? 0, "article")} matched this section</div>
-            {v.s.attention && <AttentionSplit a={v.s.attention} />}
-            <Sources
-              ids={[v.s.attention?.claim, ...(v.s.attention?.examples.map((e) => e.claim) ?? []), v.s.claims[0]]}
-            />
-          </li>
+        {m.headline.slice(0, SHOWN).map((v) => (
+          <HeadlineRow key={v.s.id} v={v} m={m} />
         ))}
         {!m.headline.length && (
           <li>
             <span className="miss">No section clears the headline bar on this bill.</span>
           </li>
         )}
-        {A.general && (
+      </ul>
+      {m.headline.length > SHOWN && (
+        <details>
+          <summary>Show all {m.headline.length} headline sections</summary>
+          <ul className="rows">
+            {m.headline.slice(SHOWN).map((v) => (
+              <HeadlineRow key={v.s.id} v={v} m={m} />
+            ))}
+          </ul>
+        </details>
+      )}
+      {A.general && (
+        <ul className="rows">
           <li {...row(m.billNode)}>
             <div className="row-top">
               <span className="t">The bill as a whole</span>
@@ -310,8 +418,8 @@ export function HeadlineCard({ m }: { m: BillModel }) {
             <AttentionSplit a={A.general} />
             <Sources ids={[A.general.claim, ...A.general.examples.map((e) => e.claim)]} />
           </li>
-        )}
-      </ul>
+        </ul>
+      )}
     </div>
   );
 }
@@ -319,6 +427,7 @@ export function HeadlineCard({ m }: { m: BillModel }) {
 function SectionFacts({ m, v }: { m: BillModel; v: SectionView }) {
   const inserted = m.edges.filter((e) => e.kind === "inserted" && e.dst === secId(v));
   const sc = v.s.score;
+  const c = sc?.components;
   return (
     <>
       <div className="row-meta">
@@ -334,29 +443,59 @@ function SectionFacts({ m, v }: { m: BillModel; v: SectionView }) {
           </div>
         );
       })}
-      {sc && (
+      {c && (
         <div className="subs">
           <span>
-            news rank <b>{rank(sc.components.attentionPct)}</b>
+            <b>{c.attentionPct == null ? "not ranked" : count(v.s.attention?.hits ?? 0, "news article")}</b>
+            {c.attentionPct != null && ` (loudness ${rank(c.attentionPct)} of 100)`}
           </span>
           <span>
-            late <b>{m.b.bill.lateUnavailable ? "unknown" : sc.components.late ? "yes" : "no"}</b>
+            <b>{m.b.bill.lateUnavailable ? "late: unknown" : c.late ? "added late" : "not added late"}</b>
           </span>
           <span>
-            CBO $ <b>{sc.components.dollarsMusd == null ? "—" : musd(sc.components.dollarsMusd)}</b>
-            {sc.components.dollarsSplit === "even_split" ? " (split)" : ""}
+            <b>{c.dollarsMusd == null ? "no CBO figure" : deficitWords(c.dollarsMusd)}</b>
+            {c.dollarsSplit === "even_split" ? " (even split, not counted)" : ""}
           </span>
           <span>
-            lobbying <b>{sc.components.lobbyingReports}</b>
+            <b>{count(c.lobbyingReports, "lobbying report")}</b>
           </span>
-          {sc.components.offTopic != null && (
+          {c.offTopic != null && (
             <span>
-              off-topic <b>{rank(sc.components.offTopic)}</b>
+              <b>unlike the rest of the bill: {rank(c.offTopic)} of 100</b>
             </span>
           )}
         </div>
       )}
     </>
+  );
+}
+
+/** One plain sentence built from the section's own numbers, so the legal text can wait behind a toggle. */
+function plainLine(v: SectionView): string {
+  const c = v.s.score?.components;
+  const stakes = stakesWords(v);
+  const news = `${count(v.s.attention?.hits ?? 0, "news article")} matched it`;
+  return `${stakes ? `${stakes[0]!.toUpperCase()}${stakes.slice(1)}` : "Big stakes"}, and ${news}${c?.late ? "; it was added after a chamber had passed the bill" : ""}.`;
+}
+
+function BuriedRow({ v, m }: { v: SectionView; m: BillModel }) {
+  const row = useRowFocus();
+  return (
+    <li {...row(secId(v))}>
+      <div className="row-top">
+        <span className="t">
+          {m.secLabel(v)} {v.s.heading}
+        </span>
+        <span className="pill buried">{v.s.late ? "late + quiet" : "quiet + money"}</span>
+      </div>
+      <div className="plain">{plainLine(v)}</div>
+      <details className="legal">
+        <summary>Show the legal text</summary>
+        <div className="quote">{v.s.preview}…</div>
+      </details>
+      <SectionFacts m={m} v={v} />
+      <Sources ids={[v.s.score?.claim, v.s.attention?.claim, ...v.s.dollars.map((d) => d.claim)]} />
+    </li>
   );
 }
 
@@ -366,46 +505,68 @@ export function BuriedCard({ m }: { m: BillModel }) {
   const lateUnknown = m.b.bill.lateUnavailable;
   const late = lateUnknown ? [] : m.sections.filter((v) => v.s.inFinal && v.s.late && v.kind !== "buried");
   const removed = m.sections.filter((v) => !v.s.inFinal);
+  const ranked = m.sections.some((v) => v.s.attention?.pct != null);
+  const lateOff = m.lateShare != null && m.lateShare >= 0.5;
   return (
-    <div className="card">
+    <div className="card" id="card-buried">
       <h2>
         Buried candidates <Inf />
       </h2>
       <p className="sub">
-        Sections with big stakes (dollars or lobbying) and little news, that came in late or have little to do with the
-        rest of the bill. A place to look, not a verdict.{" "}
+        Sections with big stakes (a CBO figure of $10 billion or more, or about 20 lobbying reports), little news, and
+        either added late or unlike the rest of the bill. A place to look, not a verdict.{" "}
         {rule?.url && (
           <a className="src" href={rule.url} target="_blank" rel="noopener">
             full rule
           </a>
         )}{" "}
-        Lateness comes from the text versions (fact); quietness from news attention.
+        Lateness comes from the text versions (a fact); quietness from a sample of news articles, and a model decides
+        which section an article is about (two models agree on that about a quarter of the time), so “no articles” is a
+        lead, not proof.
       </p>
+      {m.lateShare != null && (
+        <div className={lateOff ? "warn" : "row-meta"}>
+          <span>
+            {Math.round(m.lateShare * 100)}% of this bill’s sections arrived late.{" "}
+            {lateOff
+              ? "Late is not counted as a signal once half the bill or more arrived late, so no section here is flagged for being late."
+              : "Late is not counted as a signal above 50%."}
+          </span>
+        </div>
+      )}
       {lateUnknown && (
         <div className="warn">
           <span>Late flag unavailable: {lateUnknown}</span>
         </div>
       )}
+      {!ranked && (
+        <div className="warn">
+          <span>
+            Not tested: there are too few news articles to say which sections are quiet, so nothing here can be called a
+            buried candidate.
+          </span>
+        </div>
+      )}
       <ul className="rows">
-        {m.buried.map((v) => (
-          <li key={v.s.id} {...row(secId(v))}>
-            <div className="row-top">
-              <span className="t">
-                §{v.s.num} {v.s.heading}
-              </span>
-              <span className="pill buried">{v.s.late ? "late + quiet" : "quiet + money"}</span>
-            </div>
-            <div className="quote">{v.s.preview}…</div>
-            <SectionFacts m={m} v={v} />
-            <Sources ids={[v.s.score?.claim, v.s.attention?.claim, ...v.s.dollars.map((d) => d.claim)]} />
-          </li>
+        {m.buried.slice(0, SHOWN).map((v) => (
+          <BuriedRow key={v.s.id} v={v} m={m} />
         ))}
-        {!m.buried.length && (
+        {!m.buried.length && ranked && (
           <li>
-            <span className="miss">No section meets the buried rule on this bill.</span>
+            <span className="miss">No section meets the buried-candidate rule on this bill.</span>
           </li>
         )}
       </ul>
+      {m.buried.length > SHOWN && (
+        <details>
+          <summary>Show all {m.buried.length} buried candidates</summary>
+          <ul className="rows">
+            {m.buried.slice(SHOWN).map((v) => (
+              <BuriedRow key={v.s.id} v={v} m={m} />
+            ))}
+          </ul>
+        </details>
+      )}
       {late.length > 0 && (
         <details>
           <summary>Added late but not quiet ({late.length})</summary>
@@ -414,9 +575,9 @@ export function BuriedCard({ m }: { m: BillModel }) {
               <li key={v.s.id} {...row(secId(v))}>
                 <div className="row-top">
                   <span className="t" style={{ fontWeight: 500 }}>
-                    §{v.s.num} {v.s.heading}
+                    {m.secLabel(v)} {v.s.heading}
                   </span>
-                  <span className="num">rank {rank(v.s.attention?.pct)}</span>
+                  <span className="num">loudness {rank(v.s.attention?.pct)}</span>
                 </div>
                 <div className="row-meta">
                   first in {v.stageName} <Src id={v.s.claims[0]!} />
@@ -436,9 +597,9 @@ export function BuriedCard({ m }: { m: BillModel }) {
               <li key={v.s.id} {...row(secId(v))}>
                 <div className="row-top">
                   <span className="t" style={{ fontWeight: 500 }}>
-                    §{v.s.num} {v.s.heading}
+                    {m.secLabel(v)} {v.s.heading}
                   </span>
-                  <span className="num">rank {rank(v.s.attention?.pct)}</span>
+                  <span className="num">loudness {rank(v.s.attention?.pct)}</span>
                 </div>
                 <Sources ids={[v.s.attention?.claim, v.s.claims[0]]} />
               </li>
@@ -454,7 +615,7 @@ export function BuriedCard({ m }: { m: BillModel }) {
               <li key={v.s.id} {...row(secId(v))}>
                 <div className="row-top">
                   <span className="t" style={{ fontWeight: 500 }}>
-                    §{v.s.num} {v.s.heading}
+                    {m.secLabel(v)} {v.s.heading}
                   </span>
                   <span className="pill removed">
                     {v.s.mergedInto ? "merged" : v.s.splitInto.length ? "split" : "dropped"}
@@ -497,7 +658,7 @@ function ActorRow({ a, m }: { a: Actor; m: BillModel }) {
         ) : (
           "no public parent company"
         )}
-        {a.spendUsd != null && <> · {usd(a.spendUsd)} total on those quarters</>}
+        {a.spendUsd != null && <> · {usd(a.spendUsd)} total in those quarters, for all the issues the filings list</>}
       </div>
       <Sources ids={a.lobbied.flatMap((e) => e.claims).concat(res?.claims ?? [])} />
     </li>
@@ -509,15 +670,16 @@ export function LobbyCard({ m }: { m: BillModel }) {
   const lobbied = m.actors.filter((a) => a.lobbied.length).sort((x, y) => y.reports - x.reports);
   const withPositions = m.lobbyists.filter((l) => l.props.coveredPositions.length);
   const total = L.byPhase.bill + L.byPhase.enactmentQuarter + L.byPhase.law || 1;
+  const pct = (n: number) => Math.round((n / total) * 100);
   return (
-    <div className="card">
+    <div className="card" id="card-lobby">
       <h2>Who lobbied</h2>
       <p className="sub">LD-2 lobbying reports that name the bill. Each client links to a filing.</p>
       <div className="stats">
         <div className="stat">
           <div className="k">Reports</div>
           <div className="v">{L.reports.toLocaleString("en-US")}</div>
-          <div className="n">{L.byPhase.bill} while a bill</div>
+          <div className="n">naming the bill</div>
         </div>
         <div className="stat">
           <div className="k">Clients</div>
@@ -527,21 +689,19 @@ export function LobbyCard({ m }: { m: BillModel }) {
           </div>
         </div>
         <div className="stat">
-          <div className="k">Spend, bill share</div>
-          <div className="v">{usd(L.shareEstimateUsd)}</div>
-          <div className="n">
-            of {usd(L.spendTotalUsd)} total <Inf />
-          </div>
+          <div className="k">Spend in those filings</div>
+          <div className="v">{usd(L.spendTotalUsd)}</div>
+          <div className="n">all issues, not this bill alone</div>
         </div>
       </div>
       <div className="row-meta" style={{ margin: "6px 0 2px" }}>
-        LD-2s report one total for every issue, so the bill’s share is an estimate; the total is the fact.{" "}
-        <Sources ids={L.claims} />
+        An LD-2 report gives one total for every issue it lists, and one issue line often names dozens of bills, so no
+        dollar figure is given for this bill alone: the total is the fact. <Sources ids={L.claims} />
       </div>
-      <div className="split" role="img" aria-label="Reports by phase">
-        <span>while a bill {Math.round((L.byPhase.bill / total) * 100)}%</span>
-        <span>quarter of enactment {Math.round((L.byPhase.enactmentQuarter / total) * 100)}%</span>
-        <span>after it became law {Math.round((L.byPhase.law / total) * 100)}%</span>
+      <div className="split" role="img" aria-label="When the reports were filed">
+        <span>{pct(L.byPhase.bill)}% of reports were filed while the bill was moving</span>
+        <span>{pct(L.byPhase.enactmentQuarter)}% in the quarter it was signed</span>
+        <span>{pct(L.byPhase.law)}% after it became law</span>
       </div>
       <ul className="rows">
         {lobbied.slice(0, 8).map((a) => (
@@ -648,8 +808,21 @@ function tradeTiming(v: MemberView, voteOn: string | undefined) {
   if (!voteOn) return null;
   const dates = v.trades.flatMap((t) => t.props.events.map((e) => e.date));
   const before = dates.filter((d) => d <= voteOn).length;
-  return `${count(before, "trade")} on or before the vote, ${dates.length - before} after`;
+  return `${count(before, "trade")} dated on or before the vote date, ${dates.length - before} after`;
 }
+
+const tradesBefore = (v: MemberView, voteOn: string | undefined) =>
+  voteOn ? v.trades.flatMap((t) => t.props.events).filter((e) => e.date <= voteOn).length : 0;
+
+const lastName = (v: MemberView) => {
+  const n = v.node.label.replace(/^(Sen|Rep)\.\s+/, "").replace(/\s*\(.*\)$/, "");
+  return (
+    n
+      .split(" ")
+      .filter((w) => !/^(Jr|Sr|II|III)\.?$/.test(w))
+      .at(-1) ?? n
+  );
+};
 
 function MemberRow({ v, m }: { v: MemberView; m: BillModel }) {
   const row = useRowFocus();
@@ -705,33 +878,59 @@ function MemberRow({ v, m }: { v: MemberView; m: BillModel }) {
 
 export function MembersCard({ m }: { m: BillModel }) {
   const row = useRowFocus();
-  const byName = (a: MemberView, b: MemberView) => a.node.label.localeCompare(b.node.label);
-  const traders = m.members.filter((v) => v.tradeCount).sort(byName);
-  const funded = m.members.filter((v) => v.fundedUsd > 0).sort((a, b) => b.fundedUsd - a.fundedUsd);
+  const [az, setAz] = useState(false);
+  const voteOn = (v: MemberView) => (v.vote ? m.b.votes.find((r) => r.id === v.vote!.props.rollId)?.date : undefined);
+  const traders = m.members
+    .filter((v) => v.tradeCount)
+    .sort(
+      az
+        ? (a, b) => lastName(a).localeCompare(lastName(b)) || a.node.label.localeCompare(b.node.label)
+        : (a, b) =>
+            tradesBefore(b, voteOn(b)) - tradesBefore(a, voteOn(a)) ||
+            b.tradeCount - a.tradeCount ||
+            lastName(a).localeCompare(lastName(b)),
+    );
   const byParty = (list: MemberView[], party: "R" | "D" | "I") => list.filter((v) => v.node.props.party === party);
   const before = (v: MemberView) => v.funded.reduce((a, f) => a + f.edge.props.beforeUsd, 0);
+  const funded = m.members.filter((v) => v.fundedUsd > 0).sort((a, b) => before(b) - before(a));
   const after = (v: MemberView) => v.funded.reduce((a, f) => a + f.edge.props.afterUsd, 0);
   const sum = (list: MemberView[]) => list.reduce((a, v) => a + before(v), 0);
   const spouse = traders.filter((v) => [...v.owners].some((o) => o !== "self")).length;
+  const anyVoted = m.members.some((v) => v.vote);
+  const parties = (["R", "D", "I"] as const).filter((p) => m.voters[p] > 0);
+  const during = m.span ? `${day(m.span[0])} to ${day(m.span[1])}` : null;
   return (
-    <div className="card">
+    <div className="card" id="card-members">
       <h2>Members who traded those companies’ stock</h2>
       <p className="sub">
-        Routine disclosures; no link to any vote is claimed. Members who traded stock in a company tied to the bill, or
-        took PAC money from one, listed alphabetically. Spouse, joint and child trades are listed under the member with
-        the owner shown{spouse ? ` (${spouse} members have some)` : ""}.
+        Routine disclosures; no link to any vote is claimed. Members trade the shares of large companies all the time,
+        and a company needs only one lobbying report or one mention in the text to be tied to a bill. {m.tradersDuring}{" "}
+        of 535 members have a trade dated{" "}
+        {during ? `from the first text to signing (${during})` : "inside the bill’s span"}; {traders.length} have one
+        anywhere in the window (a year before the bill to a year after the law). Spouse, joint and child trades are
+        listed under the member with the owner shown{spouse ? ` (${spouse} members have some)` : ""}.
       </p>
       <Gap m={m} kind="paper_filings_unread" />
       <div className="cap" style={{ marginTop: 4 }}>
-        Traded stock of a tied company, of those {m.members.some((v) => v.vote) ? "who voted" : "on the map"}
+        Traded stock of a tied company, among members {anyVoted ? "who voted" : "on the map"}
       </div>
       <div className="split">
-        {(["R", "D", "I"] as const).map((p) => (
+        {parties.map((p) => (
           <span key={p}>
-            {p} {byParty(traders, p).length} of {m.voters[p]}
+            {p} {m.tradersVoted[p]} of {m.voters[p]}
             {m.unread[p] > 0 && <span className="dim"> (+{m.unread[p]} unread)</span>}
           </span>
         ))}
+        {m.tradersNoVote > 0 && <span className="dim">{m.tradersNoVote} traders cast no recorded vote</span>}
+      </div>
+      <div className="sortbar">
+        <span className="cap">Order</span>
+        <button type="button" aria-pressed={!az} onClick={() => setAz(false)}>
+          Trades before the vote
+        </button>
+        <button type="button" aria-pressed={az} onClick={() => setAz(true)}>
+          A to Z
+        </button>
       </div>
       <ul className="rows">
         {traders.slice(0, 7).map((v) => (
@@ -758,12 +957,20 @@ export function MembersCard({ m }: { m: BillModel }) {
           <div className="cap" style={{ marginTop: 16 }}>
             PAC money from tied organizations, given before the member’s vote <Inf />
           </div>
+          <p className="row-meta">
+            Committee seats, leadership roles and being up for re-election explain most of the differences between
+            members; no earlier cycle is shown to compare against.
+          </p>
           <div className="split">
-            {(["R", "D", "I"] as const).map((p) => (
-              <span key={p}>
-                {p} {usd(sum(byParty(funded, p)))} → {byParty(funded, p).length} of {m.voters[p]}
-              </span>
-            ))}
+            {parties.map((p) => {
+              const list = byParty(funded, p);
+              return (
+                <span key={p}>
+                  {p} {usd(sum(list))} to {list.length} of {m.voters[p]}
+                  {list.length > 0 && <span className="dim"> ({usd(sum(list) / list.length)} each)</span>}
+                </span>
+              );
+            })}
           </div>
           <ul className="rows">
             {funded.slice(0, 6).map((v) => {
@@ -777,10 +984,10 @@ export function MembersCard({ m }: { m: BillModel }) {
                         {v.node.props.party}-{v.node.props.state}
                       </span>
                     </span>
-                    <span className="num">{usd(v.fundedUsd)}</span>
+                    <span className="num">{usd(before(v))} before</span>
                   </div>
                   <div className="row-meta">
-                    {usd(before(v))} before {v.vote ? "the vote" : "enactment"}, {usd(after(v))} after · top:{" "}
+                    {usd(after(v))} after {v.vote ? "the vote" : "enactment"}, {usd(v.fundedUsd)} in all · top:{" "}
                     {top.map((f) => nice(m.actorById.get(f.actor)?.label ?? f.actor)).join(", ")}
                     {v.committees.length > 0 && <> · {v.committees.map((c) => c.committee.label).join(", ")}</>}
                   </div>

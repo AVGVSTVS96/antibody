@@ -101,7 +101,7 @@ function TipBody({ id, m }: { id: string; m: BillModel }) {
     return (
       <>
         <h3>
-          §{s.num} {s.heading}
+          {m.secLabel(v)} {s.heading}
         </h3>
         <div className="k">
           {v.kind === "headline" && <span className="pill headline">headline</span>}

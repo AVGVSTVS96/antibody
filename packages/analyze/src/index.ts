@@ -4,7 +4,7 @@ import { paths, python, readRows, writeRows } from "@antibody/core/node";
 import { articleText, OUTLETS, searchPlan } from "@antibody/ingest-news";
 import { attention, MIN_TEXT_CHARS } from "./attention.ts";
 import { claudeAvailable, matchArticles, matchEmbed } from "./match.ts";
-import { BOILERPLATE, SCORE, SCORE_TEXT, scoreRows, sectionDollars, sectionReports } from "./score.ts";
+import { BOILERPLATE, SCORE_TEXT, scoreRows, sectionDollars, sectionReports } from "./score.ts";
 
 export {
   ATTENTION_RULE,

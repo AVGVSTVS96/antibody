@@ -66,6 +66,7 @@ export function indexEntry(b: Bundle): BundleIndex["bills"][number] {
     shortTitle: b.bill.shortTitle,
     law: b.bill.law,
     sponsorParty: sponsorParty(b),
+    congress: b.bill.congress,
     latestActionOn: latestActionOn(b),
     file: `${b.bill.id}.json`,
     claimsFile: claimsFile(b.bill.id),

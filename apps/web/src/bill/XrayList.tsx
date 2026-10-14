@@ -10,7 +10,7 @@ type Sort = "num" | "attention" | "dollars" | "buried";
 const FILTERS: [Filter, string][] = [
   ["all", "All"],
   ["headline", "Headline"],
-  ["buried", "Buried"],
+  ["buried", "Buried candidates"],
   ["late", "Added late"],
   ["money", "Has CBO $"],
   ["removed", "Dropped"],
@@ -26,7 +26,7 @@ const keep: Record<Filter, (v: SectionView) => boolean> = {
 };
 
 const sorter: Record<Sort, (a: SectionView, b: SectionView) => number> = {
-  num: () => 0,
+  num: (a, b) => a.stage - b.stage,
   attention: (a, b) => (b.s.attention?.pct ?? -1) - (a.s.attention?.pct ?? -1),
   dollars: (a, b) => Math.abs(b.dollarsMusd ?? 0) - Math.abs(a.dollarsMusd ?? 0),
   buried: (a, b) => (b.s.score?.buried ?? -1) - (a.s.score?.buried ?? -1),
@@ -47,7 +47,7 @@ export function XrayList({ m }: { m: BillModel }) {
     <div className="xray">
       <div className="xr-h">
         <span className="cap">Versions</span>
-        <span className="cap">first text to law · new sections in red</span>
+        <span className="cap">first text to law</span>
       </div>
       <div className="timeline">
         {m.versions.map((v, i) => {
@@ -90,8 +90,12 @@ export function XrayList({ m }: { m: BillModel }) {
         })}
       </fieldset>
       <p className="row-meta">
-        News rank: 100 is the most-covered section of the bill; the number after the dot is how many articles matched.
-        CBO $: ten-year effect on the deficit, + adds to it and − reduces it; hover for the estimate and baseline.
+        <b>Loudness</b>: 0 to 100, where 100 is the most-covered section of this bill; the number after the dot is how
+        many news articles matched it. <b>CBO 10-yr $</b>: the section’s ten-year effect on the deficit, + adds to it
+        and − cuts it; hover for the estimate and baseline.
+        <b> Buried score</b>: stakes × quietness × (late or off-topic), from 0 to 1.5; a section is a buried candidate
+        at 0.45 or more with big stakes. It is 0.00 for most sections, which means nothing about them stands out.
+        {!m.perSectionDollars && " CBO scored only the whole bill, so no section has a dollar figure here."}
       </p>
       <table className="secs">
         <thead>
@@ -102,10 +106,10 @@ export function XrayList({ m }: { m: BillModel }) {
               </SortBtn>
             </th>
             <th>Section</th>
-            <th>Added</th>
+            <th>{sort === "num" ? "Late?" : "Added in"}</th>
             <th>
               <SortBtn s="attention" cur={sort} set={setSort}>
-                News rank
+                Loudness · articles
               </SortBtn>
             </th>
             <th className="hide-s">
@@ -115,18 +119,28 @@ export function XrayList({ m }: { m: BillModel }) {
             </th>
             <th className="hide-s">
               <SortBtn s="buried" cur={sort} set={setSort}>
-                Score
+                Buried score
               </SortBtn>
             </th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((v) => {
+          {rows.map((v, i) => {
             const s = v.s;
             const isOpen = open === s.id;
             const cls = !s.inFinal ? "removed" : v.kind === "headline" || v.kind === "buried" ? v.kind : "";
+            const grouped = sort === "num" && (i === 0 || rows[i - 1]!.stage !== v.stage);
             return (
               <Fragment key={s.id}>
+                {grouped && (
+                  <tr className="grp">
+                    <td colSpan={6}>
+                      {i === 0 && v.stage === 0 ? "In the first text: " : "First appear in "}
+                      <b>{v.stageName.replace(/ \(.*\)$/, "")}</b>
+                      <span className="dim"> · {count(rows.filter((x) => x.stage === v.stage).length, "section")}</span>
+                    </td>
+                  </tr>
+                )}
                 <tr
                   className={`row ${cls}`}
                   onClick={() => setOpen(isOpen ? null : s.id)}
@@ -134,10 +148,10 @@ export function XrayList({ m }: { m: BillModel }) {
                   onPointerLeave={() => focus.setHover(null)}
                   aria-expanded={isOpen}
                 >
-                  <td className="n">§{s.num}</td>
+                  <td className="n">{m.secLabel(v)}</td>
                   <td>
                     {s.heading} {v.kind === "headline" && <span className="pill headline">headline</span>}
-                    {v.kind === "buried" && <span className="pill buried">buried?</span>}
+                    {v.kind === "buried" && <span className="pill buried">buried candidate</span>}
                     {!s.inFinal && (
                       <span className="pill removed">
                         {s.mergedInto ? "merged" : s.splitInto.length ? "split" : "dropped"}
@@ -145,7 +159,11 @@ export function XrayList({ m }: { m: BillModel }) {
                     )}
                   </td>
                   <td>
-                    <span className={`stagecode${s.late ? " late" : ""}`}>{v.stageName.replace(/ \(.*\)$/, "")}</span>
+                    {sort === "num" ? (
+                      <span className={`stagecode${s.late ? " late" : ""}`}>{s.late ? "late" : ""}</span>
+                    ) : (
+                      <span className="stagecode">{v.stageName.replace(/ \(.*\)$/, "")}</span>
+                    )}
                   </td>
                   <td>
                     {s.attention?.pct == null ? (

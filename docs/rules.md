@@ -10,7 +10,8 @@ How the "buried" label is decided for a bill section. Stakes x quiet x sneak, fr
 
 - **Stakes** (0 to 1): the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale ($1 million is 0, $1 billion is 0.5, $1 trillion is 1; cuts and costs count the same). A dollar figure that is only an even share of a line CBO printed for several sections is shown but not counted. Lobbying: the number of lobbying reports that name the section, on a log scale (1 report is 0.15, 10 is 0.52, 100 is 1).
 - **Quiet**: 1 minus the section's news-attention percentile within its bill. The least-covered section is close to 1, the most-covered is 0.
-- **Sneak**: 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill, plus 0.25 times how unlike the rest of the bill it is. The late bonus shrinks by the share of the bill that arrived late: in a bill that was mostly rewritten late, being late says little about one section. When a bill began as a shell (its first text was almost nothing), the late flag is not computed and the page says so.
+- **Late or off-topic** (the "sneak" factor in the code): 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill, plus 0.25 times how unlike the rest of the bill it is. The late bonus shrinks by the share of the bill that arrived late, and **counts for nothing once half the bill or more arrived late** (a cliff at 50%): in a bill that was mostly rewritten late, being late says little about one section. The page prints the bill's late share and says when late was switched off. When a bill began as a shell (its first text was almost nothing), the late flag is not computed and the page says so.
+- **Off-topic distance** is how unlike the rest of the bill a section is (0 to 1, ranked within the bill). It counts only in a bill with a single committee title or division; a bill assembled from several titles has a minority title by construction. Boilerplate headings (short title, definitions, effective dates and the like) get no off-topic value.
 - **Label**: "headline" when a section is in the top tenth by attention with at least 3 articles. "Buried" when the score is at least 0.45, stakes are at least 0.667 ($10 billion, or about 20 lobbying reports), and the section is late or in the most off-topic quarter of the bill. Everything else is "normal".
 
 The rule is not symmetric on purpose. A section with no CBO figure can still qualify through lobbying alone, and being late or being off-topic alone is enough for a sneak signal. A big dollar figure with a loud news cycle is never labeled buried. The constants live in `packages/analyze/src/score.ts`.
@@ -35,9 +36,9 @@ Each member's vote is shown for passage, concurrence, conference-report and veto
 
 A lobbyist is drawn when a filing that names the bill lists a covered (former government) position for them, quoted as filed. Entries that list no covered position are not drawn as former staff.
 
-## lda-bill-share
+## counterpart-ref
 
-A client's lobbying spend on a bill is estimated as each filing's reported amount times the share of its issue lines that name the bill. The factual total is always shown beside it.
+A lobbying filing that names the other chamber's bill, or an earlier version of the same bill ("H.R. 29" on the page for S.5), is taken to be about this bill because the texts are the same bill. The claim names the number the filing wrote.
 
 ## lda-topic-only
 
@@ -49,7 +50,7 @@ A company is tied to a bill if it lobbied on the bill (an LD-2 issue line names 
 
 ## trade-window
 
-Trades in a tied company's stock count from one year before the bill was introduced to one year after it became law (or its last dated action). Routine disclosures; no link to any vote is claimed.
+Trades in a tied company's stock count from one year before the bill was introduced to one year after it became law (or its last dated action). Routine disclosures; no link to any vote is claimed. Members trade the shares of large companies all the time, so a count of members who traded a tied company's stock says more about how many large companies are tied than about the bill. The pages therefore count separately the members with a trade dated from the bill's first text through its signing, and show the count against all 535 members.
 
 ## affected-donors
 

@@ -20,8 +20,21 @@ export const RING = {
 };
 const MAX_ACTORS = 90;
 const MAX_MEMBERS = 180;
+const LABELED_ACTORS = 12;
 
-export type Tone = "violet" | "gold" | "red" | "grey" | "panel" | "seal" | "card" | "dim" | "muted" | "text";
+export type Tone =
+  | "violet"
+  | "gold"
+  | "red"
+  | "teal"
+  | "steel"
+  | "grey"
+  | "panel"
+  | "seal"
+  | "card"
+  | "dim"
+  | "muted"
+  | "text";
 export type MapKind = "bill" | "section" | "actor" | "member";
 
 export interface NodeAttrs {
@@ -207,6 +220,7 @@ export function buildGraph(m: BillModel): Built {
       placeEvenly(order, (o, ang) => actorAngle.set(o.a.id, ang));
     } else for (const [i, a] of actors.entries()) actorAngle.set(a.id, slots[i]!);
   }
+  const topActors = new Set(actors.slice(0, LABELED_ACTORS).map((a) => a.id));
   const maxActor = Math.max(2, ((TAU * ar) / (actors.length || 1)) * 0.38);
   for (const a of actors) {
     const ang = actorAngle.get(a.id)!;
@@ -220,13 +234,13 @@ export function buildGraph(m: BillModel): Built {
       fillAlpha: hollow ? 1 : 0.88,
       border: "violet",
       borderSize: hollow ? 0.2 : 0,
-      labelTone: a.reports >= 9 || a.traders.size >= 3 ? "text" : "muted",
+      labelTone: "text",
       rx: p.x,
       ry: p.y,
       rsize: Math.min(maxActor, 3 + Math.sqrt(a.reports) * 0.9 + a.traders.size * 0.15),
       ralpha: 1,
       rlabel: labelSide(ang),
-      important: 1,
+      important: topActors.has(a.id) ? 1 : 0,
     });
   }
 
@@ -258,9 +272,9 @@ export function buildGraph(m: BillModel): Built {
   }
   const topLabels = new Set(
     [
-      ...[...members].sort((x, y) => y.tradeCount - x.tradeCount).slice(0, 8),
-      ...[...members].sort((x, y) => y.fundedUsd - x.fundedUsd).slice(0, 4),
-      ...members.filter((v) => v.sponsor || v.inserted.length),
+      ...[...members].sort((x, y) => y.tradeCount - x.tradeCount).slice(0, 4),
+      ...[...members].sort((x, y) => y.fundedUsd - x.fundedUsd).slice(0, 2),
+      ...members.filter((v) => v.sponsor).slice(0, 2),
     ].map((v) => v.node.id),
   );
   const [m0, m1] = RING.members;
@@ -275,7 +289,7 @@ export function buildGraph(m: BillModel): Built {
       label: memberShort(v.node),
       tone: vote === "Yea" ? "violet" : "panel",
       fillAlpha: 1,
-      border: v.sponsor || v.inserted.length ? "gold" : vote ? "violet" : "dim",
+      border: v.sponsor ? "gold" : v.inserted.length ? "teal" : vote ? "violet" : "dim",
       borderSize: v.sponsor || v.inserted.length ? 0.34 : vote === "Yea" ? 0 : 0.26,
       labelTone: "muted",
       rx: p.x,
@@ -298,14 +312,16 @@ export function buildGraph(m: BillModel): Built {
     const toCenter = dst === m.billNode;
     const style: Pick<EdgeAttrs, "tone" | "width" | "base" | "views"> =
       e.kind === "lobbied"
-        ? { tone: "violet", width: 0.7, base: 0.32, views: ["map"] }
+        ? { tone: "violet", width: 0.7, base: 0.28, views: ["map"] }
         : e.kind === "traded"
-          ? { tone: "red", width: Math.min(0.6 + e.weight * 0.12, 2.2), base: 0.34, views: ["map", "money"] }
+          ? { tone: "steel", width: Math.min(0.6 + e.weight * 0.12, 2.2), base: 0.07, views: ["map", "money"] }
           : e.kind === "funded"
             ? { tone: "gold", width: Math.min(0.4 + e.weight / 4e4, 2), base: 0.2, views: ["map", "money"] }
             : e.kind === "voted"
               ? { tone: "grey", width: 0.6, base: 0.14, views: ["map"] }
-              : { tone: "gold", width: 1.2, base: 0.7, views: ["map"] };
+              : e.kind === "inserted"
+                ? { tone: "teal", width: 0.9, base: 0.3, views: ["map"] }
+                : { tone: "gold", width: 1, base: 0.5, views: ["map"] };
     g.addDirectedEdgeWithKey(e.id, src, dst, {
       kind: e.kind,
       inference: e.inference,
@@ -395,7 +411,7 @@ function moneyLayout(g: Graph<NodeAttrs, EdgeAttrs>, m: BillModel) {
     m.members
       .filter((v) => sub.hasNode(v.node.id))
       .sort((x, y) => y.fundedUsd + y.tradeCount * 2e4 - (x.fundedUsd + x.tradeCount * 2e4))
-      .slice(0, 16)
+      .slice(0, 10)
       .map((v) => v.node.id),
   );
   sub.forEachNode((n, a) => {
@@ -415,7 +431,7 @@ function moneyLayout(g: Graph<NodeAttrs, EdgeAttrs>, m: BillModel) {
           : member
             ? Math.min(12, 3 + Math.sqrt(member.fundedUsd / 2e4 + member.tradeCount))
             : 4,
-      important: kind === "actor" || topMembers.has(n) ? 1 : 0,
+      important: (kind === "actor" && (actor?.traders.size ?? 0) >= 4) || topMembers.has(n) ? 1 : 0,
     });
   });
 }

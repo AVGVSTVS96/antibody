@@ -9,24 +9,26 @@ import { XrayList } from "./XrayList.tsx";
 
 const NAMES: Record<DisplayKind, string> = {
   lobbied: "lobbied",
-  traded: "traded stock",
+  traded: "traded stock (routine)",
   funded: "PAC money",
   voted: "voted",
   sponsored: "sponsor",
-  inserted: "inserted",
+  inserted: "added late",
 };
 const TONE: Record<DisplayKind, string> = {
   lobbied: "var(--violet)",
-  traded: "var(--red)",
+  traded: "var(--steel)",
   funded: "var(--gold)",
   voted: "var(--grey)",
   sponsored: "var(--gold)",
-  inserted: "var(--gold)",
+  inserted: "var(--teal)",
 };
 const LEGEND: Record<"map" | "money", DisplayKind[]> = {
   map: ["lobbied", "traded", "funded", "voted", "sponsored", "inserted"],
   money: ["traded", "funded"],
 };
+
+const CROWDED = 120;
 
 const VIEWS: [View, string][] = [
   ["map", "Map"],
@@ -42,10 +44,15 @@ interface Props {
 }
 
 export function Stage({ m, built, view, setView }: Props) {
-  const [hidden, setHidden] = useState<Record<"map" | "money", Set<DisplayKind>>>({
-    map: new Set(["funded", "voted"]),
+  const [hidden, setHidden] = useState<Record<"map" | "money", Set<DisplayKind>>>(() => ({
+    map: new Set<DisplayKind>([
+      "funded",
+      "voted",
+      ...(built.counts.traded > CROWDED ? (["traded"] as const) : []),
+      ...(built.counts.inserted > CROWDED / 4 ? (["inserted"] as const) : []),
+    ]),
     money: new Set(),
-  });
+  }));
   const phone = useMedia("(max-width: 560px)");
   const [folded, setFolded] = useState(true);
   const hideMap = view === "list" || (phone && folded);
@@ -59,13 +66,12 @@ export function Stage({ m, built, view, setView }: Props) {
     });
 
   const { shown } = built;
-  const traded = m.members.filter((v) => v.tradeCount).length;
   const sub =
     view === "money"
-      ? `${built.graph.filterNodes((_n, a) => a.malpha > 0 && a.kind === "actor").length} companies and ${built.graph.filterNodes((_n, a) => a.malpha > 0 && a.kind === "member").length} members joined by stock trades or PAC money`
+      ? `${built.graph.filterNodes((_n, a) => a.malpha > 0 && a.kind === "actor").length} companies and ${built.graph.filterNodes((_n, a) => a.malpha > 0 && a.kind === "member").length} members joined by stock trades or PAC money. Click any dot to see its ties.`
       : view === "list"
         ? `${m.versions.length} text versions · ${m.sections.length} sections, with every sub-score`
-        : `${shown.sections} sections · ${shown.actors}${shown.actorsTotal > shown.actors ? ` of ${shown.actorsTotal}` : ""} lobbying clients and tied companies · ${shown.members}${shown.membersTotal > shown.members ? ` of ${shown.membersTotal}` : ""} members (${traded} traded)`;
+        : `Showing the ${shown.actors} best-connected companies and lobbying clients${shown.actorsTotal > shown.actors ? ` of ${shown.actorsTotal}` : ""} and the ${shown.members} best-connected members${shown.membersTotal > shown.members ? ` of ${shown.membersTotal}` : ""}. Click any dot to see its ties.`;
 
   return (
     <section className={`stage${view === "list" ? " list" : ""}`} aria-label="X-ray">
@@ -85,6 +91,14 @@ export function Stage({ m, built, view, setView }: Props) {
         <MapCanvas m={m} built={built} view={mapView} hidden={hidden[mapView]} active={!hideMap} />
       </div>
       {view === "list" && <XrayList m={m} />}
+      {mapView === "map" && !hideMap && (
+        <p className="mapkey">
+          <b>Outer ring</b> members who traded, were funded or sponsored. <b>Middle ring</b> companies and lobbying
+          clients. <b>Inner ring</b> sections: the further out, the later the text they first appeared in; gold glow is
+          a headline section, a dashed red ring a buried candidate. Teal lines are sections added after the first text;
+          a gold ring is the sponsor.
+        </p>
+      )}
       <div className={`legend${hideMap ? " off" : ""}`}>
         <div className="cap">Edges · click to toggle</div>
         <div className="items">

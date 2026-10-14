@@ -48,6 +48,10 @@ test("billStats counts the index card numbers", () => {
     lobbyingReports: 757,
     companies: 1,
     membersTraded: 2,
+    membersTradedDuring: expect.any(Number),
+    buriedTest: { tested: false, why: "too few news articles to rank this bill's sections", bigStakes: 0 },
+    lateShare: expect.any(Number),
+    vehicle: false,
     deficitMusd: 120,
     fingerprint: "u",
   });

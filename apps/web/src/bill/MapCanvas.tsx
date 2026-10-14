@@ -53,6 +53,7 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
   const tipAnchor = useRef<(() => void) | null>(null);
   const [sigma, setSigma] = useState<Renderer | null>(null);
   const [moved, setMoved] = useState(false);
+  const [touched, setTouched] = useState(false);
   const theme = useTheme();
   const focus = useFocus();
   const env = useRef<Env>({ pal: palette(), view, hidden });
@@ -121,7 +122,10 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
             borderSize: { attribute: "borderSize" },
             label: { attribute: "label" },
             labelFont: MONO,
-            labelSize: (a: NodeAttrs) => (a.kind === "section" ? 9 : 10),
+            labelSize: 11,
+            labelBackgroundColor: (a: NodeAttrs) =>
+              a.kind === "section" || a.kind === "bill" ? "transparent" : rgba(E.pal.bg, 0.8),
+            labelBackgroundPadding: 2,
             labelColor: (a: NodeAttrs, s: NS, gs: GS) =>
               rgba(E.pal[a.labelTone], Math.min(1, a.alpha * 1.4) * dim(gs.focused, s.isActive)),
             labelPosition: (a: NodeAttrs) =>
@@ -140,7 +144,7 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
           edges: {
             path: (e: EdgeAttrs) => (e.curvature ? "curved" : "straight"),
             curvature: { attribute: "curvature" },
-            size: (e: EdgeAttrs, s: NS) => e.width * (s.isActive ? 1.7 : 1),
+            size: (e: EdgeAttrs, s: NS) => e.width * (s.isActive ? 2.4 : 1),
             color: (e: EdgeAttrs) => E.pal[e.tone],
             solid: (e: EdgeAttrs, s: NS, gs: GS) =>
               e.inference ? "transparent" : rgba(E.pal[e.tone], edgeAlpha(E, e, s.isActive, gs.focused)),
@@ -165,8 +169,8 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
           maxCameraRatio: 1.6,
           gestureTarget: coarse ? "shared" : "graph",
           labelRenderedSizeThreshold: 5,
-          labelDensity: 1.4,
-          labelGridCellSize: 60,
+          labelDensity: 0.3,
+          labelGridCellSize: 110,
           nodePickingPadding: 3,
         },
       });
@@ -229,7 +233,10 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
     cam.on("updated", onCam);
     sigma.on("enterNode", ({ node }) => focus.setHover(node));
     sigma.on("leaveNode", () => focus.setHover(null));
-    sigma.on("clickNode", ({ node }) => focus.pin(node));
+    sigma.on("clickNode", ({ node }) => {
+      setTouched(true);
+      focus.pin(node);
+    });
     sigma.on("clickStage", () => focus.pin(null));
     place();
     return () => {
@@ -312,16 +319,10 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
           </g>
         </svg>
         <div className="sigma" ref={box} />
+        {!touched && !focus.pinned && sigma && <div className="maphint">Click a dot to see only its ties</div>}
         <svg className="overlay front" aria-hidden="true">
           <g ref={front}>
             <g className={`rings${rings ? "" : " off"}`}>
-              <ArcLabel id="al-sec" r={RING.sections[1] + 3} text="Sections · ring = stage added" />
-              <ArcLabel id="al-act" r={RING.actors[1] + 3} text="Who lobbied · tied companies" />
-              <ArcLabel id="al-mem" r={RING.members[1] + 5} text="Members · traded, funded or sponsored" />
-              {built.stages.length > 1 &&
-                built.stages.map((s, i) => (
-                  <ArcLabel key={s.code} id={`al-st${i}`} r={s.r} text={stageShort(s.name, s.code)} small span={11} />
-                ))}
               <BillBadge m={m} />
             </g>
           </g>
@@ -353,27 +354,9 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
 
 function edgeAlpha(E: Env, e: EdgeAttrs, isActive: boolean, focused: boolean) {
   if (!e.views.includes(E.view) || E.hidden.has(e.kind)) return 0;
-  if (focused) return isActive ? 0.92 : 0;
+  if (focused) return isActive ? 0.95 : 0;
   return E.view === "money" ? Math.min(0.75, e.base * 1.6) : e.base;
 }
-
-const stageShort = (name: string, code: string) => {
-  if (/predecessor/i.test(name)) return name.split(" ")[0]!;
-  const map: Record<string, string> = {
-    ih: "intro",
-    is: "intro",
-    rh: "cmte",
-    rs: "cmte",
-    pcs: "cmte",
-    pch: "cmte",
-    eh: "floor",
-    es: "floor",
-    eah: "conf",
-    eas: "conf",
-    enr: "final",
-  };
-  return map[code] ?? code;
-};
 
 function Donut({ r0, r1, fill }: { r0: number; r1: number; fill: string }) {
   return (
@@ -382,37 +365,6 @@ function Donut({ r0, r1, fill }: { r0: number; r1: number; fill: string }) {
       fill={fill}
       fillRule="evenodd"
     />
-  );
-}
-
-function ArcLabel({
-  id,
-  r,
-  text,
-  small = false,
-  span,
-}: {
-  id: string;
-  r: number;
-  text: string;
-  small?: boolean;
-  span?: number;
-}) {
-  const half = span ?? 34;
-  const a0 = ((-90 - half) * Math.PI) / 180;
-  const a1 = ((-90 + half) * Math.PI) / 180;
-  const p = (a: number) => `${(Math.cos(a) * r).toFixed(2)},${(Math.sin(a) * r).toFixed(2)}`;
-  return (
-    <>
-      <defs>
-        <path id={id} d={`M${p(a0)}A${r},${r} 0 0,1 ${p(a1)}`} fill="none" />
-      </defs>
-      <text className={`ringlabel${small ? " small" : ""}`} dy={small ? 2.5 : -4}>
-        <textPath href={`#${id}`} startOffset="50%" textAnchor="middle">
-          {text}
-        </textPath>
-      </text>
-    </>
   );
 }
 
@@ -442,7 +394,7 @@ function BillBadge({ m }: { m: BillModel }) {
       <text y={5} textAnchor="middle" fontSize={size} fontWeight={600} fill="var(--text)" fontFamily="var(--sans)">
         {name.length > 22 ? `${name.slice(0, 21)}…` : name}
       </text>
-      <text y={21} textAnchor="middle" fontSize={9.5} fontFamily="var(--mono)" fill="var(--muted)">
+      <text y={21} textAnchor="middle" fontSize={11} fontFamily="var(--mono)" fill="var(--muted)">
         {bill.law ?? (bill.latestAction ? "in Congress" : "")}
       </text>
     </g>

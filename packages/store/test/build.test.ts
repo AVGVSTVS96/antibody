@@ -95,19 +95,18 @@ describe("GENIUS bundle from contract rows", () => {
     );
   });
 
-  test("lobbying dollars: the factual total on the edge, the bill-share estimate beside it as an inference", () => {
+  test("lobbying dollars: the filing total only, never a per-bill share", () => {
     const e = edges("lobbied").find((x) => x.id === "lobbied:coinbase")!;
     if (e.kind !== "lobbied") throw new Error("not lobbied");
     expect(e.basis).toBe("fact");
-    expect(e.props).toMatchObject({ spendTotalUsd: 60000, shareEstimateUsd: 20000 });
+    expect(e.props).toMatchObject({ spendTotalUsd: 60000, shareEstimateUsd: null, shareClaim: null });
     expect(e.claims).toContain("lda_spend/119-s-1582:coinbase#total");
-    const share = claim(e.props.shareClaim!);
-    expect(share).toMatchObject({ kind: "inference", restsOn: ["lda_spend/119-s-1582:coinbase#total"] });
+    expect(claim("lda_spend/119-s-1582:coinbase#total").text).toContain("not what was spent on this bill");
     expect(claim("lda_spend/119-s-1582:coinbase#total").restsOn).toEqual([
       "lda_filings/9beeca5f-74bd-4012-8957-7053df57e67a",
     ]);
-    expect(b.lobbying).toMatchObject({ spendTotalUsd: 1_580_000, shareEstimateUsd: 526_667 });
-    expect(b.rules.find((r) => r.id === "lda-bill-share")!.text).toContain("issue lines");
+    expect(b.lobbying).toMatchObject({ spendTotalUsd: 1_580_000, shareEstimateUsd: null });
+    expect(b.rules.some((r) => r.id === "lda-bill-share")).toBe(false);
   });
 
   test("lobbyists are drawn only with a covered position, quoted as filed", () => {
@@ -140,10 +139,10 @@ describe("GENIUS bundle from contract rows", () => {
     );
     expect(strip("member_votes/senate-119-1-318:H000601")).toBe(strip("member_votes/senate-119-1-318:G000555"));
     expect(claim("members/H000601#2025-01-03").text).toBe(
-      "Bill Hagerty served as a Republican senator from Tennessee from January 3, 2025 to January 3, 2031.",
+      "Bill Hagerty serves as a Republican senator from Tennessee from January 3, 2025; the term ends January 3, 2031.",
     );
     expect(claim("members/G000555#2025-01-03").text).toBe(
-      "Kirsten E. Gillibrand served as a Democratic senator from New York from January 3, 2025 to January 3, 2031.",
+      "Kirsten E. Gillibrand serves as a Democratic senator from New York from January 3, 2025; the term ends January 3, 2031.",
     );
   });
 

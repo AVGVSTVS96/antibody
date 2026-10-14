@@ -1,4 +1,5 @@
 import {
+  activeSpan,
   type Bundle,
   type Claim,
   type Edge,
@@ -98,6 +99,18 @@ export interface BillModel {
   /** Members by party whose paper filings we have not read, so their trades cannot be counted. */
   unread: Record<"R" | "D" | "I", number>;
   perSectionDollars: boolean;
+  /** Members who traded a tied company's stock, among those with a recorded vote by party (all traders when no one voted). */
+  tradersVoted: Record<"R" | "D" | "I", number>;
+  /** Traders with no recorded vote on the bill (a chamber that passed it by consent casts none). */
+  tradersNoVote: number;
+  /** Traders with at least one trade dated inside `span`. */
+  tradersDuring: number;
+  /** First text through signing (or the last dated action): the span in which a trade could be about the bill. */
+  span: [string, string] | null;
+  /** `§30002`, with the version in brackets when another section of the bill has the same number. */
+  secLabel: (v: SectionView) => string;
+  /** Share of final sections that arrived late (null when the late flag is unavailable). */
+  lateShare: number | null;
 }
 
 const byKind = <K extends Edge["kind"]>(edges: Edge[], kind: K) => edges.filter((e): e is EdgeOf<K> => e.kind === kind);
@@ -360,6 +373,21 @@ export function buildModel(b: Bundle): BillModel {
     if (m.node.props.paperFilingsUnread) unread[m.node.props.party]++;
   }
 
+  const tradersVoted = { R: 0, D: 0, I: 0 };
+  let tradersNoVote = 0;
+  const span = activeSpan(b);
+  const tradersDuring = members.filter(
+    (m) => span && m.trades.some((t) => t.props.events.some((e) => e.date >= span[0] && e.date <= span[1])),
+  ).length;
+  for (const m of members) {
+    if (!m.tradeCount) continue;
+    if (!voted || m.vote) tradersVoted[m.node.props.party]++;
+    else tradersNoVote++;
+  }
+  const numCount = new Map<string, number>();
+  for (const v of sections) numCount.set(v.s.num, (numCount.get(v.s.num) ?? 0) + 1);
+  const finalSections = sections.filter((v) => v.s.inFinal);
+
   const sponsorNode = b.bill.sponsor ? nodeById.get(b.bill.sponsor) : undefined;
   return {
     b,
@@ -382,6 +410,16 @@ export function buildModel(b: Bundle): BillModel {
     voters,
     unread,
     perSectionDollars: b.dollars.estimates.some((e) => e.perSection),
+    tradersVoted,
+    tradersNoVote,
+    tradersDuring,
+    span,
+    secLabel: (v) =>
+      (numCount.get(v.s.num) ?? 0) > 1 ? `§${v.s.num} (${v.stageName.replace(/ \(.*\)$/, "")})` : `§${v.s.num}`,
+    lateShare:
+      b.bill.lateUnavailable || !finalSections.length
+        ? null
+        : finalSections.filter((v) => v.s.late).length / finalSections.length,
   };
 }
 

@@ -114,6 +114,8 @@ class Builder {
     roll: (id) => this.labels.roll.get(id) ?? `roll call ${id}`,
     amendment: (id) => this.labels.amendment.get(id) ?? `Amendment ${id}`,
     estimate: (id) => this.labels.estimate.get(id) ?? null,
+    sample: { found: 0, relevant: 0 },
+    today: "",
   };
 
   // ── rows and claims ──
@@ -230,6 +232,8 @@ class Builder {
     bill.short_title = await this.shortTitle(bill);
     this.names.display = this.display;
     this.names.bill = `${this.display}${bill.short_title ? ` (${bill.short_title})` : ""}`;
+    this.names.sample = await this.attentionSample();
+    this.names.today = isoDay(this.now.getTime());
 
     const versions = await this.buildVersions();
     await this.buildSections();
@@ -262,6 +266,12 @@ class Builder {
       lawOn: bill.law_on,
       latestAction: bill.latest_action,
       lateUnavailable: bill.late_unavailable ?? null,
+      vehicle: vehicleNote(
+        bill.late_unavailable ?? null,
+        versions,
+        [...this.sections.values()],
+        sponsorId ? this.members.get(sponsorId) : undefined,
+      ),
       url: bill.url ?? congressGovUrl(this.bill),
       billstatusUrl: billstatusUrl(this.bill),
       claims: [...(await this.cites("bills", [bill])), ...(await this.cites("cbo_notes", notes))],
@@ -682,7 +692,12 @@ class Builder {
       });
     }
 
-    const spend = await this.select("lda_spend", "bill_id = $b", { b: this.bill });
+    const spend = (await this.select("lda_spend", "bill_id = $b", { b: this.bill })).map(
+      (s): AnyRow => ({
+        ...s,
+        share_usd: null,
+      }),
+    );
     const spendClaims = async (s: AnyRow | undefined) => ({
       total: s?.total_usd != null ? await this.cite("lda_spend", s, "total") : null,
       share: s?.share_usd != null ? await this.cite("lda_spend", s, "share") : null,
@@ -995,6 +1010,13 @@ class Builder {
     }
   }
 
+  /** From the attention rows' evidence: articles found per side, and those read and judged to be about the bill. */
+  private async attentionSample(): Promise<{ found: number; relevant: number }> {
+    const [row] = await this.select("attention", "bill_id = $b AND evidence IS NOT NULL", { b: this.bill });
+    const sum = (o: Record<string, number> | undefined) => Object.values(o ?? {}).reduce((a, n) => a + n, 0);
+    return { found: sum(row?.evidence?.found_by_side), relevant: sum(row?.evidence?.relevant_by_side) };
+  }
+
   private async buildAttention(): Promise<Bundle["attention"]> {
     const rows = await this.select("attention", "bill_id = $b", { b: this.bill });
     const articles = this.tables.has("articles")
@@ -1044,6 +1066,7 @@ class Builder {
       outletListVersion: articles.find((a) => a.list_version)?.list_version ?? null,
       window: dates.length ? [dates[0], dates.at(-1)] : null,
       articles: articles.length,
+      sample: this.names.sample.relevant ? this.names.sample : null,
       general,
     };
   }
@@ -1201,13 +1224,32 @@ function step(h: AnyRow): Section["history"][string] {
   };
 }
 
+/**
+ * The sponsor line reads as a vehicle when the law's text did not come from the sponsor's own bill: the bill began as
+ * a shell or was rewritten wholesale, or fewer than half of the final sections were in its first text (a predecessor
+ * bill with the same sponsor and title means the sponsor did write it).
+ */
+export function vehicleNote(
+  lateUnavailable: string | null,
+  versions: Bundle["versions"],
+  sections: Section[],
+  sponsor: AnyRow | undefined,
+): string | null {
+  if (!sponsor || versions.some((v) => v.predecessor)) return null;
+  const first = versions.find((v) => v.date)?.code ?? versions[0]?.code;
+  const final = sections.filter((s) => s.inFinal);
+  const carried = final.length ? final.filter((s) => s.firstVersion === first).length / final.length : 1;
+  if (!lateUnavailable && carried >= 0.5) return null;
+  return `${Math.round((1 - carried) * 100)}% of the law's sections were not in the bill ${sponsor.name} introduced. It was a vehicle: the law's text came from later versions, so this sponsor did not write the law.`;
+}
+
 function spendProps(s: AnyRow, topicOnly: boolean): EdgeOf<"lobbied">["props"] {
   return {
     reports: s.reports,
     quarters: s.quarters,
     phases: { bill: s.reports_bill, enactmentQuarter: s.reports_enactment_quarter, law: s.reports_law },
     spendTotalUsd: s.total_usd,
-    shareEstimateUsd: s.share_usd,
+    shareEstimateUsd: null,
     issueQuote: s.issue_quote,
     topicOnly,
   };
