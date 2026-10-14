@@ -52,6 +52,50 @@ export function capitalizeNames(heading: string, names: Map<string, string>): st
   return out;
 }
 
+const PROPER_NOUNS = [
+  ...(
+    "Alabama,Alaska,Arizona,Arkansas,California,Colorado,Connecticut,Delaware,Florida,Georgia,Hawaii,Idaho,Illinois,Indiana," +
+    "Iowa,Kansas,Kentucky,Louisiana,Maine,Maryland,Massachusetts,Michigan,Minnesota,Mississippi,Missouri,Montana,Nebraska," +
+    "Nevada,New Hampshire,New Jersey,New Mexico,New York,North Carolina,North Dakota,Ohio,Oklahoma,Oregon,Pennsylvania," +
+    "Rhode Island,South Carolina,South Dakota,Tennessee,Texas,Utah,Vermont,Virginia,West Virginia,Wisconsin,Wyoming," +
+    "District of Columbia,Puerto Rico,Guam,American Samoa,Northern Mariana Islands,Virgin Islands"
+  ).split(","),
+  "United States",
+  "American",
+  "Americans",
+  "Alaska Native",
+  "Native Hawaiian",
+  "Indian",
+  "Medicaid",
+  "Medicare",
+  "Congress",
+  "Congressional",
+  "Senate",
+  "House",
+];
+const PROPER = new Map(PROPER_NOUNS.map((n) => [n.toLowerCase(), n]));
+
+export const upperFirst = (s: string) => s.replace(/^[a-z]/, (c) => c.toUpperCase());
+
+/**
+ * A multi-word heading printed in all caps, as a sentence: lowercase except the first letter and a short list of
+ * proper nouns (states, "United States", Medicaid, "Department of X"...). One word stays as printed: an acronym.
+ */
+export function fromCaps(heading: string): string {
+  if (!heading.includes(" ")) return heading;
+  const lower = heading.toLowerCase();
+  const departments = new Map(
+    [...lower.matchAll(/\bdepartment of (?:the )?[a-z]+/g)].map(([d]) => [
+      d,
+      d
+        .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+        .replace(/ Of /, " of ")
+        .replace(/ The /, " the "),
+    ]),
+  );
+  return upperFirst(capitalizeNames(lower, new Map([...PROPER, ...departments])));
+}
+
 /** `SEC. 70114.` → `70114`, `TITLE VII—` → `VII`. */
 export function normEnum(s: string): string {
   return norm(s)
