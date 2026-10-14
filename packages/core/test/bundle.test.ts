@@ -48,5 +48,6 @@ test("billStats counts the index card numbers", () => {
     companies: 1,
     membersTraded: 2,
     deficitMusd: 120,
+    fingerprint: "u",
   });
 });

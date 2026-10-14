@@ -283,6 +283,8 @@ export const BillStats = z.object({
   companies: z.number().int(),
   membersTraded: z.number().int(),
   deficitMusd: z.number().nullable(),
+  /** One letter per final section in order: h headline, b buried, n normal, u unscored. Drawn as the card's ring. */
+  fingerprint: z.string().regex(/^[hbnu]*$/),
 });
 
 /** A bill the daily watcher flagged (from `watch_events`), x-rayed or not yet. */
@@ -366,5 +368,6 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     companies: b.nodes.filter((n) => n.kind === "company").length,
     membersTraded: new Set(b.edges.filter((e) => e.kind === "traded").map((e) => e.src)).size,
     deficitMusd: deficit?.amountMusd ?? null,
+    fingerprint: final.map((s) => (s.score ? s.score.label[0] : "u")).join(""),
   };
 }
