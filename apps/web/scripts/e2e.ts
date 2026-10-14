@@ -10,6 +10,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Bundle, BundleIndex, Claim } from "@antibody/core";
 import { chromium, type Page } from "playwright-core";
+import { libraryOf } from "../src/land/rules.ts";
 
 const base = process.argv[2] ?? "http://localhost:4870";
 const bundlesDir = join(import.meta.dir, "../public/bundles");
@@ -71,6 +72,175 @@ async function layoutShift(page: Page) {
   check((await page.locator(".results a[href='/bill/119-hr-1']").count()) > 0, "search 'H.R. 1' finds H.R.1");
   check(errors.length === 0, `land has no console errors ${errors.join(" | ")}`);
   await page.close();
+}
+
+{
+  const library = libraryOf(index);
+  const featured = library[0]!;
+  const bundle = (await Bun.file(join(bundlesDir, `${featured.id}.json`)).json()) as Bundle;
+
+  const blocked = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const blockedErrors: string[] = [];
+  blocked.on("pageerror", (e) => blockedErrors.push(e.message));
+  await blocked.route(/\/bundles\/(?!index\.json)/, (r) => r.abort());
+  await blocked.goto(`${base}/`, { waitUntil: "load" });
+  await blocked.waitForSelector(".lib-row", { timeout: 30000 });
+  check(
+    (await blocked.locator(".lib-row .mini").count()) > 0 &&
+      (await blocked.locator(".land-hold .mini").count()) === 1 &&
+      (await blocked.locator(".stats .stat").count()) === 5,
+    "land paints the library, the featured mini tape and the stat row from index.json alone",
+  );
+  check(blockedErrors.length === 0, `land with no bundles has no page errors ${blockedErrors.join(" | ")}`);
+  await blocked.close();
+
+  const { page, errors } = await open("/");
+  await page.waitForSelector(".tape-stage", { timeout: 60000 });
+  await page.waitForSelector(".exhibit:not([aria-busy=true])", { timeout: 60000 });
+  const rowHrefs = () =>
+    page.$$eval(".lib-row .lib-name a", (as) => as.map((a) => new URL((a as HTMLAnchorElement).href).pathname));
+
+  check(
+    (await rowHrefs())[0] === `/bill/${featured.id}`,
+    `the library opens on the featured bill by the rule (${featured.display})`,
+  );
+  await page.click(".lib-more");
+  const hrefs = await rowHrefs();
+  check(
+    JSON.stringify(hrefs) === JSON.stringify(library.map((b) => `/bill/${b.id}`)),
+    `all ${library.length} bills are listed in rule order`,
+  );
+  const cells = await page.$$eval(".lib-row", (rows) =>
+    rows.map((r) => ({
+      lobbying: r.querySelector("[data-col=lobbying] b")?.textContent,
+      deficit: r.querySelector("[data-col=deficit]")?.textContent ?? "",
+      quiet: r.querySelector("[data-col=quiet] b")?.textContent,
+    })),
+  );
+  check(
+    library.every((b, i) => {
+      const c = cells[i]!;
+      const s = b.stats;
+      const words = s.deficitMusd == null ? "no CBO total" : s.deficitMusd < 0 ? "cuts" : "adds";
+      return (
+        c.lobbying === s.lobbyingReports.toLocaleString("en-US") &&
+        c.deficit.includes(words) &&
+        c.quiet === (s.buriedTest.tested ? String(s.buried) : "—")
+      );
+    }),
+    "every library row shows the index's numbers, with adds / cuts / no CBO total in words",
+  );
+
+  const exhibitHref = await page.getAttribute(".exhibit .ex-title a", "href");
+  const exhibitSection = bundle.sections.find(
+    (s) =>
+      `/bill/${featured.id}/section/${encodeURIComponent(s.num)}` === exhibitHref ||
+      exhibitHref?.endsWith(encodeURIComponent(s.id)),
+  );
+  const lobbied = bundle.edges
+    .filter((e) => e.kind === "lobbied" && e.dst === `section:${exhibitSection?.id}`)
+    .reduce((n, e) => n + (e.kind === "lobbied" ? e.props.reports : 0), 0);
+  check(
+    !!exhibitSection &&
+      exhibitSection.score?.label === "buried" &&
+      (await page.locator(".exhibit .stat strong").nth(2).innerText()) === String(lobbied),
+    `the exhibit is a quiet and costly section of ${featured.display} and its lobbying count matches the bundle`,
+  );
+  check((await page.locator(".exhibit a.src:not(.ghost)").count()) > 0, "the exhibit's numbers carry source chips");
+
+  const stage = page.locator(".tape-stage");
+  await stage.focus();
+  await page.keyboard.press("ArrowDown");
+  const quietText = await stage.getAttribute("aria-valuetext");
+  check(
+    !!quietText?.includes("Quiet and costly"),
+    `tape: arrow down lands on a quiet and costly mark (${quietText?.slice(0, 40)})`,
+  );
+  await page.keyboard.press("Enter");
+  await page.waitForFunction((id) => location.pathname === `/bill/${id}`, featured.id);
+  check(page.url().includes("#section-"), "tape: Enter opens the bill at that section");
+  await page.goBack();
+  await page.waitForSelector(".lib-row");
+
+  const row = page.locator(".lib-row").nth(1);
+  await row.hover();
+  await page.waitForTimeout(250);
+  const hover = await row.evaluate((r) => ({
+    rule: getComputedStyle(r, "::before").clipPath,
+    lift: getComputedStyle(r.querySelector(".lib-tape")!).transform,
+  }));
+  check(
+    hover.rule === "inset(0px)" && hover.lift === "matrix(1, 0, 0, 1, 0, -4)",
+    `library row hover: yellow rule in, tape lifts 4px (${hover.rule}, ${hover.lift})`,
+  );
+  await page.mouse.move(0, 0);
+  await page.keyboard.press("Tab");
+  await page.locator(".lib-row .lib-name a").first().focus();
+  await page.waitForTimeout(250);
+  check(
+    (await page
+      .locator(".lib-row")
+      .first()
+      .evaluate((r) => getComputedStyle(r, "::before").clipPath)) === "inset(0px)",
+    "library row focus shows the same state as hover",
+  );
+  await page.keyboard.press("Enter");
+  await page.waitForFunction((id) => location.pathname === `/bill/${id}`, featured.id);
+  check(true, "library row opens its bill from the keyboard");
+  await page.goBack();
+  await page.waitForSelector(".lib-row");
+
+  await page.locator(".search input").first().fill("GENIUS");
+  await page.waitForSelector(".results .sr-tape .mini", { timeout: 10000 });
+  check(true, "search results carry each bill's own mini tape");
+  check(errors.length === 0, `land has no console errors after interaction ${errors.join(" | ")}`);
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(200);
+    const over = await overflow(page);
+    check(over <= 0, `land at ${width}: no horizontal overflow (${over}px)`);
+  }
+  await page.close();
+
+  const motion = async (reduce: boolean) => {
+    const p = await browser.newPage({
+      viewport: { width: 1440, height: 900 },
+      reducedMotion: reduce ? "reduce" : "no-preference",
+    });
+    await p.goto(`${base}/`, { waitUntil: "load" });
+    await p.waitForSelector(".tape-rise", { timeout: 60000 });
+    const name = await p
+      .locator(".tape-rise")
+      .first()
+      .evaluate((el) => getComputedStyle(el).animationName);
+    await p.close();
+    return name;
+  };
+  check((await motion(false)) !== "none", "the tape draws itself in with motion allowed");
+  check((await motion(true)) === "none", "the tape appears at once with reduced motion");
+
+  const shift = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  await shift.goto(`${base}/`, { waitUntil: "load" });
+  await shift.waitForSelector(".tape-stage", { timeout: 60000 });
+  await shift.waitForSelector(".exhibit:not([aria-busy=true])");
+  check((await layoutShift(shift)) <= 0.1, "land layout shift <= 0.1 while the featured bill loads");
+  await shift.close();
+
+  const mobile = await open("/", 390);
+  await mobile.page.waitForSelector(".lede-go");
+  const story = await mobile.page.getAttribute(".lede-go", "href");
+  check(story === `/bill/${featured.id}/story`, "phone: the lede's button opens the featured bill's story");
+  check(
+    (await mobile.page.locator(".also .card").count()) === Math.min(2, library.length - 1),
+    "phone: also on the front page shows the next bills in rule order",
+  );
+  check(
+    (await mobile.page.locator(".just li").count()) === Math.min(5, index.watch.length),
+    "phone: just in from Congress lists the watcher's picks",
+  );
+  await mobile.page.click(".lede-go");
+  await mobile.page.waitForFunction(() => location.pathname.endsWith("/story"));
+  await mobile.page.close();
 }
 
 {
