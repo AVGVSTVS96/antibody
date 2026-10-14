@@ -19,17 +19,34 @@ const strip = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const key = (section: string) =>
-  section
-    .replace(/^\S+\s/, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+const FILLER = new Set(["a", "an", "and", "for", "in", "of", "on", "or", "the", "to", "with"]);
 
-/** Sections of `newest` whose heading appears nowhere in `previous` (renumbering alone doesn't count). */
+const words = (section: string) =>
+  new Set(
+    section
+      .replace(/^\S+\s/, "")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w && !FILLER.has(w)),
+  );
+
+/** Share of the shorter heading's words found in the other. */
+const overlap = (a: Set<string>, b: Set<string>) => {
+  let shared = 0;
+  for (const w of a) if (b.has(w)) shared++;
+  return shared / (Math.min(a.size, b.size) || 1);
+};
+
+/**
+ * Sections of `newest` whose heading matches no heading in `previous` (at least 3/4 of the shorter one's words),
+ * so renumbering or a lengthened heading ("Short title" → "Short title; table of contents") is not a new section.
+ */
 export function newSections(previous: TextShape, newest: TextShape): string[] {
-  const before = new Set(previous.sections.map(key));
-  return newest.sections.filter((s) => !before.has(key(s)));
+  const before = previous.sections.map(words);
+  return newest.sections.filter((s) => {
+    const w = words(s);
+    return !before.some((b) => overlap(w, b) >= 0.75);
+  });
 }
 
 /** GovInfo bill XML runs about 13 bytes per word of text; used when only a Content-Length is known. */

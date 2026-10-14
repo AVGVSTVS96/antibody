@@ -140,6 +140,8 @@ test("text shape skips sections quoted into existing law; renumbering is not a n
   );
   expect(after.sections).toEqual(["1. Short title", "3. Definitions", "4. Exemption for small issuers"]);
   expect(newSections(before, after)).toEqual(["4. Exemption for small issuers"]);
+  const toc = textShape(`<bill>${sec("1.", "Short title; table of contents")}${sec("2.", "Definitions")}</bill>`);
+  expect(newSections(before, toc)).toEqual([]);
 });
 
 test("lobbying search names every spelling of the number and the short title", () => {

@@ -137,13 +137,17 @@ export function links(c: Candidate): Links {
   };
 }
 
+const byParty = (cs: Candidate[]) => {
+  const out: Record<string, number> = {};
+  for (const c of cs) {
+    const p = c.status.sponsor?.party || "unknown";
+    out[p] = (out[p] ?? 0) + 1;
+  }
+  return out;
+};
+
 export function digestJson(r: WatchResult) {
   const flagged = r.candidates.slice(0, FLAGGED);
-  const parties: Record<string, number> = {};
-  for (const c of flagged) {
-    const p = c.status.sponsor?.party || "unknown";
-    parties[p] = (parties[p] ?? 0) + 1;
-  }
   return {
     schema: 1,
     date: r.date,
@@ -154,7 +158,8 @@ export function digestJson(r: WatchResult) {
     moved: r.candidates.length,
     alreadyReported: r.alreadyReported,
     xrayed: r.xrayed,
-    flaggedBySponsorParty: parties,
+    movedBySponsorParty: byParty(r.candidates),
+    flaggedBySponsorParty: byParty(flagged),
     flagged: flagged.map((c, i) => ({
       rank: i + 1,
       bill: c.status.id,
@@ -192,6 +197,12 @@ export function digestJson(r: WatchResult) {
 }
 
 export type Digest = ReturnType<typeof digestJson>;
+
+const tally = (counts: Record<string, number>) =>
+  Object.entries(counts)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([p, n]) => `${p} ${n}`)
+    .join(" · ") || "none";
 
 const cell = (v: number | null) => (v === null ? "—" : v.toFixed(2));
 
@@ -245,11 +256,7 @@ export function digestMarkdown(d: Digest): string {
 
   L.push("", "## How bills are ranked", "");
   L.push(
-    `Score = 100 × Σ weight × sub-score; an unmeasured sub-score (—) counts as 0. The sponsor's party is never an input. Flagged by sponsor party, for the symmetry audit: ${
-      Object.entries(d.flaggedBySponsorParty)
-        .map(([p, n]) => `${p} ${n}`)
-        .join(" · ") || "none"
-    }.`,
+    `Score = 100 × Σ weight × sub-score; an unmeasured sub-score (—) counts as 0. The sponsor's party is never an input. For the symmetry audit, by sponsor party: flagged ${tally(d.flaggedBySponsorParty)} of moved ${tally(d.movedBySponsorParty)}.`,
     "",
   );
   for (const k of SIGNALS) L.push(`- **${k}** (${Math.round(d.rules.weights[k] * 100)}%): ${d.rules.text[k]}`);

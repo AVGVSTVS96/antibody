@@ -91,10 +91,7 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
   );
   const passed = passedVersion(s);
   const clock = voteClock(s, events);
-  const firstVote =
-    events
-      .filter((e) => ["passed", "passed_second", "failed", "vote", "resolving"].includes(e.step))
-      .sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
+  const firstVote = events.filter((e) => e.tally).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
   return {
     facts: {
       step: events.reduce((best, e) => (stepWeight(e) > stepWeight(best) ? e : best)).step,

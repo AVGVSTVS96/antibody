@@ -43,6 +43,9 @@ export function tally(text: string): Tally | null {
   return m ? { yeas: +m[1]!, nays: +m[2]! } : null;
 }
 
+/** A recorded floor vote's count; committee markup votes are left out. */
+const floorTally = (a: Action) => (a.type === "Committee" ? null : tally(a.text));
+
 const passedIn = (a: Action) => a.text.match(/^Passed\/agreed to in (House|Senate)/)?.[1] ?? null;
 
 export function classify(a: Action, passedBefore: Set<string>): Step | null {
@@ -54,7 +57,7 @@ export function classify(a: Action, passedBefore: Set<string>): Step | null {
   const chamber = passedIn(a);
   if (chamber) return [...passedBefore].some((c) => c !== chamber) ? "passed_second" : "passed";
   if (/^Failed of passage|^Failed to pass|motion to proceed rejected|cloture .*not invoked/i.test(t)) return "failed";
-  if (a.votes.length || tally(t)) return "vote";
+  if (a.votes.length || floorTally(a)) return "vote";
   if (a.type === "Floor" && !/amendment submitted|^Received in the|^Held at the desk|^Message on/i.test(t))
     return "floor";
   if (a.type === "Committee" && /reported|ordered to be reported/i.test(t)) return "reported";
@@ -91,7 +94,7 @@ export function billEvents(s: BillStatus, since: string, published: Map<string, 
       date: a.date,
       text: a.text,
       url: vote?.url ?? actionsUrl,
-      tally: tally(a.text),
+      tally: floorTally(a),
     });
   }
   for (const v of s.versions) {
@@ -171,11 +174,12 @@ export interface VoteClock {
 
 /**
  * Days between the text the chamber voted on becoming public (introduction, or a later substitute amendment)
- * and the first floor vote or passage among `events`. null when nothing reached the floor.
+ * and the first recorded floor vote among `events`. null when no recorded vote happened: passage by unanimous
+ * consent or voice vote is open to any one member's objection, so its speed is not counted as rushed.
  */
 export function voteClock(s: BillStatus, events: BillEvent[]): VoteClock | null {
   const voteOn = events
-    .filter((e) => ["passed", "passed_second", "failed", "vote", "resolving"].includes(e.step))
+    .filter((e) => e.tally)
     .map((e) => e.date)
     .sort()[0];
   if (!voteOn) return null;
