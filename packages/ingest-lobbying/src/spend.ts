@@ -52,7 +52,7 @@ export function spendRows(
   const linesByFiling = new Map<string, Line[]>();
   for (const l of lines) {
     const f = filings.get(l.filing_id);
-    if (!f || f.form !== "LD-2" || f.superseded) continue;
+    if (f?.form !== "LD-2" || f.superseded) continue;
     linesByFiling.set(l.filing_id, [...(linesByFiling.get(l.filing_id) ?? []), l]);
   }
 
