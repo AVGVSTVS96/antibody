@@ -113,7 +113,7 @@ const Marks = memo(function Marks({
     return out;
   }, [lit, marks]);
   return (
-    <svg className="tape-svg" width={width} height={g.height} aria-hidden="true" shapeRendering="crispEdges">
+    <svg className="tape-svg" width={width} height={g.height} aria-hidden="true">
       {bands.map((b) => (
         <g key={b.x0}>
           <rect className="tape-band" x={b.x0 - 8} width={b.x1 - b.x0 + 16} height={g.height} />
@@ -419,7 +419,7 @@ export function Tape({
               className="tape-current-label"
               style={cur.x > width / 2 ? { right: width - cur.x - cur.w - 3 } : { left: cur.x - 3 }}
             >
-              {tape.rows[currentIndex]!.label} · {currentLabel}
+              §{tape.rows[currentIndex]!.num} · {currentLabel}
             </span>
           </>
         )}

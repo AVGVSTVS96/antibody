@@ -56,7 +56,7 @@ export function MiniTape({
       aria-label={`${label ? `${label}: ` : ""}${fingerprint.length} sections in order, ${headline} headline, ${quiet} quiet and costly`}
     >
       {width > 0 && (
-        <svg width={width} height={height} aria-hidden="true" shapeRendering="crispEdges">
+        <svg width={width} height={height} aria-hidden="true">
           <path d={path("n", rest)} className="mini-other" />
           <path d={path("h", height)} className="mini-loud" />
           <path d={path("b", height)} className="mini-quiet" />
