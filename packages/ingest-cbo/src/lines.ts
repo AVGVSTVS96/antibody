@@ -13,6 +13,8 @@ export interface Source {
   archiveUrl: string | null;
   pdfUrl: string | null;
   pdfArchiveUrl: string | null;
+  /** Set when CBO scored text GovInfo doesn't publish and its section numbers were joined to the closest version's numbering. */
+  numbering?: string;
 }
 
 export interface Reconcile {
@@ -365,7 +367,7 @@ function line(
     values: amount.values,
     archive_url: amount.file.archiveUrl,
     source_url: amount.file.url,
-    source_locator: locator(amount.ranges),
+    source_locator: [locator(amount.ranges), l.section_ids.length ? src.numbering : null].filter(Boolean).join("; "),
   };
 }
 

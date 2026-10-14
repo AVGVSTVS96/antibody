@@ -282,6 +282,7 @@ def per_section_pdf(pdf_path):
     lines_seq = itertools.count(1)
     rows, years = [], None
     table = title = block = None
+    skip = False
     ctx = {"Subtitle": None, "Chapter": None, "Subchapter": None, "Part": None}
     current = None
     with pdfplumber.open(pdf_path) as pdf:
@@ -293,10 +294,14 @@ def per_section_pdf(pdf_path):
             for line in lines:
                 if not line or line.startswith("See also") or line.startswith("How CBO") or line.startswith("Congressional Budget Office") or line == "Cost Estimate":
                     continue
-                if m := re.match(r"^Table (\d+)\.$", line):
+                if m := re.match(r"^Table (\d+)\.?$", line):
                     if table != m.group(1):
-                        table, title, current = m.group(1), None, None
+                        table, title, current, years, skip = m.group(1), None, None, None, False
                         ctx = dict.fromkeys(ctx)
+                    continue
+                if table and not years and "Discretionary Spending" in line:
+                    skip = True
+                if skip:
                     continue
                 if (m := TABLE_TITLE.search(line)) and table:
                     title = {"number": m.group(1).split()[1], "name": m.group(2)}
@@ -375,9 +380,9 @@ def pdf_summary(pdf_path):
         for pno, page in enumerate(pdf.pages, 1):
             clean = page.filter(lambda o: o.get("object_type") != "char" or o["size"] > SUPERSCRIPT_MAX)
             lines = [l.strip() for l in (clean.extract_text() or "").splitlines()]
-            if rows and any(re.match(r"^Table \d+\.$", l) for l in lines):
-                break
             for line in lines:
+                if rows and re.match(r"^Table \d+\.?(\s|$)", line):
+                    return {"sheet": "Summary", "years": years, "rows": rows}
                 if YEARS.match(line):
                     years = line.split()
                     continue

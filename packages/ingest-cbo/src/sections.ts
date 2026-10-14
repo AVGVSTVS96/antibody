@@ -6,7 +6,36 @@ import type { Row } from "@antibody/core";
  * section lineage, never the number alone.
  */
 export function sectionMap(sections: Row<"sections">[], code: string | null): (num: string) => string | undefined {
-  const byVersion = (v: string) => {
+  const byVersion = numberings(sections);
+  let m = (code && byVersion(code)) || new Map<string, string>();
+  if (!m.size && code === "enr") m = byVersion("plaw");
+  return (num) => m.get(num);
+}
+
+/**
+ * CBO sometimes scores text GovInfo never published (a committee print, a Senate amendment). The version whose
+ * numbering contains nearly all of CBO's section numbers is then the closest published text; the match is
+ * reported so the line's citation can say the join rests on numbering alone.
+ */
+export function closestVersion(
+  sections: Row<"sections">[],
+  nums: string[],
+  codes: string[],
+): { code: string; covered: number } | null {
+  const byVersion = numberings(sections);
+  const unique = [...new Set(nums)];
+  if (unique.length < 5) return null;
+  const best = codes
+    .map((code) => {
+      const m = byVersion(code);
+      return { code, covered: unique.filter((n) => m.has(n)).length };
+    })
+    .sort((a, b) => b.covered - a.covered)[0];
+  return best && best.covered / unique.length >= 0.95 ? best : null;
+}
+
+function numberings(sections: Row<"sections">[]) {
+  return (v: string) => {
     const m = new Map<string, string>();
     for (const s of sections) {
       const path = (s.history[v] as { path?: string } | undefined)?.path;
@@ -15,7 +44,4 @@ export function sectionMap(sections: Row<"sections">[], code: string | null): (n
     }
     return m;
   };
-  let m = code ? byVersion(code) : new Map<string, string>();
-  if (!m.size && code === "enr") m = byVersion("plaw");
-  return (num) => m.get(num);
 }

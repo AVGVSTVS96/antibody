@@ -3,9 +3,9 @@ import type { BillId, Row, StageContext } from "@antibody/core";
 import { python, readRows, writeRows } from "@antibody/core/node";
 import { baselineOf, type Listing, parseListings, versionCode } from "./estimates.ts";
 import { billstatus, type Fetched, publicationFiles } from "./fetch.ts";
-import { buildLines } from "./lines.ts";
+import { baseNum, buildLines } from "./lines.ts";
 import type { Glance, Parsed } from "./parsed.ts";
-import { sectionMap } from "./sections.ts";
+import { closestVersion, sectionMap } from "./sections.ts";
 
 const PKG = resolve(import.meta.dir, "..");
 
@@ -86,6 +86,13 @@ export async function xray(ctx: StageContext) {
       glance ? { month: glance.baseline_month, enforcement: glance.budget_enforcement_baseline } : null,
     );
     const source = main?.from ?? pdf;
+    const close = code
+      ? null
+      : closestVersion(
+          sections,
+          (main?.sheets ?? []).flatMap((s) => s.rows.flatMap((r) => r.sections.map(baseNum))),
+          known,
+        );
     const built = buildLines(
       {
         estimateId: id,
@@ -94,10 +101,13 @@ export async function xray(ctx: StageContext) {
         archiveUrl: source?.archiveUrl ?? null,
         pdfUrl: pdf?.url ?? null,
         pdfArchiveUrl: pdf?.archiveUrl ?? null,
+        numbering: close
+          ? `CBO scored text GovInfo does not publish (${l.description}); its section numbers are joined to the ${close.code} text, which numbers ${close.covered} of them the same way`
+          : undefined,
       },
       main,
       glance,
-      sectionMap(sections, code),
+      sectionMap(sections, code ?? close?.code ?? null),
     );
     lines.push(...built.lines);
     estimates.push({

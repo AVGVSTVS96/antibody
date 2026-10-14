@@ -4,9 +4,10 @@ import { paths, readRows, writeRows } from "@antibody/core/node";
 import { localFile } from "./fetch.ts";
 import { parse } from "./xray.ts";
 
-export const MODEL = "claude-opus-5-5";
+export const MODEL = "claude-sonnet-5-5";
+const LEGACY_MODEL = "claude-opus-5-5";
 export const RULE =
-  "cbo-prose-to-section: a model (Opus 5.5) linked this sentence of CBO's estimate to the bill section whose provision it describes; the quote is checked word for word against the cited PDF page";
+  "cbo-prose-to-section: a model (named in the evidence) linked this sentence of CBO's estimate to the bill section whose provision it describes; the quote is checked word for word against the cited PDF page";
 
 /** Below this the model itself is unsure the sentence is about that section; such links are dropped, not shown. */
 export const MIN_CONFIDENCE = 0.5;
@@ -76,10 +77,16 @@ CBO ESTIMATE
 ${pages.map((p, i) => `=== page ${i + 1} ===\n${p}`).join("\n\n")}`;
 }
 
-async function ask(text: string, cacheFile: string, refresh: boolean): Promise<{ links: Link[]; costUsd: number }> {
+interface Answer {
+  links: Link[];
+  costUsd: number;
+  model?: string;
+}
+
+async function ask(text: string, cacheFile: string, refresh: boolean): Promise<Answer> {
   const cache = Bun.file(cacheFile);
   if (!refresh && (await cache.exists())) return cache.json();
-  const proc = Bun.spawn(["claude", "-p", "--model", MODEL, "--output-format", "json"], {
+  const proc = Bun.spawn(["claude", "-p", "--model", "sonnet", "--output-format", "json"], {
     stdin: new TextEncoder().encode(text),
     stdout: "pipe",
     stderr: "pipe",
@@ -88,7 +95,11 @@ async function ask(text: string, cacheFile: string, refresh: boolean): Promise<{
   if ((await proc.exited) !== 0) throw new Error(`claude -p failed: ${await new Response(proc.stderr).text()}`);
   const reply = JSON.parse(out) as { result: string; total_cost_usd?: number };
   const body = reply.result.slice(reply.result.indexOf("{"), reply.result.lastIndexOf("}") + 1);
-  const result = { links: (JSON.parse(body) as { links: Link[] }).links, costUsd: reply.total_cost_usd ?? 0 };
+  const result = {
+    links: (JSON.parse(body) as { links: Link[] }).links,
+    costUsd: reply.total_cost_usd ?? 0,
+    model: MODEL,
+  };
   await Bun.write(cacheFile, JSON.stringify(result));
   return result;
 }
@@ -139,7 +150,12 @@ export async function notes(ctx: StageContext) {
         rule: RULE,
         confidence: Math.min(Math.max(l.confidence, 0), 0.9),
         rests_on: [`cbo_estimates/${e.id}`, `sections/${l.sectionId}`],
-        evidence: { model: MODEL, section_num: l.section, why: l.why, quote_checked_on_page: l.page },
+        evidence: {
+          model: answer.model ?? LEGACY_MODEL,
+          section_num: l.section,
+          why: l.why,
+          quote_checked_on_page: l.page,
+        },
       });
   }
   await writeRows("cbo_notes", bill, rows);
