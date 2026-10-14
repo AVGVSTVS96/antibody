@@ -5,7 +5,8 @@ import type { Match, MatchRun } from "./match.ts";
 
 export const ATTENTION_RULE =
   "attention-v1: a section's attention is the share of each side's sampled articles about the bill that discuss it " +
-  "(left, center and right weighted equally, from the published outlet list), ranked against the bill's other final sections";
+  "(left, center and right weighted equally, from the published outlet list), ranked against the bill's other final sections; " +
+  "a bill with fewer than 20 relevant articles or 30 section mentions shows raw counts and no rank";
 
 /** Below this many sampled, relevant articles a bill's percentiles are not shown. */
 export const MIN_ARTICLES = 20;
@@ -15,6 +16,11 @@ export const MIN_ARTICLES = 20;
  * would shrink one side's attention for reasons that have nothing to do with the bill.
  */
 export const MIN_TEXT_CHARS = 1000;
+/**
+ * Below this many section mentions in total, a section's rank is mostly chance (a handful of articles spread over
+ * hundreds of sections), so the bill gets raw counts and no percentiles.
+ */
+export const MIN_SECTION_HITS = 30;
 /** A side with fewer relevant, readable articles than this is left out of the equal weighting and named as a gap. */
 export const MIN_SIDE_ARTICLES = 10;
 const EXAMPLES = 3;
@@ -105,8 +111,9 @@ export function attention(
     return g;
   };
 
-  const thin = counted.length < MIN_ARTICLES;
   const final = sections.filter((s) => s.in_final);
+  const mentions = final.reduce((n, s) => n + hitsFor((m) => m.sections.includes(s.id)).counted.length, 0);
+  const thin = counted.length < MIN_ARTICLES || mentions < MIN_SECTION_HITS;
   const share = new Map(
     sections.map((s) => [s.id, balanced(hitsFor((m) => m.sections.includes(s.id)).counted)] as [string, number]),
   );

@@ -17,7 +17,7 @@ The rule is not symmetric on purpose. A section with no CBO figure can still qua
 
 ## attention-v1
 
-A section's attention is the share of each side's sampled articles about the bill that discuss it, with left, center and right weighted equally, ranked against the bill's other final sections. Outlets come from the published list in `packages/ingest-news`. Trade and legal press is shown apart and never counted. A side with too few readable articles is left out of the weighting and named as a gap; below 20 sampled articles no percentile is shown.
+A section's attention is the share of each side's sampled articles about the bill that discuss it, with left, center and right weighted equally, ranked against the bill's other final sections. Outlets come from the published list in `packages/ingest-news`. Trade and legal press is shown apart and never counted. A side with too few readable articles is left out of the weighting and named as a gap; a bill with fewer than 20 relevant articles, or fewer than 30 mentions of its final sections in all, shows raw counts and no percentile (a rank among a few mentions is mostly chance).
 
 ## cbo-even-split
 
