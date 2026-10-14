@@ -1260,6 +1260,7 @@ for (const id of ["119-hr-1", "117-hr-5376", "119-s-1582"].filter((i) => ids.inc
             .replace(/(: \$[\d,.]+[KMB]?)?\.?$/, "")
             .replace(/^No net PAC money from tied companies in the data$/, "X's tied PAC donors")
             .replace(/(\d+ largest |\d+ |one )?tied PAC donors?/, "tied PAC donors")
+            .replace(/\btouches\b/, "touch")
             .replace(/[\d,.$]+[KMB]?/g, "#"),
         )
         .filter((t) => !/in th(is|ese)/.test(t)),

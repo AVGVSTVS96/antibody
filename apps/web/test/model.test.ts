@@ -40,7 +40,7 @@ test("every display edge cites claims that exist", () => {
 
 test("FEC and SEC names keep their acronyms and numerals, and never leave a parenthesis open", () => {
   expect(nice("CMS ENERGY CORPORATION EMPLOYEES FOR BETTER GOVERNMENT- FEDERAL")).toBe(
-    "CMS Energy Corporation Employees For Better Government- Federal",
+    "CMS Energy Corporation Employees for Better Government- Federal",
   );
   expect(nice("DTE ENERGY COMPANY POLITICAL ACTION COMMITTEE")).toBe("DTE Energy Company Political Action Committee");
   expect(nice("WELLS FARGO AND COMPANY EMPLOYEES GOOD GOVERNMENT FEDERAL FUND II")).toContain("Federal Fund II");

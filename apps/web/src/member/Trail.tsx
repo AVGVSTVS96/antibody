@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { count, day, nice, plainName } from "../lib/format.ts";
 import { byAmount, byOwner, ownerWords, type Trade, windowCounts } from "../lib/trades.ts";
 import { TradeStrip } from "../money/TradeStrip.tsx";
 import { useModel } from "../ui/BillGate.tsx";
 import { Src } from "../ui/receipt.tsx";
+import { useWidth } from "../ui/useWidth.ts";
 import type { Scope } from "./scope.ts";
 import { milestones } from "./votes.ts";
 
@@ -35,18 +36,36 @@ function axisMonths(domain: [string, string], max = 7) {
   return out.filter((_, i) => (out.length - 2 - i) % step === 0);
 }
 
-/** Where each milestone falls; those within a sixth of the chart share one label. */
-function marks(domain: [string, string], events: { date: string; label: string }[]) {
+const CHAR = 7;
+const PAD = 8;
+const GAP = 10;
+const labelWidth = (text: string[]) => text.join(" · ").length * CHAR + PAD;
+
+/**
+ * Where each milestone's label goes, by the width the label takes: a label that would run into the next milestone's
+ * is joined with it, and one that would run off the right edge hangs to the left of its line. Null when the labels
+ * still cannot sit without touching, and the page lists the milestones instead.
+ */
+function marks(domain: [string, string], events: { date: string; label: string }[], width: number) {
   const [a, b] = [ms(domain[0]), ms(domain[1])];
-  const groups: { at: number; text: string[] }[] = [];
+  const groups: { x: number; text: string[] }[] = [];
   for (const e of events) {
-    const at = (ms(e.date) - a) / (b - a);
+    const x = ((ms(e.date) - a) / (b - a)) * width;
     const text = `${monthDay(e.date)} ${e.label}`;
     const last = groups.at(-1);
-    if (last && at - last.at < 0.16) last.text.push(text);
-    else groups.push({ at, text: [text] });
+    if (last && x < last.x + labelWidth(last.text) + GAP) last.text.push(text);
+    else groups.push({ x, text: [text] });
   }
-  return groups;
+  let end = 0;
+  const placed = groups.map((g) => {
+    const w = labelWidth(g.text);
+    const flip = g.x + w > width;
+    const left = flip ? g.x - w : g.x;
+    if (left < end) return null;
+    end = left + w + GAP;
+    return { at: g.x / width, flip, text: g.text };
+  });
+  return placed.every((g) => g !== null) ? placed : null;
 }
 
 export function Trail({ trades, scope }: { trades: Trade[]; scope: Scope }) {
@@ -66,6 +85,9 @@ export function Trail({ trades, scope }: { trades: Trade[]; scope: Scope }) {
       .sort((x, y) => y.trades.length - x.trades.length || x.actor.label.localeCompare(y.actor.label));
   }, [trades, m]);
   const shown = all ? rows : rows.slice(0, SHOWN);
+  const over = useRef<HTMLDivElement>(null);
+  const width = useWidth(over);
+  const placed = useMemo(() => (width > 0 ? marks(domain, events, width) : []), [domain, events, width]);
   const span = ms(domain[1]) - ms(domain[0]);
   const pct = (d: string) => `${((ms(d) - ms(domain[0])) / span) * 100}%`;
   const inside = windowCounts(trades).inside;
@@ -93,7 +115,7 @@ export function Trail({ trades, scope }: { trades: Trade[]; scope: Scope }) {
       </ul>
       <div className="trail-body">
         <div className="trail-plot" style={{ gridTemplateRows: `18px repeat(${shown.length}, auto) 18px` }}>
-          <div className="trail-over" style={{ gridRow: `1 / span ${shown.length + 2}` }} aria-hidden="true">
+          <div ref={over} className="trail-over" style={{ gridRow: `1 / span ${shown.length + 2}` }} aria-hidden="true">
             {book && (
               <i
                 className="trail-band"
@@ -103,12 +125,12 @@ export function Trail({ trades, scope }: { trades: Trade[]; scope: Scope }) {
             {events.map((e) => (
               <i key={`${e.date}${e.label}`} className="trail-line" style={{ left: pct(e.date) }} />
             ))}
-            {marks(domain, events).map((g) => (
+            {placed?.map((g) => (
               <span
                 key={g.at}
                 className="trail-mark"
-                data-flip={g.at > 0.6 || undefined}
-                style={g.at > 0.6 ? { right: `${(1 - g.at) * 100}%` } : { left: `${g.at * 100}%` }}
+                data-flip={g.flip || undefined}
+                style={g.flip ? { right: `${(1 - g.at) * 100}%` } : { left: `${g.at * 100}%` }}
               >
                 {g.text.join(" · ")}
               </span>
@@ -181,7 +203,9 @@ export function Trail({ trades, scope }: { trades: Trade[]; scope: Scope }) {
           {all ? `show the top ${SHOWN}` : `show all ${rows.length} stocks`}
         </button>
       )}
-      <p className="trail-events kicker">{events.map((e) => `${monthDay(e.date)} ${e.label}`).join(" · ")}</p>
+      <p className="trail-events kicker" style={width > 0 && !placed ? { display: "block" } : undefined}>
+        {events.map((e) => `${monthDay(e.date)} ${e.label}`).join(" · ")}
+      </p>
       <p className="kicker">Stocks are ordered by how many trades the member filed in them, then by name.</p>
     </div>
   );

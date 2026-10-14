@@ -1,6 +1,6 @@
 import type { NodeOf } from "@antibody/core";
 import { useMemo } from "react";
-import { count, usd } from "../lib/format.ts";
+import { count, exactUsd } from "../lib/format.ts";
 import { type BillRoute, billHref, navigate, onLink, sectionHref } from "../lib/router.ts";
 import { buildTape } from "../lib/tape.ts";
 import { byOwner, medianPerTrader, ownerWords, rankMembers, tiedDonors, tradeBook, tradeGaps } from "../lib/trades.ts";
@@ -49,6 +49,9 @@ function Member({ member }: { member: NodeOf<"member"> }) {
       : scope.kind === "named"
         ? "the sections lobbyists named"
         : "the bill";
+  const named =
+    scope.kind === "quiet" ? "the quiet sections" : scope.kind === "named" ? "a section of the bill" : "the bill";
+  const lobbied = `companies that lobbied on ${bill}`;
 
   return (
     <div className="member">
@@ -79,7 +82,7 @@ function Member({ member }: { member: NodeOf<"member"> }) {
               Shown here only for what the public record ties to {bill}.{" "}
               {tied.length ? (
                 <>
-                  {count(stocks.size, "company", "companies")} whose lobbyists named {where} appear as trades on {last}
+                  {count(stocks.size, "company", "companies")} whose lobbyists named {named} appear as trades on {last}
                   's disclosure forms
                   {owners.length === 1 ? `, all in the ${ownerWords(owners[0]!.owner)}` : ""}.
                 </>
@@ -89,7 +92,7 @@ function Member({ member }: { member: NodeOf<"member"> }) {
                 </>
               )}{" "}
               {donors.length > 0
-                ? `The ${donors.length === 1 ? "one tied PAC donor gave" : `${donors.length} ${donors.length === DONORS ? "largest " : ""}tied PAC donors gave`} ${usd(gifts)}. `
+                ? `The ${donors.length === 1 ? "one tied PAC donor gave" : `${donors.length} ${donors.length === DONORS ? "largest " : ""}tied PAC donors gave`} ${exactUsd(gifts)}. `
                 : "No net PAC money from tied companies is in the data. "}
               Whether any of it mattered is not something the record can say.
             </p>
@@ -129,7 +132,7 @@ function Member({ member }: { member: NodeOf<"member"> }) {
         title={
           bare
             ? `${stocks.size} of the ${scope.companies.size} companies that lobbied ${bill} ${stocks.size === 1 ? "is" : "are"} on ${last}'s forms.`
-            : `${touched.length} of the ${scope.rows.length} ${scope.noun} touch stock on ${last}'s forms.`
+            : `${touched.length} of the ${scope.rows.length} ${scope.noun} ${touched.length === 1 ? "touches" : "touch"} stock on ${last}'s forms.`
         }
         aside={
           <p className="kicker member-rule">
@@ -142,12 +145,12 @@ function Member({ member }: { member: NodeOf<"member"> }) {
           {mine.length > 0 ? (
             <>
               Context: {last}'s filings list {count(mine.length, "trade")} in{" "}
-              {count(new Set(mine.map((t) => t.company)).size, "tied company", "tied companies")}; the median member who
-              traded filed {medianPerTrader(book)}.{" "}
+              {count(new Set(mine.map((t) => t.company)).size, "company that lobbied on " + bill, lobbied)}; the median
+              member who traded filed {medianPerTrader(book)}.{" "}
             </>
           ) : (
             <>
-              No trades in tied companies on {last}'s forms; the median member who traded filed {medianPerTrader(book)}.{" "}
+              No trades in {lobbied} on {last}'s forms; the median member who traded filed {medianPerTrader(book)}.{" "}
             </>
           )}
           {mine.length > 0 && <Src ids={mine.map((t) => t.event.claim)} label="filings" />}
@@ -162,14 +165,16 @@ function Member({ member }: { member: NodeOf<"member"> }) {
         />
         {touched.length > 0 && (
           <p className="member-lit">
+            Lit:{" "}
             {touched.map((r) => (
               <a key={r.id} href={sectionHref(m.b.bill.id, r.routeId)} onClick={onLink}>
                 {r.label}
               </a>
             ))}
             <span>
-              all {scope.kind === "quiet" ? "quiet and costly" : "named in a lobbying filing"}. Each opens the section's
-              money.
+              {touched.length === 1 ? "(" : "all "}
+              {scope.kind === "quiet" ? "quiet and costly" : "named in a lobbying filing"}
+              {touched.length === 1 ? "). Opens its money." : ". Each opens the section's money."}
             </span>
           </p>
         )}
@@ -200,7 +205,7 @@ function Member({ member }: { member: NodeOf<"member"> }) {
             <h2>
               {donors.length === 0
                 ? "No net PAC money from tied companies in the data."
-                : `${last}'s ${donors.length === 1 ? "one tied PAC donor" : `${donors.length} ${donors.length === DONORS ? "largest " : ""}tied PAC donors`}: ${usd(gifts)}.`}
+                : `${last}'s ${donors.length === 1 ? "one tied PAC donor" : `${donors.length} ${donors.length === DONORS ? "largest " : ""}tied PAC donors`}: ${exactUsd(gifts)}.`}
             </h2>
             <Donors member={member} />
           </div>
