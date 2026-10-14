@@ -202,7 +202,7 @@ export const TEMPLATES: Record<string, Template> = {
   }),
 
   lda_bill_refs: (r, _f, n) => ({
-    text: `${lobbied(n, r.filing_id)} on ${n.bill}${r.matched ? ` (the filing says ${quote(r.matched, 60)})` : ""}.`,
+    text: `${lobbied(n, r.filing_id)} on ${n.bill}${r.matched ? ` (the filing says ${quote(r.matched.replace(/^\W+|[\s,;:.]+$/g, ""), 60)})` : ""}.`,
     quote: r.quote,
   }),
 

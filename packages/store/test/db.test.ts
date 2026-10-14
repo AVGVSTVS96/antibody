@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { TABLES } from "@antibody/core";
-import { loadTables, openDb } from "../src/db.ts";
+import { loadTables, openDb, query } from "../src/db.ts";
 
 const dir = await mkdtemp(join(tmpdir(), "antibody-store-"));
 afterAll(() => rm(dir, { recursive: true, force: true }));
@@ -42,4 +42,37 @@ test("every contract table creates in DuckDB and loads JSONL shards", async () =
   expect(counts.bills).toBe(0);
   const row = (await db.runAndReadAll("SELECT owner, traded_on::VARCHAR, raw->>'filing_status' FROM trades")).getRows();
   expect(row).toEqual([["self", "2025-09-11", "New"]]);
+});
+
+test("a repeated id is skipped and a table that breaks its constraints stays empty, both reported", async () => {
+  const row = {
+    id: "C00364778",
+    name: "BANK OF AMERICA CORPORATION FEDERAL PAC",
+    connected_org: null,
+    type: "Q",
+    designation: "B",
+    source_url: "https://www.fec.gov/data/committee/C00364778/",
+    source_locator: null,
+  };
+  TABLES.pacs.schema.parse(row);
+  await Bun.write(join(dir, "pacs", "a.jsonl"), `${JSON.stringify(row)}\n${JSON.stringify(row)}\n`);
+  const seen: string[] = [];
+  const db = await openDb(":memory:");
+  const report = (t: string, problem: string) => seen.push(`${t}: ${problem}`);
+  expect((await loadTables(db, (t) => join(dir, t), report)).pacs).toBe(1);
+  expect(seen).toEqual(["pacs: 1 duplicate ids skipped, e.g. C00364778"]);
+
+  await Bun.write(join(dir, "pacs", "b.jsonl"), `${JSON.stringify({ ...row, id: "C1", name: null })}\n`);
+  seen.length = 0;
+  expect((await loadTables(db, (t) => join(dir, t), report)).pacs).toBe(0);
+  expect(seen[0]).toStartWith("pacs: not loaded: Constraint Error");
+});
+
+test("query returns rows shaped like their JSONL: JSON and JSON[] parsed, BIGINT as number, dates as strings", async () => {
+  const db = await openDb(":memory:");
+  await db.run(`CREATE TABLE t (n BIGINT, d DATE, j JSON, js JSON[])`);
+  await db.run(`INSERT INTO t VALUES (5, '2025-07-18', '{"a":1}', ['{"start":"2025-01-03"}'])`);
+  expect(await query(db, "SELECT * FROM t WHERE list_contains($ids, n)", { ids: [5] })).toEqual([
+    { n: 5, d: "2025-07-18", j: { a: 1 }, js: [{ start: "2025-01-03" }] },
+  ]);
 });

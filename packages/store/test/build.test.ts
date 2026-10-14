@@ -139,8 +139,12 @@ describe("GENIUS bundle from contract rows", () => {
       strip("trades/20033455#5").replace("October 9", "D"),
     );
     expect(strip("member_votes/senate-119-1-318:H000601")).toBe(strip("member_votes/senate-119-1-318:G000555"));
-    expect(claim("members/H000601").text).toBe("Bill Hagerty is a Republican senator from Tennessee.");
-    expect(claim("members/G000555").text).toBe("Kirsten E. Gillibrand is a Democratic senator from New York.");
+    expect(claim("members/H000601#2025-01-03").text).toBe(
+      "Bill Hagerty served as a Republican senator from Tennessee from January 3, 2025 to January 3, 2031.",
+    );
+    expect(claim("members/G000555#2025-01-03").text).toBe(
+      "Kirsten E. Gillibrand served as a Democratic senator from New York from January 3, 2025 to January 3, 2031.",
+    );
   });
 
   test("PAC money from a PAC that resolves to a tied company, in the bill's cycles", () => {
@@ -202,6 +206,40 @@ test("an even split of a CBO group line is an inference that keeps the sign", as
   expect(c.restsOn).toEqual(["cbo_lines/s1582-es:group"]);
   expect(c.text).toContain("decreases outlays by $74.5 million");
   expect(checkBundle(bundle)).toEqual([]);
+});
+
+test("a member shows the party and chamber of the term that covers the bill", async () => {
+  const rows = structuredClone(GENIUS_ROWS);
+  const hagerty = rows.members!.find((m) => m.id === "H000601")!;
+  hagerty.terms = [
+    {
+      chamber: "House",
+      start: "2019-01-03",
+      end: "2021-01-03",
+      state: "TN",
+      district: 7,
+      party: "Democrat",
+      caucus: null,
+    },
+    {
+      chamber: "Senate",
+      start: "2021-01-03",
+      end: "2027-01-03",
+      state: "TN",
+      district: null,
+      party: "Republican",
+      caucus: null,
+    },
+  ];
+  hagerty.party = "D";
+  const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+  const node = bundle.nodes.find((n) => n.id === "member:H000601")!;
+  expect(node.kind === "member" && [node.label, node.props.party, node.props.chamber]).toEqual([
+    "Sen. Bill Hagerty (R-TN)",
+    "R",
+    "Senate",
+  ]);
+  expect(node.claims).toEqual(["members/H000601#2021-01-03"]);
 });
 
 test("a bill with no rows says so", async () => {
