@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { Row, Stage, StageContext } from "@antibody/core";
-import { writeRows } from "@antibody/core/node";
+import { readRows, writeRows } from "@antibody/core/node";
 import { fetchHousePdfs, type HouseFiling, houseIndex, parseHouse, pdfPath, years } from "./house.ts";
 import { buildRows } from "./rows.ts";
 import { fetchPaperImages, fetchSenate, imageDir, type SenateReport } from "./senate.ts";
@@ -26,7 +26,13 @@ interface Scanned {
   pages: number;
 }
 
-/** Every page of every scanned filing not yet read, newest filings first. */
+/** Filings by members who sponsored or cosponsored a bill already ingested come first: those are the trades the bill pages show. */
+async function priorityDocs(): Promise<Set<string>> {
+  const involved = new Set((await readRows("sponsorships")).map((s) => s.bioguide));
+  return new Set((await readRows("ptr_documents")).filter((d) => d.bioguide && involved.has(d.bioguide)).map((d) => d.id));
+}
+
+/** Every page of every scanned filing not yet read: priority members' filings first, then newest first. */
 async function unreadPages(house: HouseFiling[], pagesOf: (docId: string) => number, senate: SenateReport[]) {
   const scanned: Scanned[] = house
     .filter((f) => f.scanned)
@@ -49,7 +55,9 @@ async function unreadPages(house: HouseFiling[], pagesOf: (docId: string) => num
   }
   const time = (d: string) => Date.parse(d) || 0;
   const since = visionSince() ? Date.parse(visionSince()) : 0;
-  scanned.sort((a, b) => time(b.filed) - time(a.filed));
+  const priority = await priorityDocs();
+  const rank = (s: Scanned) => (priority.has(s.doc) ? 1 : 0);
+  scanned.sort((a, b) => rank(b) - rank(a) || time(b.filed) - time(a.filed));
   const jobs: (VisionJob & { s: Scanned })[] = [];
   for (const s of scanned) {
     if (time(s.filed) < since) continue;
