@@ -1,6 +1,7 @@
 import { type BillId, billDisplay, billstatusUrl, congressGovUrl } from "@antibody/core";
+import { auditParties, type MovedBill, type PartyAudit } from "./audit.ts";
 import { STEPS } from "./events.ts";
-import { RULE_TEXT, RULES_VERSION, type Signal, WEIGHTS } from "./score.ts";
+import { FLAG_CUTOFF, MAX_FLAGGED, RULE_TEXT, RULES_VERSION, type Signal, WEIGHTS } from "./score.ts";
 import type { Candidate, WatchResult } from "./watch.ts";
 
 export interface Reason {
@@ -9,7 +10,17 @@ export interface Reason {
   url: string;
 }
 
-export const FLAGGED = 15;
+export const flaggedOf = (cs: Candidate[]) => cs.filter((c) => c.score >= FLAG_CUTOFF).slice(0, MAX_FLAGGED);
+
+export const movedBills = (cs: Candidate[]): MovedBill[] => {
+  const flagged = new Set(flaggedOf(cs));
+  return cs.map((c) => ({
+    bill: c.status.id,
+    party: c.status.sponsor?.party || "unknown",
+    score: c.score,
+    flagged: flagged.has(c),
+  }));
+};
 export const DETAILED = 5;
 
 const SIGNALS = Object.keys(WEIGHTS) as Signal[];
@@ -71,7 +82,7 @@ export function reasons(c: Candidate): Reason[] {
       text:
         ev.lobbyingFrom === "x-ray"
           ? `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} name${f.lobbyingFilings === 1 ? "s" : ""} it${ev.lobbyingClients !== null ? ` (${num(ev.lobbyingClients)} clients)` : ""}`
-          : `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} mention${f.lobbyingFilings === 1 ? "s" : ""} its number or short title (search count, before the x-ray checks each one)`,
+          : `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} cite${f.lobbyingFilings === 1 ? "s" : ""} its number (read ${num(ev.lobbyingChecked?.checked ?? 0)} of ${num(ev.lobbyingChecked?.searched ?? 0)} search hits${ev.lobbyingChecked && ev.lobbyingChecked.checked < ev.lobbyingChecked.searched ? `, so at least ${num(f.lobbyingFilings)}` : ""}; the x-ray also matches names)`,
       url: ev.lobbyingUrls.at(-1) ?? congressGovUrl(s.id),
     });
   const clock = ev.clock;
@@ -146,8 +157,10 @@ const byParty = (cs: Candidate[]) => {
   return out;
 };
 
-export function digestJson(r: WatchResult) {
-  const flagged = r.candidates.slice(0, FLAGGED);
+export function digestJson(r: WatchResult, earlier: MovedBill[][] = []) {
+  const flagged = flaggedOf(r.candidates);
+  const moved = movedBills(r.candidates);
+  const best = r.candidates.find((c) => !flagged.includes(c));
   return {
     schema: 1,
     date: r.date,
@@ -158,6 +171,11 @@ export function digestJson(r: WatchResult) {
     moved: r.candidates.length,
     alreadyReported: r.alreadyReported,
     xrayed: r.xrayed,
+    cutoff: { score: FLAG_CUTOFF, max: MAX_FLAGGED },
+    belowCutoff: r.candidates.length - flagged.length,
+    highestBelow: best && { display: billDisplay(best.status.id), score: best.score },
+    movedBills: moved,
+    partyAudit: auditParties([...earlier, moved]),
     movedBySponsorParty: byParty(r.candidates),
     flaggedBySponsorParty: byParty(flagged),
     flagged: flagged.map((c, i) => ({
@@ -204,6 +222,16 @@ const tally = (counts: Record<string, number>) =>
     .map(([p, n]) => `${p} ${n}`)
     .join(" · ") || "none";
 
+function auditLine(
+  a: PartyAudit,
+  d: { flaggedBySponsorParty: Record<string, number>; movedBySponsorParty: Record<string, number> },
+) {
+  const rows = a.parties.map(
+    (p) => `${p.party} ${p.flagged} of ${p.moved} flagged (${Math.round(p.rate * 100)}%, mean score ${p.meanScore})`,
+  );
+  return `Party symmetry audit, last ${a.days} digest day${a.days === 1 ? "" : "s"}, ${a.bills} distinct moved bills by sponsor party, flagged and not: ${rows.join(" · ") || "none"}. ${a.verdict} Today: flagged ${tally(d.flaggedBySponsorParty)} of moved ${tally(d.movedBySponsorParty)}.`;
+}
+
 const cell = (v: number | null) => (v === null ? "—" : v.toFixed(2));
 
 export function digestMarkdown(d: Digest): string {
@@ -215,7 +243,13 @@ export function digestMarkdown(d: Digest): string {
   if (d.xrayed.length) L.push(`X-rayed: ${d.xrayed.map((b) => billDisplay(b as BillId)).join(", ")}`);
   if (d.problems.length)
     L.push("", `**${d.problems.length} problem${d.problems.length > 1 ? "s" : ""}** (see the end)`);
-  if (!d.flagged.length) L.push("", "Nothing new moved in this window.");
+  if (!d.flagged.length)
+    L.push(
+      "",
+      d.moved
+        ? `Nothing reached the cutoff of ${d.cutoff.score}.${d.highestBelow ? ` Highest: ${d.highestBelow.display} at ${d.highestBelow.score}.` : ""}`
+        : "Nothing new moved in this window.",
+    );
 
   for (const b of d.flagged.slice(0, DETAILED)) {
     L.push("", `## ${b.rank}. ${b.display} · ${b.shortTitle ?? b.title}`, "");
@@ -256,7 +290,9 @@ export function digestMarkdown(d: Digest): string {
 
   L.push("", "## How bills are ranked", "");
   L.push(
-    `Score = 100 × Σ weight × sub-score; an unmeasured sub-score (—) counts as 0. The sponsor's party is never an input. For the symmetry audit, by sponsor party: flagged ${tally(d.flaggedBySponsorParty)} of moved ${tally(d.movedBySponsorParty)}.`,
+    `Score = 100 × Σ weight × sub-score; an unmeasured sub-score (—) counts as 0. A bill is flagged at ${d.cutoff.score} or more (at most ${d.cutoff.max}); ${d.belowCutoff} of ${d.moved} moved bills scored below. The sponsor's party is never an input.`,
+    "",
+    auditLine(d.partyAudit, d),
     "",
   );
   for (const k of SIGNALS) L.push(`- **${k}** (${Math.round(d.rules.weights[k] * 100)}%): ${d.rules.text[k]}`);

@@ -184,3 +184,32 @@ test("digest: every reason links a source; party is shown only in the audit tall
   expect(money(-149_000)).toBe("−$149.0B");
   expect(money(120)).toBe("+$120M");
 });
+
+test("a lobbying line counts only when it cites this bill's exact number in its own Congress", async () => {
+  const { citesBill } = await import("../src/lda.ts");
+  expect(citesBill("Stablecoin regulation, S. 1582 (GENIUS Act)", "119-s-1582")).toBe(true);
+  expect(citesBill("H.R. 1319 American Rescue Plan", "117-hr-1")).toBe(false);
+  expect(citesBill("S. 15820", "119-s-1582")).toBe(false);
+  expect(citesBill("H.R. 1 (118th Congress) Limit, Save, Grow", "119-hr-1")).toBe(false);
+  expect(citesBill("H.R.1 One Big Beautiful Bill, 119th Congress", "119-hr-1")).toBe(true);
+});
+
+test("party audit: a bill counts once across days, and equal flag rates show no gap", async () => {
+  const { auditParties } = await import("../src/audit.ts");
+  const day = (bill: string, party: string, score: number, flagged: boolean) => ({ bill, party, score, flagged });
+  const a = auditParties([
+    [day("a", "R", 10, false), day("b", "D", 30, true)],
+    [day("a", "R", 40, true), day("c", "D", 5, false), day("d", "R", 3, false)],
+  ]);
+  expect(a.bills).toBe(4);
+  expect(a.parties.find((p) => p.party === "R")).toMatchObject({ moved: 2, flagged: 1, meanScore: 21.5 });
+  expect(a.parties.find((p) => p.party === "D")).toMatchObject({ moved: 2, flagged: 1 });
+  expect(a.z).toBe(0);
+});
+
+test("only bills at the cutoff are flagged", async () => {
+  const { flaggedOf } = await import("../src/digest.ts");
+  const mk = (score: number) => ({ score }) as never;
+  expect(flaggedOf([mk(40), mk(15), mk(14.9)]).length).toBe(2);
+  expect(flaggedOf([mk(5)]).length).toBe(0);
+});

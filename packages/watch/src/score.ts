@@ -25,7 +25,11 @@ export interface Facts {
 export type Signal = "moving" | "size" | "dollars" | "lobbying" | "late" | "rushed" | "buried" | "divisive";
 export type SubScores = Record<Signal, number | null>;
 
-export const RULES_VERSION = "watch-v1";
+export const RULES_VERSION = "watch-v2";
+
+/** A bill is flagged when its score reaches the cutoff, at most MAX_FLAGGED of them; a quiet week flags none. */
+export const FLAG_CUTOFF = 15;
+export const MAX_FLAGGED = 25;
 
 export const WEIGHTS: Record<Signal, number> = {
   moving: 0.2,
@@ -44,7 +48,8 @@ export const RULE_TEXT: Record<Signal, string> = {
     "How far it moved in the window: became law 1, enrolled/presented/vetoed 0.95, second chamber or conference 0.9, passed a chamber 0.75, floor vote 0.6, other floor action 0.5, reported 0.4, new text 0.35, CBO estimate or calendar 0.3.",
   size: "Words in the newest text, log scale: 1,000 words = 0, 500,000 words = 1.",
   dollars: "Largest CBO whole-bill deficit effect, current-law baseline, log scale: $10M = 0, $1T = 1.",
-  lobbying: "LD-2 lobbying filings naming the bill, log scale: 0 = 0, 10 = 0.35, 100 = 0.67, 1,000+ = 1.",
+  lobbying:
+    "LD-2 lobbying filings that cite the bill's number (each read and checked, not the search count), log scale: 0 = 0, 10 = 0.35, 100 = 0.67, 1,000+ = 1.",
   late: "Sections first seen after the first chamber passed the bill (the x-ray's lineage, else headings in the newest text missing from the first-passed text): sqrt(n)/5, capped at 1 (25+ sections = 1).",
   rushed:
     "Days from the text becoming public (introduction or a substitute amendment) to the floor vote: 0 days = 1, 7 = 0.49, 60+ = 0; at least 0.5 under a closed rule.",

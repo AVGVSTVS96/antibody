@@ -27,7 +27,9 @@ export interface Evidence {
   passed: TextVersion | null;
   newSectionSamples: string[];
   lateFrom: "x-ray" | "text-diff" | null;
-  lobbyingFrom: "x-ray" | "lda-search" | null;
+  lobbyingFrom: "x-ray" | "lda-checked" | null;
+  /** Filings read and filings lda.gov's search returned, when the watcher checked them itself. */
+  lobbyingChecked: { checked: number; searched: number } | null;
   lobbyingUrls: string[];
   lobbyingClients: number | null;
   closestVoteUrl: string | null;
@@ -111,6 +113,7 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
       newSectionSamples: [],
       lateFrom: null,
       lobbyingFrom: null,
+      lobbyingChecked: null,
       lobbyingUrls: [],
       lobbyingClients: null,
       closestVoteUrl: closest?.url ?? null,
@@ -144,12 +147,13 @@ export async function enrich(c: Candidate, cache: string, signal?: AbortSignal):
     problems.push(`${billDisplay(id)} text: ${(e as Error).message}`),
   );
   try {
-    const { count, urls } = await lobbyingFilings(id, signal);
-    c.facts.lobbyingFilings = count;
-    c.evidence.lobbyingFrom = "lda-search";
+    const { confirmed, checked, searched, urls } = await lobbyingFilings(id, signal);
+    c.facts.lobbyingFilings = confirmed;
+    c.evidence.lobbyingFrom = "lda-checked";
+    c.evidence.lobbyingChecked = { checked, searched };
     c.evidence.lobbyingUrls = urls;
   } catch (e) {
-    problems.push(`${billDisplay(id)} lobbying search: ${(e as Error).message}`);
+    problems.push(`${billDisplay(id)} lobbying check: ${(e as Error).message}`);
   }
   applyXray(c, await xrayFacts(id));
   return problems;

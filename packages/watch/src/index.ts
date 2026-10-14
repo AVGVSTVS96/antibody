@@ -2,7 +2,8 @@ import { mkdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import type { Stage } from "@antibody/core";
 import { paths } from "@antibody/core/node";
-import { digestJson, digestMarkdown, FLAGGED } from "./digest.ts";
+import { recentMoved } from "./audit.ts";
+import { digestJson, digestMarkdown, flaggedOf, movedBills } from "./digest.ts";
 import { recordEvents, watch } from "./watch.ts";
 
 export { digestJson, digestMarkdown, reasons } from "./digest.ts";
@@ -25,12 +26,12 @@ export const stages: Stage[] = [
     writes: ["watch_events"],
     async run(ctx) {
       const r = await watch(ctx.log, ctx.signal);
-      const d = digestJson(r);
       const dir = paths.raw("watch");
+      const d = digestJson(r, (await recentMoved(dir, r.date, movedBills(r.candidates))).slice(0, -1));
       await mkdir(dir, { recursive: true });
       await write(join(dir, `${r.date}.json`), `${JSON.stringify(d, null, 2)}\n`);
       await write(join(dir, `${r.date}.md`), digestMarkdown(d));
-      await recordEvents(r, r.candidates.slice(0, FLAGGED));
+      await recordEvents(r, flaggedOf(r.candidates));
       ctx.log(`digest ${join(dir, `${r.date}.md`)}: ${d.flagged.length} flagged, ${r.xrayed.length} x-rayed`);
       if (r.problems.length) {
         for (const p of r.problems) ctx.log(`problem: ${p}`);
