@@ -1,6 +1,7 @@
 import type { BillId, Row } from "@antibody/core";
 import { best, findRefs, type Matcher, period, sectionNums } from "./extract.ts";
 import type { LdaFiling, LdaLobbyist } from "./lda.ts";
+import { namedMembers } from "./staff.ts";
 
 export type Phase = Row<"lda_bill_refs">["phase"];
 
@@ -117,12 +118,14 @@ export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSection
       for (const l of a.lobbyists) {
         const id = `${f.filing_uuid}:${l.lobbyist.id}`;
         const prev = lobbyists.get(id);
+        const position = prev?.covered_position ?? (l.covered_position?.trim() || null);
         lobbyists.set(id, {
           id,
           filing_id: f.filing_uuid,
           lobbyist_id: String(l.lobbyist.id),
           name: lobbyistName(l),
-          covered_position: prev?.covered_position ?? (l.covered_position?.trim() || null),
+          covered_position: position,
+          named_members: position ? namedMembers(position) : [],
           bill_ids: [bill],
           source_url: f.filing_document_url,
           source_locator: `issue line ${i + 1} of ${lines.length}, lobbyist ${lobbyistName(l)}`,

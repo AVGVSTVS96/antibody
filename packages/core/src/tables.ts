@@ -231,6 +231,8 @@ export const TABLES = {
     name: z.string(),
     /** Quoted exactly as filed. */
     covered_position: z.string().nullable(),
+    /** Members the covered position names, as written ("Rep. David Kustoff"), for resolve to match to bioguide ids. */
+    named_members: z.array(z.string()),
     /** Bills named on the issue lines this lobbyist is listed on. */
     bill_ids: z.array(billId),
     ...fact,

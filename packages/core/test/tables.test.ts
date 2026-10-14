@@ -56,4 +56,5 @@ test("lobbying: topic-only refs are inference rows, spend rows carry both facets
   expect(cols.client_key).toBe("VARCHAR");
   expect(cols.total_rests_on).toBe("VARCHAR[] NOT NULL");
   expect(Object.fromEntries(columns("lda_filings")).period_end).toBe("DATE NOT NULL");
+  expect(Object.fromEntries(columns("lda_lobbyists")).named_members).toBe("VARCHAR[] NOT NULL");
 });
