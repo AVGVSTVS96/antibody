@@ -26,27 +26,42 @@ interface Read {
 }
 
 /**
- * Picks the richest table a publication has: per-title Excel, then per-section PDF tables, then a small bill's
- * table1.xlsx. The PDF is read for its At a Glance box, mandate answers and baseline wording either way.
+ * Picks the richest table a publication has: per-title Excel (one file or one per committee, merged), then
+ * per-section PDF tables, then a small bill's table1.xlsx. The PDF is read for its At a Glance box, mandate
+ * answers and baseline wording either way.
  */
 async function read(files: Fetched[], bill: BillId): Promise<Read> {
   const token = bill.split("-").slice(1).join("");
   const pdfs = files.filter((f) => /\.pdf$/i.test(f.url));
   const pdf = pdfs.find((f) => f.url.toLowerCase().replace(/[-_]/g, "").includes(token)) ?? pdfs[0] ?? null;
   const glance = pdf ? await parse<Glance>("glance", pdf.file) : null;
+  const tagged = (p: Parsed, f: Fetched): Parsed => {
+    const file = { url: f.url, archiveUrl: f.archiveUrl };
+    return {
+      ...p,
+      sheets: p.sheets.map((s) => ({ ...s, file })),
+      summary: p.summary ? { ...p.summary, file } : null,
+    };
+  };
   const sheets = files.filter((f) => /\.xlsx?$/i.test(f.url));
+  const workbooks: { p: Parsed; f: Fetched }[] = [];
   for (const f of sheets.filter((f) => !/table1/i.test(f.url))) {
     const p = await parse<Parsed>("xlsx", f.file);
-    if (p?.sheets.length) return { main: { ...p, from: f }, pdf, glance };
+    if (p && (p.sheets.length || p.summary?.rows.length)) workbooks.push({ p: tagged(p, f), f });
+  }
+  if (workbooks.some((w) => w.p.sheets.length)) {
+    const lead = workbooks.find((w) => w.p.summary?.rows.length) ?? workbooks[0]!;
+    const main = { format: "xlsx" as const, sheets: workbooks.flatMap((w) => w.p.sheets), summary: lead.p.summary };
+    return { main: { ...main, from: lead.f }, pdf, glance };
   }
   if (pdf) {
     const p = await parse<Parsed>("pdf", pdf.file);
     if (p?.sheets.some((s) => s.rows.some((r) => r.line_kind === "section")))
-      return { main: { ...p, from: pdf }, pdf, glance };
+      return { main: { ...tagged(p, pdf), from: pdf }, pdf, glance };
   }
   for (const f of sheets.filter((f) => /table1/i.test(f.url))) {
     const p = await parse<Parsed>("table1", f.file);
-    if (p?.summary?.rows.length) return { main: { ...p, from: f }, pdf, glance };
+    if (p?.summary?.rows.length) return { main: { ...tagged(p, f), from: f }, pdf, glance };
   }
   return { main: null, pdf, glance };
 }

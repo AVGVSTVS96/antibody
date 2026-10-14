@@ -1,5 +1,5 @@
 import type { Row } from "@antibody/core";
-import type { Glance, Parsed, ParsedRow, ParsedSheet, Summary, Values } from "./parsed.ts";
+import type { Glance, Parsed, ParsedRow, ParsedSheet, SourceFile, Summary, Values } from "./parsed.ts";
 
 type Line = Row<"cbo_lines">;
 type Measure = Line["measure"];
@@ -81,6 +81,7 @@ export function reconcile(sheets: ParsedSheet[]): Reconcile {
 interface Amount {
   values: Values;
   ranges: string[];
+  file: SourceFile;
 }
 
 interface CboLine {
@@ -110,6 +111,7 @@ export function buildLines(
   const failing = new Set(check.failing);
   const out: Line[] = [];
   const unmapped = new Set<string>();
+  const fileOf = (x: { file?: SourceFile }) => x.file ?? { url: src.fileUrl, archiveUrl: src.archiveUrl };
   const ids = (nums: string[]) =>
     nums.flatMap((n) => {
       const id = sectionId(n);
@@ -129,7 +131,7 @@ export function buildLines(
         let picked = rows.filter((r) => kindOf(r) === flow && r.block === block);
         if (!picked.length) picked = rows.filter((r) => PARTS[r.measure_kind] === flow && r.block === block);
         if (!picked.length || failing.has(`${sheet.sheet}|${block}|${flow}`)) continue;
-        const amount = sum(picked, sheet.years);
+        const amount = sum(picked, sheet.years, fileOf(sheet));
         if (last(amount.values, sheet.years) === null) continue;
         items.push({
           key: `${i}.${line}`,
@@ -156,7 +158,7 @@ export function buildLines(
           section_ids: ids([...new Set(nums)]),
           title: `${sheet.sheet}: ${total.measure} (section rows don't add up to this total, so they are not shown)`,
           measure: flow,
-          amount: { values: total.values, ranges: [total.range] },
+          amount: { values: total.values, ranges: [total.range], file: fileOf(sheet) },
           split: "exact",
           rests_on: [],
         }),
@@ -192,6 +194,7 @@ export function buildLines(
       push(parts, `${n}|${it.flow}`, {
         values: share,
         ranges: it.amount.ranges,
+        file: it.amount.file,
         years,
         title: it.title,
         even: true,
@@ -209,7 +212,7 @@ export function buildLines(
       section_ids: ids([num]),
       title: ps[0]!.title,
       measure: flow,
-      amount: { values: addValues(ps.map((p) => p.values)), ranges: ps.flatMap((p) => p.ranges) },
+      amount: { values: addValues(ps.map((p) => p.values)), ranges: ps.flatMap((p) => p.ranges), file: ps[0]!.file },
       split: ps.some((p) => p.even) ? "even_split" : "exact",
       rests_on: [...new Set(ps.flatMap((p) => p.restsOn))],
     });
@@ -220,7 +223,7 @@ export function buildLines(
   }
 
   for (const [num, m] of sectionLines) {
-    const d = deficit(src, `${src.estimateId}:s${num}:deficit`, m.get("outlays"), m.get("revenues"));
+    const d = deficit(`${src.estimateId}:s${num}:deficit`, m.get("outlays"), m.get("revenues"));
     if (d) out.push(d);
   }
   const byId = new Map(out.map((l) => [l.id, l]));
@@ -228,7 +231,6 @@ export function buildLines(
     const outlays = g.get("outlays");
     const revenues = g.get("revenues");
     const d = deficit(
-      src,
       `${src.estimateId}:g${key}:deficit`,
       outlays ? byId.get(outlays) : undefined,
       revenues ? byId.get(revenues) : undefined,
@@ -244,7 +246,7 @@ export function buildLines(
  * A section's deficit effect: outlays minus revenues (positive adds to the deficit). It is derived, so it
  * rests on both lines and cites every cell range they add up.
  */
-function deficit(src: Source, id: string, outlays?: Line, revenues?: Line): Line | null {
+function deficit(id: string, outlays?: Line, revenues?: Line): Line | null {
   if (!outlays && !revenues) return null;
   const base = (outlays ?? revenues)!;
   const keys = Object.keys(base.values);
@@ -264,8 +266,11 @@ function deficit(src: Source, id: string, outlays?: Line, revenues?: Line): Line
     values,
     split: both.some((l) => l.split === "even_split") ? "even_split" : "exact",
     rests_on: both.map((l) => `cbo_lines/${l.id}`),
-    source_locator: both.map((l) => l.source_locator).join("; "),
-    archive_url: src.archiveUrl,
+    source_locator: both
+      .map((l) =>
+        l.source_url === base.source_url ? l.source_locator : `${fileName(l.source_url)}: ${l.source_locator}`,
+      )
+      .join("; "),
   };
 }
 
@@ -294,7 +299,7 @@ function wholeBill(src: Source, summary: Summary | null, glance: Glance | null):
     block: string | null | undefined,
     values: Values,
     years: string[],
-    url: string,
+    file: SourceFile,
     where: string,
   ) => {
     const kind = classify(label, block);
@@ -318,17 +323,25 @@ function wholeBill(src: Source, summary: Summary | null, glance: Glance | null):
       total_musd: values[period]!,
       values,
       split: "exact",
-      archive_url: url === src.fileUrl ? src.archiveUrl : src.pdfArchiveUrl,
+      archive_url: file.archiveUrl,
       rests_on: [],
-      source_url: url,
+      source_url: file.url,
       source_locator: where,
     });
   };
+  const summaryFile = summary?.file ?? { url: src.fileUrl, archiveUrl: src.archiveUrl };
   for (const r of summary?.rows ?? [])
-    add(r.measure, r.block, r.values, summary!.years, src.fileUrl, locator([r.range]));
+    add(r.measure, r.block, r.values, summary!.years, summaryFile, locator([r.range]));
   if (glance?.glance && src.pdfUrl)
     for (const r of glance.glance.rows)
-      add(r.label, null, r.values, glance.glance.periods, src.pdfUrl, "page 1, At a Glance table");
+      add(
+        r.label,
+        null,
+        r.values,
+        glance.glance.periods,
+        { url: src.pdfUrl, archiveUrl: src.pdfArchiveUrl },
+        "page 1, At a Glance table",
+      );
   return [...out.values()];
 }
 
@@ -349,8 +362,8 @@ function line(
     period,
     total_musd: amount.values[period] ?? 0,
     values: amount.values,
-    archive_url: src.archiveUrl,
-    source_url: src.fileUrl,
+    archive_url: amount.file.archiveUrl,
+    source_url: amount.file.url,
     source_locator: locator(amount.ranges),
   };
 }
@@ -382,8 +395,12 @@ export function baseNum(ref: string): string {
   return ref.match(/^\d+[A-Z]?/)?.[0] ?? ref;
 }
 
-function sum(rows: ParsedRow[], years: string[]): Amount {
-  return { values: addValues(rows.map((r) => pick(r.values, years))), ranges: rows.map((r) => r.range) };
+function sum(rows: ParsedRow[], years: string[], file: SourceFile): Amount {
+  return { values: addValues(rows.map((r) => pick(r.values, years))), ranges: rows.map((r) => r.range), file };
+}
+
+function fileName(url: string): string {
+  return decodeURIComponent(url.split("/").at(-1) ?? url);
 }
 
 function pick(values: Values, years: string[]): Values {

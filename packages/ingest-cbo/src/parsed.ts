@@ -16,7 +16,14 @@ export interface ParsedRow {
   breakdown_of_total?: boolean;
 }
 
+/** The cbo.gov file a table came from and the archive copy we read. */
+export interface SourceFile {
+  url: string;
+  archiveUrl: string | null;
+}
+
 export interface ParsedSheet {
+  file?: SourceFile;
   sheet: string;
   years: string[];
   rows: ParsedRow[];
@@ -32,6 +39,7 @@ export interface TotalRow {
 
 /** Whole-bill totals: an Excel Summary sheet, a small bill's table1.xlsx, or a PDF's summary pages. */
 export interface Summary {
+  file?: SourceFile;
   sheet: string;
   years: string[];
   rows: TotalRow[];

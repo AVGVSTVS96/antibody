@@ -213,7 +213,7 @@ def expand_sections(raw):
 
 def find_years(ws):
     for r in ws.iter_rows(min_row=1, max_row=30, values_only=True):
-        if text(r[YEAR_COL0]).isdigit():
+        if len(r) > YEAR_COL0 and text(r[YEAR_COL0]).isdigit():
             return [text(x).replace(" ", "") for x in r[YEAR_COL0:] if x is not None]
     return None
 

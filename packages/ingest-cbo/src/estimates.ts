@@ -9,13 +9,17 @@ export interface Listing {
   pubDate: string;
 }
 
+/** BILLSTATUS can list one publication twice (once per action it relates to); each is kept once. */
 export function parseListings(xml: string): Listing[] {
   const block = xml.match(/<cboCostEstimates>([\s\S]*?)<\/cboCostEstimates>/)?.[1] ?? "";
+  const seen = new Set<string>();
   return [...block.matchAll(/<item>([\s\S]*?)<\/item>/g)].flatMap(([, item]) => {
     const tag = (name: string) => decode(item!.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1] ?? "");
     const url = tag("url").replace(/^http:/, "https:");
     const pubId = url.match(/cbo\.gov\/publication\/(\d+)/)?.[1];
-    return pubId ? [{ url, pubId, title: tag("title"), description: tag("description"), pubDate: tag("pubDate") }] : [];
+    if (!pubId || seen.has(pubId)) return [];
+    seen.add(pubId);
+    return [{ url, pubId, title: tag("title"), description: tag("description"), pubDate: tag("pubDate") }];
   });
 }
 

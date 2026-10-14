@@ -12,7 +12,9 @@ const xml = `<billStatus><bill><cboCostEstimates>
     <url>https://www.cbo.gov/publication/61570</url><description>Public Law 119-21 as enacted on July 4, 2025</description></item>
 </cboCostEstimates></bill></billStatus>`;
 
-test("BILLSTATUS lists each CBO publication with the version it scored", () => {
+test("BILLSTATUS lists each CBO publication once, with the version it scored", () => {
+  const twice = xml.replace("</cboCostEstimates>", `${xml.match(/<item>[\s\S]*?<\/item>/)![0]}</cboCostEstimates>`);
+  expect(parseListings(twice).map((l) => l.pubId)).toEqual(["61569", "61570"]);
   const [beb, clb] = parseListings(xml);
   expect(beb).toMatchObject({ pubId: "61569", description: "Public Law 119-21 as enacted on July 4, 2025" });
   expect(clb!.title).toContain("CBO's January 2025 Baseline");
