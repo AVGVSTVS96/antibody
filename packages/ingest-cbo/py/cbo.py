@@ -215,7 +215,7 @@ def find_years(ws):
     for r in ws.iter_rows(min_row=1, max_row=30, values_only=True):
         if text(r[YEAR_COL0]).isdigit():
             return [text(x).replace(" ", "") for x in r[YEAR_COL0:] if x is not None]
-    raise ValueError(f"no year header in {ws.title}")
+    return None
 
 
 def summary_totals(ws, years):
@@ -242,12 +242,13 @@ def xlsx(path):
     lines = itertools.count(1)
     out = {"format": "xlsx", "sheets": [], "summary": None}
     for ws in wb.worksheets:
+        years = find_years(ws)
+        if not years:
+            continue
         if ws.title.startswith("Summary"):
-            years = find_years(ws)
             out["summary"] = {"sheet": ws.title, "years": years, "rows": summary_totals(ws, years)}
         if not ws.title.startswith("Title"):
             continue
-        years = find_years(ws)
         title, rows = parse_sheet(ws, years, lines)
         out["sheets"].append({"sheet": ws.title, "title": title, "years": years, "rows": rows})
     return out
