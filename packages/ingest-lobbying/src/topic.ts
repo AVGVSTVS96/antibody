@@ -75,6 +75,7 @@ const wordRe = (phrase: string) =>
  */
 export async function runTopic(ctx: StageContext) {
   const bill = ctx.bill as BillId;
+  if (!Bun.which("claude")) return ctx.log("skipped: the claude CLI is not on this machine");
   const a = await readAliases(bill);
   if (!a) throw new Error(`run the lobbying stage for ${bill} first`);
   const s = await billStatus(bill, ctx.signal);
