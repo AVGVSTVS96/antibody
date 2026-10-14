@@ -28,8 +28,8 @@ export function IndexPage() {
   const bills = [...index.bills]
     .filter(match)
     .sort((a, b) => (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""));
-  const byParty = (p: "R" | "D" | "I" | null) => bills.filter((b) => b.sponsorParty === p && !b.stats?.vehicle);
-  const vehicles = bills.filter((b) => b.stats?.vehicle);
+  const featured = needle ? undefined : bills.find((b) => b.id === START_HERE);
+  const rest = bills.filter((b) => b !== featured);
   const testable = index.bills.filter((b) => b.stats?.buriedTest.tested).length;
 
   function submit(e: FormEvent) {
@@ -55,7 +55,6 @@ export function IndexPage() {
     );
   }
 
-  const parties: ("R" | "D" | "I")[] = byParty("I").length ? ["R", "D", "I"] : ["R", "D"];
   return (
     <>
       <Top right={`${count(index.bills.length, "bill")} x-rayed`} />
@@ -65,9 +64,8 @@ export function IndexPage() {
             See what rides along in a bill, <em>and who is behind it.</em>
           </h1>
           <p>
-            antibody x-rays federal bills: the headline fight, the sections added after a chamber passed the bill, who
-            lobbied, who donated, and which members traded related stock. Every line links its public record, inferences
-            are marked as inferences, and the same rules apply to every party.
+            The headline fight, what got added late, who lobbied and paid, and which members traded related stock. Every
+            line links its public record.
           </p>
           <form className="search" onSubmit={submit}>
             <Search />
@@ -92,51 +90,28 @@ export function IndexPage() {
 
         <div className="section-h">
           <span className="cap">Curated bills</span>
-          <span className="cap">grouped by the sponsor’s party</span>
+          <span className="cap">newest first</span>
         </div>
-        <p className="extra colnote">
-          Sponsor party is not who voted for it: the vote tally on each card shows how each party voted. The two columns
-          also differ in era (all six Democratic-sponsored bills are from the 117th Congress, when Democrats held the
-          House, Senate and White House), so read them as examples, not as a score between parties. {testable} of{" "}
-          {index.bills.length} bills had enough news and a late flag to test for buried candidates at all.
-        </p>
-        <div className="cols">
-          {parties.map((p) => {
-            const list = byParty(p);
-            return (
-              <div className="col" key={p}>
-                <div className="cap">
-                  <span>{PARTY[p]} sponsor</span>
-                  <span>{list.length}</span>
-                </div>
-                {list.map((b) => (
-                  <BillCard key={b.id} b={b} />
-                ))}
-                {!list.length && (
-                  <div className="empty">
-                    {needle ? "No match on this side." : `No ${PARTY[p]}-sponsored bill is x-rayed yet.`}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {vehicles.length > 0 && (
-          <>
-            <div className="section-h">
-              <span className="cap">Vehicle bills</span>
-              <span className="cap">the sponsor introduced a different text than the law</span>
-            </div>
-            <div className="cols">
-              <div className="col">
-                {vehicles.map((b) => (
-                  <BillCard key={b.id} b={b} />
-                ))}
-              </div>
-            </div>
-          </>
+        <details className="extra legal colnote">
+          <summary>Sponsor party is not who voted for it</summary>
+          <p>
+            The vote tally on each card shows how each party voted. Bills from different eras differ in who held power
+            (all six Democratic-sponsored bills are from the 117th Congress, when Democrats held the House, Senate and
+            White House), so read them as examples, not as a score between parties. {testable} of {index.bills.length}{" "}
+            bills had enough news and a late flag to test for buried candidates at all.
+          </p>
+        </details>
+        {featured && (
+          <div className="feature">
+            <BillCard b={featured} big />
+          </div>
         )}
+        <div className="grid">
+          {rest.map((b) => (
+            <BillCard key={b.id} b={b} />
+          ))}
+          {!bills.length && <div className="empty">No bill matches that search.</div>}
+        </div>
 
         <div className="section-h">
           <span className="cap">Latest watcher picks</span>
@@ -146,33 +121,35 @@ export function IndexPage() {
         </div>
         <div className="picks">
           {index.watch.length ? (
-            <div className="card">
-              <ul className="rows">
-                {index.watch.slice(0, 12).map((w) => (
-                  <li key={`${w.billId}-${w.seenAt}-${w.kind}`} className="pick">
-                    <span className={`kind${w.kind === "hot" ? " hot" : ""}`}>
-                      {w.kind === "hot" ? "worth a look" : w.kind.replace("_", " ")}
-                    </span>
-                    <span>
-                      <b className="mono">{w.display}</b> {w.title}
-                      {w.sponsorParty && <span className="row-meta"> · {PARTY[w.sponsorParty]} sponsor</span>}
-                      {w.reason && <div className="row-meta">{w.reason}</div>}
-                    </span>
-                    <span className="row-top">
-                      <span className="num">{stamp(w.seenAt)}</span>
-                      {w.file ? (
-                        <a className="src" href={billHref(w.billId)} onClick={onLink}>
-                          x-ray
-                        </a>
-                      ) : (
-                        <a className="src" href={w.url} target="_blank" rel="noopener">
-                          source
-                        </a>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+            <div className="pickgroups">
+              {groupPicks(index.watch.slice(0, 12)).map(([kind, list]) => (
+                <div className="card" key={kind}>
+                  <h2>{KIND[kind]?.[0] ?? kind.replace("_", " ")}</h2>
+                  <div className="row-meta">
+                    {KIND[kind]?.[1]} Seen {stamp(list[0]!.seenAt).split(",")[0]}.
+                  </div>
+                  <ul className="rows">
+                    {list.map((w) => (
+                      <li key={`${w.billId}-${w.seenAt}`} className="pick">
+                        <span>
+                          <b className="mono">{w.display}</b> {w.title}
+                          {w.sponsorParty && <span className="row-meta"> · {PARTY[w.sponsorParty]} sponsor</span>}
+                          {w.reason && <div className="row-meta">{w.reason}</div>}
+                        </span>
+                        {w.file ? (
+                          <a className="src" href={billHref(w.billId)} onClick={onLink}>
+                            X-ray this bill
+                          </a>
+                        ) : (
+                          <a className="src" href={w.url} target="_blank" rel="noopener">
+                            Read on congress.gov
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="empty">The daily watcher hasn’t flagged a bill yet. Its picks show up here.</div>
@@ -229,13 +206,41 @@ export function IndexPage() {
   );
 }
 
-function hook(b: Entry): string {
+const KIND: Record<string, [string, string]> = {
+  law: ["Became law", "Signed into law, and lobbyists named it."],
+  cbo: ["Got a CBO estimate", "The Congressional Budget Office published a cost estimate."],
+  look: ["Worth a look", "Moved and scored high on a cheap check; a lead, not a verdict."],
+};
+
+const kindOf = (w: BundleIndex["watch"][number]) =>
+  w.reason?.startsWith("Became law") ? "law" : w.reason?.startsWith("Got a CBO") ? "cbo" : "look";
+
+function groupPicks(picks: BundleIndex["watch"]) {
+  const out = new Map<string, BundleIndex["watch"]>();
+  for (const w of picks) out.set(kindOf(w), [...(out.get(kindOf(w)) ?? []), w]);
+  return [...out];
+}
+
+function bigHook(b: Entry): { num: string; label: string; used: string } | null {
+  const s = b.stats;
+  if (!s) return null;
+  if (s.late && s.late >= 10) return { num: String(s.late), label: "sections added late", used: "late" };
+  if (s.deficitMusd != null && Math.abs(s.deficitMusd) >= 1000)
+    return { num: musd(s.deficitMusd), label: "deficit, per CBO", used: "deficit" };
+  if (s.late)
+    return { num: String(s.late), label: s.late === 1 ? "section added late" : "sections added late", used: "late" };
+  return { num: s.lobbyingReports.toLocaleString("en-US"), label: "lobbying reports", used: "lobbying" };
+}
+
+function hook(b: Entry, used: string | undefined): string {
   const s = b.stats;
   if (!s) return "";
   const parts = [
-    s.deficitMusd != null ? `CBO says it ${deficitWords(s.deficitMusd)}` : null,
-    s.late ? `${s.late} ${s.late === 1 ? "section was" : "sections were"} added late` : null,
-    s.lobbyingReports ? `${s.lobbyingReports.toLocaleString("en-US")} lobbying reports name it` : null,
+    s.deficitMusd != null && used !== "deficit" ? `CBO says it ${deficitWords(s.deficitMusd)}` : null,
+    s.late && used !== "late" ? `${s.late} ${s.late === 1 ? "section was" : "sections were"} added late` : null,
+    s.lobbyingReports && used !== "lobbying"
+      ? `${s.lobbyingReports.toLocaleString("en-US")} lobbying reports name it`
+      : null,
   ].filter(Boolean);
   return parts.length ? `${parts.join("; ")}.` : "";
 }
@@ -249,12 +254,13 @@ function buriedLine(s: NonNullable<Entry["stats"]>) {
   return `Buried candidates: 0 of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}${s.buriedTest.why ? ` (${s.buriedTest.why})` : ""}.`;
 }
 
-function BillCard({ b }: { b: Entry }) {
+function BillCard({ b, big = false }: { b: Entry; big?: boolean }) {
   const s = b.stats;
   const party = s?.tally?.byParty;
+  const num = bigHook(b);
   return (
     <a
-      className="billcard"
+      className={`billcard${big ? " big" : ""}`}
       href={billHref(b.id)}
       onClick={onLink}
       onPointerEnter={() => prefetchBundle(b.id)}
@@ -266,12 +272,17 @@ function BillCard({ b }: { b: Entry }) {
         <div className="cap">
           {b.display}
           {b.sponsorParty ? ` · ${b.sponsorParty} sponsor` : ""}
+          {s?.vehicle ? " · vehicle bill" : ""}
           {b.law ? ` · ${b.law}` : ""}
           {b.latestActionOn ? ` · ${day(b.latestActionOn)}` : ""}
         </div>
+        {num && (
+          <div className="bignum">
+            <b>{num.num}</b> <span>{num.label}</span>
+          </div>
+        )}
         <h3>{b.shortTitle ?? b.title}</h3>
-        {s && hook(b) && <div className="hook">{hook(b)}</div>}
-        {b.shortTitle && <div className="meta">{b.title}</div>}
+        {s && hook(b, num?.used) && <div className="hook">{hook(b, num?.used)}</div>}
         {s && (
           <>
             <div className="tags">
@@ -301,26 +312,6 @@ function BillCard({ b }: { b: Entry }) {
               )}
             </div>
             <div className="tests">{buriedLine(s)}</div>
-            <div className="nums">
-              <span>
-                <b>{s.sections}</b> sections
-              </span>
-              <span>
-                <b>{s.lobbyingReports.toLocaleString("en-US")}</b> lobbying reports
-              </span>
-              <span title="Members of Congress with a stock trade dated from the bill's first text through its signing in a company tied to the bill. Routine disclosures; no link to any vote is claimed. Members trade large companies' shares all the time.">
-                <b>{s.membersTradedDuring}</b> of 535 members traded stock in tied companies
-                {s.tradeSpan ? ` (${day(s.tradeSpan[0])} to ${day(s.tradeSpan[1])})` : ""}
-              </span>
-              {s.deficitMusd != null && (
-                <span>
-                  <b>{musd(s.deficitMusd)}</b> deficit
-                  {s.deficitDirectOnly
-                    ? " (direct spending and revenue only; excludes discretionary appropriations)"
-                    : ""}
-                </span>
-              )}
-            </div>
           </>
         )}
       </div>

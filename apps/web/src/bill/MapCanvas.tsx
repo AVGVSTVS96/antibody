@@ -29,6 +29,7 @@ interface Env {
   pal: Palette;
   view: MapView;
   hidden: Set<DisplayKind>;
+  labels: number;
 }
 
 const rgba = (hex: string, a: number) => {
@@ -44,19 +45,20 @@ interface Props {
   view: MapView;
   hidden: Set<DisplayKind>;
   active: boolean;
+  fixed: boolean;
+  labels: number;
 }
 
-export function MapCanvas({ m, built, view, hidden, active }: Props) {
+export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const back = useRef<SVGGElement>(null);
   const front = useRef<SVGGElement>(null);
   const tipAnchor = useRef<(() => void) | null>(null);
   const [sigma, setSigma] = useState<Renderer | null>(null);
   const [moved, setMoved] = useState(false);
-  const [touched, setTouched] = useState(false);
   const theme = useTheme();
   const focus = useFocus();
-  const env = useRef<Env>({ pal: palette(), view, hidden });
+  const env = useRef<Env>({ pal: palette(), view, hidden, labels });
 
   useEffect(() => {
     const el = box.current;
@@ -73,7 +75,7 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
       const r: Renderer = new Sigma(built.graph, el, {
         customNodeState: { isActive: false },
         customEdgeState: { isActive: false },
-        customGraphState: { focused: false, tick: 0 },
+        customGraphState: { focused: false, tick: 0, zoomed: false },
         primitives: {
           nodes: {
             shapes: [sdfCircle(), sdfSquare({ cornerRadius: 0.18 }), sdfDiamond({ cornerRadius: 0.12 })],
@@ -124,27 +126,29 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
             labelFont: MONO,
             labelSize: 11,
             labelBackgroundColor: (a: NodeAttrs) =>
-              a.kind === "section" || a.kind === "bill" ? "transparent" : rgba(E.pal.bg, 0.8),
+              a.kind === "section" || a.kind === "bill" ? "transparent" : rgba(E.pal.panel, 0.86),
             labelBackgroundPadding: 2,
             labelColor: (a: NodeAttrs, s: NS, gs: GS) =>
               rgba(E.pal[a.labelTone], Math.min(1, a.alpha * 1.4) * dim(gs.focused, s.isActive)),
             labelPosition: (a: NodeAttrs) =>
               a.kind === "section" || a.kind === "bill" ? "over" : E.view === "money" ? a.mlabel : a.rlabel,
-            labelVisibility: (a: NodeAttrs, s: NS, gs: GS) =>
-              a.alpha < 0.5 || (gs.focused && !s.isActive)
-                ? "hidden"
-                : s.isActive || s.isHovered || a.important
-                  ? "visible"
-                  : "auto",
+            labelVisibility: (a: NodeAttrs, s: NS, gs: GS) => {
+              if (a.alpha < 0.5 || (gs.focused && !s.isActive)) return "hidden";
+              if (s.isActive || s.isHovered) return "visible";
+              if (a.kind === "section" || a.kind === "bill") return a.important ? "visible" : "auto";
+              const [on, rank] = E.view === "money" ? [a.mimportant, a.mlrank] : [a.important, a.lrank];
+              if (on && rank < E.labels) return "visible";
+              return gs.zoomed ? "auto" : "hidden";
+            },
             visibility: (a: NodeAttrs) => (a.alpha < 0.02 ? "hidden" : "visible"),
             depth: (_a: NodeAttrs, s: NS) => (s.isActive || s.isHovered ? "topNodes" : "nodes"),
             zIndex: (a: NodeAttrs) => (a.kind === "bill" ? 2 : a.kind === "section" ? 1 : 0),
             cursor: "pointer",
           },
           edges: {
-            path: (e: EdgeAttrs) => (e.curvature ? "curved" : "straight"),
+            path: (e: EdgeAttrs) => (e.curvature && E.view !== "money" ? "curved" : "straight"),
             curvature: { attribute: "curvature" },
-            size: (e: EdgeAttrs, s: NS) => e.width * (s.isActive ? 2.4 : 1),
+            size: (e: EdgeAttrs, s: NS) => (E.view === "money" ? e.mwidth : e.width) * (s.isActive ? 2 : 1),
             color: (e: EdgeAttrs) => E.pal[e.tone],
             solid: (e: EdgeAttrs, s: NS, gs: GS) =>
               e.inference ? "transparent" : rgba(E.pal[e.tone], edgeAlpha(E, e, s.isActive, gs.focused)),
@@ -168,9 +172,9 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
           minCameraRatio: 0.18,
           maxCameraRatio: 1.6,
           gestureTarget: coarse ? "shared" : "graph",
-          labelRenderedSizeThreshold: 5,
-          labelDensity: 0.3,
-          labelGridCellSize: 110,
+          labelRenderedSizeThreshold: 6,
+          labelDensity: 0.12,
+          labelGridCellSize: 150,
           nodePickingPadding: 3,
         },
       });
@@ -190,6 +194,17 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
     env.current.pal = palette();
     if (sigma) sigma.setGraphState({ tick: sigma.getGraphState().tick + 1 });
   }, [theme, sigma]);
+
+  useEffect(() => {
+    env.current.labels = labels;
+    if (!sigma) return;
+    sigma.setSetting("enableCameraPanning", !fixed);
+    sigma.setSetting("enableCameraZooming", !fixed);
+    const box = RADIUS + (fixed && labels > 0 ? 90 : 12);
+    sigma.setCustomBBox({ x: [-box, box], y: [-box, box] });
+    if (fixed) sigma.getCamera().setState({ x: 0.5, y: 0.5, ratio: 1, angle: 0 });
+    sigma.setGraphState({ tick: sigma.getGraphState().tick + 1 });
+  }, [labels, fixed, sigma]);
 
   useEffect(() => {
     env.current.hidden = hidden;
@@ -221,6 +236,9 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
       const k = (e.x - c.x) / RADIUS;
       const t = `translate(${c.x.toFixed(2)} ${c.y.toFixed(2)}) scale(${k.toFixed(5)})`;
       back.current?.setAttribute("transform", t);
+      const fs = 11 / k;
+      back.current?.style.setProperty("--fs", `${fs.toFixed(2)}px`);
+      back.current?.style.setProperty("--capop", fs <= 15 ? "1" : "0");
       front.current?.setAttribute("transform", t);
       tipAnchor.current?.();
     };
@@ -228,15 +246,14 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
     const cam = sigma.getCamera();
     const onCam = () => {
       const s = cam.getState();
+      const zoomed = s.ratio < 0.55;
+      if (sigma.getGraphState().zoomed !== zoomed) sigma.setGraphState({ zoomed });
       setMoved(Math.abs(s.ratio - 1) > 0.02 || Math.abs(s.x - 0.5) > 0.01 || Math.abs(s.y - 0.5) > 0.01);
     };
     cam.on("updated", onCam);
     sigma.on("enterNode", ({ node }) => focus.setHover(node));
     sigma.on("leaveNode", () => focus.setHover(null));
-    sigma.on("clickNode", ({ node }) => {
-      setTouched(true);
-      focus.pin(node);
-    });
+    sigma.on("clickNode", ({ node }) => focus.pin(node));
     sigma.on("clickStage", () => focus.pin(null));
     place();
     return () => {
@@ -314,12 +331,20 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
                 />
               ))}
               <Halos m={m} built={built} />
+              <RingCaptions />
               <Seal />
+            </g>
+            <g className={`rings${rings ? " off" : ""} columns`}>
+              <text x={-(RADIUS - 150)} y={-(RADIUS - 38)}>
+                Companies
+              </text>
+              <text x={RADIUS - 150} y={-(RADIUS - 38)}>
+                Members
+              </text>
             </g>
           </g>
         </svg>
-        <div className="sigma" ref={box} />
-        {!touched && !focus.pinned && sigma && <div className="maphint">Click a dot to see only its ties</div>}
+        <div className={`sigma${sigma ? " ready" : ""}`} ref={box} />
         <svg className="overlay front" aria-hidden="true">
           <g ref={front}>
             <g className={`rings${rings ? "" : " off"}`}>
@@ -355,7 +380,7 @@ export function MapCanvas({ m, built, view, hidden, active }: Props) {
 function edgeAlpha(E: Env, e: EdgeAttrs, isActive: boolean, focused: boolean) {
   if (!e.views.includes(E.view) || E.hidden.has(e.kind)) return 0;
   if (focused) return isActive ? 0.95 : 0;
-  return E.view === "money" ? Math.min(0.75, e.base * 1.6) : e.base;
+  return E.view === "money" ? e.mbase : e.base;
 }
 
 function Donut({ r0, r1, fill }: { r0: number; r1: number; fill: string }) {
@@ -365,6 +390,29 @@ function Donut({ r0, r1, fill }: { r0: number; r1: number; fill: string }) {
       fill={fill}
       fillRule="evenodd"
     />
+  );
+}
+
+const CAPTIONS = [
+  { id: "cap-members", r: RING.members[0] - 5, text: "Members" },
+  { id: "cap-actors", r: RING.actors[0] - 5, text: "Companies and lobbying clients" },
+  { id: "cap-sections", r: RING.sections[0] - 5, text: "Sections, later = further out" },
+];
+
+function RingCaptions() {
+  return (
+    <g className="ringcaps">
+      {CAPTIONS.map((c) => (
+        <g key={c.id}>
+          <path id={c.id} d={`M${-c.r},0A${c.r},${c.r} 0 0,0 ${c.r},0`} fill="none" />
+          <text>
+            <textPath href={`#${c.id}`} startOffset="50%" textAnchor="middle">
+              {c.text}
+            </textPath>
+          </text>
+        </g>
+      ))}
+    </g>
   );
 }
 

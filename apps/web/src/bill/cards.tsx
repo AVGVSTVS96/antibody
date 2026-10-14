@@ -1,5 +1,5 @@
 import { type Dollar, headlineDeficit, isAppropriations } from "@antibody/core";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { count, day, deficitWords, musd, nice, RULES_URL, rank, usd } from "../lib/format.ts";
 import type { Actor, BillModel, MemberView, SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
@@ -42,73 +42,99 @@ export function Story({ m }: { m: BillModel }) {
   const near = closest(m);
   const A = m.b.attention;
   const ranked = m.sections.some((v) => v.s.attention?.pct != null);
-  const companies = m.actors.filter((a) => a.lobbied.length).length;
+  const track = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState(0);
+  const { b } = m;
+  const deficit = headlineDeficit(b, "current-law");
+  const late = m.sections.filter((v) => v.s.inFinal && v.s.late).length;
+  const onScroll = () => {
+    const el = track.current;
+    const card = el?.firstElementChild as HTMLElement | null;
+    if (el && card) setAt(Math.round(el.scrollLeft / (card.offsetWidth + 10)));
+  };
   return (
-    <div className="story">
-      <div className="beat">
-        <i>The loud part</i>
-        {loud ? (
-          <p>
-            <b>
-              {m.secLabel(loud)} {loud.s.heading}
-            </b>{" "}
-            got the most news: {count(loud.s.attention?.hits ?? 0, "article")}
-            {A.sample ? ` of the ${A.sample.relevant.toLocaleString("en-US")} read` : ""}.
-          </p>
-        ) : (
-          <p>No section stands out in the news{ranked ? "." : ": too few articles to rank this bill’s sections."}</p>
-        )}
-        <button type="button" className="linkbtn" onClick={jump("card-headline")}>
-          See the loud sections
-        </button>
-      </div>
-      <div className="beat">
-        <i>The quiet part</i>
-        {quiet ? (
-          <p>
-            <b>
-              {m.secLabel(quiet)} {quiet.s.heading}
-            </b>{" "}
-            has big stakes ({stakesWords(quiet)}) and {count(quiet.s.attention?.hits ?? 0, "news article")}
-            {quiet.s.late ? ", and it was added late" : ""}.
-          </p>
-        ) : !ranked ? (
-          <p>Not tested: there are too few news articles to say which sections are quiet.</p>
-        ) : (
-          <p>
-            No section was both big-stakes, added late or off-topic, and ignored by the news.
-            {near && (
-              <>
-                {" "}
-                The closest is{" "}
-                <b
-                  title={`Scored ${near.s.score!.buried!.toFixed(2)}; the bar is 0.45. ${stakesWords(near) || "No big stakes"}.`}
-                >
-                  {m.secLabel(near)} {near.s.heading}
-                </b>
-                .{" "}
-                <a href={`${RULES_URL}#buried-v1`} target="_blank" rel="noopener">
-                  The rule
-                </a>
-              </>
-            )}
-          </p>
-        )}
-        <button type="button" className="linkbtn" onClick={jump("card-buried")}>
-          See the quiet sections
-        </button>
-      </div>
-      <div className="beat">
-        <i>The money</i>
+    <>
+      <div className="mhead">
+        <h1>
+          {b.bill.shortTitle ?? b.bill.title} <span className="mono">{b.bill.display}</span>
+        </h1>
         <p>
-          <b>{count(m.b.lobbying.clients, "client")}</b> lobbied on it. <b>{m.tradersDuring}</b> of 535 members traded
-          stock in a tied company while the bill moved. Routine disclosures; no link to any vote is claimed.
+          {deficit ? `CBO says it ${deficitWords(deficit.amountMusd)}` : "No CBO score"} ·{" "}
+          {b.lobbying.reports.toLocaleString("en-US")} lobbying reports
+          {m.lateShare == null ? "" : ` · ${late} ${late === 1 ? "section" : "sections"} added late`}
         </p>
-        <button type="button" className="linkbtn" onClick={jump("card-lobby")}>
-          See who lobbied
-        </button>
       </div>
-    </div>
+      <div className="story" ref={track} onScroll={onScroll}>
+        <div className="beat">
+          <i>The loud part</i>
+          {loud ? (
+            <p>
+              <b>
+                {m.secLabel(loud)} {loud.s.heading}
+              </b>{" "}
+              got the most news: {count(loud.s.attention?.hits ?? 0, "article")}
+              {A.sample ? ` of the ${A.sample.relevant.toLocaleString("en-US")} read` : ""}.
+            </p>
+          ) : (
+            <p>No section stands out in the news{ranked ? "." : ": too few articles to rank this bill’s sections."}</p>
+          )}
+          <button type="button" className="linkbtn" onClick={jump("card-headline")}>
+            See the loud sections
+          </button>
+        </div>
+        <div className="beat">
+          <i>The quiet part</i>
+          {quiet ? (
+            <p>
+              <b>
+                {m.secLabel(quiet)} {quiet.s.heading}
+              </b>{" "}
+              has big stakes ({stakesWords(quiet)}) and {count(quiet.s.attention?.hits ?? 0, "news article")}
+              {quiet.s.late ? ", and it was added late" : ""}.
+            </p>
+          ) : !ranked ? (
+            <p>Not tested: there are too few news articles to say which sections are quiet.</p>
+          ) : (
+            <p>
+              No section was both big-stakes, added late or off-topic, and ignored by the news.
+              {near && (
+                <>
+                  {" "}
+                  The closest is{" "}
+                  <b
+                    title={`Scored ${near.s.score!.buried!.toFixed(2)}; the bar is 0.45. ${stakesWords(near) || "No big stakes"}.`}
+                  >
+                    {m.secLabel(near)} {near.s.heading}
+                  </b>
+                  .{" "}
+                  <a href={`${RULES_URL}#buried-v1`} target="_blank" rel="noopener">
+                    The rule
+                  </a>
+                </>
+              )}
+            </p>
+          )}
+          <button type="button" className="linkbtn" onClick={jump("card-buried")}>
+            See the quiet sections
+          </button>
+        </div>
+        <div className="beat">
+          <i>The money</i>
+          <p>
+            <b>{count(m.b.lobbying.clients, "client")}</b> lobbied on it. <b>{m.tradersDuring}</b> of 535 members traded
+            stock in a tied company while the bill moved. Routine disclosures; no link to any vote is claimed.
+          </p>
+          <button type="button" className="linkbtn" onClick={jump("card-lobby")}>
+            See who lobbied
+          </button>
+        </div>
+      </div>
+      <div className="dots" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <i key={i} className={i === at ? "on" : ""} />
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -176,7 +202,12 @@ export function BillCard({ m }: { m: BillModel }) {
         <div className="stat">
           <div className="k">Traded tied stock</div>
           <div className="v">{m.tradersDuring}</div>
-          <div className="n">of 535 members, first text to signing</div>
+          <div
+            className="n"
+            title="Members with a stock trade in a tied company dated from the bill's first text through its signing"
+          >
+            of 535 members
+          </div>
         </div>
         <div className="stat">
           <div className="k">Added late</div>
@@ -362,31 +393,42 @@ export function HeadlineCard({ m }: { m: BillModel }) {
   return (
     <div className="card" id="card-headline">
       <h2>Headline</h2>
-      <p className="sub">
-        {scored
-          ? `The sections with the most news attention, out of ${scored} ranked`
-          : "Too few articles to rank sections; only raw counts are shown"}
-        ,{" "}
-        {A.sample
-          ? `from ${A.sample.relevant.toLocaleString("en-US")} relevant articles read, out of ${A.sample.found.toLocaleString("en-US")} found`
-          : `from ${count(A.articles, "article")}`}{" "}
-        via {via}
-        {A.outletListVersion ? (
-          <>
-            ,{" "}
-            <a href={OUTLETS_URL} target="_blank" rel="noopener">
-              outlet list {A.outletListVersion}
-            </a>
-          </>
-        ) : null}
-        {A.window ? ` (${day(A.window[0])} to ${day(A.window[1])})` : ""}. Loudness runs 0 to 100; 100 is the most
-        covered section of this bill. Headline means the top tenth of this bill’s sections by loudness, with at least 3
-        matching articles, so it is relative to this bill (
-        <a href={`${RULES_URL}#attention-v1`} target="_blank" rel="noopener">
-          how attention is counted
-        </a>
-        ).
-      </p>
+      {m.headline[0] && (
+        <p className="plain">
+          <b>
+            {m.secLabel(m.headline[0])} {m.headline[0].s.heading}
+          </b>{" "}
+          got the most news: {count(m.headline[0].s.attention?.hits ?? 0, "article")}.
+        </p>
+      )}
+      <details className="legal">
+        <summary>How we measured it</summary>
+        <p className="sub">
+          {scored
+            ? `The sections with the most news attention, out of ${scored} ranked`
+            : "Too few articles to rank sections; only raw counts are shown"}
+          ,{" "}
+          {A.sample
+            ? `from ${A.sample.relevant.toLocaleString("en-US")} relevant articles read, out of ${A.sample.found.toLocaleString("en-US")} found`
+            : `from ${count(A.articles, "article")}`}{" "}
+          via {via}
+          {A.outletListVersion ? (
+            <>
+              ,{" "}
+              <a href={OUTLETS_URL} target="_blank" rel="noopener">
+                outlet list {A.outletListVersion}
+              </a>
+            </>
+          ) : null}
+          {A.window ? ` (${day(A.window[0])} to ${day(A.window[1])})` : ""}. Loudness runs 0 to 100; 100 is the most
+          covered section of this bill. Headline means the top tenth of this bill’s sections by loudness, with at least
+          3 matching articles, so it is relative to this bill (
+          <a href={`${RULES_URL}#attention-v1`} target="_blank" rel="noopener">
+            how attention is counted
+          </a>
+          ).
+        </p>
+      </details>
       <Gap m={m} kind="attention_partial" />
       <ul className="rows">
         {m.headline.slice(0, SHOWN).map((v) => (

@@ -26,3 +26,15 @@ Open (design and watcher):
 - Watcher: score cutoff, sub-scores, party audit on all moved bills, re-normalised weights, search-count wording, buriedSections=null when untested.
 - MembersCard default sort and party PAC covered-share line; per-bill left/right-excluded sensitivity line; amendments card status counts; H.R.1 section 70201 version tag.
 - IRA main bundle still large (lazy member and company lists).
+
+## Design builder round 1: done and still open
+
+Done: key and legend moved out of the plot (filter chips with counts under the stage head, collapsed "How to read this map"), ring captions drawn on the rings, labels culled by collision (at most 14 companies and 14 members, hidden labels return when zoomed in), static non-pannable map from 980px with a ranked list under it, phones get a compact bill header, a snap carousel for loud/quiet/money and a label-free map with the ranked list, money map is now companies left and members right with node size by dollars and edge width and opacity by amount plus a ranked side panel, index is a featured card plus one grid with a big hook number per card and a collapsed party note, watcher picks grouped by kind with "X-ray this bill", headline card leads with the answer and folds the method, 2x2 stat tiles, 12px floor and darker muted text, loading skeleton and canvas fade-in.
+
+Still open:
+- Money map still draws every edge; the busiest bills are dense hairlines despite the ordering. Party colour on that map was left out on purpose (party is a label, never a colour); no party legend added.
+- Selection still uses the floating tip, not a side panel or bottom sheet; there is a ranked list to click instead. No hover ring on nodes.
+- Ring captions can sit over section numbers on the inner ring.
+- Parallel inserted edges are still not bundled into one arc.
+- The skeleton does not yet show the bill's title from index.json.
+- Index "Worth a look" picks still lack a per-bill hook number.

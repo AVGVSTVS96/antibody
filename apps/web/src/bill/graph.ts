@@ -1,5 +1,4 @@
 import Graph from "graphology";
-import forceAtlas2 from "graphology-layout-forceatlas2";
 import type { Attributes } from "graphology-types";
 import type Sigma from "sigma";
 import type { Actor, BillModel, DisplayKind, MemberView, SectionView } from "../lib/model.ts";
@@ -20,7 +19,6 @@ export const RING = {
 };
 const MAX_ACTORS = 90;
 const MAX_MEMBERS = 180;
-const LABELED_ACTORS = 12;
 
 export type Tone =
   | "violet"
@@ -61,6 +59,10 @@ export interface NodeAttrs {
   size: number;
   alpha: number;
   important: number;
+  lrank: number;
+  mimportant: number;
+  mlrank: number;
+  weight: number;
   halo: "headline" | "buried" | null;
 }
 
@@ -71,11 +73,13 @@ export interface EdgeAttrs {
   width: number;
   base: number;
   curvature: number;
+  mwidth: number;
+  mbase: number;
   views: ("map" | "money")[];
 }
 
 export type NS = { isActive: boolean; isHovered: boolean };
-export type GS = { focused: boolean; tick: number };
+export type GS = { focused: boolean; tick: number; zoomed: boolean };
 export type Renderer = Sigma<NodeAttrs, EdgeAttrs, Attributes, { isActive: boolean }, { isActive: boolean }, GS>;
 
 export type LabelPos = "right" | "left" | "above" | "below" | "over";
@@ -123,6 +127,10 @@ export function buildGraph(m: BillModel): Built {
     malpha: 0,
     mlabel: "right" as LabelPos,
     important: 0,
+    lrank: 99,
+    mimportant: 0,
+    mlrank: 99,
+    weight: 0,
     halo: null,
   };
   const add = (
@@ -220,7 +228,6 @@ export function buildGraph(m: BillModel): Built {
       placeEvenly(order, (o, ang) => actorAngle.set(o.a.id, ang));
     } else for (const [i, a] of actors.entries()) actorAngle.set(a.id, slots[i]!);
   }
-  const topActors = new Set(actors.slice(0, LABELED_ACTORS).map((a) => a.id));
   const maxActor = Math.max(2, ((TAU * ar) / (actors.length || 1)) * 0.38);
   for (const a of actors) {
     const ang = actorAngle.get(a.id)!;
@@ -240,7 +247,7 @@ export function buildGraph(m: BillModel): Built {
       rsize: Math.min(maxActor, 3 + Math.sqrt(a.reports) * 0.9 + a.traders.size * 0.15),
       ralpha: 1,
       rlabel: labelSide(ang),
-      important: topActors.has(a.id) ? 1 : 0,
+      weight: actorWeight(a),
     });
   }
 
@@ -270,13 +277,6 @@ export function buildGraph(m: BillModel): Built {
     wants.sort((p, q) => p.w - q.w);
     placeEvenly(wants, (o, ang) => memberAngle.set(o.v.node.id, ang));
   }
-  const topLabels = new Set(
-    [
-      ...[...members].sort((x, y) => y.tradeCount - x.tradeCount).slice(0, 4),
-      ...[...members].sort((x, y) => y.fundedUsd - x.fundedUsd).slice(0, 2),
-      ...members.filter((v) => v.sponsor).slice(0, 2),
-    ].map((v) => v.node.id),
-  );
   const [m0, m1] = RING.members;
   const mr = (m0 + m1) / 2;
   const maxMember = Math.max(1.6, ((TAU * mr) / (members.length || 1)) * 0.4);
@@ -291,13 +291,13 @@ export function buildGraph(m: BillModel): Built {
       fillAlpha: 1,
       border: v.sponsor ? "gold" : v.inserted.length ? "teal" : vote ? "violet" : "dim",
       borderSize: v.sponsor || v.inserted.length ? 0.34 : vote === "Yea" ? 0 : 0.26,
-      labelTone: "muted",
+      labelTone: "text",
       rx: p.x,
       ry: p.y,
       rsize: Math.min(maxMember, 3.2 + Math.sqrt(v.tradeCount + v.fundedUsd / 2e4) * 0.75),
       ralpha: 1,
       rlabel: labelSide(ang),
-      important: topLabels.has(v.node.id) ? 1 : 0,
+      weight: memberWeight(v) + (v.sponsor ? 1e3 : 0),
     });
   }
 
@@ -305,11 +305,15 @@ export function buildGraph(m: BillModel): Built {
     DisplayKind,
     number
   >;
+  const peak = { traded: 1, funded: 1 };
+  for (const e of m.edges)
+    if (e.kind === "traded" || e.kind === "funded") peak[e.kind] = Math.max(peak[e.kind], e.weight);
   for (const e of m.edges) {
     const src = e.src;
     const dst = e.dst;
     if (!g.hasNode(src) || !g.hasNode(dst) || g.hasEdge(e.id)) continue;
     const toCenter = dst === m.billNode;
+    const share = e.kind === "traded" || e.kind === "funded" ? Math.sqrt(e.weight / peak[e.kind]) : 0;
     const style: Pick<EdgeAttrs, "tone" | "width" | "base" | "views"> =
       e.kind === "lobbied"
         ? { tone: "violet", width: 0.7, base: 0.28, views: ["map"] }
@@ -326,11 +330,14 @@ export function buildGraph(m: BillModel): Built {
       kind: e.kind,
       inference: e.inference,
       curvature: toCenter ? 0 : 0.22,
+      mwidth: 0.4 + share * 3,
+      mbase: 0.035 + share * share * 0.7,
       ...style,
     });
     counts[e.kind]++;
   }
 
+  cullRadialLabels(g);
   moneyLayout(g, m);
   return {
     graph: g,
@@ -368,72 +375,148 @@ function placeEvenly<T extends { w: number }>(items: T[], set: (item: T, angle: 
   for (const [i, it] of items.entries()) set(it, best + i * step);
 }
 
+const LABEL_SCALE = 0.65;
+const CHAR_W = 6.8 / LABEL_SCALE;
+const LABEL_H = 17 / LABEL_SCALE;
+const LABEL_GAP = 4 / LABEL_SCALE;
+
+interface Pin {
+  id: string;
+  x: number;
+  y: number;
+  size: number;
+  side: LabelPos;
+  chars: number;
+  weight: number;
+}
+
+/** Greedy by weight: a label is kept only if its box clears every box already kept, so labels never pile up. */
+function cull(pins: Pin[], cap: number): string[] {
+  const kept: { id: string; x0: number; x1: number; y0: number; y1: number }[] = [];
+  for (const p of [...pins].sort((a, b) => b.weight - a.weight)) {
+    if (kept.length >= cap) break;
+    const w = p.chars * CHAR_W + 6;
+    const d = p.size + LABEL_GAP;
+    const x0 = p.side === "right" ? p.x + d : p.side === "left" ? p.x - d - w : p.x - w / 2;
+    const y0 = p.side === "above" ? p.y - d - LABEL_H : p.side === "below" ? p.y + d : p.y - LABEL_H / 2;
+    const box = { id: p.id, x0, x1: x0 + w, y0, y1: y0 + LABEL_H };
+    const pad = 4;
+    if (kept.some((k) => box.x0 < k.x1 + pad && box.x1 > k.x0 - pad && box.y0 < k.y1 + pad && box.y1 > k.y0 - pad))
+      continue;
+    kept.push(box);
+  }
+  return kept.map((k) => k.id);
+}
+
+function cullRadialLabels(g: Graph<NodeAttrs, EdgeAttrs>) {
+  const pins: Pin[] = [];
+  g.forEachNode((id, a) => {
+    if (a.kind === "actor" || a.kind === "member")
+      pins.push({
+        id,
+        x: a.rx,
+        y: a.ry,
+        size: a.rsize,
+        side: a.rlabel,
+        chars: a.label.length,
+        weight: a.weight,
+      });
+  });
+  const actors = cull(
+    pins.filter((p) => g.getNodeAttribute(p.id, "kind") === "actor"),
+    14,
+  );
+  const members = cull(
+    pins.filter((p) => g.getNodeAttribute(p.id, "kind") === "member"),
+    14,
+  );
+  const order = [...actors, ...members].sort(
+    (x, y) => g.getNodeAttribute(y, "weight") - g.getNodeAttribute(x, "weight"),
+  );
+  order.forEach((id, i) => {
+    g.setNodeAttribute(id, "important", 1);
+    g.setNodeAttribute(id, "lrank", i);
+  });
+}
+
 /**
- * Money map: only companies and members joined by trades or PAC money, laid out by force (ForceAtlas2, seeded with
- * the radial positions so it is the same every load), then fitted to the same circle.
+ * Money map: companies in a left column and members in a right one, joined by stock trades and PAC money. Each
+ * column is ordered by the average position of what it connects to, so lines that belong together run together,
+ * and a node's size is its dollars (or trades).
  */
 function moneyLayout(g: Graph<NodeAttrs, EdgeAttrs>, m: BillModel) {
-  const sub = new Graph({ type: "undirected", multi: false });
-  g.forEachEdge((key, e, src, dst) => {
-    if (e.kind !== "traded" && e.kind !== "funded") return;
-    for (const n of [src, dst])
-      if (!sub.hasNode(n)) sub.addNode(n, { x: g.getNodeAttribute(n, "rx"), y: g.getNodeAttribute(n, "ry") });
-    const w = e.kind === "traded" ? 1 + e.width : 0.4 + e.width * 0.5;
-    if (sub.hasEdge(src, dst)) sub.updateEdgeAttribute(src, dst, "weight", (x: number) => x + w);
-    else sub.addUndirectedEdgeWithKey(key, src, dst, { weight: w });
+  const links = new Map<string, Set<string>>();
+  const link = (a: string, b: string) => {
+    for (const [x, y] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      if (!links.has(x)) links.set(x, new Set());
+      links.get(x)!.add(y);
+    }
+  };
+  g.forEachEdge((_k, e, src, dst) => {
+    if (e.kind === "traded" || e.kind === "funded") link(src, dst);
   });
-  if (!sub.order) return;
-  forceAtlas2.assign(sub, {
-    iterations: 600,
-    getEdgeWeight: "weight",
-    settings: {
-      ...forceAtlas2.inferSettings(sub),
-      linLogMode: true,
-      gravity: 1.2,
-      scalingRatio: 6,
-      adjustSizes: false,
-    },
-  });
-  let cx = 0;
-  let cy = 0;
-  sub.forEachNode((_n, a) => {
-    cx += a.x;
-    cy += a.y;
-  });
-  cx /= sub.order;
-  cy /= sub.order;
-  let far = 1;
-  sub.forEachNode((_n, a) => {
-    far = Math.max(far, Math.hypot(a.x - cx, a.y - cy));
-  });
-  const k = (RADIUS - 40) / far;
-  const topMembers = new Set<string>(
-    m.members
-      .filter((v) => sub.hasNode(v.node.id))
-      .sort((x, y) => y.fundedUsd + y.tradeCount * 2e4 - (x.fundedUsd + x.tradeCount * 2e4))
-      .slice(0, 10)
-      .map((v) => v.node.id),
-  );
-  sub.forEachNode((n, a) => {
-    const x = (a.x - cx) * k;
-    const y = (a.y - cy) * k;
-    const kind = g.getNodeAttribute(n, "kind");
-    const actor = m.actorById.get(n);
-    const member = m.memberById.get(n);
-    g.mergeNodeAttributes(n, {
-      mx: x,
-      my: y,
-      malpha: 1,
-      mlabel: x >= 0 ? "right" : "left",
-      msize:
-        kind === "actor" && actor
-          ? Math.min(16, 4 + Math.sqrt(actor.pacUsd / 2e4 + actor.traders.size * 3))
-          : member
-            ? Math.min(12, 3 + Math.sqrt(member.fundedUsd / 2e4 + member.tradeCount))
-            : 4,
-      important: (kind === "actor" && (actor?.traders.size ?? 0) >= 4) || topMembers.has(n) ? 1 : 0,
+  if (!links.size) return;
+  const dollars = (id: string) => {
+    const actor = m.actorById.get(id);
+    if (actor) return actor.pacUsd / 2e4 + actor.traders.size * 3;
+    const member = m.memberById.get(id);
+    return member ? member.fundedUsd / 2e4 + member.tradeCount : 0;
+  };
+  const sideOf = (id: string) => (g.getNodeAttribute(id, "kind") === "actor" ? "L" : "R");
+  const left = [...links.keys()].filter((id) => sideOf(id) === "L").sort((a, b) => dollars(b) - dollars(a));
+  const right = [...links.keys()].filter((id) => sideOf(id) === "R").sort((a, b) => dollars(b) - dollars(a));
+  const sizeOf = (id: string, cap: number) => Math.min(cap, 2.6 + Math.sqrt(dollars(id)) * 1.5);
+  const column = (ids: string[]) => {
+    const h = ids.map((id) => 2 * sizeOf(id, 13) + 2.5);
+    const total = h.reduce((a, b) => a + b, 0);
+    const fit = Math.min(1, (2 * (RADIUS - 70)) / total);
+    const ys = new Map<string, number>();
+    let y = (-total * fit) / 2;
+    ids.forEach((id, i) => {
+      ys.set(id, y + (h[i]! * fit) / 2);
+      y += h[i]! * fit;
     });
-  });
+    return { ys, fit };
+  };
+  const place = (ids: string[], at: Map<string, number>) => {
+    const key = (id: string) => {
+      const ys = [...links.get(id)!].map((o) => at.get(o)).filter((v): v is number => v != null);
+      return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 0;
+    };
+    return [...ids].sort((a, b) => key(a) - key(b));
+  };
+  let L = left;
+  let R = right;
+  let cl = column(L);
+  let cr = column(R);
+  for (let i = 0; i < 6; i++) {
+    R = place(R, cl.ys);
+    cr = column(R);
+    L = place(L, cr.ys);
+    cl = column(L);
+  }
+  const X = RADIUS - 150;
+  const set = (ids: string[], col: ReturnType<typeof column>, x: number, side: LabelPos, cap: number) => {
+    const pins: Pin[] = ids.map((id) => ({
+      id,
+      x,
+      y: col.ys.get(id)!,
+      size: sizeOf(id, cap) * col.fit,
+      side,
+      chars: g.getNodeAttribute(id, "label").length,
+      weight: dollars(id),
+    }));
+    const keep = cull(pins, 14);
+    keep.forEach((id, i) => {
+      g.mergeNodeAttributes(id, { mimportant: 1, mlrank: i });
+    });
+    for (const p of pins) g.mergeNodeAttributes(p.id, { mx: x, my: p.y, malpha: 1, msize: p.size, mlabel: side });
+  };
+  set(L, cl, -X, "left", 13);
+  set(R, cr, X, "right", 13);
 }
 
 export const VIEW_ATTRS = {

@@ -9,8 +9,37 @@ export function App() {
   const route = useRoute();
   return (
     <Catch key={route.page === "bill" ? route.id : "index"}>
-      <Suspense fallback={<Loading />}>{route.page === "bill" ? <BillPage route={route} /> : <IndexPage />}</Suspense>
+      <Suspense fallback={route.page === "bill" ? <BillSkeleton /> : <Loading />}>
+        {route.page === "bill" ? <BillPage route={route} /> : <IndexPage />}
+      </Suspense>
     </Catch>
+  );
+}
+
+function BillSkeleton() {
+  return (
+    <>
+      <Top />
+      <div className="skel" role="status" aria-label="Loading the x-ray">
+        <div className="story">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="beat bone" />
+          ))}
+        </div>
+        <div className="app">
+          <aside className="side">
+            <div className="card bone tall" />
+          </aside>
+          <section className="stage">
+            <svg viewBox="-512 -512 1024 1024" className="ringskel" aria-hidden="true">
+              <circle r="440" />
+              <circle r="320" />
+              <circle r="180" />
+            </svg>
+          </section>
+        </div>
+      </div>
+    </>
   );
 }
 
