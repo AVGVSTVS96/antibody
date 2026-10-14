@@ -1,7 +1,7 @@
 import { type Dollar, headlineDeficit, isAppropriations } from "@antibody/core";
 import { useRef, useState } from "react";
 import { count, day, deficitWords, musd, nice, RULES_URL, rank, usd } from "../lib/format.ts";
-import type { Actor, BillModel, MemberView, SectionView } from "../lib/model.ts";
+import { type Actor, type BillModel, type MemberView, memberShort, type SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
 import { useRowFocus } from "./focus.ts";
 
@@ -50,8 +50,13 @@ export function Story({ m }: { m: BillModel }) {
     const card = el?.firstElementChild as HTMLElement | null;
     if (el && card) setAt(Math.round(el.scrollLeft / (card.offsetWidth + 10)));
   };
+  const late = m.sections.filter((v) => v.s.late && v.s.inFinal).length;
+  const lateBy = (v: MemberView) =>
+    v.inserted.filter((e) => m.sectionById.get(e.dst.replace("section:", ""))?.s.late).length;
+  const lead = [...m.members].sort((x, y) => lateBy(y) - lateBy(x))[0];
+  const leadN = lead ? lateBy(lead) : 0;
   return (
-    <>
+    <div className="intro">
       <div className="mhead">
         <h1>
           {b.bill.shortTitle ?? b.bill.title} <span className="mono">{b.bill.display}</span>
@@ -112,6 +117,11 @@ export function Story({ m }: { m: BillModel }) {
               )}
             </p>
           )}
+          {lead && leadN >= 3 && late > 0 && (
+            <p className="ann">
+              Most late text: <b>{memberShort(lead.node)}</b> added {leadN} of {late} late sections.
+            </p>
+          )}
           <button type="button" className="linkbtn" onClick={jump("card-buried")}>
             See the quiet sections
           </button>
@@ -128,12 +138,23 @@ export function Story({ m }: { m: BillModel }) {
           </button>
         </div>
       </div>
-      <div className="dots" aria-hidden="true">
-        {[0, 1, 2].map((i) => (
-          <i key={i} className={i === at ? "on" : ""} />
+      <div className="dots">
+        {["loud", "quiet", "money"].map((name, i) => (
+          <button
+            key={name}
+            type="button"
+            className={i === at ? "on" : ""}
+            aria-label={`Show the ${name} part`}
+            aria-current={i === at}
+            onClick={() => {
+              const el = track.current;
+              const card = el?.children[i] as HTMLElement | undefined;
+              if (el && card) el.scrollTo({ left: card.offsetLeft - el.offsetLeft - 12, behavior: "smooth" });
+            }}
+          />
         ))}
       </div>
-    </>
+    </div>
   );
 }
 

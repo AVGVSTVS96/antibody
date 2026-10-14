@@ -12,6 +12,10 @@ const UPPER_FIXES: [RegExp, string][] = [
   [/\bUsa\b/g, "USA"],
   [/\bLlc\b/g, "LLC"],
   [/\bInc\b/g, "Inc"],
+  [/\bAt&t\b/g, "AT&T"],
+  [/\bAmazon Com\b/g, "Amazon.com"],
+  [/\bCsx\b/g, "CSX"],
+  [/\bUcb\b/g, "UCB"],
 ];
 
 /** SEC and LDA names arrive in caps with suffixes like "/DE/"; show them the way the company writes itself. */
@@ -97,3 +101,28 @@ export const CONGRESS_TAG: Record<number, string> = {
   118: "118th Congress · Republican House, Democratic Senate and President",
   119: "119th Congress · Republican House, Senate and President",
 };
+
+const TRAILING =
+  /[,\s]+(inc|incorporated|corp|corporation|co|company|llc|ltd|plc|lp|l\.p|n\.a|s\.a\.?(\s+de\s+c\.v)?|the)\.?$/i;
+
+/** A company or client the way a reader says it: "General Motors", not "GENERAL MOTORS CO". Cut at a word past `max`. */
+export function plainName(label: string, max = 22): string {
+  const strip = (x: string) => {
+    for (let prev = ""; prev !== x; ) {
+      prev = x;
+      x = x
+        .replace(/[/\s]+$/, "")
+        .replace(TRAILING, "")
+        .replace(/\s*&$/, "");
+    }
+    return x;
+  };
+  const s = strip(nice(label).replace(/^the\s+/i, ""));
+  if (s.length <= max) return s;
+  let out = "";
+  for (const w of s.split(" ")) {
+    if (out && out.length + w.length + 1 > max) break;
+    out = out ? `${out} ${w}` : w;
+  }
+  return `${strip(out).slice(0, max)}…`;
+}

@@ -2,7 +2,7 @@ import type { BundleIndex } from "@antibody/core";
 import { type BillId, billDisplay, congressGovUrl, parseBillId } from "@antibody/core/ids";
 import { type FormEvent, use, useEffect, useState } from "react";
 import { loadIndex, prefetchBundle } from "../lib/data.ts";
-import { CONGRESS_TAG, count, day, deficitWords, musd, stamp } from "../lib/format.ts";
+import { count, day, deficitWords, musd, stamp } from "../lib/format.ts";
 import { billHref, navigate, onLink } from "../lib/router.ts";
 import { Search } from "../ui/icons.tsx";
 import { Top } from "../ui/Top.tsx";
@@ -79,7 +79,7 @@ export function IndexPage() {
                 setQ(e.target.value);
                 setNotice(null);
               }}
-              placeholder="S.1582, H.R. 1, GENIUS, or a congress.gov link"
+              placeholder="Bill number or name"
               autoComplete="off"
               spellCheck={false}
             />
@@ -93,9 +93,7 @@ export function IndexPage() {
           <span className="cap">newest first</span>
         </div>
         <p className="partynote">
-          <b>Sponsor party is a label, not a score.</b> Bills come from different eras: all six Democratic-sponsored
-          ones are from the 117th Congress, when Democrats held the House, Senate and White House. Read them as
-          examples. <a href="#read">How this works</a>
+          <b>Sponsor party is a label, not a score.</b> <a href="#read">Why</a>
         </p>
         {featured && (
           <div className="feature">
@@ -185,9 +183,11 @@ export function IndexPage() {
             <h2>Same rules for everyone</h2>
             <p>
               Thresholds, colors and wording are identical for every party and member. Party is a label, never a color.
-              What we couldn’t read yet is shown as missing, not left out. News attention weights left, center and right
-              outlets equally by side, but the sides are not built alike (the right side has fewer outlets, and the
-              groups come from 2019 sharing data), so a quiet section is a lead to check.
+              The bills come from different eras: all six Democratic-sponsored ones are from the 117th Congress, when
+              Democrats held the House, Senate and White House, so read them as examples. What we couldn’t read yet is
+              shown as missing, not left out. News attention weights left, center and right outlets equally by side, but
+              the sides are not built alike (the right side has fewer outlets, and the groups come from 2019 sharing
+              data), so a quiet section is a lead to check.
             </p>
           </div>
         </div>
@@ -225,9 +225,11 @@ function bigHook(b: Entry): { num: string; label: string; used: string } | null 
   if (s.late && s.late >= 10) return { num: String(s.late), label: "sections added late", used: "late" };
   if (s.deficitMusd != null && Math.abs(s.deficitMusd) >= 1000)
     return { num: musd(s.deficitMusd), label: "deficit, per CBO", used: "deficit" };
+  if (s.lobbyingReports >= 100)
+    return { num: s.lobbyingReports.toLocaleString("en-US"), label: "lobbying reports name it", used: "lobbying" };
   if (s.late)
     return { num: String(s.late), label: s.late === 1 ? "section added late" : "sections added late", used: "late" };
-  return { num: s.lobbyingReports.toLocaleString("en-US"), label: "lobbying reports", used: "lobbying" };
+  return { num: s.lobbyingReports.toLocaleString("en-US"), label: "lobbying reports name it", used: "lobbying" };
 }
 
 function hook(b: Entry, used: string | undefined): string {
@@ -264,12 +266,21 @@ function PickHook({ entry }: { entry?: Entry }) {
 
 function BillCard({ b, big = false }: { b: Entry; big?: boolean }) {
   const s = b.stats;
-  const party = s?.tally?.byParty;
   const num = bigHook(b);
   const meta = [b.display, b.law].filter(Boolean).join(" · ");
+  const line = s
+    ? [
+        b.sponsorParty ? `${b.sponsorParty} sponsor` : null,
+        s.tally ? `${s.tally.chamber} vote ${s.tally.yeas}-${s.tally.nays}` : null,
+        b.latestActionOn ? day(b.latestActionOn) : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
+  const note = s && hook(b, num?.used);
   return (
     <a
-      className={`billcard${big ? " big" : ""}`}
+      className={`bcard${big ? " big" : ""}`}
       href={billHref(b.id)}
       onClick={onLink}
       onPointerEnter={() => prefetchBundle(b.id)}
@@ -277,59 +288,49 @@ function BillCard({ b, big = false }: { b: Entry; big?: boolean }) {
     >
       <div className="fp">
         <Fingerprint kinds={s?.fingerprint ?? ""} label={b.display} />
-        {big && <small className="figkey">Ring: one tick per section. Gold is headline, red is buried.</small>}
+        {big && <small className="figkey">One tick per section. Gold: headline. Red: buried.</small>}
       </div>
       <div className="bc">
-        <div className="bc-a">
-          {b.id === START_HERE && <span className="badge-start">Start with this one</span>}
-          <div className="cap meta">{meta}</div>
-          {num && (
-            <div className="bignum">
-              <b>{num.num}</b> <span>{num.label}</span>
-            </div>
-          )}
-          <h3>{b.shortTitle ?? b.title}</h3>
-        </div>
-        <div className="bc-b">
-          {s && hook(b, num?.used) && <div className="hook">{hook(b, num?.used)}</div>}
-          {s && (
-            <>
-              <div className="tags">
-                {b.sponsorParty && (
-                  <span title="Sponsor party is a label, not who voted for the bill">{b.sponsorParty} sponsor</span>
-                )}
-                {b.congress ? (
-                  <span title={CONGRESS_TAG[b.congress]}>
-                    {CONGRESS_TAG[b.congress]?.split(" · ")[0] ?? `${b.congress}th Congress`}
-                  </span>
-                ) : null}
-                {s.vehicle && <span title="A shell bill reused to carry other legislation">vehicle bill</span>}
-                {b.latestActionOn && <span>{day(b.latestActionOn)}</span>}
-                {s.tally && (
-                  <span>
-                    {s.tally.chamber} vote{" "}
-                    <b>
-                      {s.tally.yeas}-{s.tally.nays}
-                    </b>
-                    {party && (
-                      <>
-                        {" "}
-                        (
-                        {(["R", "D", "I"] as const)
-                          .filter((p) => party[p])
-                          .map((p) => `${p} ${party[p]!.yea}-${party[p]!.nay}`)
-                          .join(", ")}
-                        )
-                      </>
-                    )}
-                  </span>
-                )}
-              </div>
-              <div className="tests">{buriedLine(s)}</div>
-            </>
-          )}
-        </div>
+        <div className="cap meta">{meta}</div>
+        {b.id === START_HERE && <span className="badge-start">Start with this one</span>}
+        <h3>{b.shortTitle ?? b.title}</h3>
+        {num && (
+          <div className="proof">
+            <b>{num.num}</b> {num.label}
+          </div>
+        )}
+        {note && <div className="hook">{note}</div>}
+        {line && (
+          <div
+            className="tags"
+            title={b.sponsorParty ? "Sponsor party is a label, not who voted for the bill" : undefined}
+          >
+            {line}
+          </div>
+        )}
       </div>
+      {big && s && (
+        <div className="ft">
+          <div className="tiles">
+            <div>
+              <i>Lobbying</i>
+              <b>{s.lobbyingReports.toLocaleString("en-US")}</b>
+              <span>reports name it</span>
+            </div>
+            <div>
+              <i>Added late</i>
+              <b>{s.late}</b>
+              <span>of {s.fingerprint.length} sections</span>
+            </div>
+            <div>
+              <i>Deficit</i>
+              <b>{s.deficitMusd == null ? "n/a" : musd(s.deficitMusd)}</b>
+              <span>{s.deficitMusd == null ? "no CBO figure" : "per CBO"}</span>
+            </div>
+          </div>
+          <div className="tests">{buriedLine(s)}</div>
+        </div>
+      )}
     </a>
   );
 }

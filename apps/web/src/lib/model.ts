@@ -11,6 +11,7 @@ import {
   type Section,
   sectionFigure,
 } from "@antibody/core";
+import { plainName } from "./format.ts";
 
 export type SectionKind = "headline" | "buried" | "normal" | "unscored";
 
@@ -181,7 +182,7 @@ export function buildModel(b: Bundle): BillModel {
       id,
       kind: node.kind,
       label: node.label,
-      short: ticker ?? shortName(node.label),
+      short: plainName(node.label),
       ticker,
       node,
       clients: [],
@@ -421,33 +422,6 @@ export function buildModel(b: Bundle): BillModel {
         ? null
         : finalSections.filter((v) => v.s.late).length / finalSections.length,
   };
-}
-
-const SUFFIX =
-  /\b(inc|incorporated|corp|corporation|co|company|llc|ltd|plc|holdings?|group|the|n\.?a\.?|s\.?a\.?|de|c\.?v\.?)\b\.?,?/gi;
-const GENERIC =
-  /^(american|national|financial|securities|electronic|crypto|independent|consumer|credit|digital|bank|bankers|payments?|global|united|us|mortgage|investment|insurance|international|community|business|chamber|association|council|coalition|institute)$/i;
-const MINOR = /^(of|and|for|the|on|in|to|&)$/i;
-
-/**
- * A short map label for an organization without a ticker: its first distinctive word, or its initials when the name
- * starts with a generic word ("American Bankers Association" is ABA, not "American").
- */
-export function shortName(label: string): string {
-  const words = label
-    .replace(/[,.]/g, " ")
-    .replace(SUFFIX, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 1 || w === "&");
-  const major = words.filter((w) => !MINOR.test(w));
-  if (major.length >= 3 && GENERIC.test(major[0]!))
-    return major
-      .map((w) => w[0]!.toUpperCase())
-      .join("")
-      .slice(0, 6);
-  const w = major[0] ?? label;
-  const t = w === w.toUpperCase() && w.length > 4 ? w[0] + w.slice(1).toLowerCase() : w;
-  return t.length > 10 ? `${t.slice(0, 9)}…` : t;
 }
 
 export function memberShort(m: NodeOf<"member">): string {

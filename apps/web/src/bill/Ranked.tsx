@@ -7,6 +7,8 @@ const TOP = 6;
 interface Row {
   id: string;
   name: string;
+  sub?: string;
+  wrap?: boolean;
   figure: string;
   value: number;
 }
@@ -42,7 +44,13 @@ function moneyGroups(m: BillModel): Group[] {
         .filter((a) => a.traders.size)
         .sort((a, b) => b.traders.size - a.traders.size)
         .slice(0, TOP)
-        .map((a) => ({ id: a.id, name: a.short, figure: count(a.traders.size, "member"), value: a.traders.size })),
+        .map((a) => ({
+          id: a.id,
+          name: a.short,
+          sub: a.ticker ?? undefined,
+          figure: count(a.traders.size, "member"),
+          value: a.traders.size,
+        })),
     ],
   ];
 }
@@ -55,7 +63,13 @@ function lobbyGroups(m: BillModel): Group[] {
         .filter((a) => a.reports)
         .sort((a, b) => b.reports - a.reports)
         .slice(0, TOP)
-        .map((a) => ({ id: a.id, name: a.short, figure: count(a.reports, "report"), value: a.reports })),
+        .map((a) => ({
+          id: a.id,
+          name: a.short,
+          sub: a.ticker ?? undefined,
+          figure: count(a.reports, "report"),
+          value: a.reports,
+        })),
     ],
     [
       "Most-lobbied sections",
@@ -66,6 +80,7 @@ function lobbyGroups(m: BillModel): Group[] {
         .map((v) => ({
           id: `section:${v.s.id}`,
           name: `${m.secLabel(v)} ${v.s.heading}`,
+          wrap: true,
           figure: count(v.lobbied, "report"),
           value: v.lobbied,
         })),
@@ -91,6 +106,7 @@ export function Ranked({ m, view, plain = false }: { m: BillModel; view: "map" |
   const groups = (view === "money" ? moneyGroups(m) : lobbyGroups(m)).filter(([, rows]) => rows.length);
   return (
     <aside className="ranked" aria-label="Biggest ties">
+      {!plain && <p className="rk-hint">Click a row to pin it on the map.</p>}
       {groups.map(([title, rows]) => {
         const peak = Math.max(...rows.map((r) => r.value));
         return (
@@ -100,7 +116,10 @@ export function Ranked({ m, view, plain = false }: { m: BillModel; view: "map" |
               {rows.map((r) => {
                 const body = (
                   <>
-                    <span className="nm">{r.name}</span>
+                    <span className={`nm${r.wrap ? " wrap" : ""}`} title={r.name}>
+                      {r.name}
+                      {r.sub && <span className="tk">{r.sub}</span>}
+                    </span>
                     <span className="n">{r.figure}</span>
                     <i style={{ width: `${Math.max(4, (r.value / peak) * 100)}%` }} />
                   </>

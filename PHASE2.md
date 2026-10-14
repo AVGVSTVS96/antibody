@@ -52,3 +52,17 @@ Still open:
 - 25 Biome CSS descending-specificity warnings (9 new from this round) are not fixed.
 - The live e2e failed once on a flaky DNS lookup in its random source-URL sample (github.com ENOTFOUND), then passed; the check does not retry.
 - 768 and the phone list view were reviewed on the local build only.
+
+## Design builder round 3: done and still open
+
+Done: overflow fix with e2e check at 1440/768/390, list view Top 25 with pagination and sticky filters, map above the fold at 1440, literal glyph key, plain company names, money map hairlines and labels, docked side panel and phone bottom sheet, index featured card and hero, ranked-panel fade and hint, filled chips, carousel dots, stable stage height with a layout-shift check, type hierarchy.
+
+Still open:
+- 36 Biome CSS noDescendingSpecificity warnings from the stacked override blocks; fold them into the base rules.
+- Money-map members in crowded stretches go unlabeled; hairlines draw at 0.035 opacity and show fully only on pin.
+- Parallel inserted edges are not bundled into one arc.
+- No section-number pills on the inner ring; ring captions hide when the map is small.
+- The pinned money-map panel covers only the drawn top ties and nodes.
+- No throttled-network skeleton test.
+- Live e2e retries source URLs, but a flaky DNS failure is still possible.
+- 768 tablet shots and the phone list view on live were not re-reviewed.

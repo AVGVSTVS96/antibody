@@ -13,10 +13,9 @@ interface Props {
   anchorRef: RefObject<(() => void) | null>;
 }
 
-/** The node's card on the map. Hover shows it; click pins it so its source chips can be reached. */
-export function Tip({ id, m, sigma, pinned, anchorRef }: Props) {
+/** What hovering a node shows: one line, so the ties it lights up stay in view. */
+export function Hover({ id, m, sigma, anchorRef }: Omit<Props, "pinned">) {
   const ref = useRef<HTMLDivElement>(null);
-  const { pin } = useFocus();
 
   useLayoutEffect(() => {
     const place = () => {
@@ -30,18 +29,14 @@ export function Tip({ id, m, sigma, pinned, anchorRef }: Props) {
       const host = el.offsetParent as HTMLElement | null;
       const canvas = sigma.getContainer().getBoundingClientRect();
       const base = host?.getBoundingClientRect() ?? canvas;
-      const W = base.width;
-      const H = base.height;
-      const ox = canvas.left - base.left;
-      const oy = canvas.top - base.top;
       const w = el.offsetWidth;
       const h = el.offsetHeight;
-      let x = ox + p.x + r + 12;
-      if (x + w > W - 12) x = ox + p.x - r - 12 - w;
-      if (x < 12) x = Math.max(12, (W - w) / 2);
-      const y = Math.min(Math.max(12, oy + p.y - 24), H - h - 64);
-      el.style.left = `${x}px`;
-      el.style.top = `${Math.max(12, y)}px`;
+      const ox = canvas.left - base.left;
+      const oy = canvas.top - base.top;
+      let x = ox + p.x + r + 10;
+      if (x + w > base.width - 8) x = ox + p.x - r - 10 - w;
+      el.style.left = `${Math.max(8, x)}px`;
+      el.style.top = `${Math.min(Math.max(8, oy + p.y - h / 2), base.height - h - 8)}px`;
     };
     anchorRef.current = place;
     place();
@@ -50,26 +45,114 @@ export function Tip({ id, m, sigma, pinned, anchorRef }: Props) {
     };
   }, [id, sigma, anchorRef]);
 
+  const t = headline(id, m);
   return (
-    <div
-      ref={ref}
-      className="tip"
-      role="dialog"
-      aria-label="Details"
-      style={{ pointerEvents: pinned ? "auto" : "none" }}
-    >
-      {pinned && (
-        <button type="button" className="close" aria-label="Close" onClick={() => pin(null)}>
+    <div ref={ref} className="hover" role="tooltip">
+      <Glyph id={id} m={m} />
+      <b>{t.title}</b>
+      <span>{t.lead}</span>
+    </div>
+  );
+}
+
+/** The pinned node's card, docked beside the map (a sheet on phones): the finding first, then the evidence. */
+export function Detail({ id, m }: { id: string; m: BillModel }) {
+  const { pin } = useFocus();
+  const t = headline(id, m);
+  return (
+    <aside className="detail-panel" aria-label="Details">
+      <div className="dp-top">
+        <span className="cap">Selected</span>
+        <button type="button" className="close" aria-label="Clear the selection" onClick={() => pin(null)}>
           ×
         </button>
-      )}
+      </div>
+      <h3>
+        <Glyph id={id} m={m} />
+        {t.title}
+      </h3>
+      <p className="lead">{t.lead}</p>
       <TipBody id={id} m={m} />
-      {!pinned && (
-        <div className="cap dim" style={{ marginTop: 8 }}>
-          click to pin and open sources
-        </div>
-      )}
-    </div>
+    </aside>
+  );
+}
+
+function headline(id: string, m: BillModel): { title: string; lead: string } {
+  const { b } = m;
+  if (id === m.billNode) {
+    const lobbied = m.actors.filter((a) => a.lobbied.length).length;
+    return {
+      title: `${b.bill.shortTitle ?? b.bill.display} · ${b.bill.display}`,
+      lead: `${lobbied} lobbying clients named it.`,
+    };
+  }
+  if (id.startsWith("section:")) {
+    const v = m.sectionById.get(id.slice(8));
+    if (!v) return { title: "", lead: "" };
+    return {
+      title: `${m.secLabel(v)} ${v.s.heading}`,
+      lead:
+        v.kind === "headline"
+          ? "Among the most covered sections in the news."
+          : v.kind === "buried"
+            ? "Big stakes, little news, added late or off-topic."
+            : `Added in ${v.stageName.replace(/ \(.*\)$/, "")}.`,
+    };
+  }
+  const actor = m.actorById.get(id);
+  if (actor) {
+    const parts = [
+      actor.reports ? `${count(actor.reports, "lobbying report")}` : "No lobbying on this bill",
+      actor.traders.size ? `${count(actor.traders.size, "member")} traded its stock` : "",
+    ].filter(Boolean);
+    return { title: nice(actor.label), lead: `${parts.join(", ")}.` };
+  }
+  const v = m.memberById.get(id);
+  if (!v) return { title: "", lead: "" };
+  const parts = [
+    v.tradeCount ? `${count(v.tradeCount, "trade")} in tied stock` : "No tied-stock trades found",
+    v.fundedUsd > 0 ? `${usd(v.fundedUsd)} PAC money from tied groups` : "",
+  ].filter(Boolean);
+  return { title: v.node.label.replace(/\s*\(.*\)$/, ""), lead: `${parts.join(", ")}.` };
+}
+
+/** The same glyphs the key draws: square = company or client, circle = member, filled = voted yea, hollow = not. */
+export function Glyph({ id, m }: { id: string; m: BillModel }) {
+  const actor = m.actorById.get(id);
+  const member = m.memberById.get(id);
+  let shape: React.ReactNode = <circle cx="7" cy="7" r="4.5" fill="var(--violet)" opacity="0.5" />;
+  if (id === m.billNode)
+    shape = <circle cx="7" cy="7" r="5" fill="var(--seal)" stroke="var(--red)" strokeWidth="1.4" />;
+  else if (actor) {
+    const filled = actor.kind === "company";
+    const props = {
+      fill: filled ? "var(--violet)" : "none",
+      stroke: "var(--violet)",
+      strokeWidth: 1.6,
+    };
+    shape =
+      actor.kind === "pac" ? (
+        <path d="M7 1.5 12.5 7 7 12.5 1.5 7Z" {...props} />
+      ) : (
+        <rect x="2.5" y="2.5" width="9" height="9" rx="1.6" {...props} />
+      );
+  } else if (member) {
+    const yea = member.vote?.props.vote === "Yea";
+    shape = (
+      <circle
+        cx="7"
+        cy="7"
+        r="4.5"
+        fill={yea ? "var(--violet)" : "none"}
+        stroke={member.sponsor ? "var(--gold)" : "var(--violet)"}
+        strokeWidth="1.6"
+      />
+    );
+  }
+  return (
+    <svg className="glyph" viewBox="0 0 14 14" aria-hidden="true">
+      {shape}
+    </svg>
   );
 }
 
@@ -79,9 +162,6 @@ function TipBody({ id, m }: { id: string; m: BillModel }) {
     const lobbied = m.actors.filter((a) => a.lobbied.length).length;
     return (
       <>
-        <h3>
-          {b.bill.shortTitle ?? b.bill.display} · {b.bill.display}
-        </h3>
         <div className="k">
           {b.bill.law ?? "Not law"}
           {b.bill.lawOn ? ` · signed ${day(b.bill.lawOn)}` : ""}
@@ -100,9 +180,6 @@ function TipBody({ id, m }: { id: string; m: BillModel }) {
     const s = v.s;
     return (
       <>
-        <h3>
-          {m.secLabel(v)} {s.heading}
-        </h3>
         <div className="k">
           {v.kind === "headline" && <span className="pill headline">headline</span>}
           {v.kind === "buried" && (
@@ -151,10 +228,8 @@ function TipBody({ id, m }: { id: string; m: BillModel }) {
       .filter(Boolean);
     return (
       <>
-        <h3>
-          {nice(actor.label)} {actor.ticker && <span className="tk">{actor.ticker}</span>}
-        </h3>
         <div className="k">
+          {actor.ticker && <span className="tk">{actor.ticker} · </span>}
           {actor.reports ? `${count(actor.reports, "LD-2 report")} name the bill` : "no lobbying on the bill"}
           {actor.spendUsd != null && ` · ${usd(actor.spendUsd)} on those quarters`}
         </div>
@@ -200,7 +275,6 @@ function TipBody({ id, m }: { id: string; m: BillModel }) {
   const roll = v.vote ? b.votes.find((r) => r.id === v.vote!.props.rollId) : null;
   return (
     <>
-      <h3>{v.node.label.replace(/\s*\(.*\)$/, "")}</h3>
       <div className="k">
         {p.party}-{p.state}
         {p.district ? `-${p.district}` : ""} · {p.chamber}

@@ -66,8 +66,8 @@ function BillView({ b, route }: { b: Bundle; route: BillRoute }) {
     <ClaimProvider claims={claims}>
       <FocusCtx.Provider value={focus}>
         <Top crumb={b.bill.shortTitle ?? b.bill.display} right={b.bill.law ?? b.bill.display} />
-        <Story m={m} />
         <div className="app">
+          <Story m={m} />
           <aside className="side" aria-label="Findings">
             <BillCard m={m} />
             <HeadlineCard m={m} />
@@ -111,9 +111,9 @@ function NotFound({ id }: { id: string }) {
       <Top />
       <main className="home">
         <section className="hero">
-          <h1>We haven’t x-rayed this bill yet.</h1>
+          <h1>We haven’t x‑rayed this bill yet.</h1>
           <p>
-            {id} isn’t one of the {index.bills.length} bills here so far.
+            <code>{id}</code> isn’t one of the {index.bills.length} bills here so far.
             {url && (
               <>
                 {" "}

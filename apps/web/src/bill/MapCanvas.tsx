@@ -21,8 +21,9 @@ import {
   cullLabels,
   type EdgeAttrs,
   type GS,
+  MAP_LABEL_CHARS,
   MONEY_HALF,
-  MONEY_TIES,
+  MONEY_LABEL_CHARS,
   type NodeAttrs,
   type NS,
   RADIUS,
@@ -30,7 +31,7 @@ import {
   RING,
   targetsFor,
 } from "./graph.ts";
-import { Tip } from "./Tip.tsx";
+import { Hover } from "./Tip.tsx";
 
 const MONO = "JetBrains Mono Variable";
 const BOX = RADIUS + 12;
@@ -141,7 +142,10 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
             borderColor: (a: NodeAttrs, s: NS, gs: GS) =>
               s.isTarget || s.isHovered ? E.pal.text : rgba(E.pal[a.border], a.alpha * dim(gs.focused, s.isActive)),
             borderSize: (a: NodeAttrs, s: NS) => (s.isTarget ? 0.5 : s.isHovered ? 0.36 : a.borderSize),
-            label: { attribute: "label" },
+            label: (a: NodeAttrs) => {
+              const cap = E.view === "money" ? MONEY_LABEL_CHARS : MAP_LABEL_CHARS;
+              return a.kind === "actor" && a.label.length > cap ? `${a.label.slice(0, cap - 1)}…` : a.label;
+            },
             labelFont: MONO,
             labelSize: 11,
             labelBackgroundColor: (a: NodeAttrs) =>
@@ -165,8 +169,8 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
             cursor: "pointer",
           },
           edges: {
-            path: (e: EdgeAttrs) => (e.curvature && E.view !== "money" ? "curved" : "straight"),
-            curvature: { attribute: "curvature" },
+            path: (e: EdgeAttrs) => ((E.view === "money" ? e.mbase > 0.1 : e.curvature) ? "curved" : "straight"),
+            curvature: (e: EdgeAttrs) => (E.view === "money" ? 0.12 : e.curvature),
             size: (e: EdgeAttrs, s: NS) => (E.view === "money" ? e.mwidth : e.width) * (s.isActive ? 2 : 1),
             color: (e: EdgeAttrs) => E.pal[e.tone],
             solid: (e: EdgeAttrs, s: NS, gs: GS) =>
@@ -388,30 +392,8 @@ export function MapCanvas({ m, built, view, hidden, active, fixed, labels }: Pro
           </g>
         </svg>
       </div>
-      {sigma && shownTarget && (
-        <Tip
-          key={shownTarget}
-          id={shownTarget}
-          m={m}
-          sigma={sigma}
-          pinned={focus.pinned === shownTarget}
-          anchorRef={tipAnchor}
-        />
-      )}
-      {active && focus.pinned && shownTarget === focus.pinned && (
-        <div className="pinchip">
-          <span className="cap">Showing ties of</span>
-          <b>{built.graph.getNodeAttribute(focus.pinned, "label") || m.b.bill.display}</b>
-          <button type="button" aria-label="Clear the selection" onClick={() => focus.pin(null)}>
-            ×
-          </button>
-        </div>
-      )}
-      {active && view === "money" && (
-        <div className="mapnote">
-          Dot size and line width grow with trades or dollars. The {MONEY_TIES} strongest ties are drawn; click a dot to
-          see all of its ties.
-        </div>
+      {sigma && shownTarget && !focus.pinned && (
+        <Hover key={shownTarget} id={shownTarget} m={m} sigma={sigma} anchorRef={tipAnchor} />
       )}
       {active && view === "map" && !touched && !focus.pinned && (
         <div className="mapnote fade">{coarse ? "Tap a dot for its ties" : "Click a dot to see only its ties"}</div>
@@ -485,17 +467,25 @@ function Seal() {
 
 function BillBadge({ m }: { m: BillModel }) {
   const { bill } = m.b;
-  const name = bill.shortTitle ?? bill.display;
-  const size = name.length > 14 ? 11.5 : 15.5;
+  const name = bill.shortTitle && bill.shortTitle.length <= 14 ? bill.shortTitle : null;
   return (
     <g style={{ pointerEvents: "none" }}>
-      <text y={-13} textAnchor="middle" fontSize={11} fontFamily="var(--mono)" fontWeight={600} fill="var(--red)">
+      <text
+        y={name ? -6 : 2}
+        textAnchor="middle"
+        fontSize={15}
+        fontFamily="var(--mono)"
+        fontWeight={700}
+        fill="var(--red)"
+      >
         {bill.display}
       </text>
-      <text y={5} textAnchor="middle" fontSize={size} fontWeight={600} fill="var(--text)" fontFamily="var(--sans)">
-        {name.length > 22 ? `${name.slice(0, 21)}…` : name}
-      </text>
-      <text y={21} textAnchor="middle" fontSize={11} fontFamily="var(--mono)" fill="var(--muted)">
+      {name && (
+        <text y={12} textAnchor="middle" fontSize={13} fontWeight={600} fill="var(--text)" fontFamily="var(--sans)">
+          {name}
+        </text>
+      )}
+      <text y={name ? 28 : 20} textAnchor="middle" fontSize={11} fontFamily="var(--mono)" fill="var(--muted)">
         {bill.law ?? (bill.latestAction ? "in Congress" : "")}
       </text>
     </g>

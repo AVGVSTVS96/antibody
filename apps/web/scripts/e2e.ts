@@ -29,7 +29,7 @@ async function open(path: string, width = 1440) {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await page.goto(`${base}${path}`, { waitUntil: "load" });
-  await page.waitForSelector(path === "/" ? ".billcard" : ".stage", { timeout: 30000 });
+  await page.waitForSelector(path === "/" ? ".bcard" : ".stage", { timeout: 30000 });
   return { page, errors };
 }
 
@@ -44,7 +44,7 @@ async function open(path: string, width = 1440) {
   );
   const parties = new Set(index.bills.map((b) => b.sponsorParty));
   check(parties.has("R") && parties.has("D"), "both parties lead at least one published bill");
-  const box = page.locator('input[placeholder*="congress.gov"]');
+  const box = page.locator(".search input");
   await box.fill("GENIUS");
   await page.waitForTimeout(300);
   check((await page.locator("a[href='/bill/119-s-1582']").count()) > 0, "search 'GENIUS' keeps the GENIUS bill");
@@ -58,6 +58,18 @@ for (const id of sample) {
   const { page, errors } = await open(`/bill/${id}`);
   await page.waitForSelector(".sigma canvas", { state: "attached", timeout: 20000 });
   check((await page.title()).length > 12, `${id} tab title: ${await page.title()}`);
+  const shift = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let total = 0;
+        new PerformanceObserver((list) => {
+          for (const e of list.getEntries() as (PerformanceEntry & { value: number; hadRecentInput: boolean })[])
+            if (!e.hadRecentInput) total += e.value;
+        }).observe({ type: "layout-shift", buffered: true });
+        setTimeout(() => resolve(total), 300);
+      }),
+  );
+  check(shift <= 0.1, `${id} layout shift ${shift.toFixed(3)} <= 0.1`);
   check((await page.locator(".sigma canvas").count()) > 0, `${id} map canvas mounted`);
   for (const view of ["money", "list", "map"]) {
     await page.click(`[data-view="${view}"]`);
@@ -69,6 +81,16 @@ for (const id of sample) {
     );
     if (view === "list") check((await page.locator("table tbody tr").count()) > 0, `${id} X-ray list has section rows`);
   }
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const view of ["map", "money", "list"]) {
+      await page.click(`[data-view="${view}"]`).catch(() => {});
+      await page.waitForTimeout(400);
+      const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+      check(over <= 0, `${id} ${view} at ${width}: no horizontal overflow (${over}px)`);
+    }
+  }
+  await page.setViewportSize({ width: 1440, height: 900 });
   const hrefs = await page.$$eval("a.src[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href));
   const bad = hrefs.filter((h) => !/^https:\/\/[^/]+\/./.test(h));
   check(hrefs.length > 10 && bad.length === 0, `${id} ${hrefs.length} source chips, ${bad.length} malformed`);
@@ -95,17 +117,21 @@ let ok = 0;
 const blocked: string[] = [];
 await Promise.all(
   picked.map(async (u) => {
-    try {
-      const r = await fetch(u, {
-        headers: { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131 Safari/537.36" },
-        signal: AbortSignal.timeout(30000),
-        redirect: "follow",
-      });
-      await r.body?.cancel();
-      if (r.ok) ok++;
-      else blocked.push(`${r.status} ${u}`);
-    } catch (e) {
-      blocked.push(`ERR ${(e as Error).message} ${u}`);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const r = await fetch(u, {
+          headers: { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131 Safari/537.36" },
+          signal: AbortSignal.timeout(30000),
+          redirect: "follow",
+        });
+        await r.body?.cancel();
+        if (r.ok) ok++;
+        else blocked.push(`${r.status} ${u}`);
+        return;
+      } catch (e) {
+        if (attempt === 2) blocked.push(`ERR ${(e as Error).message} ${u}`);
+        else await Bun.sleep(1500);
+      }
     }
   }),
 );

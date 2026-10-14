@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import { Bundle, checkBundle } from "@antibody/core";
 import genius from "../fixtures/119-s-1582.bundle.json";
-import { buildModel, memberShort, shortName } from "../src/lib/model.ts";
+import { plainName } from "../src/lib/format.ts";
+import { buildModel, memberShort } from "../src/lib/model.ts";
 
 const b = Bundle.parse(genius);
 
@@ -38,11 +39,10 @@ test("every display edge cites claims that exist", () => {
 });
 
 test("short labels", () => {
-  expect(shortName("Electronic Payments Coalition")).toBe("EPC");
-  expect(shortName("American Bankers Association")).toBe("ABA");
-  expect(shortName("Securities Industry and Financial Markets Association")).toBe("SIFMA");
-  expect(shortName("Solana Policy Institute")).toBe("Solana");
-  expect(shortName("Tether Operations S A De C V")).toBe("Tether");
-  expect(shortName("THE CLEARING HOUSE ASSOCIATION")).toBe("Clearing");
+  expect(plainName("GENERAL MOTORS CO")).toBe("General Motors");
+  expect(plainName("JOHNSON & JOHNSON")).toBe("Johnson & Johnson");
+  expect(plainName("Tether Operations S A De C V")).toBe("Tether Operations");
+  expect(plainName("Pharmaceutical Research and Manufacturers of America", 18)).toBe("Pharmaceutical…");
+  expect(plainName("THE CLEARING HOUSE ASSOCIATION")).toBe("Clearing House…");
   expect(memberShort(b.nodes.find((n) => n.id === "member:H000601") as never)).toBe("Hagerty R");
 });

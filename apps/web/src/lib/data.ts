@@ -21,10 +21,20 @@ function load<T>(url: string): Promise<T> {
 
 export const loadIndex = () => load<BundleIndex>("/bundles/index.json");
 
-export async function loadBundle(id: string): Promise<Bundle | null> {
-  const index = await loadIndex();
-  const entry = index.bills.find((b) => b.id === id);
-  return entry ? load<Bundle>(`/bundles/${entry.file}`) : null;
+const bundles = new Map<string, Promise<Bundle | null>>();
+
+/** One promise per bill, so React's `use` sees the same thenable on every render. */
+export function loadBundle(id: string): Promise<Bundle | null> {
+  let p = bundles.get(id);
+  if (!p) {
+    p = loadIndex().then((index) => {
+      const entry = index.bills.find((b) => b.id === id);
+      return entry ? load<Bundle>(`/bundles/${entry.file}`) : null;
+    });
+    p.catch(() => bundles.delete(id));
+    bundles.set(id, p);
+  }
+  return p;
 }
 
 export const prefetchBundle = (id: string) => void loadBundle(id).catch(() => {});
