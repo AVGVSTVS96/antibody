@@ -96,6 +96,7 @@
       "name": "@antibody/ingest-trades",
       "dependencies": {
         "@antibody/core": "workspace:*",
+        "zod": "4.6.7",
       },
     },
     "packages/resolve": {
