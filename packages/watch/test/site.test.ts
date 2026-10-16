@@ -56,7 +56,9 @@ async function setup(name: string) {
   const calls: string[][] = [];
   const exec = async (cmd: string[]) => {
     calls.push(cmd);
-    return cmd.includes("deploy") ? "Production https://antibody-abc123.vercel.app\n{\n  \"url\": \"https://antibody-abc123.vercel.app\",\n}\n" : "";
+    return cmd.includes("deploy")
+      ? 'Production https://antibody-abc123.vercel.app\n{\n  "url": "https://antibody-abc123.vercel.app",\n}\n'
+      : "";
   };
   const where = { root: f.root, published: f.published, deployedIndex: join(f.root, "deployed-index.json") };
   return { calls, exec, where };
