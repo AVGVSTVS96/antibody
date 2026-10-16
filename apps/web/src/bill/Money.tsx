@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { PARTY_NAME, pacByParty, phases } from "../lib/derive.ts";
 import { count, usd } from "../lib/format.ts";
 import type { BillModel } from "../lib/model.ts";
@@ -15,6 +16,7 @@ export function Money({ m }: { m: BillModel }) {
   const peak = Math.max(1, ...top.map((a) => a.reports));
   const pac = pacByParty(m);
   const tallest = Math.max(1, ...pac.map((p) => p.got / (p.of || 1)));
+  const [all, setAll] = useState(false);
   const moving = rows[0]!;
   const filled = rows.filter((r) => r.n > 0);
   return (
@@ -82,9 +84,19 @@ export function Money({ m }: { m: BillModel }) {
           )}
           <footer>
             {clients.length > 6 ? (
-              <a className="link money" href="#all-clients">
-                All {clients.length.toLocaleString("en-US")} clients listed
-              </a>
+              <button
+                type="button"
+                className="link money"
+                aria-expanded={all}
+                onClick={() => {
+                  setAll((v) => !v);
+                  requestAnimationFrame(() =>
+                    document.getElementById("all-clients")?.scrollIntoView({ block: "nearest" }),
+                  );
+                }}
+              >
+                {all ? "Hide the list" : `The ${clients.length.toLocaleString("en-US")} clients listed here`}
+              </button>
             ) : (
               <span />
             )}
@@ -131,9 +143,12 @@ export function Money({ m }: { m: BillModel }) {
           )}
         </div>
       </div>
-      {clients.length > 6 && (
-        <details className="all" id="all-clients">
-          <summary>All {clients.length.toLocaleString("en-US")} clients listed</summary>
+      {clients.length > 6 && all && (
+        <div className="all" id="all-clients">
+          <p className="fine">
+            The {clients.length.toLocaleString("en-US")} clients with the most reports naming this bill, out of{" "}
+            {L.clients.toLocaleString("en-US")} in all, plus every client that resolves to a public company.
+          </p>
           <ul className="allclients">
             {clients.map((a) => (
               <li key={a.id}>
@@ -144,7 +159,7 @@ export function Money({ m }: { m: BillModel }) {
               </li>
             ))}
           </ul>
-        </details>
+        </div>
       )}
     </Section>
   );

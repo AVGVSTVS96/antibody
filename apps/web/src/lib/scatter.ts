@@ -12,7 +12,7 @@ export interface Frame {
 
 export const frameFor = (w: number): Frame => {
   const phone = w < 560;
-  return { w, h: phone ? 360 : 496, l: phone ? 52 : 64, r: phone ? 14 : 16, t: phone ? 44 : 70, b: phone ? 46 : 52 };
+  return { w, h: phone ? 360 : 496, l: phone ? 52 : 64, r: phone ? 14 : 16, t: phone ? 62 : 70, b: phone ? 46 : 52 };
 };
 
 export interface Placed extends Dot {

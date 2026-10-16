@@ -21,6 +21,7 @@ import {
 } from "@antibody/core";
 import { norm, ownedOn, ownedSince, tokens } from "@antibody/resolve";
 import { type AnyRow, mintClaim, type Names, restsOnOf } from "./claims.ts";
+import { CURATED } from "./curated.ts";
 import { type Db, type Param, query, tableNames } from "./db.ts";
 import { limitGraph } from "./limit.ts";
 import { ruleFor } from "./rules.ts";
@@ -244,7 +245,7 @@ class Builder {
     const [bill] = await this.select("bills", "id = $id", { id: this.bill });
     if (!bill) throw new BuildError(`no bills row for ${this.bill}: run the bills stage first`);
     this.lateUnavailable = bill.late_unavailable ?? null;
-    bill.short_title = await this.shortTitle(bill);
+    bill.short_title = CURATED.find((c) => c.id === this.bill)?.name ?? (await this.shortTitle(bill));
     this.names.display = this.display;
     this.names.bill = `${this.display}${bill.short_title ? ` (${bill.short_title})` : ""}`;
     this.names.sample = await this.attentionSample();

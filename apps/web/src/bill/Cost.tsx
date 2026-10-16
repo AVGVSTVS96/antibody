@@ -209,7 +209,7 @@ function Scatter({
             </g>
           )}
           {phone && zx != null && (
-            <text className="zone" x={zx + 6} y={f.t - 12}>
+            <text className="zone" x={zx + 6} y={f.t - 8}>
               Quiet and costly
             </text>
           )}

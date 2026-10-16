@@ -11,7 +11,7 @@ const out = process.argv[3] ?? "docs/shots";
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({
   executablePath: `${homedir()}/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome`,
-  args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+  args: [],
 });
 const pages = [
   ["index", "/"],
@@ -32,8 +32,7 @@ for (const [name, path] of pages)
         colorScheme: theme,
       });
       await page.goto(`${base}${path}?theme=${theme}`, { waitUntil: "load" });
-      await page.waitForSelector(name === "index" ? ".bcard" : ".stage", { timeout: 30000 });
-      if (name !== "index") await page.waitForSelector(".sigma canvas", { state: "attached", timeout: 30000 });
+      await page.waitForSelector(name === "index" ? ".lawrow" : "#map", { state: "attached", timeout: 30000 });
       await page.evaluate(() => document.fonts.ready);
       await page.waitForTimeout(1500);
       await page.screenshot({ path: `${out}/${name}-${w}-${theme}.png` });

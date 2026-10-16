@@ -72,21 +72,23 @@ export function IndexPage() {
               stock in companies tied to it. Every number links to its public record.
             </p>
             <form className="bigfind" onSubmit={submit}>
-              <Search />
-              <label className="sr" htmlFor="q">
-                Find a bill
-              </label>
-              <input
-                id="q"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value);
-                  setNotice(null);
-                }}
-                placeholder="Try “Inflation Reduction Act” or H.R.5376"
-                autoComplete="off"
-                spellCheck={false}
-              />
+              <span className="bf-field">
+                <Search />
+                <label className="sr" htmlFor="q">
+                  Find a bill
+                </label>
+                <input
+                  id="q"
+                  value={q}
+                  onChange={(e) => {
+                    setQ(e.target.value);
+                    setNotice(null);
+                  }}
+                  placeholder="Try “Inflation Reduction Act” or H.R.5376"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+              </span>
               <button type="submit" className="press">
                 X-ray it
               </button>
@@ -103,7 +105,7 @@ export function IndexPage() {
           </header>
           <Rows bills={curated.filter(seen)} feature={needle ? undefined : START_HERE} />
           {!curated.some(seen) && <p className="empty">No curated law matches that search.</p>}
-          <p className="era">
+          <p className="era-note">
             The bills come from different eras: all six with Democratic sponsors are from the 117th Congress, when
             Democrats held the House, Senate and White House. Read them as examples, not a sample.
           </p>

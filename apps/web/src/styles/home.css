@@ -40,6 +40,13 @@
 .bigfind:focus-within {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--iris) 22%, transparent);
 }
+.bf-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .bigfind svg {
   width: 18px;
   height: 18px;
@@ -328,7 +335,7 @@
   line-height: 16px;
   color: var(--ink-3);
 }
-.era {
+.era-note {
   max-width: 760px;
   padding-top: 20px;
   font-size: 14px;
@@ -494,14 +501,31 @@
     line-height: 26px;
   }
   .bigfind {
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .bigfind:focus-within {
+    box-shadow: none;
+  }
+  .bf-field {
     height: 58px;
-    padding-right: 20px;
+    padding: 0 20px;
+    border-radius: 16px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+  }
+  .bigfind:focus-within .bf-field {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--iris) 22%, transparent);
   }
   .bigfind button {
-    display: none;
-  }
-  .hero-copy::after {
-    content: none;
+    height: 52px;
+    border-radius: 14px;
+    font-size: 16px;
   }
   .bigfind input {
     font-size: 16px;

@@ -13,7 +13,7 @@ mkdirSync(out, { recursive: true });
 
 const browser = await chromium.launch({
   executablePath: `${homedir()}/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome`,
-  args: ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+  args: [],
 });
 
 const bill = "/bill/119-s-1582";
@@ -24,7 +24,7 @@ const shots = [
   { name: "bill-light", path: bill, w: 1440, h: 900, theme: "light" },
   { name: "bill-dark-pinned", path: `${bill}?focus=company:1403161`, w: 1440, h: 900, theme: "dark" },
   { name: "bill-dark-member", path: `${bill}?focus=member:G000583`, w: 1440, h: 900, theme: "dark" },
-  { name: "bill-dark-money", path: `${bill}?view=money`, w: 1440, h: 900, theme: "dark" },
+  { name: "bill-dark-pac", path: `${bill}?map=pac#map`, w: 1440, h: 900, theme: "dark" },
   { name: "bill-dark-list", path: `${bill}?view=list`, w: 1440, h: 900, theme: "dark" },
   { name: "bill-light-list", path: `${bill}?view=list`, w: 1440, h: 900, theme: "light" },
   { name: "bill-dark-full", path: bill, w: 1440, h: 900, theme: "dark", full: true },
@@ -48,9 +48,9 @@ for (const s of shots) {
   const t0 = Date.now();
   await page.goto(`${base}${s.path}${s.path.includes("?") ? "&" : "?"}theme=${s.theme}`, { waitUntil: "networkidle" });
   if (s.path.startsWith("/bill"))
-    await page.waitForSelector(".sigma canvas", { state: "attached", timeout: 15000 }).catch(() => {});
+    await page.waitForSelector("#map", { state: "attached", timeout: 15000 }).catch(() => {});
   await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(s.path.includes("money") ? 1100 : 500);
+  await page.waitForTimeout(500);
   const ready = Date.now() - t0;
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   await page.screenshot({ path: `${out}/${s.name}.png`, fullPage: !!s.full });

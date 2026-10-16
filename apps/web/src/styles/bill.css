@@ -1506,3 +1506,10 @@ a.cname:hover {
   font-size: 13px;
   color: var(--ink-2);
 }
+.nt,
+.note .ax {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
