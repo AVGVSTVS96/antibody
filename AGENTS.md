@@ -17,7 +17,7 @@ packages/ingest-*    one source each, writes its own tables
 packages/resolve     companies, entity resolution, tied stock
 packages/analyze     attention per section, headline vs buried scores
 packages/store       loads every table into data/antibody.duckdb, mints claims, builds bundles
-packages/watch       the daily watcher
+packages/watch       the daily watcher: digest, x-rays the top bills, publishes them, rebuilds index.json and redeploys
 apps/cli             `bun run antibody xray <bill>` · `run <stage> [bill]` · `watch` · `stages`
 apps/web             the site (Vercel), renders apps/web/public/bundles/*.json
 ```
@@ -52,4 +52,4 @@ The six fixes in `spikes/decisions.json` live in the contract: `sections.split_i
 
 ## Phase 1
 
-All parts are merged into main and the site is live; see `PHASE1.md` for what works, the URL, the ranked gaps and what each part left open. Published bundles (`apps/web/public/bundles/*.json`) are build output, gitignored; `bun run deploy` uploads them. The Vercel project has no Git connection, because a build from the repo alone would ship without bundles; deploy with `bun run deploy`, or `vercel deploy --prebuilt` without `--prod` for a preview.
+All parts are merged into main and the site is live; see `PHASE1.md` for what works, the URL, the ranked gaps and what each part left open. Published bundles (`apps/web/public/bundles/*.json`) are build output, gitignored; `bun run deploy` uploads them. The Vercel project has no Git connection, because a build from the repo alone would ship without bundles; deploy with `bun run deploy`, or `vercel deploy --prebuilt` without `--prod` for a preview. `antibody watch` does its own publish and production deploy at the end of each run (curated bundles untouched); `--no-deploy` or `ANTIBODY_WATCH_DEPLOY=0` skips the deploy.

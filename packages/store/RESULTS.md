@@ -9,7 +9,7 @@ Branch `p1/bundle`. `bun run ci` passes (Biome, tsc, 62 tests).
   `trimEvidence` keeps 6 claims per edge (`Edge.moreClaims` counts the rest) and drops claims nothing points at.
   Lobbying bundles draw the 300 clients with most reports (plus company-resolving ones); each member's 5 largest PAC donors; the rest is named in a gap.
   `loadTables` survives bad shards: duplicate ids skipped, a table that breaks its constraints stays empty, both reported.
-  `writeBundle` leaves a published copy alone when only `generatedAt` differs. `writeIndex` writes `index.json` with per-bill stats and the watcher's picks.
+  `writeBundle` leaves a published copy alone when only `generatedAt` differs. `writeIndex` writes `index.json` with per-bill stats, `origin`/`note`/`addedOn` and the watcher's picks; curated bills first in `CURATED` order, then watcher bills newest added first, at most `WATCHER_KEEP` (60), older watcher bundles deleted from the published folder.
 - `apps/cli`:
   - `antibody xray <bill> [--refresh] [--publish]`: every bill stage in dependency order, then the bundle.
   - `antibody bundle <bill>... [--publish]`: bundles from the tables as they are (no stages).
