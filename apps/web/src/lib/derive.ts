@@ -94,13 +94,17 @@ export function introLine(m: BillModel): string {
   if (d) {
     const years = d.period.split("-").map(Number);
     const span = years[1] && years[0] ? years[1] - years[0] + 1 : null;
+    const size = usd(Math.abs(d.amountMusd) * 1e6)
+      .replace(/B$/, " billion")
+      .replace(/T$/, " trillion")
+      .replace(/M$/, " million");
+    const over = span ? ` over ${span === 10 ? "ten" : span} years` : "";
     const words =
       Math.abs(d.amountMusd) < 0.5
         ? "has no net effect on the deficit"
-        : `${d.amountMusd < 0 ? "cuts" : "adds to"} the deficit by ${usd(Math.abs(d.amountMusd) * 1e6)
-            .replace(/B$/, " billion")
-            .replace(/T$/, " trillion")
-            .replace(/M$/, " million")}${span ? ` over ${span === 10 ? "ten" : span} years` : ""}`;
+        : d.amountMusd < 0
+          ? `cuts the deficit by ${size}${over}`
+          : `adds ${size} to the deficit${over}`;
     parts.push(`CBO says the ${law ? "law" : "bill"} ${words}.`);
   } else if (b.dollars.estimates.length) parts.push("CBO published an estimate, but its total isn’t read yet.");
   else parts.push("CBO has no score for it.");
@@ -273,6 +277,7 @@ const chamberOf = (name: string) => (/house/i.test(name) ? "House" : /senate/i.t
 
 function eraTitle(v: Version, first: boolean): string {
   const chamber = chamberOf(v.name);
+  if (v.predecessor) return "In an earlier bill’s text";
   if (first) return `In the first ${chamber ? `${chamber} ` : ""}text`;
   if (/^(eh|es|eas|eah)$/.test(v.code) && chamber) return `Added when the ${chamber} rewrote it`;
   if (/^(rh|rs|rfh|rfs)$/.test(v.code) && chamber) return `Added in the ${chamber} committee text`;

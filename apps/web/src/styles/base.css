@@ -385,11 +385,15 @@ svg {
   display: none;
 }
 
+@media (max-width: 1000px) {
+  .crumb {
+    display: none;
+  }
+}
 @media (max-width: 760px) {
   .nav {
     height: 56px;
   }
-  .crumb,
   .navlink {
     display: none;
   }
