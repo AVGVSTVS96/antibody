@@ -22,6 +22,8 @@ const span = (first: string | null, last: string | null) => {
   return a === b ? `, ${a}` : `, ${a} to ${b}`;
 };
 
+const one = (n: number, a: string, b: string) => (n === 1 ? a : b);
+
 const bar = (value: number, max: number, box = 64) => Math.max(4, Math.round((value / Math.max(max, 1)) * box));
 
 interface Head {
@@ -77,9 +79,16 @@ function TradesBody({ d, onClear }: { d: TradesCard; onClear: () => void }) {
     <>
       <Header mark="co" name={d.name} tag={d.ticker} onClear={onClear} />
       <div className="sc-stats">
-        <Stat tone="money" value={d.reports.toLocaleString("en-US")} label="lobbying reports name the bill" />
-        <Stat value={String(d.rows.length)} label="members traded its stock" />
-        <Stat value={String(d.trades)} label={`trades${span(d.first, d.last)}`} />
+        <Stat
+          tone="money"
+          value={d.reports.toLocaleString("en-US")}
+          label={one(d.reports, "lobbying report names the bill", "lobbying reports name the bill")}
+        />
+        <Stat
+          value={String(d.rows.length)}
+          label={one(d.rows.length, "member traded its stock", "members traded its stock")}
+        />
+        <Stat value={String(d.trades)} label={`${one(d.trades, "trade", "trades")}${span(d.first, d.last)}`} />
       </div>
       <div className="sc-list">
         <div className="sc-list-head">
@@ -118,7 +127,7 @@ function PacBody({ d, onClear }: { d: PacCard; onClear: () => void }) {
       <Header mark="co" name={d.name} tag={d.ticker} onClear={onClear} />
       <div className="sc-stats">
         <Stat tone="money" value={money(d.total)} label="given before the vote" />
-        <Stat value={String(d.members)} label={`members got some${d.parties}`} />
+        <Stat value={String(d.members)} label={`${one(d.members, "member got", "members got")} some${d.parties}`} />
         <Stat value={money(d.average)} label="per member, on average" />
       </div>
       <div className="sc-list">
@@ -155,7 +164,7 @@ function GroupBody({ d, onClear }: { d: GroupCard; onClear: () => void }) {
     <>
       <Header mark="sec" name={d.name} tag={count(d.count, "section")} onClear={onClear} />
       <div className="sc-stats">
-        <Stat value={String(d.count)} label="sections in this title" />
+        <Stat value={String(d.count)} label={one(d.count, "section in this title", "sections in this title")} />
         <Stat
           value={d.priced ? money(Math.abs(net) * 1e6) : "—"}
           label={

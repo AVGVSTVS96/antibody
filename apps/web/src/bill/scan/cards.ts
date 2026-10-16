@@ -10,6 +10,8 @@ export const monthYear = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]
 /** Dollars short enough for a headline number: $515K, $5.4K, $2.3M. */
 export function money(n: number): string {
   const trim = (x: number, unit: string) => `$${x.toFixed(1).replace(/\.0$/, "")}${unit}`;
+  if (n >= 1e13) return `$${Math.round(n / 1e12)}T`;
+  if (n >= 1e12) return trim(n / 1e12, "T");
   if (n >= 1e9) return trim(n / 1e9, "B");
   if (n >= 1e7) return `$${Math.round(n / 1e6)}M`;
   if (n >= 1e6) return trim(n / 1e6, "M");
