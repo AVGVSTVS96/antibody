@@ -4,7 +4,6 @@ import { count, day } from "../lib/format.ts";
 import { useWidth } from "../lib/hooks.ts";
 import type { BillModel } from "../lib/model.ts";
 import { Sources } from "../ui/claims.tsx";
-import { Gaps } from "./Gaps.tsx";
 import { Section } from "./Section.tsx";
 
 const SEATS = 535;
@@ -53,6 +52,16 @@ export function Trades({ m }: { m: BillModel }) {
             <span className="tr-vote-h">Voted</span>
             <span className="tr-n-h">Trades</span>
           </header>
+          <p className="bar-key">
+            <span>
+              <i className="b" />
+              Before {own ? "the vote" : m.b.bill.law ? "signing" : "the latest action"}
+            </span>
+            <span>
+              <i className="a" />
+              After
+            </span>
+          </p>
           {top.length ? (
             <ul>
               {top.map((t) => (
@@ -102,7 +111,6 @@ export function Trades({ m }: { m: BillModel }) {
         </ul>
       )}
       <Monthly m={m} span={span} />
-      <Gaps m={m} kinds={["paper_filings_unread"]} />
     </Section>
   );
 }
@@ -152,10 +160,10 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
   const [hover, setHover] = useState<number | null>(null);
   if (!months.length) return null;
   const phone = w < 560;
-  const H = phone ? 224 : 240;
+  const H = phone ? 252 : 240;
   const L = phone ? 34 : 44;
   const R = 2;
-  const T = 30;
+  const T = phone ? 64 : 44;
   const B = 36;
   const top = niceMax(Math.max(...months.map((x) => x.n)));
   const bw = (w - L - R) / months.length;
@@ -228,33 +236,29 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
           </rect>
         ))}
         <line x1={L} x2={w - R} y1={base} y2={base} stroke="var(--ink-3)" />
-        {years.map(({ x, i }) => (
+        {years.map(({ x, i }, k) => (
           <g key={x.key}>
             <line x1={X(i)} x2={X(i)} y1={base} y2={base + 5} stroke="var(--ink-3)" />
-            <text x={X(i) + 4} y={base + 20} className="ax">
-              {i === 0 && !x.key.endsWith("-01") ? monthShort(`${x.key}-01`).replace(" ", " ") : x.key.slice(0, 4)}
-            </text>
+            {!(i === 0 && years[k + 1] && (years[k + 1]!.i - i) * bw < 64) && (
+              <text x={X(i) + 4} y={base + 20} className="ax">
+                {i === 0 && !x.key.endsWith("-01") ? monthShort(`${x.key}-01`) : x.key.slice(0, 4)}
+              </text>
+            )}
           </g>
         ))}
-        {!phone &&
-          marks.map((k, j) => {
-            const x = X(idx(k.at)) + bw * (Number(k.at.slice(8, 10)) / 31);
-            return (
-              <g key={k.at + k.label} pointerEvents="none">
-                <line
-                  x1={x}
-                  x2={x}
-                  y1={T - 14 + j * 16 * Number(j === 1)}
-                  y2={base}
-                  stroke="var(--ink)"
-                  strokeDasharray="1 3"
-                />
-                <text x={x + 5} y={T - 4 + (j === 1 ? 12 : 0) - 8} className="mk-l">
-                  {k.label}
-                </text>
-              </g>
-            );
-          })}
+        {marks.map((k, j) => {
+          const x = X(idx(k.at)) + bw * (Number(k.at.slice(8, 10)) / 31);
+          const row = phone ? j : j === 1 ? 1 : 0;
+          const end = j === 2 && !phone;
+          return (
+            <g key={k.at + k.label} pointerEvents="none">
+              <line x1={x} x2={x} y1={4 + row * 16} y2={base} stroke="var(--ink)" strokeDasharray="1 3" />
+              <text x={end ? x - 5 : x + 5} y={15 + row * 16} textAnchor={end ? "end" : "start"} className="mk-l">
+                {k.label}
+              </text>
+            </g>
+          );
+        })}
       </svg>
       <p className="fine">
         The busiest month was {monthName(peak.key)}, with {count(peak.n, "trade")}

@@ -783,12 +783,18 @@ details p {
   gap: 3px;
   padding-top: 12px;
 }
-.timing-key div {
+.timing-key li {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
   padding-right: 12px;
+}
+.timing-key li.none {
+  display: none;
+}
+.timing-key .sw {
+  display: none;
 }
 .timing-key b {
   font-size: 14px;
@@ -799,6 +805,9 @@ details p {
   font-size: 13px;
   line-height: 18px;
   color: var(--ink-3);
+}
+.timing-key em {
+  font-style: normal;
 }
 .money-g {
   display: grid;
@@ -900,6 +909,10 @@ a.cname:hover {
 }
 .pac li span {
   color: var(--ink-2);
+}
+.pac-short,
+.pac-sub {
+  display: none;
 }
 .meter {
   display: block;
@@ -1017,6 +1030,9 @@ a.cname:hover {
 .vote {
   font-size: 14px;
   color: var(--ink-2);
+}
+.bar-key {
+  display: none;
 }
 .toptr li b {
   text-align: right;
@@ -1228,26 +1244,60 @@ a.cname:hover {
     --gap: 6px;
   }
   .clients li {
-    grid-template-columns: 96px minmax(0, 1fr) 40px;
+    grid-template-columns: 124px minmax(0, 1fr) 36px;
     gap: 12px;
   }
   .toptr header {
-    grid-template-columns: minmax(0, 1fr) 60px;
+    grid-template-columns: minmax(0, 1fr) 64px 60px;
+    gap: 8px;
   }
-  .toptr header .tr-bar-h,
-  .toptr header .tr-vote-h {
+  .toptr header .tr-bar-h {
     display: none;
+  }
+  .bar-key {
+    display: flex;
+    gap: 20px;
+    padding: 14px 0 4px;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .bar-key span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bar-key i {
+    width: 22px;
+    height: 8px;
+    border-radius: 4px;
+  }
+  .bar-key .b {
+    background: var(--ink);
+  }
+  .bar-key .a {
+    background: var(--quiet-dot);
   }
   .toptr li {
-    grid-template-columns: minmax(0, 1fr) auto;
-    row-gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 64px 60px;
+    grid-template-rows: auto auto;
+    gap: 10px 8px;
+    padding: 14px 0 16px;
   }
-  .toptr li .tr-bar {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .toptr li .who {
+    grid-column: 1;
+    grid-row: 1;
   }
   .toptr li .vote {
-    display: none;
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .toptr li b {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .toptr li .tr-bar {
+    grid-column: 1;
+    grid-row: 2;
   }
   .bigfig {
     font-size: 44px;
@@ -1255,10 +1305,58 @@ a.cname:hover {
   }
   .timing-key {
     flex-direction: column;
-    gap: 12px;
+    gap: 0;
+    padding-top: 8px;
   }
-  .timing-key div {
-    flex-basis: auto !important;
+  .timing-key li,
+  .timing-key li.none {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    flex: none !important;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .timing-key li b {
+    flex: 1;
+    font-weight: 400;
+    font-size: 15px;
+  }
+  .timing-key li span {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .timing-key em {
+    display: none;
+  }
+  .timing-key .sw {
+    display: block;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    background: var(--money);
+  }
+  .timing-key .sw.bill {
+    background: var(--quiet);
+  }
+  .timing-key .sw.enactment {
+    background: color-mix(in srgb, var(--money) 55%, var(--paper));
+  }
+  .pac-full {
+    display: none;
+  }
+  .pac-short {
+    display: inline;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .pac-sub {
+    display: block;
+    padding-top: 6px;
+    font-size: 13px;
+    color: var(--ink-3);
   }
   .all-traders {
     columns: 1;

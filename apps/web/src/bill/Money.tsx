@@ -47,16 +47,21 @@ export function Money({ m }: { m: BillModel }) {
               </div>
             ))}
           </div>
-          <div className="timing-key">
-            {filled.map((r) => (
-              <div key={r.key} style={{ flexGrow: r.n, flexBasis: 0 }}>
+          <ul className="timing-key">
+            {rows.map((r) => (
+              <li key={r.key} className={`k-${r.key}${r.n ? "" : " none"}`} style={{ flexGrow: r.n, flexBasis: 0 }}>
+                <i className={`sw ${r.key}`} />
                 <b>{r.title}</b>
                 <span className="num">
-                  {r.n.toLocaleString("en-US")} reports{r.note ? `, ${r.note}` : ""}
+                  {r.n.toLocaleString("en-US")}
+                  <em>
+                    {r.n ? " reports" : ""}
+                    {r.note ? `, ${r.note}` : ""}
+                  </em>
                 </span>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
       <div className="money-g">
@@ -122,13 +127,19 @@ export function Money({ m }: { m: BillModel }) {
                   <li key={p.party}>
                     <div>
                       <b>{PARTY_NAME[p.party]}</b>
-                      <span className="num">
+                      <span className="num pac-full">
                         {usd(p.usd)} to {p.got} of {p.of}
                         {p.got > 0 ? `, about ${usd(p.usd / p.got)} each` : ""}
+                      </span>
+                      <span className="num pac-short">
+                        {p.got} of {p.of}
                       </span>
                     </div>
                     <span className="meter">
                       <i style={{ width: `${(p.got / (p.of || 1) / tallest) * 100}%` }} />
+                    </span>
+                    <span className="pac-sub num">
+                      {usd(p.usd)} in all{p.got > 0 ? `, about ${usd(p.usd / p.got)} each` : ""}
                     </span>
                   </li>
                 ))}
