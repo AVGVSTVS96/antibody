@@ -295,6 +295,15 @@ export function Scan(props: ScanProps) {
     [setFocus],
   );
 
+  useEffect(() => {
+    if (!focus || phone) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !e.defaultPrevented) pin(null, "key");
+    };
+    addEventListener("keydown", onKey);
+    return () => removeEventListener("keydown", onKey);
+  }, [focus, phone, pin]);
+
   const ring = useRef<RingHandle | null>(null);
   const originOf = useCallback((id: string) => ring.current?.originOf(id) ?? null, []);
   const card = useMemo(() => (focus ? cardFor(m, scenes, view, focus) : null), [m, scenes, view, focus]);

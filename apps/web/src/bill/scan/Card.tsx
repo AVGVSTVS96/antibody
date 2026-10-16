@@ -239,7 +239,7 @@ function MemberBody({ d, onClear }: { d: MemberCardData; onClear: () => void }) 
             <li key={r.id}>
               <span className="sc-nm">
                 <Linked id={r.claim} label={r.name} />
-                {trades && owners(d.owners)}
+                {trades && owners(r.owners)}
               </span>
               <span className="sc-bar" aria-hidden="true">
                 <i style={{ width: bar(r.value, max) }} />

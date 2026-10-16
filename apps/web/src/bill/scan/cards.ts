@@ -209,6 +209,7 @@ export interface MemberRow {
   id: string;
   name: string;
   value: number;
+  owners: string[];
   claim: string | null;
 }
 
@@ -223,7 +224,6 @@ export interface MemberCardData {
   first: string | null;
   last: string | null;
   unread: boolean;
-  owners: string[];
 }
 
 export function memberCard(m: BillModel, v: MemberView, view: RingView, ties: Tie[]): MemberCardData {
@@ -232,6 +232,11 @@ export function memberCard(m: BillModel, v: MemberView, view: RingView, ties: Ti
       id: t.company,
       name: coName(m.actorById.get(t.company)!),
       value: t.weight,
+      owners: [
+        ...new Set(
+          v.trades.filter((e) => m.actorOf(e.dst) === t.company).flatMap((e) => e.props.events.map((ev) => ev.owner)),
+        ),
+      ].filter((o) => o !== "self"),
       claim: t.claims[0] ?? null,
     }))
     .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
@@ -248,7 +253,6 @@ export function memberCard(m: BillModel, v: MemberView, view: RingView, ties: Ti
     first: dates[0] ?? null,
     last: dates.at(-1) ?? null,
     unread: p.paperFilingsUnread,
-    owners: [...new Set(v.trades.flatMap((e) => e.props.events.map((ev) => ev.owner)))].filter((o) => o !== "self"),
   };
 }
 

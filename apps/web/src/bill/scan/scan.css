@@ -304,6 +304,8 @@
 }
 
 .sc-unpin {
+  flex: none;
+  white-space: nowrap;
   margin-left: auto;
   display: inline-flex;
   align-items: center;
