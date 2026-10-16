@@ -1,15 +1,17 @@
 import type { BundleIndex } from "@antibody/core";
-import { type BillId, billDisplay, congressGovUrl, parseBillId } from "@antibody/core/ids";
-import { type FormEvent, use, useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { loadIndex, prefetchBundle } from "../lib/data.ts";
-import { count, day, deficitWords, musd, stamp } from "../lib/format.ts";
+import { count, day } from "../lib/format.ts";
+import { useMedia } from "../lib/media.ts";
 import { billHref, navigate, onLink } from "../lib/router.ts";
+import { matchBills, missingBill } from "../ui/Find.tsx";
+import { Fingerprint, fingerprintNote } from "../ui/Fingerprint.tsx";
 import { Search } from "../ui/icons.tsx";
-import { Top } from "../ui/Top.tsx";
+import { Footer, Top } from "../ui/Top.tsx";
+import { partyWord, picksNote, signedLine } from "./home.ts";
 
 type Entry = BundleIndex["bills"][number];
 
-const PARTY = { R: "Republican", D: "Democratic", I: "Independent" } as const;
 const START_HERE = "119-s-1582";
 
 export function IndexPage() {
@@ -19,353 +21,328 @@ export function IndexPage() {
 
   useEffect(() => {
     document.title = "antibody · X-ray any bill in Congress";
+    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
   }, []);
 
-  const needle = q.trim().toLowerCase();
-  const match = (b: Entry) =>
-    !needle ||
-    [b.id, b.display, b.title, b.shortTitle ?? "", b.law ?? ""].some((s) => s.toLowerCase().includes(needle));
-  const bills = [...index.bills]
-    .filter(match)
-    .sort((a, b) => (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""));
-  const featured = needle ? undefined : bills.find((b) => b.id === START_HERE);
-  const rest = bills.filter((b) => b !== featured);
-  const testable = index.bills.filter((b) => b.stats?.buriedTest.tested).length;
+  const curated = index.bills
+    .filter((b) => b.origin !== "watcher")
+    .sort(
+      (a, b) =>
+        Number(b.id === START_HERE) - Number(a.id === START_HERE) ||
+        (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""),
+    );
+  const watched = index.bills
+    .filter((b) => b.origin === "watcher")
+    .sort((a, b) => (b.addedOn ?? "").localeCompare(a.addedOn ?? "") || b.id.localeCompare(a.id));
+  const key = index.bills.find((b) => b.id === "117-hr-5376" && b.stats?.fingerprint) ?? curated[0];
 
-  function submit(e: FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
     const raw = q.trim();
     if (!raw) return;
-    let id: BillId | null = null;
-    try {
-      id = parseBillId(raw);
-    } catch {}
-    const hit = id ? index.bills.find((b) => b.id === id) : bills.length === 1 ? bills[0] : undefined;
+    const hits = matchBills(index.bills, raw);
+    const id = missingBill(raw);
+    const exact = id ? index.bills.find((b) => b.id === id) : undefined;
+    const hit = exact ?? (hits.length === 1 ? hits[0] : undefined);
     if (hit) return navigate(billHref(hit.id));
+    if (hits.length) return setNotice(<>{count(hits.length, "bill")} match. Pick one below, or be more specific.</>);
     if (!id) return setNotice(<>No bill matches “{raw}”. Try a number like S.1582, H.R. 1, or a congress.gov link.</>);
     setNotice(
       <>
-        {billDisplay(id)} ({id.split("-")[0]}th Congress) isn’t x-rayed yet. Build it with{" "}
-        <code>bun run antibody xray {id}</code>, or{" "}
-        <a href={congressGovUrl(id)} target="_blank" rel="noopener">
-          read it on congress.gov ↗
-        </a>
-        .
+        That bill isn’t x-rayed yet. The daily watch x-rays the bills that move, or build it with{" "}
+        <code>bun run antibody xray {id}</code>.
       </>,
     );
   }
 
+  const needle = q.trim();
+  const shown = needle ? new Set(matchBills(index.bills, needle).map((b) => b.id)) : null;
+  const seen = (b: Entry) => !shown || shown.has(b.id);
+  const testable = curated.filter((b) => b.stats?.buriedTest.tested).length;
+
   return (
     <>
-      <Top right={`${count(index.bills.length, "bill")} x-rayed`} />
-      <main className="home">
-        <section className="hero">
-          <h1>
-            See what rides along in a bill, <em>and who is behind it.</em>
-          </h1>
-          <p>
-            The headline fight, what got added late, who lobbied and paid, and which members traded related stock. Every
-            line links its public record.
-          </p>
-          <form className="search" onSubmit={submit}>
-            <Search />
-            <label className="sr" htmlFor="q">
-              Find a bill
-            </label>
-            <input
-              id="q"
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setNotice(null);
-              }}
-              placeholder="Bill number or name"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <button type="submit">X-ray</button>
-          </form>
-          {notice && <div className="notice">{notice}</div>}
+      <Top />
+      <main>
+        <section className="wrap hero">
+          <div className="hero-copy">
+            <h1>See what rides along in a bill, and who is behind it.</h1>
+            <p className="lead">
+              Which parts of a law made the news, which costly parts didn’t, who lobbied on it, and which members traded
+              stock in companies tied to it. Every number links to its public record.
+            </p>
+            <form className="bigfind" onSubmit={submit}>
+              <Search />
+              <label className="sr" htmlFor="q">
+                Find a bill
+              </label>
+              <input
+                id="q"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setNotice(null);
+                }}
+                placeholder="Try “Inflation Reduction Act” or H.R.5376"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button type="submit" className="press">
+                X-ray it
+              </button>
+            </form>
+            {notice && <p className="notice">{notice}</p>}
+          </div>
+          {key?.stats && <Key entry={key} />}
         </section>
 
-        <div className="section-h">
-          <span className="cap">Curated bills</span>
-          <span className="cap">newest first</span>
-        </div>
-        <p className="partynote">
-          <b>Sponsor party is a label, not a score.</b> <a href="#read">Why</a>
-        </p>
-        {featured && (
-          <div className="feature">
-            <BillCard b={featured} big />
-          </div>
+        <section className="wrap list" aria-labelledby="laws">
+          <header className="list-h">
+            <h2 id="laws">{count(curated.length, "law")}, x-rayed</h2>
+            <p>Newest first. Sponsor party is a label, not a score.</p>
+          </header>
+          <Rows bills={curated.filter(seen)} feature={needle ? undefined : START_HERE} />
+          {!curated.some(seen) && <p className="empty">No curated law matches that search.</p>}
+          <p className="era">
+            The bills come from different eras: all six with Democratic sponsors are from the 117th Congress, when
+            Democrats held the House, Senate and White House. Read them as examples, not a sample.
+          </p>
+        </section>
+
+        {watched.some(seen) && (
+          <section className="wrap list" aria-labelledby="watched">
+            <header className="list-h">
+              <h2 id="watched">Added by the daily watch</h2>
+              <p>X-rayed automatically the day they moved. Not hand-checked.</p>
+            </header>
+            <Rows bills={watched.filter(seen)} />
+          </section>
         )}
-        <div className="grid">
-          {rest.map((b) => (
-            <BillCard key={b.id} b={b} />
-          ))}
-          {!bills.length && <div className="empty">No bill matches that search.</div>}
-        </div>
 
-        <div className="section-h">
-          <span className="cap">Latest watcher picks</span>
-          <span className="cap">
-            bills that moved and scored highest on a cheap check, daily; worth a look, not a verdict
-          </span>
-        </div>
-        <div className="picks">
-          {index.watch.length ? (
-            <div className="pickgroups">
-              {groupPicks(index.watch.slice(0, 12)).map(([kind, list]) => (
-                <div className="card" key={kind}>
-                  <h2>{KIND[kind]?.[0] ?? kind.replace("_", " ")}</h2>
-                  <div className="row-meta">
-                    {KIND[kind]?.[1]} Seen {stamp(list[0]!.seenAt).split(",")[0]}.
-                  </div>
-                  <ul className="rows">
-                    {list.map((w) => (
-                      <li key={`${w.billId}-${w.seenAt}`} className="pick">
-                        <span>
-                          <b className="mono">{w.display}</b> {w.title}
-                          <PickHook entry={index.bills.find((b) => b.id === w.billId)} />
-                          {w.sponsorParty && <span className="row-meta"> · {PARTY[w.sponsorParty]} sponsor</span>}
-                          {w.reason && <div className="row-meta">{w.reason}</div>}
-                        </span>
-                        {w.file ? (
-                          <a className="src" href={billHref(w.billId)} onClick={onLink}>
-                            X-ray this bill
-                          </a>
-                        ) : (
-                          <a className="src" href={w.url} target="_blank" rel="noopener">
-                            Read on congress.gov
-                          </a>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="empty">The daily watcher hasn’t flagged a bill yet. Its picks show up here.</div>
-          )}
-        </div>
+        <Picks index={index} />
 
-        <div className="section-h" id="read">
-          <span className="cap">How to read an x-ray</span>
-        </div>
-        <div className="method">
-          <div className="card">
-            <h2>Facts and inferences</h2>
-            <p>
-              A fact is read straight from a public record and links to it. An inference is a judgment by a published
-              rule; it is drawn dashed, tagged <span className="pill inf">inference</span>, and says what it rests on.
-            </p>
+        <section className="wrap read" id="read" aria-labelledby="readh">
+          <h2 id="readh">How we read bills</h2>
+          <div className="read-g">
+            <article>
+              <h3>Facts and inferences</h3>
+              <p>
+                A fact is read straight from a public record and links to it. An inference is a judgment by a published
+                rule; it is drawn dashed, tagged <span className="pill inf">inference</span>, and says what it rests on.
+              </p>
+            </article>
+            <article>
+              <h3>Loud and quiet sections</h3>
+              <p>
+                Loud sections are the top tenth of a bill by news attention. A quiet and costly one has big stakes (a
+                CBO figure of $10 billion or more, or about 20 lobbying reports), almost no news, and was added late or
+                has little to do with the rest of the bill. The sub-scores sit next to every label, never just a
+                verdict. {testable} of {curated.length} laws here had enough news and a late flag to test at all.
+              </p>
+            </article>
+            <article>
+              <h3>Follow the money</h3>
+              <p>
+                Lobbying from LD-2 filings, PAC money from FEC filings, stock trades from House and Senate reports with
+                the owner always shown, and CBO dollars with their baseline named.
+              </p>
+            </article>
+            <article>
+              <h3>Same rules for everyone</h3>
+              <p>
+                Thresholds, colors and wording are identical for every party and member. Party is a label, never a
+                color. What we couldn’t read yet is shown as missing, not left out. News attention weights left, center
+                and right outlets equally by side, but the sides are not built alike, so a quiet section is a lead to
+                check.
+              </p>
+            </article>
           </div>
-          <div className="card">
-            <h2>Headline and buried candidates</h2>
-            <p>
-              Headline sections are the top tenth of a bill by news attention. A buried candidate has big stakes (a CBO
-              figure of $10 billion or more, or about 20 lobbying reports), almost no news, and was added late or has
-              little to do with the rest of the bill. Lobbying alone can give a section big stakes. The sub-scores sit
-              next to every label, never just a verdict. {testable} of {index.bills.length} bills here had enough news
-              and a late flag to test at all.
-            </p>
-          </div>
-          <div className="card">
-            <h2>Follow the money</h2>
-            <p>
-              Lobbying from LD-2 filings, PAC money from FEC filings, stock trades from House and Senate reports with
-              the owner always shown, and CBO dollars with their baseline named.
-            </p>
-          </div>
-          <div className="card">
-            <h2>Same rules for everyone</h2>
-            <p>
-              Thresholds, colors and wording are identical for every party and member. Party is a label, never a color.
-              The bills come from different eras: all six Democratic-sponsored ones are from the 117th Congress, when
-              Democrats held the House, Senate and White House, so read them as examples. What we couldn’t read yet is
-              shown as missing, not left out. News attention weights left, center and right outlets equally by side, but
-              the sides are not built alike (the right side has fewer outlets, and the groups come from 2019 sharing
-              data), so a quiet section is a lead to check.
-            </p>
-          </div>
-        </div>
+        </section>
       </main>
-      <footer className="foot">
-        Public, citable data only: congress.gov, GovInfo, CBO, lda.gov, FEC, House Clerk, Senate eFD, SEC EDGAR. Source
-        code and method on{" "}
-        <a href="https://github.com/AVGVSTVS96/antibody" target="_blank" rel="noopener">
-          GitHub
-        </a>
-        . Index built {day(index.generatedAt.slice(0, 10))}.
-      </footer>
+      <Footer>
+        <span>
+          Public, citable data only: congress.gov, GovInfo, CBO, lda.gov, FEC, House Clerk, Senate eFD, SEC EDGAR.
+        </span>
+        <span>
+          Source code and method on{" "}
+          <a href="https://github.com/AVGVSTVS96/antibody" target="_blank" rel="noopener">
+            GitHub
+          </a>
+          . Index built {day(index.generatedAt.slice(0, 10))}.
+        </span>
+      </Footer>
     </>
   );
 }
 
-const KIND: Record<string, [string, string]> = {
-  law: ["Became law", "Signed into law, and lobbyists named it."],
-  cbo: ["Got a CBO estimate", "The Congressional Budget Office published a cost estimate."],
-  look: ["Worth a look", "Moved and scored high on a cheap check; a lead, not a verdict."],
-};
-
-const kindOf = (w: BundleIndex["watch"][number]) =>
-  w.reason?.startsWith("Became law") ? "law" : w.reason?.startsWith("Got a CBO") ? "cbo" : "look";
-
-function groupPicks(picks: BundleIndex["watch"]) {
-  const out = new Map<string, BundleIndex["watch"]>();
-  for (const w of picks) out.set(kindOf(w), [...(out.get(kindOf(w)) ?? []), w]);
-  return [...out];
-}
-
-function bigHook(b: Entry): { num: string; label: string; used: string } | null {
-  const s = b.stats;
-  if (!s) return null;
-  if (s.late && s.late >= 10) return { num: String(s.late), label: "sections added late", used: "late" };
-  if (s.deficitMusd != null && Math.abs(s.deficitMusd) >= 1000)
-    return { num: musd(s.deficitMusd), label: "deficit, per CBO", used: "deficit" };
-  if (s.lobbyingReports >= 100)
-    return { num: s.lobbyingReports.toLocaleString("en-US"), label: "lobbying reports name it", used: "lobbying" };
-  if (s.late)
-    return { num: String(s.late), label: s.late === 1 ? "section added late" : "sections added late", used: "late" };
-  return { num: s.lobbyingReports.toLocaleString("en-US"), label: "lobbying reports name it", used: "lobbying" };
-}
-
-function hook(b: Entry, used: string | undefined): string {
-  const s = b.stats;
-  if (!s) return "";
-  const parts = [
-    s.deficitMusd != null && used !== "deficit" ? `CBO says it ${deficitWords(s.deficitMusd)}` : null,
-    s.late && used !== "late" ? `${s.late} ${s.late === 1 ? "section was" : "sections were"} added late` : null,
-    s.lobbyingReports && used !== "lobbying"
-      ? `${s.lobbyingReports.toLocaleString("en-US")} lobbying reports name it`
-      : null,
-  ].filter(Boolean);
-  return parts.length ? `${parts.join("; ")}.` : "";
-}
-
-function buriedLine(s: NonNullable<Entry["stats"]>) {
-  if (!s.buriedTest.tested) return `Buried candidates: not tested (${s.buriedTest.why}).`;
-  if (!s.buriedTest.dollarsMeasured) return "Stakes can't be measured: CBO gave no section its own dollar figure.";
-  if (s.buried > 0)
-    return `Buried candidates: ${s.buried} of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}.`;
-  if (s.buriedTest.bigStakes === 0) return "No section has big stakes.";
-  return `Buried candidates: 0 of ${s.buriedTest.bigStakes} big-stakes ${s.buriedTest.bigStakes === 1 ? "section" : "sections"}${s.buriedTest.why ? ` (${s.buriedTest.why})` : ""}.`;
-}
-
-function PickHook({ entry }: { entry?: Entry }) {
-  const num = entry && bigHook(entry);
-  if (!num) return null;
+function Key({ entry }: { entry: Entry }) {
+  const s = entry.stats!;
   return (
-    <div className="ph">
-      <b>{num.num}</b> {num.label}
-    </div>
+    <aside className="key" aria-label="How to read a fingerprint">
+      <p className="key-t">Every bill gets a fingerprint</p>
+      <Fingerprint kinds={s.fingerprint} label={entry.display} big />
+      <p className="key-d">
+        One square per section of the law, in order. This is the {entry.shortTitle ?? entry.display}’s{" "}
+        {s.sections.toLocaleString("en-US")}.
+      </p>
+      <ul className="key-l">
+        <li>
+          <i className="sq iris" />
+          The loud part: what the news covered most
+        </li>
+        <li>
+          <i className="sq flare" />
+          Quiet and costly: big stakes, almost no news
+        </li>
+        <li>
+          <i className="sq quiet" />
+          Everything else
+        </li>
+      </ul>
+    </aside>
   );
 }
 
-function BillCard({ b, big = false }: { b: Entry; big?: boolean }) {
-  const s = b.stats;
-  const num = bigHook(b);
-  const meta = [b.display, b.law].filter(Boolean).join(" · ");
-  const line = s
-    ? [
-        b.sponsorParty ? `${b.sponsorParty} sponsor` : null,
-        s.tally ? `${s.tally.chamber} vote ${s.tally.yeas}-${s.tally.nays}` : null,
-        b.latestActionOn ? day(b.latestActionOn) : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-    : "";
-  const note = s && hook(b, num?.used);
+function Rows({ bills, feature }: { bills: Entry[]; feature?: string }) {
+  const phone = useMedia("(max-width: 760px)");
   return (
-    <a
-      className={`bcard${big ? " big" : ""}`}
-      href={billHref(b.id)}
-      onClick={onLink}
-      onPointerEnter={() => prefetchBundle(b.id)}
-      onFocus={() => prefetchBundle(b.id)}
-    >
-      <div className="fp">
-        <Fingerprint kinds={s?.fingerprint ?? ""} label={b.display} />
-        {big && <small className="figkey">One tick per section. Gold: headline. Red: buried.</small>}
+    <>
+      <div className="rows-h" aria-hidden="true">
+        <span className="c-fp">One square per section</span>
+        <span className="c-law">Law</span>
+        <span className="c-loud">Loud</span>
+        <span className="c-quiet">Quiet and costly</span>
+        <span className="c-lobby">Lobbying reports</span>
+        <span className="c-traded">Members traded</span>
       </div>
-      <div className="bc">
-        <div className="cap meta">{meta}</div>
-        {b.id === START_HERE && <span className="badge-start">Start with this one</span>}
-        <h3>{b.shortTitle ?? b.title}</h3>
-        {num && (
-          <div className="proof">
-            <b>{num.num}</b> {num.label}
-          </div>
+      <ul className="rows">
+        {bills.map((b) => (
+          <Row key={b.id} b={b} start={b.id === feature} phone={phone} />
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) {
+  const s = b.stats;
+  const t = s?.buriedTest;
+  const unranked = !!t && !t.tested && t.why?.startsWith("too few");
+  const cannotFire = !!t && !t.tested && !unranked;
+  const note = s && fingerprintNote(s.fingerprint, phone);
+  return (
+    <li>
+      <a
+        className="lawrow"
+        href={billHref(b.id)}
+        onClick={onLink}
+        onPointerEnter={() => prefetchBundle(b.id)}
+        onFocus={() => prefetchBundle(b.id)}
+      >
+        <span className="c-fp">
+          {s && <Fingerprint kinds={s.fingerprint} label={b.display} />}
+          {note && <small>{note}</small>}
+        </span>
+        <span className="c-law">
+          <span className="law-t">
+            <b>{b.shortTitle ?? b.title}</b>
+            {start && <span className="badge">Start with this one</span>}
+            {b.origin === "watcher" && <span className="badge watch">Added by the watch</span>}
+          </span>
+          <span className="law-m">{signedLine(b)}</span>
+          {b.origin === "watcher" && b.note && (
+            <span className="law-n" title={b.note}>
+              {b.note}
+            </span>
+          )}
+        </span>
+        {s && (
+          <span className="stats">
+            {unranked ? (
+              <span className="c-both">Too few articles to rank sections</span>
+            ) : (
+              <>
+                <span className="c-loud">
+                  <b className="n loud">{s.headline}</b>
+                  <i>Loud</i>
+                </span>
+                <span className="c-quiet">
+                  {cannotFire ? (
+                    <b className="soft">Can’t be tested</b>
+                  ) : (
+                    <b className={`n ${s.buried ? "flare" : "zero"}`}>{s.buried}</b>
+                  )}
+                  <i>Quiet and costly</i>
+                </span>
+              </>
+            )}
+            <span className="c-lobby">
+              <b className="n">{s.lobbyingReports.toLocaleString("en-US")}</b>
+              <i>Lobbying reports</i>
+            </span>
+            <span className="c-traded">
+              <b className="n">{s.membersTradedDuring.toLocaleString("en-US")}</b>
+              <i>Members traded</i>
+            </span>
+          </span>
         )}
-        {note && <div className="hook">{note}</div>}
-        {line && (
-          <div
-            className="tags"
-            title={b.sponsorParty ? "Sponsor party is a label, not who voted for the bill" : undefined}
-          >
-            {line}
-          </div>
-        )}
-      </div>
-      {big && s && (
-        <div className="ft">
-          <div className="tiles">
-            <div>
-              <i>Lobbying</i>
-              <b>{s.lobbyingReports.toLocaleString("en-US")}</b>
-              <span>reports name it</span>
-            </div>
-            <div>
-              <i>Added late</i>
-              <b>{s.late}</b>
-              <span>of {s.fingerprint.length} sections</span>
-            </div>
-            <div>
-              <i>Deficit</i>
-              <b>{s.deficitMusd == null ? "n/a" : musd(s.deficitMusd)}</b>
-              <span>{s.deficitMusd == null ? "no CBO figure" : "per CBO"}</span>
-            </div>
-          </div>
-          <div className="tests">{buriedLine(s)}</div>
+      </a>
+    </li>
+  );
+}
+
+function Picks({ index }: { index: BundleIndex }) {
+  const picks = index.watch.slice(0, 12);
+  if (!picks.length)
+    return (
+      <section className="picks">
+        <div className="wrap">
+          <header className="list-h">
+            <h2>New this week</h2>
+          </header>
+          <p className="empty">The daily watch hasn’t flagged a bill yet. Its picks show up here.</p>
         </div>
-      )}
-    </a>
-  );
-}
-
-/** The bill's sections in order around a ring: gold headline, red buried, violet the rest, faint where unscored. */
-function Fingerprint({ kinds, label }: { kinds: string; label: string }) {
-  const n = Math.max(kinds.length, 1);
-  const gap = n > 120 ? 0 : 0.012;
-  const arc = (i: number, r: number) => {
-    const a0 = (i / n) * Math.PI * 2 - Math.PI / 2 + gap;
-    const a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2 - gap;
-    const p = (a: number) => `${(44 + Math.cos(a) * r).toFixed(2)},${(44 + Math.sin(a) * r).toFixed(2)}`;
-    return `M${p(a0)}A${r},${r} 0 ${a1 - a0 > Math.PI ? 1 : 0},1 ${p(a1)}`;
-  };
-  const tone = { h: "var(--gold)", b: "var(--red)", n: "var(--violet)", u: "var(--line-2)" } as const;
-  const c = { h: 0, b: 0, n: 0, u: 0 };
-  for (const k of kinds) c[k as keyof typeof c]++;
+      </section>
+    );
   return (
-    <svg viewBox="0 0 88 88" role="img" aria-label={`${kinds.length} sections: ${c.h} headline, ${c.b} buried`}>
-      <circle cx="44" cy="44" r="30" fill="var(--band-1)" />
-      {[...kinds].map((k, i) => (
-        <path
-          // biome-ignore lint/suspicious/noArrayIndexKey: sections are drawn in order and never reorder
-          key={i}
-          d={arc(i, 36)}
-          fill="none"
-          stroke={tone[k as keyof typeof tone]}
-          strokeWidth={k === "h" || k === "b" ? 9 : 6}
-          opacity={k === "n" ? 0.55 : 1}
-        />
-      ))}
-      <circle cx="44" cy="44" r="17" fill="var(--seal)" stroke="var(--red)" strokeWidth="1" />
-      <text x="44" y="47" textAnchor="middle" fontSize="8" fontFamily="var(--mono)" fill="var(--red)" fontWeight="600">
-        {label.length > 8 ? label.replace(/\.$/, "").slice(0, 8) : label}
-      </text>
-    </svg>
+    <section className="picks" aria-labelledby="picksh">
+      <div className="wrap">
+        <header className="list-h">
+          <h2 id="picksh">New this week</h2>
+          <p>A daily check flags bills that moved. A lead, not a verdict.</p>
+        </header>
+        <ul className="pick-g">
+          {picks.map((w) => {
+            const [lead = "Moved this week", ...rest] = picksNote(w);
+            const xrayed = !!w.file;
+            return (
+              <li key={w.billId} className="pick">
+                <span className={`pick-k${lead.startsWith("Became law") ? " law" : ""}`}>{lead}</span>
+                <h3>{w.title}</h3>
+                <p>
+                  {w.display}
+                  {w.sponsorParty ? `, ${partyWord(w.sponsorParty)} sponsor` : ""}.
+                  {rest.length ? ` ${rest.join(" ")}` : ""}
+                </p>
+                {xrayed ? (
+                  <a
+                    className="link"
+                    href={billHref(w.billId)}
+                    onClick={onLink}
+                    onPointerEnter={() => prefetchBundle(w.billId)}
+                  >
+                    Open the x-ray
+                  </a>
+                ) : (
+                  <a className="link" href={w.url} target="_blank" rel="noopener">
+                    Read on congress.gov
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
   );
 }

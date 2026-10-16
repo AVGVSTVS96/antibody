@@ -2,7 +2,6 @@ import { Fragment, useMemo, useState } from "react";
 import { count, day, musd, rank } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
-import { useFocus } from "./focus.ts";
 
 type Filter = "top" | "all" | "headline" | "buried" | "late" | "money" | "removed";
 type Sort = "num" | "attention" | "dollars" | "buried";
@@ -10,8 +9,8 @@ type Sort = "num" | "attention" | "dollars" | "buried";
 const FILTERS: [Filter, string][] = [
   ["top", "Top 25"],
   ["all", "All"],
-  ["headline", "Headline"],
-  ["buried", "Buried candidates"],
+  ["headline", "Loud"],
+  ["buried", "Quiet and costly"],
   ["late", "Added late"],
   ["money", "Has CBO $"],
   ["removed", "Dropped"],
@@ -64,7 +63,6 @@ export function XrayList({ m }: { m: BillModel }) {
   const [limit, setLimit] = useState(PAGE);
   const [sort, setSort] = useState<Sort>("num");
   const [open, setOpen] = useState<string | null>(null);
-  const focus = useFocus();
   const all = useMemo(
     () => m.sections.filter((v) => matches(filter, v, topIds)).sort(sorter[sort]),
     [m, filter, sort, topIds],
@@ -74,7 +72,7 @@ export function XrayList({ m }: { m: BillModel }) {
 
   return (
     <div className="xray">
-      <details className="xr-versions">
+      <details className="xr-versions" open>
         <summary>Text versions ({m.versions.length}), first text to law</summary>
         <div className="timeline">
           {m.versions.map((v, i) => {
@@ -103,8 +101,8 @@ export function XrayList({ m }: { m: BillModel }) {
       </details>
 
       <div className="xr-h">
-        <span className="cap">Sections</span>
-        <span className="cap">{count(m.sections.length, "section")} ever seen · click a row for its history</span>
+        <h2>Every section</h2>
+        <p>{count(m.sections.length, "section")} ever seen. Click a row for its history.</p>
       </div>
       <fieldset className="filters" aria-label="Filter sections">
         {FILTERS.map(([f, label]) => {
@@ -136,8 +134,8 @@ export function XrayList({ m }: { m: BillModel }) {
           <b>Loudness</b>: 0 to 100, where 100 is the most-covered section of this bill; the number after the dot is how
           many news articles matched it. <b>CBO 10-yr $</b>: the section’s ten-year effect on the deficit, + adds to it
           and − cuts it; hover for the estimate and baseline.
-          <b> Buried score</b>: stakes × quietness × (late or off-topic), from 0 to 1.5; a section is a buried candidate
-          at 0.45 or more with big stakes. It is 0.00 for most sections, which means nothing about them stands out.
+          <b> Buried score</b>: stakes × quietness × (late or off-topic), from 0 to 1.5; a section is flagged at 0.45 or
+          more with big stakes. It is 0.00 for most sections, which means nothing about them stands out.
           {!m.perSectionDollars && " CBO scored only the whole bill, so no section has a dollar figure here."}
         </p>
       </details>
@@ -164,7 +162,7 @@ export function XrayList({ m }: { m: BillModel }) {
               </th>
               <th className="c-x">
                 <SortBtn s="buried" cur={sort} set={setSort}>
-                  Buried score
+                  Quiet score
                 </SortBtn>
               </th>
             </tr>
@@ -189,17 +187,11 @@ export function XrayList({ m }: { m: BillModel }) {
                       </td>
                     </tr>
                   )}
-                  <tr
-                    className={`row ${cls}`}
-                    onClick={() => setOpen(isOpen ? null : s.id)}
-                    onPointerEnter={() => focus.setHover(`section:${s.id}`)}
-                    onPointerLeave={() => focus.setHover(null)}
-                    aria-expanded={isOpen}
-                  >
+                  <tr className={`row ${cls}`} onClick={() => setOpen(isOpen ? null : s.id)} aria-expanded={isOpen}>
                     <td className="n">{m.secLabel(v)}</td>
                     <td className="ttl">
-                      {s.heading} {v.kind === "headline" && <span className="pill headline">headline</span>}
-                      {v.kind === "buried" && <span className="pill buried">buried candidate</span>}
+                      {s.heading} {v.kind === "headline" && <span className="pill loud">loud</span>}
+                      {v.kind === "buried" && <span className="pill quiet">quiet and costly</span>}
                       {!s.inFinal && (
                         <span className="pill removed">
                           {s.mergedInto ? "merged" : s.splitInto.length ? "split" : "dropped"}
@@ -239,9 +231,9 @@ export function XrayList({ m }: { m: BillModel }) {
                         </span>
                       )}
                     </td>
-                    <td className="bur" data-l="Buried score">
+                    <td className="bur" data-l="Quiet score">
                       {s.score?.buried != null ? (
-                        <span className="mono">{s.score.buried.toFixed(2)}</span>
+                        <span className="num">{s.score.buried.toFixed(2)}</span>
                       ) : (
                         <span className="dim">—</span>
                       )}

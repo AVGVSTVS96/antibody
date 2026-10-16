@@ -209,3 +209,33 @@ export function Sources({ ids, max = 3 }: { ids: (string | null | undefined)[]; 
     </span>
   );
 }
+
+/** A link with the same hover popover as a source chip, for rows whose whole label is the link. */
+export function ClaimLink({
+  id,
+  className,
+  children,
+}: {
+  id: string | null | undefined;
+  className?: string;
+  children: ReactNode;
+}) {
+  const { claim, open, close } = useClaims();
+  const c = id ? claim(id) : undefined;
+  if (!c || !id) return <span className={className}>{children}</span>;
+  const onEnter = (e: React.SyntheticEvent<HTMLAnchorElement>) => open(id, e.currentTarget);
+  return (
+    <a
+      className={className}
+      href={c.sourceUrl}
+      target="_blank"
+      rel="noopener"
+      onPointerEnter={onEnter}
+      onPointerLeave={() => close()}
+      onFocus={onEnter}
+      onBlur={() => close(true)}
+    >
+      {children}
+    </a>
+  );
+}

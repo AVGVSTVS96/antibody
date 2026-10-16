@@ -9,14 +9,9 @@
   },
   "dependencies": {
     "@antibody/core": "workspace:*",
-    "@fontsource-variable/inter": "5.3.0",
-    "@fontsource-variable/jetbrains-mono": "5.3.0",
-    "@sigma/node-border": "4.0.0",
-    "graphology": "0.26.0",
-    "graphology-types": "0.24.8",
+    "@fontsource-variable/public-sans": "^5.3.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "sigma": "4.0.1"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@duckdb/node-api": "1.5.6-r.1",

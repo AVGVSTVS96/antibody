@@ -1,16 +1,16 @@
 import { toggleTheme, useTheme } from "../lib/theme.ts";
-import { Moon, Sun } from "./icons.tsx";
+import { Contrast } from "./icons.tsx";
 
-export function ThemeButton({ className = "iconbtn" }: { className?: string }) {
+export function ThemeButton() {
   const theme = useTheme();
   return (
     <button
       type="button"
-      className={className}
+      className="iconbtn"
       onClick={toggleTheme}
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
     >
-      {theme === "dark" ? <Sun /> : <Moon />}
+      <Contrast />
     </button>
   );
 }

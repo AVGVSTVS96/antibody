@@ -4,7 +4,7 @@ import { Component, lazy, type ReactNode, Suspense, useEffect, useState } from "
 import { loadIndex } from "./lib/data.ts";
 import { useRoute } from "./lib/router.ts";
 import { IndexPage } from "./pages/IndexPage.tsx";
-import { Top } from "./ui/Top.tsx";
+import { Footer, Top } from "./ui/Top.tsx";
 
 const BillPage = lazy(() => import("./pages/BillPage.tsx"));
 
@@ -34,44 +34,23 @@ function BillSkeleton({ id }: { id: string }) {
       live = false;
     };
   }, [id]);
+  const name = entry?.shortTitle ?? entry?.title;
   return (
     <>
-      <Top crumb={entry?.shortTitle ?? entry?.display} />
-      <div className="skel" role="status" aria-label="Loading the x-ray">
-        <div className="skelhead">
-          <h1>
-            {entry ? (entry.shortTitle ?? entry.title) : <span className="bone line" />}{" "}
-            {entry && <span className="mono">{entry.display}</span>}
-          </h1>
+      <Top crumb={name ?? entry?.display} find />
+      <main className="skel" role="status" aria-label="Loading the x-ray">
+        <div className="wrap skel-head">
+          <span className="skel-k">{entry ? `${entry.display}, ${entry.congress}th Congress` : " "}</span>
+          <h1>{name ?? <span className="bone" style={{ width: "min(560px, 80%)", height: 64 }} />}</h1>
+          <div className="bone" style={{ width: "min(700px, 100%)", height: 84 }} />
         </div>
-        <div className="story">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="beat bone" />
-          ))}
-        </div>
-        <div className="app">
-          <aside className="side">
-            <div className="card bone tall" />
-          </aside>
-          <section className="stage">
-            <svg viewBox="-512 -512 1024 1024" className="ringskel" aria-hidden="true">
-              <circle r="440" />
-              <circle r="320" />
-              <circle r="180" />
-            </svg>
-          </section>
-        </div>
-      </div>
+      </main>
     </>
   );
 }
 
-export function Loading({ what = "Loading" }: { what?: string }) {
-  return (
-    <div className="loading">
-      <span className="cap">{what}</span>
-    </div>
-  );
+export function Loading() {
+  return <div className="loading" role="status" aria-label="Loading" />;
 }
 
 class Catch extends Component<{ children: ReactNode }, { error: Error | null }> {
@@ -84,15 +63,20 @@ class Catch extends Component<{ children: ReactNode }, { error: Error | null }> 
     return (
       <>
         <Top />
-        <div className="home">
-          <div className="hero">
+        <main className="wrap hero">
+          <div className="hero-copy">
             <h1>Something broke loading this page.</h1>
-            <p className="mono">{this.state.error.message}</p>
+            <p className="lead">{this.state.error.message}</p>
             <p>
-              <a href="/">Back to all bills</a>
+              <a className="link" href="/">
+                Back to all bills
+              </a>
             </p>
           </div>
-        </div>
+        </main>
+        <Footer>
+          <span>Public, citable data only.</span>
+        </Footer>
       </>
     );
   }
