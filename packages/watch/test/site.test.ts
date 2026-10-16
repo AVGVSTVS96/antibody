@@ -58,7 +58,7 @@ async function setup(name: string) {
     calls.push(cmd);
     return cmd.includes("deploy") ? "https://antibody-abc123.vercel.app\n" : "";
   };
-  const where = { published: f.published, web: f.root, deployedIndex: join(f.root, "deployed-index.json") };
+  const where = { root: f.root, published: f.published, deployedIndex: join(f.root, "deployed-index.json") };
   return { calls, exec, where };
 }
 

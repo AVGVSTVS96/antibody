@@ -42,16 +42,26 @@ const run: Run = (cmd, cwd, signal) => heavy(cmd, { cwd, signal });
 
 const withoutStamp = (index: string) => index.replace(/"generatedAt": "[^"]*"/, "");
 
+/**
+ * The Vercel project's root directory is apps/web, so the CLI has to run from the repo root, where the project is
+ * linked too: the link is copied once from apps/web/.vercel (both are gitignored).
+ */
+async function linkProject(root: string) {
+  const link = Bun.file(join(root, ".vercel/project.json"));
+  const from = Bun.file(join(root, "apps/web/.vercel/project.json"));
+  if (!(await link.exists()) && (await from.exists())) await Bun.write(link, from);
+}
+
 interface Where {
+  root: string;
   published: string;
-  web: string;
   /** The index of the last successful deploy; a deploy is skipped while the new index matches it. */
   deployedIndex: string;
 }
 
 const here = (): Where => ({
+  root: ROOT,
   published: paths.published,
-  web: join(ROOT, "apps/web"),
   deployedIndex: join(paths.raw("watch"), "deployed-index.json"),
 });
 
@@ -89,9 +99,10 @@ export async function updateSite(
   }
   const signal = AbortSignal.timeout(minutes * 60_000);
   try {
-    await exec(["bun", "run", "--cwd", "apps/web", "build"], ROOT, signal);
-    await exec(["bunx", "vercel", "build", "--prod", "--yes"], where.web, signal);
-    const out = await exec(["bunx", "vercel", "deploy", "--prebuilt", "--prod", "--yes"], where.web, signal);
+    await exec(["bun", "run", "--cwd", "apps/web", "build"], where.root, signal);
+    await linkProject(where.root);
+    await exec(["bunx", "vercel", "build", "--prod", "--yes"], where.root, signal);
+    const out = await exec(["bunx", "vercel", "deploy", "--prebuilt", "--prod", "--yes"], where.root, signal);
     const url = out.match(/https:\/\/\S+/g)?.at(-1) ?? SITE_URL;
     await mkdir(dirname(where.deployedIndex), { recursive: true });
     await Bun.write(`${where.deployedIndex}.tmp`, text);
