@@ -36,6 +36,7 @@ test("an index without stats or watch picks still parses", () => {
   });
   expect(index.watch).toEqual([]);
   expect(index.bills[0]!.stats).toBeNull();
+  expect(index.bills[0]).toMatchObject({ origin: "curated", note: null, addedOn: null });
 });
 
 test("billStats counts the index card numbers", () => {

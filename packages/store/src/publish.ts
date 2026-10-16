@@ -58,7 +58,15 @@ const sponsorParty = (b: Bundle) => {
   return sponsor?.kind === "member" ? sponsor.props.party : null;
 };
 
-export function indexEntry(b: Bundle): BundleIndex["bills"][number] {
+export interface Provenance {
+  origin: "curated" | "watcher";
+  note: string | null;
+  addedOn: string | null;
+}
+
+export const CURATED_PROVENANCE: Provenance = { origin: "curated", note: null, addedOn: null };
+
+export function indexEntry(b: Bundle, provenance: Provenance = CURATED_PROVENANCE): BundleIndex["bills"][number] {
   return {
     id: b.bill.id,
     display: b.bill.display,
@@ -71,6 +79,7 @@ export function indexEntry(b: Bundle): BundleIndex["bills"][number] {
     file: `${b.bill.id}.json`,
     claimsFile: claimsFile(b.bill.id),
     stats: billStats(b),
+    ...provenance,
   };
 }
 
@@ -105,6 +114,17 @@ async function watchPicks(bundles: Map<string, Bundle>, events: Row<"watch_event
     });
 }
 
+const WATCHER_NOTE =
+  "Added by the daily watcher, not hand-checked: its sponsor, law status and company matches come straight from the automated run.";
+
+function watcherProvenance(b: Bundle, events: Row<"watch_events">[]): Provenance {
+  const first = events
+    .filter((e) => e.bill_id === b.bill.id && e.kind === "hot")
+    .map((e) => e.seen_at.slice(0, 10))
+    .sort()[0];
+  return { origin: "watcher", note: WATCHER_NOTE, addedOn: first ?? b.generatedAt.slice(0, 10) };
+}
+
 /**
  * Rebuilds `index.json` from every bundle in `dir`: the ids in `order` first (the curated list), then the rest
  * newest first, plus the watcher's latest picks.
@@ -114,6 +134,7 @@ export async function writeIndex(
   order: string[] = [],
   events?: Row<"watch_events">[],
 ): Promise<BundleIndex> {
+  const watched = events ?? (await readRows("watch_events"));
   const files = (await readdir(dir).catch(() => [] as string[])).filter(
     (f) => f.endsWith(".json") && f !== "index.json" && !f.endsWith(".claims.json"),
   );
@@ -122,13 +143,15 @@ export async function writeIndex(
     const b = (await Bun.file(join(dir, f)).json()) as Bundle;
     bundles.set(b.bill.id, b);
   }
-  const bills = [...bundles.values()].map(indexEntry);
+  const bills = [...bundles.values()].map((b) =>
+    indexEntry(b, order.includes(b.bill.id) ? CURATED_PROVENANCE : watcherProvenance(b, watched)),
+  );
   const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length);
   bills.sort((a, b) => rank(a.id) - rank(b.id) || (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""));
   const index = BundleIndex.parse({
     generatedAt: new Date().toISOString(),
     bills,
-    watch: await watchPicks(bundles, events ?? (await readRows("watch_events"))),
+    watch: await watchPicks(bundles, watched),
   });
   await mkdir(dir, { recursive: true });
   await Bun.write(join(dir, "index.json"), `${JSON.stringify(index, null, 1)}\n`);

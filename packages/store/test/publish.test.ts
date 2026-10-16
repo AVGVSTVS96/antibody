@@ -37,3 +37,23 @@ test("an index lists the curated ids first, in that order, and says what each bu
   expect(index.watch).toEqual([]);
   expect((await Bun.file(join(published, "index.json")).json()).bills).toHaveLength(2);
 });
+
+test("a bundle outside the curated list is marked as the watcher's, with the day it was first flagged", async () => {
+  const published = await mkdtemp(join(dir, "watcher-"));
+  const other: Bundle = { ...bundle, bill: { ...bundle.bill, id: "119-hr-9", display: "H.R.9" } };
+  for (const b of [bundle, other]) await Bun.write(join(published, `${b.bill.id}.json`), JSON.stringify(b));
+  const hot = (day: string) => ({
+    id: `119-hr-9/hot/${day}`,
+    bill_id: "119-hr-9",
+    kind: "hot" as const,
+    seen_at: `${day}T09:00:00-07:00`,
+    url: "https://www.congress.gov/bill/119th-congress/house-bill/9",
+    detail: {},
+  });
+  const index = await writeIndex(published, [bundle.bill.id], [hot("2026-10-16"), hot("2026-10-15")]);
+  const [curated, watcher] = index.bills;
+  expect(curated).toMatchObject({ origin: "curated", note: null, addedOn: null });
+  expect(watcher).toMatchObject({ id: "119-hr-9", origin: "watcher", addedOn: "2026-10-15" });
+  expect(watcher!.note).toBeString();
+  expect(index.watch.map((p) => [p.billId, p.file])).toEqual([["119-hr-9", "119-hr-9.json"]]);
+});

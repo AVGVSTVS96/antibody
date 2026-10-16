@@ -380,6 +380,12 @@ export const BundleIndex = z.object({
       file: z.string(),
       claimsFile: z.string().nullable().default(null),
       stats: BillStats.nullable().default(null),
+      /** Curated bills were hand-checked; watcher bills were added by the daily watcher as it found them. */
+      origin: z.enum(["curated", "watcher"]).default("curated"),
+      /** One plain sentence on what is thinner than a curated bill. Set only when `origin` is watcher. */
+      note: z.string().nullable().default(null),
+      /** The day the watcher added it, YYYY-MM-DD. Null for curated bills. */
+      addedOn: date.nullable().default(null),
     }),
   ),
   watch: z.array(WatchPick).default([]),
