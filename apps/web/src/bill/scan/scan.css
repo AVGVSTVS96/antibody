@@ -141,18 +141,19 @@
   display: flex;
   width: fit-content;
   max-width: 100%;
+  margin: 0;
+  min-width: 0;
   padding: 4px;
+  border: 0;
   border-radius: 12px;
   background: var(--s-switch);
 }
 
-.sc-switch button {
+.sc-switch label {
   position: relative;
   z-index: 1;
   padding: 8px 14px;
-  border: 0;
   border-radius: 9px;
-  background: none;
   font-size: 14px;
   line-height: 18px;
   font-weight: 600;
@@ -162,19 +163,24 @@
   transition: color 150ms var(--ease-out);
 }
 
-.sc-switch button:hover {
+.sc-switch label:hover {
   color: var(--s-body);
 }
 
-.sc-switch button[aria-checked="true"] {
+.sc-switch label:has(input:checked) {
   color: var(--s-ink);
 }
 
-.sc-switch button[data-empty] {
+.sc-switch label:has(input:focus-visible) {
+  outline: 2px solid var(--s-focus);
+  outline-offset: 1px;
+}
+
+.sc-switch label[data-empty] {
   color: #5f6878;
 }
 
-.sc-switch button[data-empty][aria-checked="true"] {
+.sc-switch label[data-empty]:has(input:checked) {
   color: var(--s-body);
 }
 
@@ -205,8 +211,9 @@
   border-radius: 8px;
 }
 
-.sc-switch.sc-equal button {
+.sc-switch.sc-equal label {
   flex: 1;
+  text-align: center;
   padding: 7px 0;
   border-radius: 8px;
   font-size: 13px;
@@ -534,29 +541,15 @@
 
 .sc-card .chips {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  margin-top: -4px;
 }
 
 .sc-card .chips .src {
-  padding: 2px 9px;
-  border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: 999px;
-  background: none;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 600;
   color: var(--s-body);
-  text-decoration: none;
-}
-
-.sc-card .chips .src.inference {
-  border-style: dashed;
 }
 
 .sc-card .chips .src:hover {
   color: var(--s-ink);
-  border-color: rgb(255 255 255 / 0.32);
 }
 
 .sc-card.sc-idle h3 {
@@ -622,6 +615,11 @@
   min-width: 0;
   margin-top: 80px;
   margin-right: calc(-1 * var(--bleed));
+}
+
+.scan .sc-ring:focus-visible,
+.sheet-root .sc-ring:focus-visible {
+  outline: none;
 }
 
 .sc-ring {
@@ -949,6 +947,20 @@
   stroke-linejoin: round;
 }
 
+.sc-t-flag-sub {
+  fill: rgb(232 236 242 / 0.7);
+  paint-order: stroke;
+  stroke: var(--scan);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.sc-flag-ring {
+  fill: none;
+  stroke: var(--s-flare);
+  stroke-width: 1.5;
+}
+
 .sc-t-empty {
   fill: var(--s-body);
   text-anchor: middle;
@@ -1041,6 +1053,7 @@
 }
 
 .sheet {
+  box-sizing: border-box;
   position: absolute;
   left: 0;
   right: 0;
@@ -1059,6 +1072,7 @@
 }
 
 .sheet-drag {
+  user-select: none;
   width: 100%;
   display: flex;
   flex: none;

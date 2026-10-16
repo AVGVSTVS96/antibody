@@ -262,10 +262,13 @@ export function buildScenes(m: BillModel, must: readonly string[] = []): Scenes 
   const marks: MarkDef[] = sections.map((s) => ({ id: s.id, kind: "section", bucket: s.bucket }));
   const seen = new Set(marks.map((x) => x.id));
   for (const view of ["trades", "pac"] as const) {
-    for (const s of ring[view].layout.companies)
-      if (!seen.has(s.id)) seen.add(s.id), marks.push({ id: s.id, kind: "company", bucket: "" });
-    for (const s of ring[view].layout.members)
-      if (!seen.has(s.id)) seen.add(s.id), marks.push({ id: s.id, kind: "member", bucket: "" });
+    const add = (id: string, kind: MarkDef["kind"]) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      marks.push({ id, kind, bucket: "" });
+    };
+    for (const s of ring[view].layout.companies) add(s.id, "company");
+    for (const s of ring[view].layout.members) add(s.id, "member");
   }
   const index = new Map(marks.map((x, i) => [x.id, i]));
   const blank = (): SceneTargets => ({

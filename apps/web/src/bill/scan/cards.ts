@@ -1,3 +1,4 @@
+import { plainName } from "../../lib/format.ts";
 import type { Actor, BillModel, MemberView } from "../../lib/model.ts";
 import type { SectionGroup } from "./groups.ts";
 import type { RingView, Tie } from "./select.ts";
@@ -19,6 +20,8 @@ export function money(n: number): string {
 
 const PARTY_NAME = { R: "Republicans", D: "Democrats", I: "independents" } as const;
 
+export const coName = (a: Actor) => plainName(a.label, 34);
+
 export const memberName = (v: MemberView) => {
   const p = v.node.props;
   return `${v.node.label.replace(/\s*\(.*\)$/, "")}, ${p.party}-${p.state}`;
@@ -26,7 +29,10 @@ export const memberName = (v: MemberView) => {
 
 export const lastName = (v: MemberView) => {
   const name = v.node.label.replace(/^(Sen|Rep)\.\s+/, "").replace(/\s*\(.*\)$/, "");
-  const words = name.split(" ").filter((w) => !/^[A-Z]\.$/.test(w) && !/^(Jr|Sr|II|III)\.?$/.test(w));
+  const words = name
+    .split(" ")
+    .map((w) => w.replace(/,$/, ""))
+    .filter((w) => !/^[A-Z]\.$/.test(w) && !/^(Jr|Sr|II|III)\.?$/.test(w));
   return words.at(-1) ?? name;
 };
 
@@ -84,7 +90,7 @@ export function tradesCard(m: BillModel, a: Actor, ties: Tie[]): TradesCard {
   return {
     kind: "trades",
     id: a.id,
-    name: a.short,
+    name: coName(a),
     ticker: a.ticker,
     reports: a.reports,
     rows,
@@ -137,7 +143,7 @@ export function pacCard(m: BillModel, a: Actor, ties: Tie[]): PacCard {
   return {
     kind: "pac",
     id: a.id,
-    name: a.short,
+    name: coName(a),
     ticker: a.ticker,
     total,
     members: ties.length,
@@ -222,7 +228,7 @@ export function memberCard(m: BillModel, v: MemberView, view: RingView, ties: Ti
   const rows = ties
     .map<MemberRow>((t) => ({
       id: t.company,
-      name: m.actorById.get(t.company)?.short ?? t.company,
+      name: coName(m.actorById.get(t.company)!),
       value: t.weight,
       claim: t.claims[0] ?? null,
     }))

@@ -12,7 +12,7 @@ import {
 import { count } from "../../lib/format.ts";
 import { useMedia } from "../../lib/media.ts";
 import type { Actor, BillModel } from "../../lib/model.ts";
-import { memberTag, money } from "./cards.ts";
+import { coName, memberTag, money } from "./cards.ts";
 import { Field, type Painter } from "./field.ts";
 import {
   type Box,
@@ -88,27 +88,21 @@ interface MarkProps {
 const Mark = memo(function Mark({ i, kind, state, delay, live, optionId, label, selected, reg }: MarkProps) {
   const ref = useCallback((el: SVGElement | null) => reg(i, el), [reg, i]);
   const style = { "--sc-d": `${delay}ms` } as React.CSSProperties;
-  if (kind === "company")
+  if (kind === "company" && live)
     return (
       <rect
         ref={ref as React.Ref<SVGRectElement>}
         className={`sc-co sc-${state}`}
         style={style}
         id={optionId}
-        role={live ? "option" : undefined}
-        aria-hidden={live ? undefined : true}
-        aria-label={live ? label : undefined}
-        aria-selected={live ? !!selected : undefined}
+        role="option"
+        aria-label={label}
+        aria-selected={!!selected}
       />
     );
-  return (
-    <circle
-      ref={ref as React.Ref<SVGCircleElement>}
-      className={`sc-mem sc-${state}`}
-      style={style}
-      aria-hidden="true"
-    />
-  );
+  if (kind === "company")
+    return <rect ref={ref as React.Ref<SVGRectElement>} className={`sc-co sc-${state}`} style={style} />;
+  return <circle ref={ref as React.Ref<SVGCircleElement>} className={`sc-mem sc-${state}`} style={style} />;
 });
 
 interface Bucket {
@@ -169,7 +163,8 @@ export const Ring = memo(function Ring({
     return { companies, members };
   }, [scenes]);
 
-  const field = useMemo(() => new Field(scenes, view), [scenes]);
+  const firstView = useRef(view);
+  const field = useMemo(() => new Field(scenes, firstView.current), [scenes]);
   const widths = useMemo(() => strokeWidths(nSections, view), [nSections, view]);
 
   const reg = useCallback(
@@ -247,8 +242,8 @@ export const Ring = memo(function Ring({
               id: s.id,
               label:
                 view === "trades"
-                  ? `${a.short}, ${count(n, "member")} traded its stock`
-                  : `${a.short}, PAC money to ${count(n, "member")}`,
+                  ? `${coName(a)}, ${count(n, "member")} traded its stock`
+                  : `${coName(a)}, PAC money to ${count(n, "member")}`,
             };
           }),
     [view, groups, layout, data, m],
@@ -308,11 +303,11 @@ export const Ring = memo(function Ring({
   const showLabels = labels && !square && scale > 0.55;
 
   const labelSet = useMemo(() => {
-    if (!showLabels) return { names: [] as Box[], items: [] as Label[], flagged: null as Label | null };
+    if (!showLabels) return { names: [] as Box[], items: [] as Label[], flagged: null as Flag | null };
     const names: Box[] = [];
     if (view !== "sections") {
       const set = RING_NAMES[view];
-      set.forEach((t, i) => names.push(ringNameBox(t, NAME_RADII[i]!, 11.5 / Math.max(scale, 0.01) > 15 ? 15 : 11.5)));
+      for (const [i, t] of set.entries()) names.push(ringNameBox(t, NAME_RADII[i]!, 11.5));
     } else {
       for (const d of scenes.bars.scale?.decades ?? []) {
         const r = scenes.bars.scale!.radius(d.t);
@@ -333,7 +328,7 @@ export const Ring = memo(function Ring({
     if (activeKind === "company") {
       const slot = layout.company.get(focusId)!;
       const a = m.actorById.get(focusId)!;
-      const self = inside(focusId, a.short, slot.angle, R.companyLabel, fs * 1.08);
+      const self = inside(focusId, coName(a), slot.angle, R.companyLabel, fs * 1.08);
       const kept = fit([self], avoid, 1, 2);
       avoid.push(...kept.map((k) => k.box));
       out.push(...kept);
@@ -354,12 +349,12 @@ export const Ring = memo(function Ring({
       const cands = (data.byMember.get(focusId) ?? []).flatMap((t) => {
         const c = layout.company.get(t.company);
         const a = m.actorById.get(t.company);
-        return c && a ? [inside(t.company, a.short, c.angle, R.companyLabel, fs)] : [];
+        return c && a ? [inside(t.company, coName(a), c.angle, R.companyLabel, fs)] : [];
       });
       out.push(...fit(cands, avoid, 6, 3));
     }
     return { names, items: out, flagged: null };
-  }, [showLabels, view, groups, focusId, activeKind, layout, data, fs, m, scenes, scale]);
+  }, [showLabels, view, groups, focusId, activeKind, layout, data, fs, m, scenes]);
 
   const hit = useCallback(
     (e: { clientX: number; clientY: number }): string | null => {
@@ -390,7 +385,10 @@ export const Ring = memo(function Ring({
           const [x, y] = pt(s.angle, R.company);
           const d = Math.hypot(p.x - x, p.y - y);
           const reach = Math.min(s.size / 2 + slop, (R.company * (TAU - layout.gap)) / layout.companies.length / 2);
-          if (d < reach && d < bestD) (best = s.id), (bestD = d);
+          if (d < reach && d < bestD) {
+            best = s.id;
+            bestD = d;
+          }
         }
       }
       const rm = view === "trades" ? R.member : R.memberDots;
@@ -399,7 +397,10 @@ export const Ring = memo(function Ring({
           const [x, y] = pt(s.angle, rm);
           const d = Math.hypot(p.x - x, p.y - y);
           const reach = Math.max(s.size + slop * 0.6, 2.5);
-          if (d < reach && d < bestD) (best = s.id), (bestD = d);
+          if (d < reach && d < bestD) {
+            best = s.id;
+            bestD = d;
+          }
         }
       }
       return best;
@@ -441,6 +442,7 @@ export const Ring = memo(function Ring({
             : (from + dir + items.length) % items.length;
     const id = items[i]!.id;
     setRoving(id);
+    setHover(null);
     setKeyboard(true);
     onKeyMove?.(id);
     if (pinned) onPin(id, "key");
@@ -527,11 +529,21 @@ export const Ring = memo(function Ring({
     const d = new Map<string, number>();
     const nc = Math.max(coCount, 1);
     const nm = Math.max(memCount, 1);
-    layout?.companies.forEach((s, i) => d.set(s.id, 120 + (i / nc) * 100));
-    layout?.members.forEach((s, i) => d.set(s.id, 200 + (i / nm) * 100));
+    for (const [i, s] of (layout?.companies ?? []).entries()) d.set(s.id, 120 + (i / nc) * 100);
+    for (const [i, s] of (layout?.members ?? []).entries()) d.set(s.id, 200 + (i / nm) * 100);
     return d;
   }, [layout, coCount, memCount]);
 
+  const a11y = mini
+    ? { role: "img", "aria-hidden": true }
+    : {
+        role: "listbox",
+        "aria-label":
+          view === "sections"
+            ? "Titles of the bill. Arrow keys move, Enter pins."
+            : "Companies tied to the bill. Arrow keys move, Enter pins.",
+        "aria-activedescendant": activeDescendant,
+      };
   const viewBox = square ? "0 0 720 720" : `${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.h}`;
   const idx = (id: string) => items.findIndex((x) => x.id === id);
 
@@ -546,16 +558,7 @@ export const Ring = memo(function Ring({
       data-empty={empty ? "" : undefined}
       data-over={hover ? "" : undefined}
       viewBox={viewBox}
-      role={mini ? "img" : "listbox"}
-      aria-label={
-        mini
-          ? undefined
-          : view === "sections"
-            ? "Titles of the bill. Arrow keys move, Enter pins."
-            : "Companies tied to the bill. Arrow keys move, Enter pins."
-      }
-      aria-hidden={mini ? true : undefined}
-      aria-activedescendant={activeDescendant}
+      {...a11y}
       tabIndex={mini ? undefined : 0}
       onPointerMove={onMove}
       onPointerLeave={() => setHover(null)}
@@ -564,6 +567,7 @@ export const Ring = memo(function Ring({
       onFocus={(e) => setKfocus(e.currentTarget.matches(":focus-visible"))}
       onBlur={() => setKfocus(false)}
     >
+      <title>{mini ? "Ring map of who is tied to this bill" : a11y["aria-label"]}</title>
       <defs>
         <mask id={sweep} maskUnits="userSpaceOnUse" x={-60} y={-20} width={840} height={760}>
           <circle
@@ -775,8 +779,22 @@ export const Ring = memo(function Ring({
           ))}
           {flagged && (
             <g className="sc-flagged">
-              <text x={f1(flagged.x)} y={f1(flagged.y)} textAnchor={flagged.anchor} className="sc-t-flag">
-                {flagged.text}
+              <circle className="sc-flag-ring" cx={f1(flagged.tip[0])} cy={f1(flagged.tip[1])} r={7} />
+              <text
+                x={f1(flagged.label.x)}
+                y={f1(flagged.label.y)}
+                textAnchor={flagged.label.anchor}
+                className="sc-t-flag"
+              >
+                {flagged.label.text}
+              </text>
+              <text
+                x={f1(flagged.label.x)}
+                y={f1(flagged.label.y + flagged.lead)}
+                textAnchor={flagged.label.anchor}
+                className="sc-t-flag-sub"
+              >
+                {flagged.sub}
               </text>
             </g>
           )}
@@ -822,8 +840,10 @@ function wrapWords(s: string, max: number): string[] {
   const out: string[] = [];
   let line = "";
   for (const w of s.split(" ")) {
-    if (line && line.length + w.length + 1 > max) out.push(line), (line = w);
-    else line = line ? `${line} ${w}` : w;
+    if (line && line.length + w.length + 1 > max) {
+      out.push(line);
+      line = w;
+    } else line = line ? `${line} ${w}` : w;
   }
   if (line) out.push(line);
   return out;
@@ -872,7 +892,20 @@ function GroupBars({
   );
 }
 
-function flaggedLabel(scenes: Scenes, fs: number, avoid: Box[]): Label | null {
+interface Flag {
+  label: Label;
+  sub: string;
+  tip: [number, number];
+  lead: number;
+}
+
+const clip = (s: string, max: number) => {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max - 1);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), max >> 1)).replace(/[,;:]$/, "")}…`;
+};
+
+function flaggedLabel(scenes: Scenes, fs: number, avoid: Box[]): Flag | null {
   let best: SectionMark | null = null;
   for (const s of scenes.sections)
     if (
@@ -886,10 +919,16 @@ function flaggedLabel(scenes: Scenes, fs: number, avoid: Box[]): Label | null {
   const o = scenes.index.get(best.id)! * CHANNELS;
   const a = t[o + CH.angle]!;
   const r = t[o + CH.r1]!;
-  const name = best.v.s.heading.length > 26 ? `${best.v.s.heading.slice(0, 25)}…` : best.v.s.heading;
-  const text = `${name}, ${money(Math.abs(best.v.dollarsMusd!) * 1e6)}`;
+  const hits = best.v.s.attention?.hits;
+  const sub = hits == null ? "not scored for news" : `${count(hits, "article")}`;
+  const sign = best.v.dollarsMusd! < 0 ? "−" : "+";
+  const text = `${clip(best.v.s.heading, 30)}, ${sign}${money(Math.abs(best.v.dollarsMusd!) * 1e6)}`;
   const l = outside(best.id, text, a, r + 18, fs);
-  return fit([l], avoid, 1, 2)[0] ?? null;
+  const lead = fs * 1.3;
+  l.box.y1 += lead;
+  l.box.x1 = Math.max(l.box.x1, l.box.x0 + textWidth(sub, fs));
+  const kept = fit([l], avoid, 1, 2)[0];
+  return kept ? { label: kept, sub, tip: pt(a, r), lead } : null;
 }
 
 function paintOne(i: number, el: SVGElement, cur: Float64Array) {

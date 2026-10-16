@@ -3,11 +3,11 @@ import { count } from "../../lib/format.ts";
 import { useMedia } from "../../lib/media.ts";
 import type { BillModel } from "../../lib/model.ts";
 import { Card, CompactCard } from "./Card.tsx";
-import { type CardData, groupCard, memberCard, money, pacCard, tradesCard } from "./cards.ts";
+import { type CardData, coName, groupCard, memberCard, money, pacCard, tradesCard } from "./cards.ts";
 import { buildScenes, emptiness, itemIds, type MapView, present, type Scenes } from "./layout.ts";
 import { Ring, type RingHandle } from "./Ring.tsx";
 import { Sheet } from "./Sheet.tsx";
-import { ViewSwitch } from "./Switch.tsx";
+import { Switch } from "./Switch.tsx";
 import { CARD_SPRING, springEasing } from "./spring.ts";
 import "./scan.css";
 
@@ -64,7 +64,7 @@ function picksFor(m: BillModel, s: Scenes, view: MapView): Pick[] {
     const n = data.byCompany.get(a.id) ?? [];
     return {
       id: a.id,
-      name: a.short,
+      name: coName(a),
       meta: view === "trades" ? count(n.length, "member") : money(n.reduce((t, x) => t + x.weight, 0)),
     };
   });
@@ -376,7 +376,7 @@ export function Scan(props: ScanProps) {
                       </svg>
                     </button>
                   </div>
-                  <ViewSwitch view={view} onChange={setMapView} empty={empty} equal />
+                  <Switch view={view} onChange={setMapView} empty={empty} equal />
                   <div className="sheet-ring">
                     <Ring
                       handle={ring}
@@ -456,7 +456,7 @@ export function Scan(props: ScanProps) {
                 ))}
               </div>
             </header>
-            <ViewSwitch view={view} onChange={setMapView} empty={empty} />
+            <Switch view={view} onChange={setMapView} empty={empty} />
             <CardSlot
               id={focus && card ? focus : null}
               instant={via.current === "key"}

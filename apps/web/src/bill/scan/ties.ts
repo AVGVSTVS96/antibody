@@ -68,7 +68,7 @@ export function tieSet(data: RingData, layout: RingLayout, companyId: string): T
   for (const dir of [1, -1]) {
     const side = placed.filter((p) => (p.d >= 0 ? 1 : -1) === dir).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
     const step = Math.min(TIE_STEP, (R.trackEnd - R.track) / Math.max(side.length - 1, 1));
-    side.forEach((p, i) => track.set(p.t.member, R.track + i * step));
+    for (const [i, p] of side.entries()) track.set(p.t.member, R.track + i * step);
   }
   const shapes = byDistance.map<TieShape>((p, order) => ({
     member: p.t.member,

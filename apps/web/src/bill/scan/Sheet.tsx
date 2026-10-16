@@ -12,6 +12,7 @@ interface Props {
 
 const OVERSHOOT_PAD = 56;
 const SLOP = 8;
+const height = () => Math.max(360, Math.round(window.innerHeight * 0.82));
 const FOCUSABLE = 'a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"]),input,select,textarea';
 
 /**
@@ -35,8 +36,6 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
   } | null>(null);
   const opener = useRef<Element | null>(null);
   const suppress = useRef(false);
-
-  const height = () => Math.max(360, Math.round(window.innerHeight * 0.82));
 
   const write = useCallback((y: number) => {
     const s = state.current;
@@ -103,7 +102,7 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
     const prev = html.style.overflow;
     html.style.overflow = "hidden";
     if (app) app.inert = true;
-    sheet.current?.querySelector<HTMLElement>(".sheet-close")?.focus({ preventScroll: true });
+    sheet.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !e.defaultPrevented) {
         e.preventDefault();
@@ -116,8 +115,14 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
         const first = items[0]!;
         const last = items.at(-1)!;
         const at = document.activeElement;
-        if (e.shiftKey && (at === first || !sheet.current.contains(at))) e.preventDefault(), last.focus();
-        else if (!e.shiftKey && (at === last || !sheet.current.contains(at))) e.preventDefault(), first.focus();
+        const outside = !sheet.current.contains(at);
+        if (e.shiftKey && (at === first || outside)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && (at === last || outside)) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
     const onResize = () => {

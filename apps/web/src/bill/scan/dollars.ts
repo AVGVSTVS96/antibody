@@ -1,4 +1,4 @@
-import { usd } from "../../lib/format.ts";
+import { money } from "./cards.ts";
 import { R } from "./polar.ts";
 
 export interface Decade {
@@ -34,7 +34,7 @@ export function dollarScale(figures: (number | null)[]): DollarScale | null {
   const span = hiExp - loExp;
   const decades: Decade[] = [];
   for (let exp = loExp; exp <= hiExp; exp++)
-    decades.push({ exp, musd: 10 ** exp, label: usd(10 ** exp * 1e6), t: (exp - loExp) / span });
+    decades.push({ exp, musd: 10 ** exp, label: money(10 ** exp * 1e6), t: (exp - loExp) / span });
   const t = (v: number) => (Math.log10(Math.max(Math.abs(v), 10 ** loExp)) - loExp) / span;
   return {
     loExp,
