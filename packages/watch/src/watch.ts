@@ -18,6 +18,7 @@ import {
 import { cachedText, get, pool } from "./http.ts";
 import { lobbyingFilings } from "./lda.ts";
 import { type Facts, type SubScores, score, subScores } from "./score.ts";
+import { publishBundle, type Site } from "./site.ts";
 import { newSections, textShape, wordsFromBytes } from "./text.ts";
 import { runXray, type XrayFacts, type XrayRun, xrayFacts } from "./xray.ts";
 
@@ -60,6 +61,7 @@ export interface WatchResult {
   /** Bills that moved but whose events were all reported in an earlier digest. */
   alreadyReported: number;
   xrayed: BillId[];
+  site: Site;
   problems: string[];
 }
 
@@ -67,6 +69,7 @@ export const settings = () => ({
   xrays: Number(process.env.ANTIBODY_WATCH_XRAYS ?? 3),
   enrich: Number(process.env.ANTIBODY_WATCH_ENRICH ?? 25),
   since: process.env.ANTIBODY_WATCH_SINCE ?? null,
+  publish: process.env.ANTIBODY_WATCH_PUBLISH !== "0",
 });
 
 /** BILLSTATUS records an action a day or more after it happens, so an update in the window can carry older actions. */
@@ -249,15 +252,24 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   for (const c of shortlist) problems.push(...(await enrich(c, join(dir, "cache"), signal)));
 
   const xrayed: BillId[] = [];
+  const site: Site = { published: [], deploy: { status: "pending" } };
   const logs = join(dir, "logs", date);
   for (const c of rank(candidates).slice(0, cfg.xrays)) {
     const id = c.status.id;
     log(`x-ray ${billDisplay(id)} (score ${c.score})`);
     c.xray = await runXray(id, logs, signal);
     if (!c.xray.ok) problems.push(`x-ray ${billDisplay(id)} failed: ${c.xray.error} (log ${c.xray.log})`);
-    const facts = await xrayFacts(id);
+    let facts = await xrayFacts(id);
     if (c.xray.ok && !facts.bundle)
       problems.push(`x-ray ${billDisplay(id)} finished but wrote no bundle (log ${c.xray.log})`);
+    if (cfg.publish && c.xray.ok && facts.bundle) {
+      const problem = await publishBundle(id).catch(
+        (e: Error) => `${billDisplay(id)} bundle not published: ${e.message}`,
+      );
+      if (problem) problems.push(problem);
+      else site.published.push(id);
+      facts = await xrayFacts(id);
+    }
     applyXray(c, facts);
     xrayed.push(id);
   }
@@ -272,6 +284,7 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
     candidates,
     alreadyReported,
     xrayed,
+    site,
     problems,
   };
 }

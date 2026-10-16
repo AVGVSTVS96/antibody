@@ -131,6 +131,7 @@
       "name": "@antibody/watch",
       "dependencies": {
         "@antibody/core": "workspace:*",
+        "@antibody/store": "workspace:*",
         "fast-xml-parser": "5.11.2",
       },
     },

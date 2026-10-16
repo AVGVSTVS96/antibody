@@ -2,6 +2,7 @@ import { type BillId, billDisplay, billstatusUrl, congressGovUrl } from "@antibo
 import { auditParties, type MovedBill, type PartyAudit } from "./audit.ts";
 import { STEPS } from "./events.ts";
 import { FLAG_CUTOFF, MAX_FLAGGED, RULE_TEXT, RULES_VERSION, type Signal, WEIGHTS } from "./score.ts";
+import { type Deploy, SITE_URL } from "./site.ts";
 import type { Candidate, WatchResult } from "./watch.ts";
 
 export interface Reason {
@@ -131,11 +132,9 @@ export interface Links {
   text: string | null;
 }
 
-/** The bill's page on the site, when ANTIBODY_PAGE_URL (e.g. `https://…/bill/{id}`) is set and its bundle is published. */
-export const pageUrl = (id: BillId, published = true) => {
-  const template = process.env.ANTIBODY_PAGE_URL;
-  return template && published ? template.replace("{id}", id) : null;
-};
+/** The bill's page on the live site once its bundle is published; ANTIBODY_PAGE_URL (with `{id}`) overrides the address. */
+export const pageUrl = (id: BillId, published = true) =>
+  published ? (process.env.ANTIBODY_PAGE_URL ?? `${SITE_URL}/bill/{id}`).replace("{id}", id) : null;
 
 export function links(c: Candidate): Links {
   const id = c.status.id;
@@ -171,6 +170,7 @@ export function digestJson(r: WatchResult, earlier: MovedBill[][] = []) {
     moved: r.candidates.length,
     alreadyReported: r.alreadyReported,
     xrayed: r.xrayed,
+    site: r.site,
     cutoff: { score: FLAG_CUTOFF, max: MAX_FLAGGED },
     belowCutoff: r.candidates.length - flagged.length,
     highestBelow: best && { display: billDisplay(best.status.id), score: best.score },
@@ -232,6 +232,24 @@ function auditLine(
   return `Party symmetry audit, last ${a.days} digest day${a.days === 1 ? "" : "s"}, ${a.bills} distinct moved bills by sponsor party, flagged and not: ${rows.join(" · ") || "none"}. ${a.verdict} Today: flagged ${tally(d.flaggedBySponsorParty)} of moved ${tally(d.movedBySponsorParty)}.`;
 }
 
+const deployText = (d: Deploy) => {
+  switch (d.status) {
+    case "pending":
+      return "deploy not finished";
+    case "deployed":
+      return `deployed to ${d.url}`;
+    case "unchanged":
+      return "live site already matches, not redeployed";
+    case "disabled":
+      return "not deployed (turned off)";
+    case "failed":
+      return `deploy failed (${d.error}), the previous live site is unchanged`;
+  }
+};
+
+const siteLine = ({ published, deploy }: Digest["site"]) =>
+  `Site: ${published.length ? `published ${published.map((b) => billDisplay(b)).join(", ")}` : "no new bundles published"} · ${deployText(deploy)}`;
+
 const cell = (v: number | null) => (v === null ? "—" : v.toFixed(2));
 
 export function digestMarkdown(d: Digest): string {
@@ -241,6 +259,7 @@ export function digestMarkdown(d: Digest): string {
     `Window: records updated ${d.since} → ${d.date}, actions dated from ${d.actionsSince} · ${d.moved} bills moved with new events (${d.alreadyReported} more were in an earlier digest) · rules ${d.rules.version}`,
   );
   if (d.xrayed.length) L.push(`X-rayed: ${d.xrayed.map((b) => billDisplay(b as BillId)).join(", ")}`);
+  L.push(siteLine(d.site));
   if (d.problems.length)
     L.push("", `**${d.problems.length} problem${d.problems.length > 1 ? "s" : ""}** (see the end)`);
   if (!d.flagged.length)

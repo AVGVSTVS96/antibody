@@ -12,7 +12,7 @@ const HELP = `antibody — x-ray a US federal bill
   antibody bundle <bill>... [--publish]          build bundles from the tables as they are (no stages)
   antibody build [--refresh] [--no-stages]       x-ray the curated bills and publish them + the index for the site
   antibody run <stage> [<bill>] [--only]         run one stage (and what it needs)
-  antibody watch                                 the daily watcher
+  antibody watch [--no-deploy]                   the daily watcher: digest, x-ray, publish to the site, deploy
   antibody stages                                list stages by package
 
 <bill> is anything like S.1582, "H.R. 1 (119th)", 119-s-1582 or a congress.gov URL.
@@ -26,6 +26,7 @@ const { positionals, values } = parseArgs({
     only: { type: "boolean", default: false },
     publish: { type: "boolean", default: false },
     "no-stages": { type: "boolean", default: false },
+    "no-deploy": { type: "boolean", default: false },
   },
 });
 const [command, ...args] = positionals;
@@ -168,6 +169,7 @@ switch (command) {
     break;
   }
   case "watch":
+    if (values["no-deploy"]) process.env.ANTIBODY_WATCH_DEPLOY = "0";
     await run(order(all, ["watch"]), null, ["watch"]);
     break;
   case "stages":

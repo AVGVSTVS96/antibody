@@ -3,5 +3,5 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@antibody/core": "workspace:*", "fast-xml-parser": "5.11.2" }
+  "dependencies": { "@antibody/core": "workspace:*", "@antibody/store": "workspace:*", "fast-xml-parser": "5.11.2" }
 }

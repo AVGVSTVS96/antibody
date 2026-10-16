@@ -171,6 +171,7 @@ test("digest: every reason links a source; party is shown only in the audit tall
     candidates: [c],
     alreadyReported: 0,
     xrayed: [],
+    site: { published: [], deploy: { status: "disabled", reason: "test" } },
     problems: [],
   };
   const d = digestJson(r);
@@ -181,6 +182,8 @@ test("digest: every reason links a source; party is shown only in the audit tall
   expect(md).toContain("## 1. H.R.42 · Example Act");
   expect(md).toContain("Became law on Oct 9, 2026");
   expect(md).toContain("closed rule");
+  expect(md).toContain("Site: no new bundles published · not deployed (turned off)");
+  expect(md).toContain("page: not published yet");
   expect(money(-149_000)).toBe("−$149.0B");
   expect(money(120)).toBe("+$120M");
 });

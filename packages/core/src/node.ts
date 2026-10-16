@@ -68,7 +68,10 @@ const canCap = Bun.which("systemd-run") !== null && process.env.CI === undefined
  * Runs a command, memory-capped with `systemd-run --user --scope -p MemoryMax=<cap>` on the server
  * (plain elsewhere, like CI). Use it for bulk downloads, OCR/vision batches, big parses and DuckDB loads.
  */
-export async function heavy(cmd: string[], opts: { memoryMax?: string; cwd?: string } = {}): Promise<string> {
+export async function heavy(
+  cmd: string[],
+  opts: { memoryMax?: string; cwd?: string; signal?: AbortSignal } = {},
+): Promise<string> {
   const full = canCap
     ? [
         "systemd-run",
@@ -82,7 +85,7 @@ export async function heavy(cmd: string[], opts: { memoryMax?: string; cwd?: str
         ...cmd,
       ]
     : cmd;
-  const proc = Bun.spawn(full, { cwd: opts.cwd ?? ROOT, stdout: "pipe", stderr: "inherit" });
+  const proc = Bun.spawn(full, { cwd: opts.cwd ?? ROOT, stdout: "pipe", stderr: "inherit", signal: opts.signal });
   const out = await new Response(proc.stdout).text();
   if ((await proc.exited) !== 0) throw new Error(`failed (${proc.exitCode}): ${cmd.join(" ")}`);
   return out;
