@@ -209,7 +209,7 @@ function Rows({ bills, feature }: { bills: Entry[]; feature?: string }) {
   const phone = useMedia("(max-width: 760px)");
   return (
     <>
-      <div className="rows-h" aria-hidden="true">
+      <div className="laws-h" aria-hidden="true">
         <span className="c-fp">One square per section</span>
         <span className="c-law">Law</span>
         <span className="c-loud">Loud</span>
@@ -217,7 +217,7 @@ function Rows({ bills, feature }: { bills: Entry[]; feature?: string }) {
         <span className="c-lobby">Lobbying reports</span>
         <span className="c-traded">Members traded</span>
       </div>
-      <ul className="rows">
+      <ul className="laws">
         {bills.map((b) => (
           <Row key={b.id} b={b} start={b.id === feature} phone={phone} />
         ))}
@@ -297,7 +297,7 @@ function Picks({ index }: { index: BundleIndex }) {
   const picks = index.watch.slice(0, 12);
   if (!picks.length)
     return (
-      <section className="picks">
+      <section className="wpicks">
         <div className="wrap">
           <header className="list-h">
             <h2>New this week</h2>
@@ -307,19 +307,19 @@ function Picks({ index }: { index: BundleIndex }) {
       </section>
     );
   return (
-    <section className="picks" aria-labelledby="picksh">
+    <section className="wpicks" aria-labelledby="picksh">
       <div className="wrap">
         <header className="list-h">
           <h2 id="picksh">New this week</h2>
           <p>A daily check flags bills that moved. A lead, not a verdict.</p>
         </header>
-        <ul className="pick-g">
+        <ul className="wpick-g">
           {picks.map((w) => {
             const [lead = "Moved this week", ...rest] = picksNote(w);
             const xrayed = !!w.file;
             return (
-              <li key={w.billId} className="pick">
-                <span className={`pick-k${lead.startsWith("Became law") ? " law" : ""}`}>{lead}</span>
+              <li key={w.billId} className="wpick">
+                <span className={`wpick-k${lead.startsWith("Became law") ? " law" : ""}`}>{lead}</span>
                 <h3>{w.title}</h3>
                 <p>
                   {w.display}

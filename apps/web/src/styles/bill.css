@@ -679,6 +679,9 @@ details p {
   gap: 40px;
   align-items: start;
 }
+.era-g.solo {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
 .era-d {
   padding-top: 8px;
   font-size: 13px;
@@ -702,7 +705,7 @@ details p {
   --cell: 18px;
   display: grid;
   grid-template-columns: repeat(auto-fill, var(--cell));
-  gap: 8px;
+  gap: var(--gap, 8px);
   padding-top: 18px;
 }
 .waffle li {
@@ -1222,8 +1225,7 @@ a.cname:hover {
     gap: 32px;
   }
   .waffle {
-    --cell: 18px;
-    gap: 6px;
+    --gap: 6px;
   }
   .clients li {
     grid-template-columns: 96px minmax(0, 1fr) 40px;

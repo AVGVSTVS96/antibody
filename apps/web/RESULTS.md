@@ -1,34 +1,20 @@
-# web (p1/web)
+# web
 
-The site: a bill index and a per-bill X-ray page, rendered from `public/bundles/*.json` (Bundle) and `index.json` (BundleIndex). No server: static files plus client-side routing.
+The site: a bill index and a per-bill X-ray page, rendered from `public/bundles/*.json` (Bundle) and `index.json` (BundleIndex). No server: static files plus client-side routing. Design: Paper file "antibody", page "O2 — Original, redesigned"; build notes in `~/scratch/antibody-original/BUILD-v1-REPORT.md`.
 
-## What exists
+## Design system
 
-- **Index** (`/`): search box (bill id in any spelling, a congress.gov link, or a title word; an unknown bill gets a "not x-rayed yet" page with the CLI command), curated bills in two columns by sponsor party with a per-bill section fingerprint ring, latest watcher picks (kind, reason, age, link), how-to-read cards.
-- **Bill page** (`/bill/<id>?view=map|money|list&focus=<node id>`):
-  - sigma 4 + graphology radial map: bill at the center, section ring (headline/buried marked), then clients and companies, then members; edges by kind, inference edges dashed; legend toggles edge kinds; hover and pinned focus dim everything else; tooltips carry the claim chips.
-  - Money map: companies and members joined by trades and PAC money (force layout).
-  - X-ray list: versions timeline, section table with attention, CBO dollars and score components, filters (headline, buried, late), row history with diffs.
-  - Sidebar cards: Bill, Headline, Buried, Who lobbied, Who benefits, Members with stakes, What we couldn't read (gaps). Every line has a source chip; inference lines carry an INFERENCE tag and, on hover, the rule and what the claim rests on.
-- Light and dark (follows the system, toggle in the header, `?theme=` for screenshots), real tab titles per page, phone/tablet/desktop layouts, view transitions between pages, reduced-motion respected.
-- `vercel.json`: SPA rewrite for `/bill/:id`, immutable asset caching, short edge cache for bundles. The Vercel project root is `apps/web`.
-- Fixture: `public/bundles/119-s-1582.json` (GENIUS, built from the Phase 0 spike outputs by `scripts/genius-fixture.ts`) until real bundles land. `scripts/publish-fixtures.ts` rebuilds the index from whatever bundles are in a folder.
-- `scripts/shoot.ts <base url> <out dir> [filter]` screenshots every view (desktop, tablet, phone, light, dark) and reports overflow, console errors and the tab title.
+- Tokens are CSS variables in `src/styles/tokens.css`: `--paper --wash --rule --ink --ink-2 --ink-3 --iris --flare --money --scan ...`, light by default, dark through `:root[data-theme="dark"]` or the system setting (`?theme=dark|light` forces one). Each color has one job: iris is the loud part and links, orange is quiet and costly only, green is money only, the scanner panel is near-black. Party is never a color.
+- Public Sans only (`@fontsource-variable/public-sans`), sentence case, tabular figures in number columns.
+- Motion: view transitions between pages, `--ease-out` for state changes, tooltips wait 300ms once then open instantly, every animation has a reduced-motion fallback.
 
-## Checks run
+## Pages
 
-- `bun run ci`: Biome (2 style warnings about CSS specificity order), tsc, 33 tests pass. `bun run --cwd apps/web build` passes (index chunk 76 kB gzip, bill page chunk 136 kB gzip, loaded only on bill routes).
-- shoot.ts: no horizontal overflow, no console errors, correct titles on all 13 shots.
-- Trial-merged origin/p1/bundle (core changes: WatchPick kinds, BillStats): tsc and web tests still pass.
-- Index checked with a synthetic 4-bill index plus two watcher picks (not committed).
+- **Index** (`/`): hero search, the fingerprint key, one row per curated law (one square per section, the same four numbers in columns, edge states "Too few articles to rank sections" and "Can't be tested"), the bills the daily watch added (marked, with a note on what is thinner), the watcher's picks, how we read bills. Very large laws pack several sections into one square (labelled) so rows stay a sane height.
+- **Bill** (`/bill/<id>`): hero with the bill's timeline, four answers, cost against news chart with a fact panel, how the law was built, the x-ray map (`src/bill/scan`), who paid to be heard, members who traded tied stock, the records behind the page, what's missing. `?view=list` is the full section table, `?map=trades|pac|sections&focus=<id>` links a map view and a pinned company.
+- Every chart is built from the bundle: nothing is hard-coded to one bill. Charts degrade honestly (no CBO section figures: a news histogram; no PAC data: a plain note; unranked news: stated).
 
-## Fixed in this resume
+## Checks
 
-- Phone: the view toggle's moving thumb was painted over the whole map (the toggle lost its positioning context); the section table overflowed its card; opening the map from the list view on a phone threw "Container has no width" and left the map blank.
-- Screenshots are no longer tracked (`apps/web/shots/` in .gitignore).
-
-## Not done / blocked
-
-- Not deployed: no Vercel login on the server. Import the repo in Vercel with root directory `apps/web`; `vercel.json` has the rest. Pages are client-rendered (a pre-render step is a later speedup).
-- Only one real bill renders until the pipeline publishes more bundles to `apps/web/public/bundles/`. The curated, party-balanced list fills from `index.json`; the Democratic column shows an empty state until a Democratic-sponsored bill is x-rayed.
-- A full-page Playwright screenshot of the phone layout repeats sections (sticky-element stitching artifact); the DOM has one copy.
+- `bun run ci` (Biome, tsc, tests), `bun run e2e` (every published bill: renders, no console errors, no horizontal overflow at 1440/768/390, source links well formed, a sample of source URLs answers).
+- `scripts/shoot.ts` and `scripts/shots.ts` take the screenshots.

@@ -6,6 +6,7 @@ import { Cost } from "../bill/Cost.tsx";
 import { Answers, Hero } from "../bill/Hero.tsx";
 import { Money } from "../bill/Money.tsx";
 import { Records, Rules } from "../bill/Rest.tsx";
+import { Scan } from "../bill/scan/Scan.tsx";
 import { Trades } from "../bill/Trades.tsx";
 import { XrayList } from "../bill/XrayList.tsx";
 import { loadBundle, loadClaims, loadIndex } from "../lib/data.ts";
@@ -72,7 +73,14 @@ function BillView({ b, route, entry }: { b: Bundle; route: BillRoute; entry?: Bu
             <Answers m={m} />
             <Cost m={m} />
             <Built m={m} />
-            <div id="map" style={{ height: 300 }} data-todo={`${route.focus}${setFocus.length}${setMap.length}`} />
+            <Scan
+              m={m}
+              focus={route.focus}
+              setFocus={setFocus}
+              mapView={route.map}
+              setMapView={setMap}
+              claimsLoaded={claims !== null}
+            />
             <Money m={m} />
             <Trades m={m} />
             <Records m={m} />

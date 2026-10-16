@@ -189,7 +189,7 @@ svg {
   top: 0;
   z-index: 30;
   height: 64px;
-  background: color-mix(in srgb, var(--paper) 80%, transparent);
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
   -webkit-backdrop-filter: saturate(1.4) blur(14px);
   backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid var(--rule);

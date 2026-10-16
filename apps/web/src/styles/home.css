@@ -160,7 +160,7 @@
   line-height: 18px;
   color: var(--ink-3);
 }
-.rows-h {
+.laws-h {
   display: flex;
   gap: 16px;
   padding: 12px 0;
@@ -171,7 +171,7 @@
   line-height: 16px;
   color: var(--ink-3);
 }
-.rows-h span:not(.c-law):not(.c-fp) {
+.laws-h span:not(.c-law):not(.c-fp) {
   text-align: right;
 }
 .c-fp {
@@ -230,7 +230,7 @@
 .lawrow:active::before {
   opacity: 1;
 }
-.rows li {
+.laws li {
   position: relative;
   isolation: isolate;
 }
@@ -348,21 +348,21 @@
   color: var(--ink-3);
 }
 
-.picks {
+.wpicks {
   background: var(--wash);
   padding: 56px 0 72px;
 }
-.picks .list-h h2 {
+.wpicks .list-h h2 {
   font-size: 24px;
   line-height: 30px;
   letter-spacing: -0.015em;
 }
-.pick-g {
+.wpick-g {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
   gap: 24px;
 }
-.pick {
+.wpick {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -371,28 +371,28 @@
   border-radius: 18px;
   background: var(--paper);
 }
-.pick-k {
+.wpick-k {
   font-size: 13px;
   font-weight: 600;
   line-height: 16px;
   color: var(--ink-2);
 }
-.pick-k.law {
+.wpick-k.law {
   color: var(--money);
 }
-.pick h3 {
+.wpick h3 {
   font-size: 19px;
   line-height: 24px;
   font-weight: 700;
   text-wrap: balance;
 }
-.pick p {
+.wpick p {
   font-size: 15px;
   line-height: 22px;
   color: var(--ink-2);
   text-wrap: pretty;
 }
-.pick .link {
+.wpick .link {
   margin-top: auto;
   padding-top: 6px;
   font-size: 14px;
@@ -439,7 +439,7 @@
     width: 100%;
     max-width: 480px;
   }
-  .rows-h {
+  .laws-h {
     display: none;
   }
   .lawrow {
@@ -564,7 +564,7 @@
   .stats > span {
     padding-right: 20px;
   }
-  .picks {
+  .wpicks {
     padding: 40px 0 48px;
   }
   .read {

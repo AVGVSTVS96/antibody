@@ -19,13 +19,14 @@ export function Cost({ m }: { m: BillModel }) {
   const hollow = points.some((p) => p.musd < 0);
   const articles = m.b.attention.sample?.relevant ?? m.b.attention.articles;
   const selected = m.sectionById.get(pick ?? "") ?? null;
+  const coverage = m.sections.filter((v) => v.s.inFinal).length >= 8;
 
   return (
     <Section id="news" title="What the news covered, and what it cost">
       <p className="lead narrow">
         {points.length
           ? "Each dot is one section of the law, placed by how many articles were about it and by what CBO says it costs or saves. Filled dots add to the deficit, hollow dots cut it. Sections without a CBO figure aren’t drawn here."
-          : "CBO gave none of this bill’s sections its own cost, so there is no cost to plot. The chart shows how much news each section got instead."}
+          : "CBO gave none of this bill’s sections its own cost, so there is no cost to plot."}
       </p>
       <ul className="legend">
         <li>
@@ -53,14 +54,16 @@ export function Cost({ m }: { m: BillModel }) {
           can be called loud or quiet.
         </p>
       )}
-      <div className={`costrow${selected ? "" : " alone"}`}>
-        {points.length ? (
-          <Scatter m={m} points={points} pick={pick} onPick={setPick} articles={articles} />
-        ) : (
-          <Coverage m={m} />
-        )}
-        {selected && <Facts m={m} v={selected} />}
-      </div>
+      {(points.length > 0 || coverage) && (
+        <div className={`costrow${selected ? "" : " alone"}`}>
+          {points.length > 0 ? (
+            <Scatter m={m} points={points} pick={pick} onPick={setPick} articles={articles} />
+          ) : (
+            <Coverage m={m} />
+          )}
+          {selected && <Facts m={m} v={selected} />}
+        </div>
+      )}
       <details className="how">
         <summary>How we measured it</summary>
         <HowMeasured m={m} />

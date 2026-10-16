@@ -48,7 +48,7 @@ export function Trades({ m }: { m: BillModel }) {
           <header>
             <h3>Most trades</h3>
             <span className="tr-bar-h">
-              {cut && own ? "Dark before the vote, light after" : "Dark before signing, light after"}
+              Dark before {own ? "the vote" : m.b.bill.law ? "signing" : "the latest action"}, light after
             </span>
             <span className="tr-vote-h">Voted</span>
             <span className="tr-n-h">Trades</span>
