@@ -103,7 +103,7 @@ export async function updateSite(
     await linkProject(where.root);
     await exec(["bunx", "vercel", "build", "--prod", "--yes"], where.root, signal);
     const out = await exec(["bunx", "vercel", "deploy", "--prebuilt", "--prod", "--yes"], where.root, signal);
-    const url = out.match(/https:\/\/\S+/g)?.at(-1) ?? SITE_URL;
+    const url = out.match(/https:\/\/[^\s"',]+/g)?.at(-1) ?? SITE_URL;
     await mkdir(dirname(where.deployedIndex), { recursive: true });
     await Bun.write(`${where.deployedIndex}.tmp`, text);
     await rename(`${where.deployedIndex}.tmp`, where.deployedIndex);
