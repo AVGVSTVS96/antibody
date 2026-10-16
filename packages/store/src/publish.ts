@@ -1,4 +1,4 @@
-import { mkdir, readdir } from "node:fs/promises";
+import { mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { type BillId, type Bundle, BundleIndex, billDisplay, billStats, type Row } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
@@ -114,44 +114,64 @@ async function watchPicks(bundles: Map<string, Bundle>, events: Row<"watch_event
     });
 }
 
-const WATCHER_NOTE =
-  "Added by the daily watcher, not hand-checked: its sponsor, law status and company matches come straight from the automated run.";
+function watcherNote(b: Bundle): string {
+  const { buriedTest, cboPublished } = billStats(b);
+  const thin = [
+    ...(buriedTest.tested ? [] : [`buried sections were not ranked (${buriedTest.why})`]),
+    ...(cboPublished ? [] : ["no CBO estimate was found, so no dollar figures show"]),
+  ];
+  return `Added by the daily watcher and not hand-checked; sponsor, law status and company matches come straight from the automated run${thin.map((t) => `, and ${t}`).join("")}.`;
+}
 
 function watcherProvenance(b: Bundle, events: Row<"watch_events">[]): Provenance {
   const first = events
     .filter((e) => e.bill_id === b.bill.id && e.kind === "hot")
     .map((e) => e.seen_at.slice(0, 10))
     .sort()[0];
-  return { origin: "watcher", note: WATCHER_NOTE, addedOn: first ?? b.generatedAt.slice(0, 10) };
+  return { origin: "watcher", note: watcherNote(b), addedOn: first ?? b.generatedAt.slice(0, 10) };
 }
 
+/** How many watcher bills the library keeps; the newest by `addedOn` stay, older bundles are deleted from the published folder. */
+export const WATCHER_KEEP = 60;
+
+const bundleFiles = (id: string) => [`${id}.json`, claimsFile(id)];
+
 /**
- * Rebuilds `index.json` from every bundle in `dir`: the ids in `order` first (the curated list), then the rest
- * newest first, plus the watcher's latest picks.
+ * Rebuilds `index.json` from every bundle in `dir`: the ids in `order` first (the curated list, in that order),
+ * then the watcher's bills newest added first. Watcher bills beyond `keep` are dropped from the index and their
+ * files deleted; curated bills are never touched. Also lists the watcher's latest picks.
  */
 export async function writeIndex(
   dir = paths.published,
   order: string[] = [],
   events?: Row<"watch_events">[],
+  keep = WATCHER_KEEP,
 ): Promise<BundleIndex> {
   const watched = events ?? (await readRows("watch_events"));
   const files = (await readdir(dir).catch(() => [] as string[])).filter(
     (f) => f.endsWith(".json") && f !== "index.json" && !f.endsWith(".claims.json"),
   );
-  const bundles = new Map<string, Bundle>();
-  for (const f of files) {
-    const b = (await Bun.file(join(dir, f)).json()) as Bundle;
-    bundles.set(b.bill.id, b);
-  }
-  const bills = [...bundles.values()].map((b) =>
-    indexEntry(b, order.includes(b.bill.id) ? CURATED_PROVENANCE : watcherProvenance(b, watched)),
-  );
+  const found: Bundle[] = [];
+  for (const f of files) found.push((await Bun.file(join(dir, f)).json()) as Bundle);
+  const entries = found.map((b) => ({
+    b,
+    entry: indexEntry(b, order.includes(b.bill.id) ? CURATED_PROVENANCE : watcherProvenance(b, watched)),
+  }));
   const rank = (id: string) => (order.includes(id) ? order.indexOf(id) : order.length);
-  bills.sort((a, b) => rank(a.id) - rank(b.id) || (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""));
+  entries.sort(
+    (x, y) =>
+      rank(x.entry.id) - rank(y.entry.id) ||
+      (y.entry.addedOn ?? "").localeCompare(x.entry.addedOn ?? "") ||
+      (y.entry.latestActionOn ?? "").localeCompare(x.entry.latestActionOn ?? "") ||
+      x.entry.id.localeCompare(y.entry.id),
+  );
+  const cut = entries.filter((e) => e.entry.origin === "watcher").slice(keep);
+  for (const { entry } of cut) for (const f of bundleFiles(entry.id)) await rm(join(dir, f), { force: true });
+  const kept = entries.filter((e) => !cut.includes(e));
   const index = BundleIndex.parse({
     generatedAt: new Date().toISOString(),
-    bills,
-    watch: await watchPicks(bundles, watched),
+    bills: kept.map((e) => e.entry),
+    watch: await watchPicks(new Map(kept.map((e) => [e.b.bill.id, e.b])), watched),
   });
   await mkdir(dir, { recursive: true });
   await Bun.write(join(dir, "index.json"), `${JSON.stringify(index, null, 1)}\n`);

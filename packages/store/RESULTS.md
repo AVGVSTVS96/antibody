@@ -15,7 +15,7 @@ Branch `p1/bundle`. `bun run ci` passes (Biome, tsc, 62 tests).
   - `antibody bundle <bill>... [--publish]`: bundles from the tables as they are (no stages).
   - `antibody build [--refresh] [--no-stages]`: the curated list, publishes bundles + `index.json` to `apps/web/public/bundles/`.
   - A failing bill is reported and the rest continue; exit code 1 lists the failures. Global stages run once per `build`.
-  - `apps/cli/src/curated.ts`: 12 bills, six led by each party (sponsor party of the measure that became law), each id/sponsor/law number checked against GovInfo BILLSTATUS on 2026-10-13:
+  - `packages/store/src/curated.ts`: 12 bills, six led by each party (sponsor party of the measure that became law), each id/sponsor/law number checked against GovInfo BILLSTATUS on 2026-10-13:
     GENIUS 119-s-1582 (R), IRA 117-hr-5376 (D), OBBBA 119-hr-1 (R), American Rescue Plan 117-hr-1319 (D), Laken Riley 119-s-5 (R), CHIPS 117-hr-4346 (D), TAKE IT DOWN 119-s-146 (R), IIJA 117-hr-3684 (D), Fiscal Responsibility Act 118-hr-3746 (R), PACT Act 117-s-3373 (D), NDAA FY2026 119-s-1071 (R), Consolidated Appropriations 2023 117-hr-2617 (D).
 
 ## Run against the current shared data (Oct 14, 01:00)

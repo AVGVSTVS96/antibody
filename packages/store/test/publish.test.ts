@@ -54,6 +54,26 @@ test("a bundle outside the curated list is marked as the watcher's, with the day
   const [curated, watcher] = index.bills;
   expect(curated).toMatchObject({ origin: "curated", note: null, addedOn: null });
   expect(watcher).toMatchObject({ id: "119-hr-9", origin: "watcher", addedOn: "2026-10-15" });
-  expect(watcher!.note).toBeString();
+  expect(watcher!.note).toStartWith("Added by the daily watcher and not hand-checked");
   expect(index.watch.map((p) => [p.billId, p.file])).toEqual([["119-hr-9", "119-hr-9.json"]]);
+});
+
+test("watcher bills beyond the cap are dropped, oldest added first, and curated ones are never cut", async () => {
+  const published = await mkdtemp(join(dir, "cap-"));
+  const make = (n: number): Bundle => ({ ...bundle, bill: { ...bundle.bill, id: `119-hr-${n}`, display: `H.R.${n}` } });
+  const day = (n: number) => `2026-10-${String(10 + n).padStart(2, "0")}`;
+  const events = [1, 2, 3].map((n) => ({
+    id: `119-hr-${n}/hot/${day(n)}`,
+    bill_id: `119-hr-${n}`,
+    kind: "hot" as const,
+    seen_at: `${day(n)}T09:00:00-07:00`,
+    url: "https://www.congress.gov/bill/119th-congress/house-bill/1",
+    detail: {},
+  }));
+  for (const b of [bundle, make(1), make(2), make(3)]) await writeBundle(b, { publish: true, ...where, published });
+  const index = await writeIndex(published, [bundle.bill.id], events, 2);
+  expect(index.bills.map((b) => b.id)).toEqual([bundle.bill.id, "119-hr-3", "119-hr-2"]);
+  expect(await Bun.file(join(published, "119-hr-1.json")).exists()).toBe(false);
+  expect(await Bun.file(join(published, "119-hr-1.claims.json")).exists()).toBe(false);
+  expect(await Bun.file(join(published, `${bundle.bill.id}.json`)).exists()).toBe(true);
 });

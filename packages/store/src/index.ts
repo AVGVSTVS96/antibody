@@ -1,6 +1,7 @@
 import type { Stage } from "@antibody/core";
 
 export * from "./build.ts";
+export * from "./curated.ts";
 export * from "./db.ts";
 export * from "./limit.ts";
 export * from "./publish.ts";

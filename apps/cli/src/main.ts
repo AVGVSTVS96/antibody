@@ -2,8 +2,7 @@
 import { parseArgs } from "node:util";
 import { type BillId, parseBillId, type StageContext } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
-import { buildBundle, type Db, loadTables, openDb, writeBundle, writeIndex } from "@antibody/store";
-import { CURATED } from "./curated.ts";
+import { buildBundle, CURATED, type Db, loadTables, openDb, writeBundle, writeIndex } from "@antibody/store";
 import { order, type Registered, register } from "./plan.ts";
 import { PACKAGES } from "./registry.ts";
 
