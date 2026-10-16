@@ -802,7 +802,7 @@ export const Ring = memo(function Ring({
       )}
 
       {showLabels && view !== "sections" && (
-        <g className="sc-focus-labels" style={{ fontSize: `${fs}px` }} key={`${focusId}-${view}`}>
+        <g className="sc-focus-labels" style={{ fontSize: `${fs}px` }} key={`labels-${focusId}-${view}`}>
           {labelSet.items.map((l) => (
             <text
               key={l.id}
