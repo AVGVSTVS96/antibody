@@ -64,9 +64,16 @@ const committeeKey = (id: string) => id.toUpperCase().replace(/^([A-Z]{4})00$/, 
  * bundle points at a claim minted from the row that states it, with one wording template per table, so the
  * text is the same for every party. Missing tables or rows become `gaps`, never invented data.
  */
-export async function buildBundle(db: Db, bill: BillId, { now = new Date() } = {}): Promise<BuildResult> {
-  return new Builder(db, bill, now).build();
+export async function buildBundle(
+  db: Db,
+  bill: BillId,
+  { now = new Date(), names = curatedNames }: { now?: Date; names?: Record<string, string> } = {},
+): Promise<BuildResult> {
+  return new Builder(db, bill, now, names[bill] ?? null).build();
 }
+
+/** A curated bill goes by the name its curated entry gives it, not the long official title. */
+const curatedNames = Object.fromEntries(CURATED.map((c) => [c.id, c.name]));
 
 class Builder {
   private claims = new Map<ClaimId, Claim>();
@@ -103,6 +110,7 @@ class Builder {
     private db: Db,
     private bill: BillId,
     private now: Date,
+    private curatedName: string | null,
   ) {
     this.display = billDisplay(bill);
   }
@@ -245,7 +253,7 @@ class Builder {
     const [bill] = await this.select("bills", "id = $id", { id: this.bill });
     if (!bill) throw new BuildError(`no bills row for ${this.bill}: run the bills stage first`);
     this.lateUnavailable = bill.late_unavailable ?? null;
-    bill.short_title = CURATED.find((c) => c.id === this.bill)?.name ?? (await this.shortTitle(bill));
+    bill.short_title = this.curatedName ?? (await this.shortTitle(bill));
     this.names.display = this.display;
     this.names.bill = `${this.display}${bill.short_title ? ` (${bill.short_title})` : ""}`;
     this.names.sample = await this.attentionSample();

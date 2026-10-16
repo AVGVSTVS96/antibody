@@ -298,7 +298,7 @@ test("a bill listed only by a description takes the name its first section gives
   const first = rows.sections!.find((s) => s.num === "1")!;
   first.heading = "Short title";
   first.preview = "This Act may be cited as the One Big Beautiful Bill Act .";
-  const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+  const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW, names: {} });
   expect(bundle.bill.shortTitle).toBe("One Big Beautiful Bill Act");
 });
 
