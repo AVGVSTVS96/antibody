@@ -8,8 +8,8 @@ The section-first direction of candidates.py: that script shortlists sections fo
 wording is far from how the press describes it (a "benefit redesign" that news calls a "$2,000 cap on drug costs")
 can be missing from every shortlist. A section's `text` is a plain-language description of the provision and its
 `phrases` are words a news article about it would use. Two ways to find articles, one passage each:
-- phrases: the articles that use the most of the section's phrases anywhere in their text; the passage is the
-  paragraph with the most of them;
+- phrases: the articles with a paragraph that uses at least two of the section's phrases (a phrase counts when 60% of
+  its content words are there), most first; the passage is that paragraph, anywhere in the article;
 - meaning: every article is cut into its headline and paragraphs among the first 900 words, each is compared with the
   description, and each article's best piece is kept.
 Phrase matches come first (at most half of k), meaning fills the rest.
@@ -49,16 +49,26 @@ def cut(text):
     return " ".join(text.split()[:PASSAGE_WORDS])
 
 
+STOP = set("a an and the of for to in on by with from at as or is are be that this these those it its into over under".split())
+
+
+def content(phrase):
+    return [w for w in re.findall(r"[a-z0-9]+", phrase.lower()) if w not in STOP]
+
+
 def by_phrases(article, phrases):
-    """The distinct phrases an article uses, and the paragraph around the most of them."""
-    best, seen = ("", 0), set()
+    """How many of the section's phrases a paragraph uses (a phrase counts when 60% of its content words are there), and the best paragraph."""
+    wanted = [(ph, content(ph)) for ph in phrases]
+    wanted = [(ph, ws) for ph, ws in wanted if ws]
+    best = ("", 0)
     for p in (article.get("text") or "").split("\n"):
-        low = p.lower()
-        found = {ph for ph in phrases if ph in low}
-        seen |= found
-        if len(found) > best[1] and len(p.split()) >= 8:
-            best = (p, len(found))
-    return len(seen), best[0]
+        if len(p.split()) < 8:
+            continue
+        have = set(re.findall(r"[a-z0-9]+", p.lower()))
+        n = sum(1 for _, ws in wanted if sum(w in have for w in ws) >= max(1, -(-len(ws) * 6 // 10)))
+        if n > best[1]:
+            best = (p, n)
+    return best[1], best[0]
 
 
 if __name__ == "__main__":
@@ -88,7 +98,7 @@ if __name__ == "__main__":
             sim = float(sims[i, j])
             meaning.append((sim, a["id"], texts[i], 0))
             n, para = by_phrases(a, phrases) if phrases else (0, "")
-            if n and para:
+            if n >= 2 and para:
                 lexical.append((n, sim, a["id"], para))
         lexical.sort(reverse=True)
         picked = lexical[: k // 2]

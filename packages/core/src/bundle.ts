@@ -339,8 +339,10 @@ export const BillStats = z.object({
       why: z.string().nullable(),
       bigStakes: z.number().int(),
       dollarsMeasured: z.boolean().default(true),
+      /** Final sections CBO gave their own figure: the sections the cost half of the test could look at. */
+      costMeasured: z.number().int().default(0),
     })
-    .default({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true }),
+    .default({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true, costMeasured: 0 }),
   /** CBO published at least one estimate for the bill (a whole-bill deficit may still be unread). */
   cboPublished: z.boolean().default(false),
   /** The headline deficit covers only direct spending and revenue; the bill's discretionary appropriations are not in it. */
@@ -523,9 +525,10 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
       : [],
   );
   const ranked = final.some((s) => s.attention?.pct != null);
-  const dollarsMeasured = final.some(
+  const priced = final.filter(
     (s) => s.score?.components.dollarsMusd != null && s.score.components.dollarsSplit !== "even_split",
-  );
+  ).length;
+  const dollarsMeasured = priced > 0;
   const big = final.filter((s) => s.score && bigStakes(s.score.components)).length;
   const why =
     final.length < MIN_SECTIONS_TO_BURY
@@ -545,7 +548,7 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     companies: b.nodes.filter((n) => n.kind === "company").length,
     membersTraded: new Set(traders.map((e) => e.src)).size,
     membersTradedDuring: during.size,
-    buriedTest: { tested: why === null, why, bigStakes: big, dollarsMeasured },
+    buriedTest: { tested: why === null, why, bigStakes: big, dollarsMeasured, costMeasured: priced },
     cboPublished: b.dollars.estimates.length > 0,
     deficitDirectOnly: isAppropriations(b) && !!deficit,
     tradeSpan: span,

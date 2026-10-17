@@ -1,4 +1,4 @@
-import type { BundleIndex } from "@antibody/core";
+import { BIG_STAKES, type BundleIndex } from "@antibody/core";
 import { use, useEffect, useState } from "react";
 import { loadIndex, prefetchBundle } from "../lib/data.ts";
 import { count, day } from "../lib/format.ts";
@@ -272,7 +272,14 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
                   <b className="n loud">{s.headline}</b>
                   <i>Loud</i>
                 </span>
-                <span className="c-quiet">
+                <span
+                  className="c-quiet"
+                  title={
+                    t?.tested && !s.buried
+                      ? `Tested on the ${t.costMeasured} of ${s.sections} sections CBO gave a figure, plus any named in ${BIG_STAKES.reports} lobbying reports`
+                      : undefined
+                  }
+                >
                   {cannotFire ? (
                     <b className="soft" title={t?.why ?? undefined}>
                       Can’t be tested

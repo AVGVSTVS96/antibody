@@ -55,6 +55,7 @@ test("billStats counts the index card numbers", () => {
       why: "the bill has only 1 section, too few for anything to be buried among",
       bigStakes: 0,
       dollarsMeasured: false,
+      costMeasured: 0,
     },
     cboPublished: true,
     deficitDirectOnly: false,
@@ -159,7 +160,7 @@ test("the buried test cannot fire when no section has a measured cost, and says 
 
 test("the buried test fires once any section has a CBO figure, or enough lobbying reports", () => {
   const withDollars = billStats(bill(12, (i) => ({ score: score(i === 0 ? 500 : null) }))).buriedTest;
-  expect(withDollars).toMatchObject({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true });
+  expect(withDollars).toMatchObject({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true, costMeasured: 1 });
   const withLobbying = billStats(
     bill(12, (i) => ({ score: score(null, i === 0 ? BIG_STAKES.reports : 0) })),
   ).buriedTest;

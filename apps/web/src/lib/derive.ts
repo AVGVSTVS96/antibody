@@ -180,7 +180,7 @@ export function answers(m: BillModel): Answer[] {
           big: "None found",
           text: test.bigStakes
             ? `${count(test.bigStakes, "section")} had stakes this big (a CBO figure of $10 billion or more, or ${BIG_STAKES.reports} lobbying reports), and each got at least 1 article in 100.`
-            : `No section has stakes this big: none has a CBO figure of $10 billion or more, or ${BIG_STAKES.reports} lobbying reports.`,
+            : `No section has stakes this big: none has a CBO figure of $10 billion or more, or ${BIG_STAKES.reports} lobbying reports. CBO gave ${test.costMeasured} of ${m.sections.filter((v) => v.s.inFinal).length} sections its own figure.`,
           link: "How we test it",
           target: "read",
         };
