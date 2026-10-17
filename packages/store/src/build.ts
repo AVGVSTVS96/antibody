@@ -44,9 +44,10 @@ export class BuildError extends Error {}
 
 const YEAR = 365 * 24 * 3600 * 1000;
 /** A section the bill leaves unnamed is listed by its opening words, so no row reads as an empty heading. */
-const firstWords = (text: string | null | undefined) => {
+export const firstWords = (text: string | null | undefined) => {
   const words = (text ?? "")
     .replace(/^\s*(?:SEC(?:TION)?\.?\s*\d+[A-Za-z]?\.?\s*)/i, "")
+    .replace(/^(?:\s*\((?:[a-z]{1,2}|\d+)\))+\s*(?=[A-Z])/, "")
     .split(/\s+/)
     .filter(Boolean);
   return words.length ? `${words.slice(0, 10).join(" ")}${words.length > 10 ? "…" : ""}` : "(no heading)";
