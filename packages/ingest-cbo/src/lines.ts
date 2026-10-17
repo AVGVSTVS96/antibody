@@ -32,6 +32,8 @@ export interface Reconcile {
   exact: number;
   /** `sheet|block|measure` keys whose section rows don't add up to CBO's printed total. */
   failing: string[];
+  /** `sheet|block|measure` keys whose rows add up to a total CBO printed. */
+  confirmed: string[];
 }
 
 export interface Built {
@@ -70,8 +72,10 @@ export function reconcile(sheets: ParsedSheet[]): Reconcile {
   let checks = 0;
   let exact = 0;
   const failing = new Set<string>();
+  const totalled = new Set<string>();
   const check = (sheet: ParsedSheet, key: string, summed: Map<string, number> | undefined, total: ParsedRow) => {
     const rounding = sheet.unit === "billions" ? BILLIONS_ROUNDING : 2;
+    totalled.add(`${sheet.sheet}|${key}`);
     for (const period of sheet.years) {
       const diff = Math.round((summed?.get(period) ?? 0) - (total.values[period] ?? 0));
       checks++;
@@ -108,7 +112,9 @@ export function reconcile(sheets: ParsedSheet[]): Reconcile {
     for (const [key, total] of divisionTotals)
       check(sheet, key.split("|").slice(0, 2).join("|"), divisionSums.get(key), total);
   }
-  return { checks, exact, failing: [...failing] };
+  const confirmed = new Set(totalled);
+  for (const key of failing) confirmed.delete(key);
+  return { checks, exact, failing: [...failing], confirmed: [...confirmed] };
 }
 
 interface Amount {
@@ -203,6 +209,12 @@ export function buildLines(
   const ids = (nums: string[], title: string | null, group = false, division: string | null = null) =>
     nums.flatMap((n) => find(n, title, group, division) ?? []);
 
+  const confirmed = new Set(check.confirmed);
+  /** Title and provision rows have no number to check them by, so a block of them must add up to a printed total (or be one row). */
+  const vouched = (sheet: ParsedSheet, block: string, flow: Flow) =>
+    confirmed.has(`${sheet.sheet}|${block}|${flow}`) ||
+    new Set(sheet.rows.filter((r) => LEAF.has(r.line_kind) && r.block === block).map((r) => r.line)).size === 1;
+
   const items: CboLine[] = [];
   for (const [i, sheet] of sheets.entries()) {
     const byLine = Map.groupBy(
@@ -219,6 +231,7 @@ export function buildLines(
         let picked = rows.filter((r) => kindOf(r) === flow && r.block === block);
         if (!picked.length) picked = rows.filter((r) => PARTS[r.measure_kind] === flow && r.block === block);
         if (!picked.length || failing.has(`${sheet.sheet}|${block}|${flow}`)) continue;
+        if (rows[0]!.line_kind !== "section" && !vouched(sheet, block, flow)) continue;
         const amount = sum(picked, sheet, fileOf(sheet));
         if (last(amount.values, sheet.years) === null) continue;
         items.push({

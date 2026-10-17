@@ -567,7 +567,7 @@ def parse_tables(pages):
             if "in Revenues" in line and line.startswith(("Increases", "Decreases")):
                 block, current = "revenues", None
                 continue
-            if "Discretionary Spending" in line and line.startswith(("Increases", "Decreases")):
+            if ("Discretionary Spending" in line or "Subject to Appropriation" in line) and line.startswith(("Increases", "Decreases")):
                 block, current = "discretionary", None
                 continue
             if line.startswith("Net Increase") or line.startswith("From Changes"):

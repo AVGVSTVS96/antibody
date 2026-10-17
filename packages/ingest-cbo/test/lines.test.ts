@@ -85,7 +85,7 @@ const src = {
 const ids = (n: string) => `119-hr-9@ih:sec:${n}`;
 
 test("section rows add up to CBO's printed totals", () => {
-  expect(reconcile(parsed.sheets)).toEqual({ checks: 4, exact: 4, failing: [] });
+  expect(reconcile(parsed.sheets)).toMatchObject({ checks: 4, exact: 4, failing: [] });
 });
 
 test("every line is a valid cbo_lines row", () => {

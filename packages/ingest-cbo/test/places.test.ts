@@ -199,6 +199,45 @@ test("a provision row no heading names stays a group line with no sections, and 
   expect(lines[0]?.source_locator).toContain("no section heading under division I matches this row");
 });
 
+test("title and provision rows are used only when they add up to a total CBO printed, or are the block's only row", () => {
+  const programs = (total?: number) =>
+    table(
+      row(
+        { line: 1, line_kind: "program", measure_kind: "outlays", section_title: "Spectrum Auctions", division: "I" },
+        -10,
+      ),
+      row(
+        {
+          line: 2,
+          line_kind: "program",
+          measure_kind: "outlays",
+          section_title: "Strategic Petroleum Reserve",
+          division: "I",
+        },
+        -20,
+      ),
+      ...(total === undefined
+        ? []
+        : [
+            row({ line: 3, line_kind: "total", measure_kind: "outlays", section_title: "Total", division: "I" }, total),
+          ]),
+    );
+  expect(build(programs(), divisionI).filter((l) => l.measure === "outlays")).toEqual([]);
+  expect(build(programs(-50), divisionI).filter((l) => l.line_kind === "section" && l.measure === "outlays")).toEqual(
+    [],
+  );
+  expect(
+    build(programs(-30), divisionI).filter((l) => l.line_kind === "section" && l.measure === "outlays").length,
+  ).toBe(2);
+  const one = table(
+    row(
+      { line: 1, line_kind: "program", measure_kind: "outlays", section_title: "Spectrum Auctions", division: "I" },
+      -10,
+    ),
+  );
+  expect(build(one, divisionI).filter((l) => l.line_kind === "section" && l.measure === "outlays").length).toBe(1);
+});
+
 test("two rows that would take the same section take neither", () => {
   const lines = build(
     table(
@@ -316,6 +355,7 @@ test("a footnote on a provision row that names one section ties the row to it, w
       },
       5,
     ),
+    row({ line: 4, line_kind: "total", measure_kind: "outlays", section_title: "Total", division: "D" }, 3799),
   );
   parsed.sheets[0]!.notes = notes;
   const lines = build(parsed, divisionI);
