@@ -230,8 +230,9 @@ function Rows({ bills, feature }: { bills: Entry[]; feature?: string }) {
 function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) {
   const s = b.stats;
   const t = s?.buriedTest;
-  const unranked = !!t && !t.tested && t.why?.startsWith("too few");
-  const cannotFire = !!t && !t.tested && !unranked;
+  const short = !!t && !t.tested && !!t.why?.startsWith("the bill has only");
+  const unranked = !!t && !t.tested && !short && !!t.why?.startsWith("too few");
+  const cannotFire = !!t && !t.tested && !short && !unranked;
   const note = s && fingerprintNote(s.fingerprint, phone);
   return (
     <li>
@@ -261,7 +262,9 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
         </span>
         {s && (
           <span className="stats">
-            {unranked ? (
+            {short ? (
+              <span className="c-both">Only {count(s.sections, "section")}: nothing to bury</span>
+            ) : unranked ? (
               <span className="c-both">Too few articles to rank sections</span>
             ) : (
               <>
