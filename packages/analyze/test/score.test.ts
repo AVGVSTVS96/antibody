@@ -3,7 +3,17 @@ import type { Row } from "@antibody/core";
 import { BIG_STAKES, MIN_SECTIONS_TO_BURY } from "@antibody/core";
 import { attention, percentile } from "../src/attention.ts";
 import type { MatchRun } from "../src/match.ts";
-import { BOILERPLATE, buried, label, quiet, SCORE, scoreRows, sectionDollars, stakes } from "../src/score.ts";
+import {
+  BOILERPLATE,
+  buried,
+  label,
+  NAMES_BILL,
+  quiet,
+  SCORE,
+  scoreRows,
+  sectionDollars,
+  stakes,
+} from "../src/score.ts";
 
 test("stakes put dollars and lobbying on log scales, and cuts count the same as costs", () => {
   expect(stakes({ dollarsMusd: 1000, lobbyingReports: 0 })).toBeCloseTo(0.5, 2);
@@ -182,6 +192,57 @@ test("section dollars are a signed deficit effect and remember even splits", () 
   );
   expect(d.bySection.get("s1")).toMatchObject({ musd: -149_524, split: "even_split", measure: "outlays - revenues" });
   expect(d.bySection.get("s2")).toMatchObject({ musd: 2_193_378, split: "exact", measure: "deficit" });
+});
+
+test("a section CBO printed against two baselines counts at the smaller figure, in any bill", () => {
+  const e = (id: string, baseline: Row<"cbo_estimates">["baseline"]) =>
+    ({
+      id,
+      per_section: true,
+      baseline,
+      published_on: "2025-07-21",
+      version_scored: "Public Law 119-21 as enacted",
+    }) as Row<"cbo_estimates">;
+  const d = sectionDollars(
+    [e("law", "current-law"), e("policy", "current-policy")],
+    [
+      line({ id: "a", estimate_id: "law", measure: "deficit", total_musd: 1_362_810 }),
+      line({ id: "b", estimate_id: "policy", measure: "deficit", total_musd: -12_164 }),
+    ],
+  );
+  const s1 = d.bySection.get("s1")!;
+  expect(s1).toMatchObject({ musd: -12_164, baseline: "current-policy", split: "exact", lineIds: ["a", "b"] });
+  expect(s1.byBaseline.map((b) => b.baseline)).toEqual(["current-law", "current-policy"]);
+  expect(d.estimates.map((x) => x.id)).toEqual(["law", "policy"]);
+});
+
+test("an extension that is huge only against current law is not costly once current policy is read", () => {
+  const costlyQuiet = {
+    attentionPct: 0,
+    attentionShare: 0,
+    late: false,
+    offTopic: null,
+    lobbyingReports: 0,
+    sections: 300,
+  };
+  expect(label({ ...costlyQuiet, dollarsMusd: 1_362_810 }, 0)).toBe("buried");
+  expect(label({ ...costlyQuiet, dollarsMusd: 5_961 }, 0)).toBe("normal");
+});
+
+test("a short title or table of contents is never a headline, whatever articles name the bill", () => {
+  const loud = {
+    dollarsMusd: null,
+    attentionPct: 1,
+    attentionShare: 0.3,
+    late: false,
+    offTopic: null,
+    lobbyingReports: 0,
+  };
+  expect(label(loud, 55)).toBe("headline");
+  expect(label({ ...loud, namesBill: true }, 55)).toBe("normal");
+  for (const h of ["Short title", "Short Title, etc", "Table of contents"]) expect(NAMES_BILL.test(h)).toBe(true);
+  for (const h of ["Definitions", "Authorization of appropriations", "Short-term limited duration insurance"])
+    expect(NAMES_BILL.test(h)).toBe(false);
 });
 
 const section = (id: string, in_final = true) => ({ id, in_final }) as Row<"sections">;

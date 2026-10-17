@@ -17,7 +17,7 @@ export {
   percentile,
 } from "./attention.ts";
 export { EMBED_MATCHER, MATCH_MODEL, MATCHER } from "./match.ts";
-export { buried, label, SCORE, SCORE_RULE, SCORE_TEXT, stakes } from "./score.ts";
+export { buried, label, NAMES_BILL, SCORE, SCORE_RULE, SCORE_TEXT, stakes } from "./score.ts";
 
 const PKG = join(import.meta.dir, "..");
 
@@ -32,7 +32,7 @@ export const RULES = [
       "press is shown apart and never counted.",
     url: null,
   },
-  { id: "buried-v2", version: "2", text: SCORE_TEXT.join(" "), url: null },
+  { id: "buried-v3", version: "3", text: SCORE_TEXT.join(" "), url: null },
 ];
 
 /** What the matcher and the quiet check read for a bill: its sections, the articles read, and the bill's names. */
@@ -200,7 +200,7 @@ async function runScores(ctx: StageContext) {
   const n = (l: string) => rows.filter((r) => r.label === l).length;
   ctx.log(
     `${rows.length} final sections: ${n("headline")} headline, ${n("buried")} buried; ` +
-      `dollars from ${dollars.estimate?.id ?? "no per-section CBO estimate"}`,
+      `dollars from ${dollars.estimates.map((e) => e.id).join(" and ") || "no per-section CBO estimate"}`,
   );
 }
 

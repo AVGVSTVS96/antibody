@@ -1,10 +1,10 @@
-import { type BillId, figureOrder, type Row, sectionFigure } from "@antibody/core";
+import { type BillId, figureEstimates, type Row, sectionFigure } from "@antibody/core";
 
 /**
  * The buried score, one formula for every bill and party. Every constant is here and in SCORE_TEXT.
  */
 export const SCORE = {
-  version: "buried-v2",
+  version: "buried-v3",
   /** $1M → 0, $1B → 0.5, $1T → 1 (log scale). */
   dollarsFullAt: 1_000_000,
   /** 1 report → 0.15, 10 → 0.52, 100 → 1 (log scale). */
@@ -15,7 +15,7 @@ export const SCORE = {
   /** headline: top tenth by attention, with at least this many articles. */
   headlinePct: 0.9,
   headlineMinHits: 3,
-  /** costly: stakes of at least this much, which is $10B in CBO's figure for the section itself, or 21 lobbying reports. */
+  /** costly: stakes of at least this much, which is $10B in CBO's figure for the section itself (the smaller one when CBO printed it against two baselines), or 21 lobbying reports. */
   costlyMin: 2 / 3,
   /** quiet: fewer than this share of the bill's relevant articles (each side weighted equally) discussed the section. */
   quietShare: 0.01,
@@ -24,11 +24,11 @@ export const SCORE = {
 } as const;
 
 export const SCORE_TEXT = [
-  "Stakes: how much the section matters, from 0 to 1. It is the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale, where $1 million is 0, $1 billion is 0.5 and $1 trillion is 1 (cuts and costs count the same; a dollar figure that is only an even share of a line CBO printed for several sections is shown but not counted). Lobbying: the number of lobbying reports that name the section, on a log scale where 1 report is 0.15, 10 is 0.52 and 100 is 1.",
+  "Stakes: how much the section matters, from 0 to 1. It is the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale, where $1 million is 0, $1 billion is 0.5 and $1 trillion is 1 (cuts and costs count the same; a dollar figure that is only an even share of a line CBO printed for several sections is shown but not counted). When CBO printed the section against two baselines for the same text, current law and the Senate's current-policy baseline (which treats the expiring 2017 tax cuts as continuing), the smaller figure counts, because a section that is big against only one of them is big because of the baseline, not because of what the section does. Both are shown. Lobbying: the number of lobbying reports that name the section, on a log scale where 1 report is 0.15, 10 is 0.52 and 100 is 1.",
   "Quiet: from 1 (no sampled article discussed the section) down to 0 (1 in 100 articles or more did). It is based on the share of the bill's relevant news articles that discuss the section, with the left, center and right press weighted equally. A section is quiet when under 1 in 100 articles discussed it, which is none or about one in a typical sample of 250 to 350 articles.",
   "Late or off-topic (called 'sneak' in the code): 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill (from the bill's version history), plus 0.25 times how unlike the rest of the bill it is (0 to 1). The late bonus is multiplied by one minus the share of the bill that arrived late, so it shrinks smoothly as more of the bill is late (there is no cutoff): when a bill is rewritten late, being late says less about any one section. Off-topic distance counts only in a bill with a single committee title: a bill assembled from several committees' titles has a minority title by construction.",
   "Buried score = stakes × quiet × (late or off-topic), from 0 to 1.5. It ranks the buried sections of a bill; it does not decide the label.",
-  "Label: 'headline' when a section is in the top tenth of its bill by attention and at least 3 articles discussed it. 'Buried' (shown on the site as 'quiet and costly') when stakes are at least two thirds (CBO's figure for the section itself is $10 billion or more, or 21 or more lobbying reports name it) and the section is quiet, in a bill of at least 10 sections. Everything else is 'normal'.",
+  "Label: 'headline' when a section is in the top tenth of its bill by attention and at least 3 articles discussed it; a section that only gives the bill its name (a short title or table of contents) is never a headline, because an article that names the bill is not discussing a provision. 'Buried' (shown on the site as 'quiet and costly') when stakes are at least two thirds (CBO's figure for the section itself is $10 billion or more against every baseline CBO printed it against, or 21 or more lobbying reports name it) and the section is quiet, in a bill of at least 10 sections. Everything else is 'normal'.",
   "Being late or off-topic is shown and ranks a section higher, but a costly, quiet section is buried without it. The rule is not symmetric on purpose, and the page says so: a section with no CBO figure can still qualify through lobbying alone, and a big dollar figure with a loud news cycle is never labeled buried, whatever it does. A bill with no section-level dollars and no section named by lobbyists, a bill whose news cannot be ranked, and a bill of fewer than 10 sections cannot be tested: the page says which.",
   "All parts are shown next to the label. The formula never looks at party, sponsor or outlet lean; the thresholds are the same for every bill.",
 ];
@@ -46,6 +46,8 @@ export interface Components {
   titles?: number;
   /** Final sections in the bill; a bill shorter than `SCORE.minSections` has nothing to bury a section in. */
   sections?: number;
+  /** The section only names the bill (a short title); articles that name the bill do not make it a headline. */
+  namesBill?: boolean;
   dollarsMusd: number | null;
   attentionPct: number | null;
   /** Share of the bill's relevant articles that discuss the section, each side weighted equally (null when the bill's sections are not ranked). */
@@ -79,8 +81,10 @@ export function buried(c: Components): number | null {
   return Number((stakes(c) * q * sneak).toFixed(4));
 }
 
+export const NAMES_BILL = /^(short title|table of contents)\b/i;
+
 export function label(c: Components, hits: number): Row<"section_scores">["label"] {
-  if (c.attentionPct !== null && c.attentionPct >= SCORE.headlinePct && hits >= SCORE.headlineMinHits)
+  if (!c.namesBill && c.attentionPct !== null && c.attentionPct >= SCORE.headlinePct && hits >= SCORE.headlineMinHits)
     return "headline";
   const long = (c.sections ?? SCORE.minSections) >= SCORE.minSections;
   if (long && stakes(c) >= SCORE.costlyMin && (quiet(c) ?? 0) > 0) return "buried";
@@ -88,17 +92,26 @@ export function label(c: Components, hits: number): Row<"section_scores">["label
 }
 
 export interface SectionDollars {
+  /** The figure that counts: the smaller one when CBO printed the section against two baselines. */
   musd: number;
   split: "exact" | "even_split";
+  baseline: Row<"cbo_estimates">["baseline"];
+  /** Lines of every figure considered, not only the one that counts. */
   lineIds: string[];
   measure: string;
   estimateId: string;
+  byBaseline: {
+    baseline: Row<"cbo_estimates">["baseline"];
+    musd: number;
+    split: "exact" | "even_split";
+    estimateId: string;
+  }[];
 }
 
 /**
- * Dollars per section from one CBO estimate: the latest current-law estimate with per-section lines (see
- * `sectionFigure` in core, which the site uses too). Signed as a deficit effect (positive adds to the deficit). Group
- * lines are left out: their even shares are already section lines that rest on them.
+ * Dollars per section from CBO's latest per-section estimates (see `sectionFigure` in core, which the site uses too):
+ * one per baseline CBO printed for the same text, the smaller figure counting. Signed as a deficit effect (positive
+ * adds to the deficit). Group lines are left out: their even shares are already section lines that rest on them.
  */
 export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cbo_lines">[]) {
   const out = new Map<string, SectionDollars>();
@@ -107,8 +120,8 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
     publishedOn: e.published_on,
     perSection: e.per_section,
     baseline: e.baseline,
+    versionScored: e.version_scored,
   }));
-  const est = figureOrder(known)[0];
   const bySection = new Map<string, Row<"cbo_lines">[]>();
   for (const l of lines)
     if (l.line_kind === "section")
@@ -125,9 +138,23 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
       known,
     );
     if (f?.fromLatest)
-      out.set(sid, { musd: f.musd, split: f.split, lineIds: f.claims, measure: f.measure, estimateId: f.estimateId });
+      out.set(sid, {
+        musd: f.musd,
+        split: f.split,
+        baseline: f.baseline,
+        lineIds: f.byBaseline.flatMap((b) => b.claims),
+        measure: f.measure,
+        estimateId: f.estimateId,
+        byBaseline: f.byBaseline.map((b) => ({
+          baseline: b.baseline,
+          musd: Number(b.musd.toFixed(1)),
+          split: b.split,
+          estimateId: b.estimateId,
+        })),
+      });
   }
-  return { estimate: est ? (estimates.find((e) => e.id === est.id) ?? null) : null, bySection: out };
+  const used = new Set(figureEstimates(known).map((e) => e.id));
+  return { estimates: estimates.filter((e) => used.has(e.id)), bySection: out };
 }
 
 /** Lobbying reports (distinct filings) whose bill reference names the section's number. */
@@ -169,6 +196,7 @@ export function scoreRows(
     const d = dollars.bySection.get(s.id) ?? null;
     const { filings, refs } = reports.get(s.id) ?? { filings: [], refs: [] };
     const c: Components = {
+      namesBill: NAMES_BILL.test(s.heading.trim()),
       dollarsMusd: d ? Number(d.musd.toFixed(1)) : null,
       dollarsSplit: d?.split ?? null,
       attentionPct: a?.pct ?? null,
@@ -211,6 +239,8 @@ export function scoreRows(
         stakes: Number(stakes(c).toFixed(4)),
         quiet: quiet(c) === null ? null : Number(quiet(c)!.toFixed(4)),
         dollars_measure: d?.measure ?? null,
+        dollars_baseline: d?.baseline ?? null,
+        dollars_by_baseline: d?.byBaseline ?? [],
         cbo_estimate: d?.estimateId ?? null,
         lobbying_filings: filings,
         attention_hits: (a?.hits ?? 0) + (check?.article_ids.length ?? 0),
