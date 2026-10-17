@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { parseRss } from "../src/gnews.ts";
-import { sample } from "../src/news.ts";
+import { defaultTerms, sample } from "../src/news.ts";
 import { COUNTED, midpoint, OUTLET_LIST, outletFor, outletRows, SIDES, sideOf, TRADE_LEGAL } from "../src/outlets.ts";
 
 test("a multi-quintile outlet takes the midpoint, rounded toward center, the same way on both sides", () => {
@@ -50,4 +50,13 @@ test("the sample is a fixed number per side, picked by hash, so re-runs read the
   const b = sample([...items].reverse()).map((x) => x.id);
   expect(new Set(a)).toEqual(new Set(b));
   expect(a.length).toBe(150 * 3 + 60);
+});
+
+test("the default search drops the year from a short title and spaces the bill number", () => {
+  expect(defaultTerms("Romance Scam Prevention Act of 2025", "H.R.2481")).toEqual([
+    '"Romance Scam Prevention Act"',
+    '"H.R. 2481"',
+  ]);
+  expect(defaultTerms("Small LENDER Act", "H.R.941")).toEqual(['"Small LENDER Act"', '"H.R. 941"']);
+  expect(defaultTerms(null, "S.195")).toEqual(['"S. 195"']);
 });

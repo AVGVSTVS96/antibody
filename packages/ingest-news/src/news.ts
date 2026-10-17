@@ -31,15 +31,18 @@ interface Found {
   gnews: boolean;
 }
 
+/** The press drops the year from a short title ("Romance Scam Prevention Act of 2025" is "the Romance Scam Prevention Act"). */
+export function defaultTerms(shortTitle: string | null, display: string): string[] {
+  const name = shortTitle?.replace(/\s+of\s+(?:19|20)\d\d$/i, "").trim();
+  return [...(name ? [`"${name}"`] : []), `"${display.replace(/(\D)(\d)/, "$1 $2")}"`];
+}
+
 /** The query and window: data/queries.json when the bill is listed, else its short title and number from BILLSTATUS. */
 export async function searchPlan(bill: BillId): Promise<{ query: string; window: MCWindow }> {
   const listed = (queries.bills as Record<string, { terms: string[]; window?: string[] }>)[bill];
   const [row] = await readRows("bills", bill);
   const versions = await readRows("versions", bill);
-  const terms = listed?.terms ?? [
-    ...(row?.short_title ? [`"${row.short_title}"`] : []),
-    `"${billDisplay(bill).replace(/(\D)(\d)/, "$1 $2")}"`,
-  ];
+  const terms = listed?.terms ?? defaultTerms(row?.short_title ?? null, billDisplay(bill));
   let window: MCWindow;
   if (listed?.window) window = { start: listed.window[0]!, end: listed.window[1]! };
   else {

@@ -9,6 +9,10 @@
   "117-hr-1319": { "terms": ["\"American Rescue Plan\""] },
   "118-hr-3746": { "terms": ["\"Fiscal Responsibility Act\"", "\"debt ceiling deal\""] },
   "119-s-5": { "terms": ["\"Laken Riley Act\""] },
-  "119-s-146": { "terms": ["\"TAKE IT DOWN Act\""] }
+  "119-s-146": { "terms": ["\"TAKE IT DOWN Act\""] },
+  "117-hr-2617": { "terms": ["\"Consolidated Appropriations Act, 2023\"", "\"omnibus spending bill\"", "\"omnibus spending package\""], "window": ["2022-12-01", "2023-01-15"] },
+  "117-s-3373": { "terms": ["\"PACT Act\"", "\"Honoring our PACT Act\""], "window": ["2022-06-01", "2022-09-15"] },
+  "117-s-3522": { "terms": ["\"Ukraine Democracy Defense Lend-Lease Act\"", "\"lend-lease\""], "window": ["2022-03-01", "2022-05-20"] },
+  "119-s-1071": { "terms": ["\"National Defense Authorization Act\"", "\"NDAA\""], "window": ["2025-07-01", "2026-01-05"] }
  }
 }
