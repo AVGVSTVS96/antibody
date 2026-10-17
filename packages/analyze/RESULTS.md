@@ -46,22 +46,27 @@ The matcher assigns each article to sections from a shortlist, so a provision th
 ## Same rules for every party: what was checked
 
 - The formula has no input for party, sponsor or outlet lean (test: same components give the same score). Swapping the left and right outlet lists changes nothing (test). A side with more or fewer articles weighs the same (test). Short articles are not counted (test).
-- `scripts/fairness.ts <bill...>` prints, per side: articles read, average length, share about the bill, sections per article, and per bill the label rates. Run on 8 bills:
+- `scripts/fairness.ts <bill...>` prints, per side: articles read, average length, share about the bill, sections per article, and per bill the label rates, the costly sections and how many of them are quiet, and what that quietness would be if only one side's press were counted. Run on 15 bills after the buried-v2 fixes:
 
-| bill | sponsor party | final sections | headline | buried | articles read L / C / R |
-|---|---|---|---|---|---|
-| OBBBA (119-hr-1) | R | 310 | 9% | 7% | 136 / 78 / 110 |
-| GENIUS (119-s-1582) | R | 20 | 10% | 0% (no per-section $) | 127 / 92 / 60 |
-| Safer Communities (117-s-2938) | R | 32 | 13% | 3% | 70 / 33 / 44 |
-| SAVE Act (119-hr-22) | R | 8 | 13% | 0% (no per-section $) | 97 / 17 / 95 |
-| IRA (117-hr-5376) | D | 153 | 10% | 1% | 99 / 42 / 112 |
-| American Rescue Plan (117-hr-1319) | D | 217 | 10% | 0% | 77 / 52 / 71 |
-| Infrastructure (117-hr-3684) | D | 632 | 1% | 0% (no per-section $) | 75 / 44 / 94 |
-| CHIPS vehicle (117-hr-4346) | D | 267 | 2% | 0% (no per-section $) | 86 / 41 / 102 |
+| bill | sponsor party | final sections | headline | buried | costly sections | costly and quiet |
+|---|---|---|---|---|---|---|
+| OBBBA (119-hr-1) | R | 310 | 10% | 20% | 96 | 64% |
+| GENIUS (119-s-1582) | R | 20 | 10% | 0% | 0 (no per-section $) | - |
+| Safer Communities (117-s-2938) | R | 32 | 13% | 3% | 1 | 100% |
+| SAVE Act (119-hr-22) | R | 8 | 13% | 0% | 0 | - |
+| Fiscal Responsibility Act (118-hr-3746) | R | 120 | 10% | 0% | 0 | - |
+| NDAA FY26 (119-s-1071) | R | 1133 | 2% | 0% | 0 | - |
+| IRA (117-hr-5376) | D | 153 | 10% | 2% | 18 | 17% |
+| American Rescue Plan (117-hr-1319) | D | 217 | 10% | 1% | 5 | 40% |
+| Infrastructure (117-hr-3684) | D | 632 | 1% | 1% | 5 | 80% |
+| CHIPS vehicle (117-hr-4346) | D | 267 | 2% | 0% | 2 | 0% |
+| Omnibus 2023 (117-hr-2617) | D | 1865 | 2% | 0.1% | 3 | 67% |
+| PACT Act (117-s-3373) | D | 58 | 10% | 0% | 0 | - |
 
-  Headline rate sits near 10% in both parties' bills by construction; the buried rate is rare everywhere and moves with data availability and each bill's own late/rewrite structure (OBBBA is the one bill with large per-section CBO dollars and an unusually large late share), not with party. With 3 per party that is not proof; it is a check that nothing in the pipeline is party-shaped, and the numbers are reproducible with the script.
+  Headline rate sits near 10% in both parties' bills by construction. How much of a bill's costly set is quiet does not sort by party: it is 64% on OBBBA (R) against 17% on the IRA (D), the two reconciliation laws, and 80% on the infrastructure law (D). It moves with how the bill is built: OBBBA's 96 costly sections are mostly narrow tax-code provisions that the press covers as one package, the IRA's are program-sized provisions that were each written about. With 6 bills per party and two of the three biggest on different sides, that is a check that nothing in the rule is party-shaped, not proof; the numbers reproduce with the script.
 - **Real asymmetry found, and what is done about it:** right-leaning outlets' articles are shorter (about 4.3k characters against 7.3k on the left for IRA) and name fewer sections per article (IRA 0.38 against 1.38; IIJA 0.06 against 0.59), so per-side shares differ in size. Sensitivity check: normalizing each side by its own most-covered section instead moves the top-decile set by 1 of 16 sections on IRA, 3 of 29 on OBBBA and none on GENIUS, so the equal-weight rule is kept and the per-side numbers stay visible (`hits_by_group`, `evidence`).
-- Late-add flags come from the lineage; shell vehicles (S.2938, H.R.4346: 97% and 100% "late", because the real text arrived in a later version) shrink the late bonus to near zero by the share-of-bill rule instead of marking every section sneaky.
+- **Quietness by side.** The script's last line per bill counts the costly sections that would be quiet on one side's press alone: IRA left 22%, center 28%, right 72%; OBBBA left 77%, center 65%, right 63%. The right-leaning articles name fewer sections each (the asymmetry above), so quiet depends more on the left and center press where that matters, and each side still weighs one third. The per-side hits stay on every attention row.
+- Late-add flags come from the lineage; shell vehicles (S.2938, H.R.4346: 97% and 100% "late", because the real text arrived in a later version) shrink the late bonus to near zero by the share-of-bill rule. Late is no longer needed for the buried label, only ranks.
 
 ## Cost and speed
 

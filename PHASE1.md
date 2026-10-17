@@ -24,7 +24,7 @@ bun run e2e <url>        headless Playwright check of a built site
 | Trades | House PTRs 2019-2026 and Senate eFD: 100,984 trades, owner (self, spouse, joint, dependent) on every one, filing URL with page; 52,767 read by vision (Sonnet, about $246 API-equivalent) |
 | Members and money | 1,916 members with dated terms, 100 roll calls, 12,661 votes, 1.74M contributions, 138K independent expenditures, employer sums |
 | Entities | Lobbying clients, PAC sponsors, donor employers and trades resolved to public companies; hand-checked sample of 98 resolved names had 0 wrong |
-| Attention | Media Cloud articles over a published, versioned 86-outlet list (left, center, right weighted equally; trade and legal coverage kept out of the score); per-section matching; `buried-v1` score with every sub-score stored |
+| Attention | Media Cloud articles over a published, versioned 86-outlet list (left, center, right weighted equally; trade and legal coverage kept out of the score); per-section matching; `buried-v2` score with every sub-score stored (see "Buried audit" below) |
 | Store | Bundles built from the tables with minted claims; `checkBundle` finds no dangling claim or endpoint in any of the 12 |
 | Web | Index (search, party-split curated bills, watcher picks), bill page (radial map, money map, X-ray list, source-chip cards), light and dark, phone to desktop |
 | Watcher | Ran for real after the merge: 130 bills touched, 6 flagged, 1 x-rayed (S.195) in 131 s; its picks show on the live index |
@@ -111,3 +111,13 @@ bun run deploy
 ```
 
 Data lives in `data/` (gitignored, shared by every worktree). Heavy jobs run under `systemd-run --user --scope -p MemoryMax=4G -p CPUWeight=20`. Vision and the model passes need `claude` on PATH.
+
+## Buried audit (2026-10-16)
+
+The site showed 0 quiet-and-costly sections on 21 of 22 bills. Causes, fixes and per-bill before/after numbers are in the audit report; in the code:
+
+- `buried-v2` (`docs/rules.md`, `packages/analyze/src/score.ts`): costly (CBO $10B for the section, or 21 lobbying reports) and quiet (under 1 in 100 articles) is buried; late and off-topic only rank. A bill under 10 sections, with unranked news or with no measured cost says it cannot be tested.
+- `quiet-check` stage and `attention_checks` table: a second look at costly sections before they are called quiet.
+- CBO parser (`packages/ingest-cbo`): division, title and provision tables (CHIPS, IIJA, FRA, NDAA, the omnibus), estimates of a bill that carried the same text (PACT via H.R.3967); `cbo_lines.join` says how a row was tied to sections.
+- News: press-name searches for the omnibus, PACT Act, NDAA and Lend-Lease; the default search drops "of 2025" from a short title.
+- Still open: bills with no per-section CBO figure (appropriations, authorizations, whole-bill-only estimates) cannot be tested; amounts in the bill text are the public source that could cover them.
