@@ -5,7 +5,11 @@ export interface ParsedRow {
   line?: number;
   sheet: string;
   block: string | null;
+  /** section, or a row CBO labelled by `title` (a whole title) or `program` (a provision with no section number); total, subtotal, interaction, … otherwise. */
   line_kind: string;
+  /** The division letter and title numeral the row sits under in CBO's table. */
+  division?: string | null;
+  title_no?: string | null;
   sections: string[];
   section_title: string | null;
   component: string | null;

@@ -5,9 +5,12 @@ import { baselineOf, type Listing, parseListings, versionCode } from "./estimate
 import { billstatus, type Fetched, publicationFiles } from "./fetch.ts";
 import { baseNum, buildLines } from "./lines.ts";
 import type { Glance, Parsed } from "./parsed.ts";
-import { closestVersion, type Labelled, sectionMap } from "./sections.ts";
+import { closestVersion, type Labelled, sectionIndex } from "./sections.ts";
 
 const PKG = resolve(import.meta.dir, "..");
+
+/** The rows a per-section table is read for: sections, and rows CBO labelled by a whole title or by a provision name. */
+const ITEMS = new Set(["section", "title", "program"]);
 
 export async function parse<T>(command: "xlsx" | "pdf" | "table1" | "glance", file: string): Promise<T | null> {
   try {
@@ -22,7 +25,7 @@ function labelled(main: Parsed | null): Labelled[] {
   return (main?.sheets ?? []).flatMap((s) =>
     s.rows.flatMap((r) =>
       r.line_kind === "section" && r.sections.length === 1
-        ? [{ num: baseNum(r.sections[0]!), title: r.section_title }]
+        ? [{ num: baseNum(r.sections[0]!), title: r.section_title, division: r.division ?? null }]
         : [],
     ),
   );
@@ -66,7 +69,7 @@ async function read(files: Fetched[], bill: BillId): Promise<Read> {
     return { main: { ...main, from: lead.f }, pdf, glance };
   }
   const tables = pdf ? await parse<Parsed>("pdf", pdf.file) : null;
-  if (pdf && tables?.sheets.some((s) => s.rows.some((r) => r.line_kind === "section")))
+  if (pdf && tables?.sheets.some((s) => s.rows.some((r) => ITEMS.has(r.line_kind))))
     return { main: { ...tagged(tables, pdf), from: pdf }, pdf, glance };
   for (const f of sheets.filter((f) => /table1/i.test(f.url))) {
     const p = await parse<Parsed>("table1", f.file);
@@ -104,6 +107,7 @@ export async function xray(ctx: StageContext) {
           (main?.sheets ?? []).flatMap((s) => s.rows.flatMap((r) => r.sections.map(baseNum))),
           known,
         );
+    const index = sectionIndex(sections, code ?? close?.code ?? null, labelled(main));
     const built = buildLines(
       {
         estimateId: id,
@@ -118,7 +122,8 @@ export async function xray(ctx: StageContext) {
       },
       main,
       glance,
-      sectionMap(sections, code ?? close?.code ?? null, labelled(main)),
+      index.join,
+      index.places,
     );
     lines.push(...built.lines);
     estimates.push({

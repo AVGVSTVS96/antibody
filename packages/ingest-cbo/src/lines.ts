@@ -1,11 +1,18 @@
 import type { Row } from "@antibody/core";
 import type { Glance, Parsed, ParsedRow, ParsedSheet, SourceFile, Summary, Values } from "./parsed.ts";
-import type { SectionJoin } from "./sections.ts";
+import type { Found, Place, Places, SectionJoin } from "./sections.ts";
 
 type Line = Row<"cbo_lines">;
 type Measure = Line["measure"];
 type Spending = Line["spending"];
 type Flow = "budget_authority" | "outlays" | "revenues";
+type Join = NonNullable<Line["join"]>;
+
+/**
+ * A CBO line over more sections than this stays a group line: an even share of it would be noise, whether CBO
+ * printed the section numbers or the line is a whole title. Every group CBO printed so far is smaller.
+ */
+export const EVEN_SPLIT_MAX = 8;
 
 export interface Source {
   estimateId: string;
@@ -44,39 +51,56 @@ const BLOCK: Record<Flow, string> = {
   outlays: "direct_spending",
   revenues: "revenues",
 };
-const ADDITIVE = new Set(["section", "interaction", "sequestration", "other"]);
+const LEAF = new Set(["section", "title", "program"]);
+const ADDITIVE = new Set([...LEAF, "interaction", "sequestration", "other"]);
 const RECONCILED = new Set(["budget_authority", "outlays", "revenues", "off_budget_revenues"]);
+const DIVISION_TOTAL = /^division\s+([a-z]+)\s+total$/i;
 
 /**
- * Checks every title × block × measure × period: the rows that add up must equal the total CBO prints.
+ * Checks every title × block × measure × period: the rows that add up must equal the total CBO prints, and where
+ * CBO prints a total for a whole division, the rows under that division must add up to it too.
  * The check runs against CBO's own total lines, so it isn't circular. Within $2M counts as CBO's rounding.
  */
 export function reconcile(sheets: ParsedSheet[]): Reconcile {
   let checks = 0;
   let exact = 0;
   const failing = new Set<string>();
+  const check = (sheet: ParsedSheet, key: string, summed: Map<string, number> | undefined, total: ParsedRow) => {
+    for (const period of sheet.years) {
+      const diff = Math.round((summed?.get(period) ?? 0) - (total.values[period] ?? 0));
+      checks++;
+      if (diff === 0) exact++;
+      if (Math.abs(diff) > 2) failing.add(`${sheet.sheet}|${key}`);
+    }
+  };
   for (const sheet of sheets) {
-    const leafBlocks = new Set(sheet.rows.filter((r) => r.line_kind === "section").map((r) => r.block));
+    const leafBlocks = new Set(sheet.rows.filter((r) => LEAF.has(r.line_kind)).map((r) => r.block));
     const sums = new Map<string, Map<string, number>>();
+    const divisionSums = new Map<string, Map<string, number>>();
     const totals = new Map<string, ParsedRow>();
+    const divisionTotals: [string, ParsedRow][] = [];
+    const add = (into: Map<string, Map<string, number>>, key: string, r: ParsedRow) => {
+      const sum = into.get(key) ?? new Map<string, number>();
+      for (const [period, v] of Object.entries(r.values)) sum.set(period, (sum.get(period) ?? 0) + (v ?? 0));
+      into.set(key, sum);
+    };
     for (const r of sheet.rows) {
       const measure = kindOf(r);
       if (!RECONCILED.has(measure)) continue;
       const kind = r.line_kind === "subtotal" && !leafBlocks.has(r.block) ? "other" : r.line_kind;
       const key = `${r.block}|${measure}`;
       if (ADDITIVE.has(kind) && !r.breakdown_of_total) {
-        const sum = sums.get(key) ?? new Map<string, number>();
-        for (const [period, v] of Object.entries(r.values)) sum.set(period, (sum.get(period) ?? 0) + (v ?? 0));
-        sums.set(key, sum);
+        add(sums, key, r);
+        if (LEAF.has(kind) && r.division) add(divisionSums, `${key}|${r.division}`, r);
       } else if (kind === "total") totals.set(key, r);
-    }
-    for (const [key, total] of totals)
-      for (const period of sheet.years) {
-        const diff = Math.round((sums.get(key)?.get(period) ?? 0) - (total.values[period] ?? 0));
-        checks++;
-        if (diff === 0) exact++;
-        if (Math.abs(diff) > 2) failing.add(`${sheet.sheet}|${key}`);
+      else if (kind === "subtotal") {
+        const division = r.section_title?.match(DIVISION_TOTAL)?.[1];
+        if (division) divisionTotals.push([`${key}|${division.toUpperCase()}`, r]);
       }
+    }
+    for (const [key, total] of totals) check(sheet, key, sums.get(key), total);
+    for (const [key, total] of divisionTotals)
+      check(sheet, key.split("|").slice(0, 2).join("|"), divisionSums.get(key), total);
   }
   return { checks, exact, failing: [...failing] };
 }
@@ -89,8 +113,10 @@ interface Amount {
 
 interface CboLine {
   key: string;
+  kind: "section" | "title" | "program";
   title: string | null;
   nums: string[];
+  place: Place;
   flow: Flow;
   amount: Amount;
   sheet: ParsedSheet;
@@ -101,26 +127,54 @@ interface Part extends Amount {
   title: string | null;
   even: boolean;
   restsOn: string[];
+  /** The section this part belongs to when it was found without a printed number of its own. */
+  sid?: string;
+  join: Join;
+  how: string | null;
 }
 
-export function buildLines(src: Source, parsed: Parsed | null, glance: Glance | null, sectionId: SectionJoin): Built {
+/** A section CBO's row was tied to without a printed number, with how it was found. */
+interface Member {
+  num: string;
+  division: string | null;
+  sid?: string;
+}
+
+const WEAKNESS: Record<Join, number> = { number: 0, title: 1, heading: 2 };
+const weakest = (joins: Join[]): Join => joins.reduce((a, b) => (WEAKNESS[b] > WEAKNESS[a] ? b : a), "number");
+const sectionKey = (division: string | null | undefined, num: string) => (division ? `${division}.${num}` : num);
+const placeText = (p: Place) =>
+  [p.division && `division ${p.division}`, p.title && `title ${p.title}`].filter(Boolean).join(" ") || "the bill";
+
+export function buildLines(
+  src: Source,
+  parsed: Parsed | null,
+  glance: Glance | null,
+  sectionId: SectionJoin,
+  places?: Places,
+): Built {
   const sheets = parsed?.format === "table1" ? [] : (parsed?.sheets ?? []);
   const check = reconcile(sheets);
   const failing = new Set(check.failing);
   const out: Line[] = [];
   const unmapped = new Set<string>();
   const fileOf = (x: { file?: SourceFile }) => x.file ?? { url: src.fileUrl, archiveUrl: src.archiveUrl };
-  const ids = (nums: string[], title: string | null, group = false) =>
-    nums.flatMap((n) => {
-      const id = sectionId(n, title, group);
-      if (!id) unmapped.add(n);
-      return id ? [id] : [];
-    });
+  const find = (n: string, title: string | null, group: boolean, division: string | null) => {
+    const id = sectionId(n, title, group, division);
+    if (!id) unmapped.add(n);
+    return id;
+  };
+  const ids = (nums: string[], title: string | null, group = false, division: string | null = null) =>
+    nums.flatMap((n) => find(n, title, group, division) ?? []);
 
   const items: CboLine[] = [];
   for (const [i, sheet] of sheets.entries()) {
     const byLine = Map.groupBy(
-      sheet.rows.filter((r) => r.line_kind === "section" && r.sections.length && !r.breakdown_of_total),
+      sheet.rows.filter(
+        (r) =>
+          (r.line_kind === "title" || r.line_kind === "program" || (r.line_kind === "section" && r.sections.length)) &&
+          !r.breakdown_of_total,
+      ),
       (r) => r.line ?? -1,
     );
     for (const [line, rows] of byLine)
@@ -133,8 +187,10 @@ export function buildLines(src: Source, parsed: Parsed | null, glance: Glance | 
         if (last(amount.values, sheet.years) === null) continue;
         items.push({
           key: `${i}.${line}`,
+          kind: rows[0]!.line_kind as CboLine["kind"],
           title: rows[0]!.section_title,
           nums: [...new Set(rows.flatMap((r) => r.sections).map(baseNum))],
+          place: { division: rows[0]!.division ?? null, title: rows[0]!.title_no ?? null },
           flow,
           amount,
           sheet,
@@ -164,32 +220,42 @@ export function buildLines(src: Source, parsed: Parsed | null, glance: Glance | 
     }
   }
 
+  const programs = resolvePrograms(items, places);
   const parts = new Map<string, Part[]>();
   const groups = new Map<string, Map<Flow, string>>();
-  for (const it of items) {
+  const plain = (it: CboLine): Part => ({
+    ...it.amount,
+    years: it.sheet.years,
+    title: it.title,
+    even: false,
+    restsOn: [],
+    join: "number",
+    how: null,
+  });
+  const group = (it: CboLine, members: Member[], join: Join, how: string | null) => {
     const years = it.sheet.years;
-    if (it.nums.length === 1) {
-      push(parts, `${it.nums[0]}|${it.flow}`, { ...it.amount, years, title: it.title, even: false, restsOn: [] });
-      continue;
-    }
     const id = `${src.estimateId}:g${it.key}:${it.flow}`;
+    const listed = join === "number" || members.length <= EVEN_SPLIT_MAX;
     out.push(
       line(src, years, {
         id,
         line_kind: "group",
-        section_nums: it.nums,
-        section_ids: ids(it.nums, it.title, true),
+        section_nums: listed ? members.map((m) => m.num) : [],
+        section_ids: listed ? members.flatMap((m) => m.sid ?? []) : [],
         title: it.title,
         measure: it.flow,
         amount: it.amount,
         split: "exact",
         rests_on: [],
+        join,
+        how: listed ? how : `${how}; more than ${EVEN_SPLIT_MAX} sections, so no even share is made per section`,
       }),
     );
     groups.set(it.key, (groups.get(it.key) ?? new Map()).set(it.flow, id));
-    const share = scale(it.amount.values, 1 / it.nums.length);
-    for (const n of it.nums)
-      push(parts, `${n}|${it.flow}`, {
+    if (members.length > EVEN_SPLIT_MAX) return;
+    const share = scale(it.amount.values, 1 / members.length);
+    for (const m of members)
+      push(parts, `${m.division ?? ""}|${m.num}|${it.flow}`, {
         values: share,
         ranges: it.amount.ranges,
         file: it.amount.file,
@@ -197,31 +263,94 @@ export function buildLines(src: Source, parsed: Parsed | null, glance: Glance | 
         title: it.title,
         even: true,
         restsOn: [`cbo_lines/${id}`],
+        sid: m.sid,
+        join,
+        how,
       });
+  };
+  const unjoined = (it: CboLine) => {
+    const id = `${src.estimateId}:g${it.key}:${it.flow}`;
+    out.push(
+      line(src, it.sheet.years, {
+        id,
+        line_kind: "group",
+        section_nums: [],
+        section_ids: [],
+        title: it.title,
+        measure: it.flow,
+        amount: it.amount,
+        split: "exact",
+        rests_on: [],
+        how: `no section number, and no section heading under ${placeText(it.place)} matches this row`,
+      }),
+    );
+    groups.set(it.key, (groups.get(it.key) ?? new Map()).set(it.flow, id));
+  };
+
+  for (const it of items) {
+    if (it.kind === "program") {
+      const m = programs.get(it.key);
+      if (!m) {
+        unjoined(it);
+        continue;
+      }
+      const how = `CBO printed no section number; its row matches the heading of section ${m.num} ("${m.heading}") of ${placeText(it.place)} in the ${m.version} text`;
+      push(parts, `${m.division ?? ""}|${m.num}|${it.flow}`, { ...plain(it), sid: m.id, join: "heading", how });
+    } else if (it.kind === "title") {
+      const here = places?.under(it.place) ?? [];
+      const how = `CBO's row is for all of ${placeText(it.place)}, which has ${here.length} section${here.length === 1 ? "" : "s"} in the ${here[0]?.version} text`;
+      if (!here.length) unjoined(it);
+      else if (here.length === 1)
+        push(parts, `${here[0]!.division ?? ""}|${here[0]!.num}|${it.flow}`, {
+          ...plain(it),
+          sid: here[0]!.id,
+          join: "title",
+          how,
+        });
+      else
+        group(
+          it,
+          here.map((f) => ({ num: f.num, division: f.division, sid: f.id })),
+          "title",
+          how,
+        );
+    } else if (it.nums.length === 1) push(parts, `${it.place.division ?? ""}|${it.nums[0]}|${it.flow}`, plain(it));
+    else
+      group(
+        it,
+        it.nums.map((num) => ({ num, division: it.place.division, sid: find(num, it.title, true, it.place.division) })),
+        "number",
+        null,
+      );
   }
 
   const sectionLines = new Map<string, Map<Flow, Line>>();
   for (const [key, ps] of parts) {
-    const [num, flow] = key.split("|") as [string, Flow];
+    const [division, num, flow] = key.split("|") as [string, string, Flow];
+    const own = sectionKey(division || null, num);
+    const sid = ps.find((p) => p.sid)?.sid;
+    const section_ids = sid ? [sid] : ids([num], ps[0]!.title, false, division || null);
     const row = line(src, ps[0]!.years, {
-      id: `${src.estimateId}:s${num}:${flow}`,
+      id: `${src.estimateId}:s${own}:${flow}`,
       line_kind: "section",
       section_nums: [num],
-      section_ids: ids([num], ps[0]!.title),
+      section_ids,
       title: ps[0]!.title,
       measure: flow,
       amount: { values: addValues(ps.map((p) => p.values)), ranges: ps.flatMap((p) => p.ranges), file: ps[0]!.file },
       split: ps.some((p) => p.even) ? "even_split" : "exact",
       rests_on: [...new Set(ps.flatMap((p) => p.restsOn))],
+      join: section_ids.length ? weakest(ps.map((p) => p.join)) : null,
+      how: [...new Set(ps.flatMap((p) => p.how ?? []))].join("; ") || null,
     });
     out.push(row);
-    const m = sectionLines.get(num) ?? new Map<Flow, Line>();
+    const m = sectionLines.get(own) ?? new Map<Flow, Line>();
     m.set(flow, row);
-    sectionLines.set(num, m);
+    sectionLines.set(own, m);
   }
 
-  for (const [num, m] of sectionLines) {
-    const d = deficit(`${src.estimateId}:s${num}:deficit`, m.get("outlays"), m.get("revenues"));
+  for (const [own, m] of sectionLines) {
+    const d = deficit(`${src.estimateId}:s${own}:deficit`, m.get("outlays"), m.get("revenues"));
     if (d) out.push(d);
   }
   const byId = new Map(out.map((l) => [l.id, l]));
@@ -238,6 +367,23 @@ export function buildLines(src: Source, parsed: Parsed | null, glance: Glance | 
 
   out.push(...wholeBill(src, parsed?.summary ?? null, glance));
   return { lines: out, reconcile: check, unmapped: [...unmapped].sort() };
+}
+
+/**
+ * The section each program row (a provision CBO labelled without a number) is about, by heading. A section that two
+ * different rows would both claim is claimed by neither: the label alone can't tell them apart.
+ */
+function resolvePrograms(items: CboLine[], places?: Places) {
+  const found = new Map<string, Found>();
+  if (!places) return found;
+  for (const it of items)
+    if (it.kind === "program" && !found.has(it.key)) {
+      const m = places.heading(it.title ?? "", it.place);
+      if (m) found.set(it.key, m);
+    }
+  const claims = Map.groupBy(found.entries(), ([, m]) => m.id);
+  for (const [, claimants] of claims) if (claimants.length > 1) for (const [key] of claimants) found.delete(key);
+  return found;
 }
 
 /**
@@ -263,12 +409,15 @@ function deficit(id: string, outlays?: Line, revenues?: Line): Line | null {
     total_musd: values[base.period] ?? 0,
     values,
     split: both.some((l) => l.split === "even_split") ? "even_split" : "exact",
+    join: both.some((l) => l.join) ? weakest(both.flatMap((l) => l.join ?? [])) : null,
     rests_on: both.map((l) => `cbo_lines/${l.id}`),
-    source_locator: both
-      .map((l) =>
-        l.source_url === base.source_url ? l.source_locator : `${fileName(l.source_url)}: ${l.source_locator}`,
-      )
-      .join("; "),
+    source_locator: [
+      ...new Set(
+        both.map((l) =>
+          l.source_url === base.source_url ? l.source_locator : `${fileName(l.source_url)}: ${l.source_locator}`,
+        ),
+      ),
+    ].join("; "),
   };
 }
 
@@ -323,6 +472,7 @@ function wholeBill(src: Source, summary: Summary | null, glance: Glance | null):
       total_musd: values[period]!,
       values,
       split: "exact",
+      join: null,
       archive_url: file.archiveUrl,
       rests_on: [],
       source_url: file.url,
@@ -350,12 +500,16 @@ function line(
   years: string[],
   l: Pick<Line, "id" | "line_kind" | "section_nums" | "section_ids" | "title" | "measure" | "split" | "rests_on"> & {
     amount: Amount;
+    join?: Join | null;
+    /** What a heading or title join rests on, or why a row is not tied to a section. */
+    how?: string | null;
   },
 ): Line {
-  const { amount, ...rest } = l;
+  const { amount, how, join, ...rest } = l;
   const period = years.at(-1)!;
   return {
     ...rest,
+    join: join ?? null,
     estimate_id: src.estimateId,
     bill_id: src.billId,
     spending: l.measure === "revenues" || l.measure === "deficit" ? null : "direct",
@@ -364,7 +518,9 @@ function line(
     values: amount.values,
     archive_url: amount.file.archiveUrl,
     source_url: amount.file.url,
-    source_locator: [locator(amount.ranges), l.section_ids.length ? src.numbering : null].filter(Boolean).join("; "),
+    source_locator: [locator(amount.ranges), how, l.section_ids.length ? src.numbering : null]
+      .filter(Boolean)
+      .join("; "),
   };
 }
 

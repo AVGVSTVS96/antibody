@@ -1,14 +1,49 @@
 import type { Row } from "@antibody/core";
-import { sameSection } from "./headings.ts";
+import { headingScore, sameSection } from "./headings.ts";
 
 /** A CBO row's section number and the label CBO printed beside it. */
 export interface Labelled {
   num: string;
   title: string | null;
+  division?: string | null;
 }
 
-/** `(num, title, group)` gives the section id CBO's row is about, or undefined when no section with that number carries that heading. */
-export type SectionJoin = (num: string, title: string | null, group?: boolean) => string | undefined;
+/** Where CBO's table put a row: the division letter and title numeral it sits under, either of which can be unknown. */
+export interface Place {
+  division: string | null;
+  title: string | null;
+}
+
+/**
+ * `(num, title, group, division)` gives the section id CBO's row is about, or undefined when no section with that
+ * number (in that division, when CBO's table names one) carries that heading.
+ */
+export type SectionJoin = (
+  num: string,
+  title: string | null,
+  group?: boolean,
+  division?: string | null,
+) => string | undefined;
+
+/** A section found through the hierarchy or a heading rather than a printed number. */
+export interface Found {
+  id: string;
+  num: string;
+  division: string | null;
+  heading: string;
+  /** The published version whose numbering and headings were used. */
+  version: string;
+}
+
+export interface Places {
+  /** The one section under `place` whose heading is CBO's `label`, or undefined unless exactly one fits clearly. */
+  heading(label: string, place: Place): Found | undefined;
+  /** Every section under `place` (a whole division or title), in section order. */
+  under(place: Place): Found[];
+}
+
+/** A heading wins when it shares at least this many more words with CBO's label than the runner-up, or holds all of them and the runner-up doesn't. */
+const MARGIN = 2;
 
 /** A group's members are trusted by number when this share of the estimate's one-section rows match their headings. */
 const VERIFIED = 0.6;
@@ -18,26 +53,86 @@ const VERIFIED = 0.6;
  * always the one the numbers belong to (CBO's "As passed by the House" table for H.R.1 numbers some sections as
  * the Rules Committee print does). So a number joins to a section only when that section's heading in some
  * version also matches CBO's label; versions are tried best-fitting first, and a row that matches nowhere stays
- * unjoined instead of taking whatever section holds that number.
+ * unjoined instead of taking whatever section holds that number. Omnibus bills repeat numbers across divisions, so
+ * when CBO's table names the division only that division's section can be the one.
  */
 export function sectionMap(sections: Row<"sections">[], code: string | null, rows: Labelled[] = []): SectionJoin {
+  return sectionIndex(sections, code, rows).join;
+}
+
+export function sectionIndex(
+  sections: Row<"sections">[],
+  code: string | null,
+  rows: Labelled[] = [],
+): { join: SectionJoin; places: Places } {
   const byVersion = numberings(sections);
-  const fits = (v: string, num: string, title: string | null) => {
-    const s = byVersion(v).get(num);
-    return s && sameSection(title, (s.history[v] as { heading?: string } | undefined)?.heading) ? s.id : undefined;
+  const candidates = (v: string, num: string, division: string | null | undefined) => {
+    const all = byVersion(v).get(num) ?? [];
+    const placed = all.filter((s) => at(s, v).division);
+    return division && placed.length ? placed.filter((s) => at(s, v).division === division) : all;
+  };
+  const fits = (v: string, num: string, title: string | null, division?: string | null) => {
+    const hits = candidates(v, num, division).filter((s) => sameSection(title, at(s, v).heading));
+    return hits.length === 1 ? hits[0]!.id : undefined;
   };
   const codes = [...new Set(sections.flatMap((s) => Object.keys(s.history)))];
-  const hits = new Map(codes.map((v) => [v, rows.filter((r) => fits(v, r.num, r.title)).length]));
+  const hits = new Map(codes.map((v) => [v, rows.filter((r) => fits(v, r.num, r.title, r.division)).length]));
   const order = [...codes].sort(
     (a, b) => hits.get(b)! - hits.get(a)! || Number(b === code) - Number(a === code) || a.localeCompare(b),
   );
   const verified = !!order.length && rows.length > 0 && hits.get(order[0]!)! / rows.length >= VERIFIED;
-  return (num, title, group = false) => {
+  const join: SectionJoin = (num, title, group = false, division = null) => {
     for (const v of order) {
-      const id = fits(v, num, title);
+      const id = fits(v, num, title, division);
       if (id) return id;
     }
-    return group && verified ? byVersion(order[0]!).get(num)?.id : undefined;
+    if (!group || !verified) return undefined;
+    const trusted = candidates(order[0]!, num, division);
+    return trusted.length === 1 ? trusted[0]!.id : undefined;
+  };
+  return { join, places: placesOf(sections, order) };
+}
+
+/** Each version's sections that sit under a place, in the order the version numbers them. */
+function placesOf(sections: Row<"sections">[], order: string[]): Places {
+  const unique = uniqueById(sections);
+  const under = (v: string, place: Place) =>
+    unique
+      .filter((s) => s.history[v])
+      .map((s) => ({ s, at: at(s, v) }))
+      .filter(
+        ({ at }) =>
+          (place.division ? at.division === place.division : !place.title || !at.division) &&
+          (!place.title || at.title === place.title),
+      );
+  const found = (v: string, x: { s: Row<"sections">; at: ReturnType<typeof at> }): Found => ({
+    id: x.s.id,
+    num: x.at.num,
+    division: x.at.division,
+    heading: x.at.heading,
+    version: v,
+  });
+  return {
+    under(place) {
+      for (const v of order) {
+        const here = under(v, place);
+        if (here.length)
+          return here.map((x) => found(v, x)).sort((a, b) => a.num.localeCompare(b.num, "en", { numeric: true }));
+      }
+      return [];
+    },
+    heading(label, place) {
+      for (const v of order) {
+        const scored = under(v, place)
+          .map((x) => ({ x, ...headingScore(label, x.at.heading) }))
+          .filter((c) => c.shared > 0)
+          .sort((a, b) => b.shared - a.shared);
+        const [best, next] = scored;
+        if (best?.confident && (!next || best.shared - next.shared >= MARGIN || (best.whole && !next.whole)))
+          return found(v, best.x);
+      }
+      return undefined;
+    },
   };
 }
 
@@ -63,18 +158,34 @@ export function closestVersion(
   return best && best.covered / unique.length >= 0.95 ? best : null;
 }
 
-function numberings(sections: Row<"sections">[]) {
+/** A section's place in one version: its number, heading, and the division and title above it. */
+function at(s: Row<"sections">, v: string) {
+  const h = s.history[v] as { path?: string; heading?: string } | undefined;
+  const parts = h?.path?.split("/") ?? [];
+  const part = (kind: string) => parts.find((p) => p.startsWith(`${kind}:`))?.slice(kind.length + 1) ?? null;
+  return {
+    num: part("sec") ?? "",
+    heading: h?.heading ?? "",
+    division: part("division"),
+    title: part("title"),
+  };
+}
+
+function uniqueById(sections: Row<"sections">[]) {
   const seen = new Set<string>();
-  const firstOfEachId = sections.filter((s) => !seen.has(s.id) && seen.add(s.id));
-  const cache = new Map<string, Map<string, Row<"sections">>>();
+  return sections.filter((s) => !seen.has(s.id) && seen.add(s.id));
+}
+
+function numberings(sections: Row<"sections">[]) {
+  const firstOfEachId = uniqueById(sections);
+  const cache = new Map<string, Map<string, Row<"sections">[]>>();
   return (v: string) => {
     const cached = cache.get(v);
     if (cached) return cached;
-    const m = new Map<string, Row<"sections">>();
+    const m = new Map<string, Row<"sections">[]>();
     for (const s of firstOfEachId) {
-      const path = (s.history[v] as { path?: string } | undefined)?.path;
-      const num = path?.split("/").at(-1)?.replace(/^sec:/, "");
-      if (num && !m.has(num)) m.set(num, s);
+      const num = at(s, v).num;
+      if (num && s.history[v]) m.set(num, [...(m.get(num) ?? []), s]);
     }
     cache.set(v, m);
     return m;

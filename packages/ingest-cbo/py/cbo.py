@@ -1,7 +1,7 @@
 """Parsers for CBO cost estimates. Each command prints one JSON document; the TypeScript stage adds citations.
 
 usage: python -I cbo.py xlsx <file.xlsx>      per-title Excel tables (big reconciliation bills) + Summary totals
-       python -I cbo.py pdf <file.pdf>        per-section tables in a text PDF (IRA-style)
+       python -I cbo.py pdf <file.pdf>        per-section, per-title and per-provision tables in a text PDF
        python -I cbo.py table1 <file.xlsx>    small-bill whole-bill table
        python -I cbo.py glance <file.pdf>     page text, At a Glance box, mandate answers, baseline wording
 """
@@ -276,8 +276,19 @@ def xlsx(path):
 NUM = re.compile(r"^(-?\d{1,3}(,\d{3})*|-?\d+|\*|n\.e\.|n\.a\.)$")
 YEARS = re.compile(r"^(\d{4}\s+){9,}\d{4}-\d{4}\s+\d{4}-\d{4}$")
 HIERARCHY = re.compile(r"^(Subtitle|Chapter|Subchapter|Part)\s+([0-9A-Z]+)\.\s*(.*)$")
+SEC_NUMBER = r"\d+[A-Za-z]?(?:\([a-z0-9]+\))*"
 SEC = re.compile(r"^Secs?\.\s+(\d[\d\-–(),a-z ]*?)\s*(?:\s([A-Z].*))?$")
+SEC_WORD = re.compile(rf"^Sections?\s+({SEC_NUMBER}(?:\s*(?:,\s*and|,|and|–|-)\s*{SEC_NUMBER})*)\.(?:\s+([A-Z].*))?$")
+TABLE_HEAD = re.compile(r"^Table (\d+)(?:\.\s*(.*)|)$")
 TABLE_TITLE = re.compile(r"Estimated Budgetary Effects of (Title [IVXL]+), ([^,]+(?:, [^,]+)*?), of Public Law")
+TABLE_DIVISION = re.compile(r"\bEffects of Division ([A-Z]{1,2})\b")
+DIVISION = re.compile(r"^(?:DIVISION|Division)\s+([A-Z]{1,2})\s*[—–.:-]+\s*(.*)$")
+UNIT_TITLE = re.compile(r"^(?:TITLE|Title)\s+([IVXLC]+)\s*[—–.:-]+\s*(.*)$")
+UNIT_TOTAL = re.compile(r"^(?:(?:DIVISION|Division)\s+[A-Z]{1,2}|(?:TITLE|Title)\s+[IVXLC]+)\s+Total$|^Total,\s*(?:Division|Title)\s+\S+$")
+ON_OFF_BUDGET = re.compile(r"^(On|Off)-budget(?:\s+(?:revenues|outlays))?$", re.I)
+END_OF_TABLE = re.compile(r"^(?:Sources?:|Estimates are relative|Components may not sum|Notes$)")
+LEAF = ("section", "title", "program")
+STRUCTURE = ("division", "title", "program")
 SUPERSCRIPT_MAX = 7.0
 
 
@@ -299,98 +310,172 @@ def split_numbers(line, n):
     return line, None
 
 
+def parse_years(line, above):
+    """Column labels of a PDF table. Some tables print the two total columns as '2021- 2021-' above a row of plain
+    years ('... 2031 2026 2031'), which must read as '2021-2026' and '2021-2031'."""
+    if YEARS.match(line):
+        return line.split()
+    toks = line.split()
+    if len(toks) >= 12 and all(re.fullmatch(r"\d{4}", t) for t in toks):
+        annual = toks[:-2]
+        lead = re.findall(r"(\d{4})-(?=\s|$)", above)
+        if len(lead) >= 2 and all(int(b) == int(a) + 1 for a, b in zip(annual, annual[1:])):
+            return annual + [f"{lead[-2]}-{toks[-2]}", f"{lead[-1]}-{toks[-1]}"]
+    return None
+
+
+def section_label(label):
+    """(section numbers as CBO printed them, the title that follows) for 'Sec. 124 Title' and 'Section 124. Title'."""
+    if m := SEC.match(label):
+        return m.group(1).strip(), m.group(2) or ""
+    if m := SEC_WORD.match(label):
+        return m.group(1).strip(), m.group(2) or ""
+    return None
+
+
+def page_lines(page):
+    """A page's text lines with their left edge; small superscript characters (footnote marks) are left out."""
+    clean = page.filter(lambda o: o.get("object_type") != "char" or o["size"] > SUPERSCRIPT_MAX)
+    return [(l["text"].strip(), l["x0"]) for l in clean.extract_text_lines()]
+
+
 def per_section_pdf(pdf_path):
+    with pdfplumber.open(pdf_path) as pdf:
+        pages = [page_lines(page) for page in pdf.pages]
+    return {"format": "pdf", "sheets": parse_tables(pages), "summary": pdf_summary(pdf_path)}
+
+
+def parse_tables(pages):
+    """Per-section, per-title and per-provision rows of the numbered tables in a PDF, from its pages' text lines
+    (`(text, left edge)` pairs)."""
     lines_seq = itertools.count(1)
     rows, years = [], None
     table = title = block = None
-    skip = False
+    skip = reading = False
+    caption, heading, above = [], set(), ""
+    unit = {"division": None, "title": None}
     ctx = {"Subtitle": None, "Chapter": None, "Subchapter": None, "Part": None}
     current = None
-    with pdfplumber.open(pdf_path) as pdf:
-        for pno, page in enumerate(pdf.pages, 1):
-            clean = page.filter(lambda o: o.get("object_type") != "char" or o["size"] > SUPERSCRIPT_MAX)
-            lines = [l.strip() for l in (clean.extract_text() or "").splitlines()]
-            if any(l.startswith("Table") and "Notes" in l for l in lines[:6]):
+    for pno, lines in enumerate(pages, 1):
+        if any(t.startswith("Table") and "Notes" in t for t, _ in lines[:6]):
+            continue
+        for line, x0 in lines:
+            if not line or line.isdigit() or line.startswith(("See also", "How CBO", "Congressional Budget Office")) or line == "Cost Estimate":
                 continue
-            for line in lines:
-                if not line or line.startswith("See also") or line.startswith("How CBO") or line.startswith("Congressional Budget Office") or line == "Cost Estimate":
-                    continue
-                if m := re.match(r"^Table (\d+)\.?$", line):
-                    if table != m.group(1):
-                        table, title, current, years, skip = m.group(1), None, None, None, False
-                        ctx = dict.fromkeys(ctx)
-                    continue
-                if table and not years and "Discretionary Spending" in line:
-                    skip = True
-                if skip:
-                    continue
-                if (m := TABLE_TITLE.search(line)) and table:
+            before, above = above, line
+            if m := TABLE_HEAD.match(line):
+                if table != m.group(1):
+                    table, title, block, current, years, skip = m.group(1), None, None, None, None, False
+                    ctx, unit = dict.fromkeys(ctx), {"division": None, "title": None}
+                    heading = set()
+                caption = [m.group(2)] if m.group(2) else []
+                heading.update(caption)
+                reading = years is not None
+                continue
+            if not table:
+                continue
+            if found := parse_years(line, before):
+                years, reading = found, True
+                head = " ".join(caption)
+                skip = skip or "Discretionary Spending" in head or head.startswith("Summary")
+                if (m := TABLE_DIVISION.search(head)) and not unit["division"]:
+                    unit = {"division": m.group(1), "title": None}
+                continue
+            if not reading:
+                caption.append(line)
+                heading.add(line)
+                if m := TABLE_TITLE.search(line):
                     title = {"number": m.group(1).split()[1], "name": m.group(2)}
-                    continue
-                if YEARS.match(line):
-                    years = line.split()
-                    continue
-                if not table or not years:
-                    continue
-                if "in Direct Spending" in line and line.startswith(("Increases", "Decreases")):
-                    block, current = "direct_spending", None
-                    continue
-                if "in Revenues" in line and line.startswith(("Increases", "Decreases")):
-                    block, current = "revenues", None
-                    continue
-                if line.startswith("Net Increase") or line.startswith("From Changes"):
-                    block, current = "deficit", None
-                    continue
-                if m := HIERARCHY.match(line):
-                    level = m.group(1)
-                    ctx[level] = f"{level} {m.group(2)}. {m.group(3)}"
-                    for lower in list(ctx)[list(ctx).index(level) + 1 :]:
-                        ctx[lower] = None
-                    current = None
-                    continue
+                continue
+            if line in heading or line.startswith("By Fiscal Year"):
+                continue
+            if skip or not years:
+                continue
+            if END_OF_TABLE.match(line):
+                years, current = None, None
+                continue
+            if "in Direct Spending" in line and line.startswith(("Increases", "Decreases")):
+                block, current = "direct_spending", None
+                continue
+            if "in Revenues" in line and line.startswith(("Increases", "Decreases")):
+                block, current = "revenues", None
+                continue
+            if "Discretionary Spending" in line and line.startswith(("Increases", "Decreases")):
+                block, current = "discretionary", None
+                continue
+            if line.startswith("Net Increase") or line.startswith("From Changes"):
+                block, current = "deficit", None
+                continue
+            if line.startswith("Memorandum"):
+                block, current = "memorandum", None
+                continue
+            if block == "discretionary":
+                continue
+            if m := HIERARCHY.match(line):
+                level = m.group(1)
+                ctx[level] = f"{level} {m.group(2)}. {m.group(3)}"
+                for lower in list(ctx)[list(ctx).index(level) + 1 :]:
+                    ctx[lower] = None
+                current = None
+                continue
 
-                label, nums = split_numbers(line, len(years))
-                note = None
-                if " Estimate included in" in label:
-                    label, note = label.split(" Estimate included in", 1)
-                    note = "Estimate included in" + note
+            label, nums = split_numbers(line, len(years))
+            note = None
+            if " Estimate included in" in label:
+                label, note = label.split(" Estimate included in", 1)
+                note = "Estimate included in" + note
 
-                if (m := SEC.match(label)) and not (current and current.get("joining")):
-                    current = new_line(lines_seq, "section", m.group(2) or "", pno, ctx, m.group(1).strip())
-                elif label.startswith("Sec.") and current and current.get("joining"):
-                    m = SEC.match(label)
-                    current["section_raw"] += f" and {m.group(1).strip()}"
-                    current["section_title"] += f" and {m.group(2) or ''}"
-                    current["joining"] = False
-                elif label == "and" and current and current["kind"] == "section":
-                    current["joining"] = True
-                    continue
-                elif label.startswith(("Total Changes in", "Net Effect on the Deficit")):
-                    current = new_line(lines_seq, "total", label, pno, {}, None)
-                elif label.startswith(("Subtotal", "Interaction", "Total Interaction")):
-                    current = new_line(lines_seq, classify_line(label), label, pno, ctx, None)
-                elif current and not nums and not note:
-                    if current["has_rows"]:
-                        current["component"] = label
+            if (m := ON_OFF_BUDGET.match(label)) and current and nums:
+                label = f"{m.group(1).title()}-Budget {'Revenues' if block == 'revenues' else 'Outlays'}"
+            sec = section_label(label)
+            if sec and not (current and current.get("joining")):
+                current = new_line(lines_seq, "section", sec[1], pno, ctx, sec[0], unit, x0)
+            elif sec and current and current.get("joining"):
+                current["section_raw"] += f" and {sec[0]}"
+                current["section_title"] += f" and {sec[1]}"
+                current["joining"] = False
+            elif label == "and" and current and current["kind"] == "section":
+                current["joining"] = True
+                continue
+            elif label.startswith(("Total Changes in", "Net Effect on the Deficit")):
+                current = new_line(lines_seq, "total", label, pno, {}, None, unit, x0)
+            elif UNIT_TOTAL.match(label) or label.startswith(("Subtotal", "Interaction", "Total Interaction")):
+                current = new_line(lines_seq, classify_line(label), label, pno, ctx, None, unit, x0)
+            elif m := DIVISION.match(label):
+                unit = {"division": m.group(1), "title": None}
+                current = new_line(lines_seq, "division", m.group(2), pno, ctx, None, unit, x0)
+            elif m := UNIT_TITLE.match(label):
+                unit = {**unit, "title": m.group(1)}
+                current = new_line(lines_seq, "title", m.group(2), pno, ctx, None, unit, x0)
+            elif current and not nums and not note:
+                opens = current["kind"] == "program" or (current["kind"] in ("division", "title") and not current["has_rows"])
+                if (unit["division"] or unit["title"]) and opens:
+                    wraps = not current["has_rows"] and (current["kind"] == "program" or x0 < current["x0"] + 3)
+                    if wraps:
+                        current["section_title"] += f" {label}"
                     else:
-                        current["section_title"] += f" {label}"
-                    continue
-                elif current and nums:
-                    if measure_kind(label) == "other" and current["kind"] == "section" and not current["has_rows"]:
-                        current["section_title"] += f" {label}"
-                        label = implied_measure(block)
-                    rows.append(emit(table, title, block, current, label, years, nums, pno))
-                    continue
+                        current = new_line(lines_seq, "program", label, pno, ctx, None, unit, x0)
+                elif current["has_rows"]:
+                    current["component"] = label
                 else:
-                    continue
+                    current["section_title"] += f" {label}"
+                continue
+            elif current and nums:
+                if measure_kind(label) == "other" and current["kind"] in LEAF and not current["has_rows"]:
+                    current["section_title"] += f" {label}"
+                    label = implied_measure(block)
+                rows.append(emit(table, title, block, current, label, years, nums, pno, lines_seq))
+                continue
+            else:
+                continue
 
-                if note:
-                    current["has_rows"] = True
-                    rows.append({**emit(table, title, block, current, "", years, None, pno), "note": note,
-                                 "included_in": re.findall(r"\d{4,6}", note)})
-                elif nums:
-                    rows.append(emit(table, title, block, current, implied_measure(block), years, nums, pno))
-    return {"format": "pdf", "sheets": group(rows), "summary": pdf_summary(pdf_path)}
+            if note:
+                current["has_rows"] = True
+                rows.append({**emit(table, title, block, current, "", years, None, pno, lines_seq), "note": note,
+                             "included_in": re.findall(r"\d{4,6}", note)})
+            elif nums:
+                rows.append(emit(table, title, block, current, implied_measure(block), years, nums, pno, lines_seq))
+    return group(rows)
 
 
 def pdf_summary(pdf_path):
@@ -445,19 +530,23 @@ def pdf_summary(pdf_path):
     return {"sheet": "Summary", "years": years, "rows": rows} if rows else None
 
 
-def new_line(seq, kind, text, pno, ctx, section_raw):
-    return {"line": next(seq), "kind": kind, "section_raw": section_raw, "section_title": text, "component": None, "page0": pno,
-            "has_rows": False, "joining": False, "context": dict(ctx)}
+def new_line(seq, kind, text, pno, ctx, section_raw, unit=None, x0=0.0):
+    return {"line": None if kind in STRUCTURE else next(seq), "kind": kind, "section_raw": section_raw, "section_title": text, "component": None, "page0": pno,
+            "has_rows": False, "joining": False, "context": dict(ctx), "unit": dict(unit or {}), "x0": x0}
 
 
-def emit(table, title, block, current, measure, years, nums, pno):
+def emit(table, title, block, current, measure, years, nums, pno, seq):
     current["has_rows"] = True
+    if current["line"] is None:
+        current["line"] = next(seq) if current["kind"] != "division" else 0
     pages = sorted({current["page0"], pno})
     return {
         "table": table,
         "sheet": f"Table {table}",
         "title": title,
         **current["context"],
+        "division": current["unit"].get("division"),
+        "title_no": current["unit"].get("title"),
         "block": block,
         "line_kind": current["kind"],
         "_line": current,
@@ -620,7 +709,13 @@ def glance(path):
     }
 
 
+def pages(path):
+    """The `pdf` tables from a JSON list of pages of `[text, left edge]` lines, for tests that have no PDF."""
+    with open(path) as f:
+        return {"format": "pdf", "sheets": parse_tables([[(t, x0) for t, x0 in page] for page in json.load(f)]), "summary": None}
+
+
 if __name__ == "__main__":
     command, path = sys.argv[1], sys.argv[2]
-    parse = {"xlsx": xlsx, "pdf": per_section_pdf, "table1": table1, "glance": glance}[command]
+    parse = {"xlsx": xlsx, "pdf": per_section_pdf, "pages": pages, "table1": table1, "glance": glance}[command]
     json.dump(parse(path), sys.stdout)
