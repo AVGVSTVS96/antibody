@@ -5,6 +5,7 @@ import { baselineOf, type Listing, parseListings, versionCode } from "./estimate
 import { billstatus, type Fetched, publicationFiles } from "./fetch.ts";
 import { baseNum, buildLines } from "./lines.ts";
 import type { Glance, Parsed } from "./parsed.ts";
+import { scopeRows } from "./scope.ts";
 import { closestVersion, type Labelled, sectionIndex } from "./sections.ts";
 
 const PKG = resolve(import.meta.dir, "..");
@@ -94,6 +95,7 @@ export async function xray(ctx: StageContext) {
     const id = estimateId(bill, l);
     const files = await publicationFiles(l, bill, opts);
     const { main, pdf, glance } = await read(files, bill);
+    if (main && glance) scopeRows(main.sheets, glance.pages);
     const code = versionCode(l.description, bill, known);
     const { baseline, label } = baselineOf(
       l,

@@ -1,5 +1,5 @@
 import type { Row } from "@antibody/core";
-import type { Glance, Parsed, ParsedRow, ParsedSheet, SourceFile, Summary, Values } from "./parsed.ts";
+import type { Glance, Parsed, ParsedRow, ParsedSheet, Scope, SourceFile, Summary, Values } from "./parsed.ts";
 import type { Found, Place, Places, SectionJoin } from "./sections.ts";
 
 type Line = Row<"cbo_lines">;
@@ -55,6 +55,8 @@ const LEAF = new Set(["section", "title", "program"]);
 const ADDITIVE = new Set([...LEAF, "interaction", "sequestration", "other"]);
 const RECONCILED = new Set(["budget_authority", "outlays", "revenues", "off_budget_revenues"]);
 const DIVISION_TOTAL = /^division\s+([a-z]+)\s+total$/i;
+/** A sheet printed in billions to one decimal rounds each row to $50 million, so a total can be off by $100 million. */
+const BILLIONS_ROUNDING = 100;
 
 /**
  * Checks every title × block × measure × period: the rows that add up must equal the total CBO prints, and where
@@ -66,11 +68,12 @@ export function reconcile(sheets: ParsedSheet[]): Reconcile {
   let exact = 0;
   const failing = new Set<string>();
   const check = (sheet: ParsedSheet, key: string, summed: Map<string, number> | undefined, total: ParsedRow) => {
+    const rounding = sheet.unit === "billions" ? BILLIONS_ROUNDING : 2;
     for (const period of sheet.years) {
       const diff = Math.round((summed?.get(period) ?? 0) - (total.values[period] ?? 0));
       checks++;
       if (diff === 0) exact++;
-      if (Math.abs(diff) > 2) failing.add(`${sheet.sheet}|${key}`);
+      if (Math.abs(diff) > rounding) failing.add(`${sheet.sheet}|${key}`);
     }
   };
   for (const sheet of sheets) {
@@ -109,11 +112,14 @@ interface Amount {
   values: Values;
   ranges: string[];
   file: SourceFile;
+  /** How the amounts were converted from what the sheet prints. */
+  note?: string;
 }
 
 interface CboLine {
   key: string;
   kind: "section" | "title" | "program";
+  scope?: Scope;
   title: string | null;
   nums: string[];
   place: Place;
@@ -142,6 +148,10 @@ interface Member {
 
 const WEAKNESS: Record<Join, number> = { number: 0, title: 1, heading: 2 };
 const weakest = (joins: Join[]): Join => joins.reduce((a, b) => (WEAKNESS[b] > WEAKNESS[a] ? b : a), "number");
+const placeOf = (r: ParsedRow): Place =>
+  r.division || r.title_no || !r.scope
+    ? { division: r.division ?? null, title: r.title_no ?? null }
+    : { division: r.scope.division, title: r.scope.title };
 const sectionKey = (division: string | null | undefined, num: string) => (division ? `${division}.${num}` : num);
 const placeText = (p: Place) =>
   [p.division && `division ${p.division}`, p.title && `title ${p.title}`].filter(Boolean).join(" ") || "the bill";
@@ -183,14 +193,15 @@ export function buildLines(
         let picked = rows.filter((r) => kindOf(r) === flow && r.block === block);
         if (!picked.length) picked = rows.filter((r) => PARTS[r.measure_kind] === flow && r.block === block);
         if (!picked.length || failing.has(`${sheet.sheet}|${block}|${flow}`)) continue;
-        const amount = sum(picked, sheet.years, fileOf(sheet));
+        const amount = sum(picked, sheet, fileOf(sheet));
         if (last(amount.values, sheet.years) === null) continue;
         items.push({
           key: `${i}.${line}`,
           kind: rows[0]!.line_kind as CboLine["kind"],
           title: rows[0]!.section_title,
           nums: [...new Set(rows.flatMap((r) => r.sections).map(baseNum))],
-          place: { division: rows[0]!.division ?? null, title: rows[0]!.title_no ?? null },
+          place: placeOf(rows[0]!),
+          scope: rows[0]!.scope,
           flow,
           amount,
           sheet,
@@ -259,6 +270,7 @@ export function buildLines(
         values: share,
         ranges: it.amount.ranges,
         file: it.amount.file,
+        note: it.amount.note,
         years,
         title: it.title,
         even: true,
@@ -288,7 +300,7 @@ export function buildLines(
   };
 
   for (const it of items) {
-    if (it.kind === "program") {
+    if (it.kind === "program" && !it.scope) {
       const m = programs.get(it.key);
       if (!m) {
         unjoined(it);
@@ -296,9 +308,12 @@ export function buildLines(
       }
       const how = `CBO printed no section number; its row matches the heading of section ${m.num} ("${m.heading}") of ${placeText(it.place)} in the ${m.version} text`;
       push(parts, `${m.division ?? ""}|${m.num}|${it.flow}`, { ...plain(it), sid: m.id, join: "heading", how });
-    } else if (it.kind === "title") {
+    } else if (it.kind === "title" || it.scope) {
       const here = places?.under(it.place) ?? [];
-      const how = `CBO's row is for all of ${placeText(it.place)}, which has ${here.length} section${here.length === 1 ? "" : "s"} in the ${here[0]?.version} text`;
+      const size = `${placeText(it.place)}, which has ${here.length} section${here.length === 1 ? "" : "s"} in the ${here[0]?.version} text`;
+      const how = it.scope
+        ? `CBO's text says (page ${it.scope.page}) "${it.scope.quote}"; that is all of ${size}`
+        : `CBO's row is for all of ${size}`;
       if (!here.length) unjoined(it);
       else if (here.length === 1)
         push(parts, `${here[0]!.division ?? ""}|${here[0]!.num}|${it.flow}`, {
@@ -337,7 +352,12 @@ export function buildLines(
       section_ids,
       title: ps[0]!.title,
       measure: flow,
-      amount: { values: addValues(ps.map((p) => p.values)), ranges: ps.flatMap((p) => p.ranges), file: ps[0]!.file },
+      amount: {
+        values: addValues(ps.map((p) => p.values)),
+        ranges: ps.flatMap((p) => p.ranges),
+        file: ps[0]!.file,
+        note: ps.find((p) => p.note)?.note,
+      },
       split: ps.some((p) => p.even) ? "even_split" : "exact",
       rests_on: [...new Set(ps.flatMap((p) => p.restsOn))],
       join: section_ids.length ? weakest(ps.map((p) => p.join)) : null,
@@ -518,7 +538,7 @@ function line(
     values: amount.values,
     archive_url: amount.file.archiveUrl,
     source_url: amount.file.url,
-    source_locator: [locator(amount.ranges), how, l.section_ids.length ? src.numbering : null]
+    source_locator: [locator(amount.ranges), amount.note, how, l.section_ids.length ? src.numbering : null]
       .filter(Boolean)
       .join("; "),
   };
@@ -551,8 +571,15 @@ export function baseNum(ref: string): string {
   return ref.match(/^\d+[A-Z]?/)?.[0] ?? ref;
 }
 
-function sum(rows: ParsedRow[], years: string[], file: SourceFile): Amount {
-  return { values: addValues(rows.map((r) => pick(r.values, years))), ranges: rows.map((r) => r.range), file };
+function sum(rows: ParsedRow[], sheet: ParsedSheet, file: SourceFile): Amount {
+  return {
+    values: addValues(rows.map((r) => pick(r.values, sheet.years))),
+    ranges: rows.map((r) => r.range),
+    file,
+    ...(sheet.unit === "billions" && {
+      note: "CBO prints this sheet in billions of dollars; shown here in millions (x 1,000)",
+    }),
+  };
 }
 
 function fileName(url: string): string {

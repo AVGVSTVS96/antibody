@@ -10,6 +10,10 @@ export interface ParsedRow {
   /** The division letter and title numeral the row sits under in CBO's table. */
   division?: string | null;
   title_no?: string | null;
+  /** The heading above the one this provision sits under (a "Work Requirements" over its "Supplemental Nutrition Assistance Program"). */
+  parent?: string | null;
+  /** Where CBO's own text says the provision sits, for a row whose table names no division or title. */
+  scope?: Scope;
   sections: string[];
   section_title: string | null;
   component: string | null;
@@ -18,6 +22,14 @@ export interface ParsedRow {
   values: Values;
   range: string;
   breakdown_of_total?: boolean;
+}
+
+/** A division (and title) found in a sentence of CBO's text about a provision, with the sentence and its page. */
+export interface Scope {
+  division: string | null;
+  title: string | null;
+  quote: string;
+  page: number;
 }
 
 /** The cbo.gov file a table came from and the archive copy we read. */
@@ -30,6 +42,8 @@ export interface ParsedSheet {
   file?: SourceFile;
   sheet: string;
   years: string[];
+  /** "billions" when the sheet prints billions; rows are already in millions, and the citation says so. */
+  unit?: string | null;
   rows: ParsedRow[];
 }
 

@@ -13,6 +13,8 @@ import sys
 
 import openpyxl
 import pdfplumber
+from openpyxl.cell.rich_text import CellRichText
+from openpyxl.utils import get_column_letter
 
 
 YEAR_COL0 = 3
@@ -258,8 +260,105 @@ def summary_totals(ws, years):
     return rows
 
 
+CONNECTIVE = re.compile(r"(?:,|\b(?:and|of|for|the|to|in|on|or|with))$", re.I)
+PROVISION_BLOCKS = [("Direct Spending", "direct_spending"), ("Discretionary", "discretionary"), ("Revenues", "revenues"), ("Deficit", "deficit")]
+
+
+def plain(v):
+    """A cell's text without its superscript runs, which are footnote marks."""
+    if isinstance(v, CellRichText):
+        v = "".join(p if isinstance(p, str) else ("" if p.font.vertAlign == "superscript" else p.text) for p in v)
+    return text(v)
+
+
+def is_provision_table(ws):
+    """A numbered table that lists provisions by name (no section numbers) under 'in Direct Spending' headings."""
+    return ws.title.startswith("Table") and any(
+        "in Direct Spending" in text(r[YEAR_COL0]) for r in ws.iter_rows(max_row=40, values_only=True) if len(r) > YEAR_COL0
+    )
+
+
+def provision_sheet(ws, years, lines):
+    """Rows of a table that names provisions instead of sections, with the heading each sits under and its parent
+    heading. Amounts are returned in millions, however the sheet prints them (FRA's tables are in billions)."""
+    n = len(years)
+    billions = any("Billions" in text(c) for r in ws.iter_rows(max_row=14, values_only=True) for c in r)
+    scale = 1000 if billions else 1
+    last = get_column_letter(YEAR_COL0 + n)
+    rows, block, heads, current = [], None, [], None
+
+    def start(kind, title, parent, row):
+        return {"line": next(lines), "kind": kind, "title": title, "parent": parent, "row0": row, "has_rows": False}
+
+    def add(cur, label, data, i):
+        cur["has_rows"] = True
+        if block == "discretionary":
+            return
+        nums = [number(x) for x in data]
+        rows.append({
+            "sheet": ws.title, "block": block, "line_kind": cur["kind"], "line": cur["line"], "sections": [],
+            "section_title": cur["title"], "parent": cur["parent"], "component": None, "measure": label,
+            "measure_kind": measure_kind(label), "scored_by": "CBO",
+            "values": dict(zip(years, [None if x is None else round(x * scale, 6) for x in nums])),
+            "raw": dict(zip(years, [text(x) for x in data])),
+            "range": f"'{ws.title}'!A{cur['row0']}:{last}{i}",
+        })
+
+    def under_heads():
+        (title, row), parent = heads[-1], heads[-2][0] if len(heads) > 1 else None
+        return start("program", title, parent, row)
+
+    for i, r in enumerate(ws.iter_rows(values_only=True), 1):
+        r = list(r) + [None] * (YEAR_COL0 + n + 1)
+        a, b, c = plain(r[0]), plain(r[1]), plain(r[2])
+        data = r[YEAR_COL0 : YEAR_COL0 + n]
+        has = any(number(x) is not None for x in data)
+        if a.startswith("Source"):
+            break
+        if [text(x) for x in data] == years:
+            continue
+        if not has and (head := plain(r[YEAR_COL0])):
+            for key, name in PROVISION_BLOCKS:
+                if key in head:
+                    block, heads, current = name, [], None
+        elif has and (b or c):
+            if current is None:
+                current = under_heads() if heads else start("total", b or c, None, i)
+            add(current, b or c, data, i)
+        elif has:
+            if heads and CONNECTIVE.search(heads[-1][0]):
+                title, row = heads.pop()
+                current = start("program", f"{title} {a}", heads[-1][0] if heads else None, row)
+            else:
+                current = start("program", a, heads[-1][0] if heads else None, i)
+            add(current, implied_measure(block), data, i)
+            heads = []
+        elif a and not b and not c:
+            if heads and CONNECTIVE.search(heads[-1][0]):
+                heads[-1] = (f"{heads[-1][0]} {a}", heads[-1][1])
+            elif current and current["has_rows"]:
+                heads = [(a, i)]
+            else:
+                heads.append((a, i))
+            current = None
+        elif label := b or c:
+            kind = "total" if label.lower().startswith("total") else "subtotal" if label.lower().startswith("subtotal") else None
+            if kind:
+                current, heads = start(kind, label, None, i), []
+    return rows, ("billions" if billions else None)
+
+
+def provision_totals(rows):
+    """Whole-bill direct spending and deficit as a provision table totals them."""
+    return [
+        {"block": r["block"], "measure": r["measure"], "measure_kind": r["measure_kind"], "values": r["values"], "range": r["range"]}
+        for r in rows
+        if r["line_kind"] == "total" and r["measure_kind"] in ("budget_authority", "outlays", "deficit")
+    ]
+
+
 def xlsx(path):
-    wb = openpyxl.load_workbook(path, data_only=True)
+    wb = openpyxl.load_workbook(path, data_only=True, rich_text=True)
     lines = itertools.count(1)
     out = {"format": "xlsx", "sheets": [], "summary": None}
     for ws in wb.worksheets:
@@ -268,6 +367,12 @@ def xlsx(path):
             continue
         if ws.title.startswith("Summary"):
             out["summary"] = {"sheet": ws.title, "years": years, "rows": summary_totals(ws, years)}
+        if is_provision_table(ws):
+            rows, unit = provision_sheet(ws, years, lines)
+            out["sheets"].append({"sheet": ws.title, "title": None, "years": years, "unit": unit, "rows": rows})
+            if not out["summary"]:
+                out["summary"] = {"sheet": ws.title, "years": years, "rows": provision_totals(rows)}
+            continue
         if not ws.title.startswith("Title"):
             continue
         title, rows = parse_sheet(ws, years, lines)
