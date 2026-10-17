@@ -35,7 +35,7 @@ Every constant is in `analyze/src/score.ts` and printed in the published rule (`
 5. **Buried score** = stakes x quiet x sneak (0 to 1.5): the order of the buried list.
 6. **Label.** `headline`: top tenth of the bill by attention with at least 3 articles. `buried`: costly and quiet, in a bill of at least 10 sections. Everything else `normal`.
 
-buried-v1 also required the section to be late, or off-topic in a bill with one committee title. Late is withheld on every bill that began as a shell and off-topic never counts in a bill built from several titles, so v1 could not fire on 14 of 22 bills, and on the rest it needed a section to be late as well as quiet and costly.
+buried-v1 also required the section to be late, or off-topic in a bill with one committee title. Late is withheld on every bill that began as a shell and off-topic never counts in a bill built from several titles, so on CHIPS, IIJA, the omnibus, the NDAA and PACT neither could count and v1 could not fire at all; on the rest it needed a section to be late as well as quiet and costly, and dropped 63 of 76 costly, quiet sections.
 
 **Can't be tested** (the page says which, never a bare zero): fewer than 10 sections; news too thin to rank the sections (under 20 relevant articles or 30 section mentions); no section with a measured cost (CBO gave no section its own figure and no section is named in 21 lobbying reports).
 
