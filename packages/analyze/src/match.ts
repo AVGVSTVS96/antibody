@@ -145,9 +145,12 @@ export async function matchArticles(
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const r = await claude(prompt, { system: sys, model, signal: opts.signal });
-        const out = parseJson<
-          { a: number; about: Match["about"]; s: string[]; whole: boolean; outside: string | null }[]
-        >(r.text);
+        let out: { a: number; about: Match["about"]; s: string[]; whole: boolean; outside: string | null }[];
+        try {
+          out = parseJson(r.text);
+        } catch (e) {
+          throw new Error(`${(e as Error).message}: ${JSON.stringify(r.text.slice(0, 160))}`);
+        }
         for (const o of out) {
           const a = batch[o.a - 1];
           const ids = menus[o.a - 1];
