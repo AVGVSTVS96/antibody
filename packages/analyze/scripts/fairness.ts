@@ -3,6 +3,7 @@ import { type BillId, parseBillId } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 import { OUTLETS, sideOf } from "@antibody/ingest-news";
 import { MIN_TEXT_CHARS } from "../src/attention.ts";
+import { SCORE, stakes } from "../src/score.ts";
 
 const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group]));
 const pct = (n: number, d: number) => (d ? `${((100 * n) / d).toFixed(0)}%` : "-");
@@ -10,6 +11,9 @@ const mean = (xs: number[]) => (xs.length ? (xs.reduce((a, b) => a + b, 0) / xs.
 
 const members = await readRows("members").catch(() => []);
 const party = new Map(members.map((m) => [m.id.replace(/^member:/, ""), m.party]));
+
+const byParty: Record<string, { bills: number; sections: number; headline: number; costly: number; buried: number }> =
+  {};
 
 for (const arg of Bun.argv.slice(2)) {
   const bill = parseBillId(arg) as BillId;
@@ -67,4 +71,30 @@ for (const arg of Bun.argv.slice(2)) {
     )}; sections with dollars ${pct(scores.filter((s) => s.dollars_musd !== null).length, final)}; with lobbying ${pct(scores.filter((s) => s.lobbying_reports > 0).length, final)}`,
   );
   console.log(`sections total ${sections.length}`);
+
+  const costly = scores.filter(
+    (s) =>
+      stakes({ dollarsMusd: s.dollars_musd, dollarsSplit: s.dollars_split, lobbyingReports: s.lobbying_reports }) >=
+      SCORE.costlyMin,
+  );
+  const buriedN = count("buried");
+  const measured = scores.some((s) => s.dollars_musd !== null && s.dollars_split !== "even_split") || costly.length > 0;
+  console.log(
+    `costly (stakes at least ${SCORE.costlyMin.toFixed(3)}): ${costly.length}; of them quiet (buried) ${pct(buriedN, costly.length)}, loud (headline) ${pct(costly.filter((s) => s.label === "headline").length, costly.length)}; late among buried ${pct(scores.filter((s) => s.label === "buried" && s.late).length, buriedN)} (late among all sections ${pct(late.length, final)})`,
+  );
+  const p = party.get(b?.sponsor_bioguide ?? "") ?? "?";
+  if (measured && scores.some((s) => s.attention_pct !== null)) {
+    const t = (byParty[p] ??= { bills: 0, sections: 0, headline: 0, costly: 0, buried: 0 });
+    t.bills++;
+    t.sections += final;
+    t.headline += count("headline");
+    t.costly += costly.length;
+    t.buried += buriedN;
+  }
 }
+
+console.log("\n## pooled by sponsor party, bills where the rule could run (news ranked and a cost measured)");
+for (const [p, t] of Object.entries(byParty))
+  console.log(
+    `${p}: ${t.bills} bills, ${t.sections} sections; headline ${pct(t.headline, t.sections)} of sections; costly ${pct(t.costly, t.sections)} of sections; buried ${pct(t.buried, t.costly)} of costly sections`,
+  );

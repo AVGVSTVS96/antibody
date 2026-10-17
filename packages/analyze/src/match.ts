@@ -176,6 +176,20 @@ export async function matchArticles(
 
 export const EMBED_MATCHER = "section-matcher-embed-v1";
 
+/** The matches a finished attention run left on disk (the model's, else the embedding fallback's), or null. */
+export async function cachedMatchRun(bill: BillId, model = MATCH_MODEL): Promise<MatchRun | null> {
+  const dir = join(paths.raw("analyze"), "match");
+  const claudeRun = Bun.file(join(dir, `${bill}.${model}.json`));
+  if (await claudeRun.exists()) {
+    const r: MatchRun = await claudeRun.json();
+    if (r.matcher === MATCHER) return r;
+  }
+  const embed = Bun.file(join(dir, `${bill}.embed.json`));
+  if (!(await embed.exists())) return null;
+  const r = await embed.json();
+  return { matcher: EMBED_MATCHER, model: r.model, menuHash: "", costUsd: 0, matches: r.matches };
+}
+
 /** True when a tiny claude -p call goes through (no spend limit, logged in). */
 export async function claudeAvailable(model = MATCH_MODEL): Promise<boolean> {
   try {

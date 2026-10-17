@@ -1166,6 +1166,7 @@ class Builder {
           dollarsSplit: s.dollars_split,
           attentionPct: s.attention_pct,
           attentionShare: s.attention_share,
+          attentionChecked: s.attention_checked,
           late: s.late,
           offTopic: s.off_topic,
           lobbyingReports: s.lobbying_reports,

@@ -376,6 +376,12 @@ export const TEMPLATES: Record<string, Template> = {
     };
   },
 
+  attention_checks: (r, _f, n) => ({
+    text: `${sec(n, r.section_id).replace(/^s/, "S")}: a second look put the ${r.passages} news passages closest to it to a model, which said ${r.article_ids.length ? `${count(r.article_ids.length, "article")} the section matcher had missed describe what it does` : "none beyond the articles already matched describe what it does"}. With those added, ${(r.share * 100).toFixed(1)}% of the bill's relevant articles discuss it.`,
+    sourceUrl: `${DOCS}#quiet-check-v1`,
+    sourceLocator: 'how the check works; the articles it found are under "rests on"',
+  }),
+
   counterparts: (r, _f, n) => ({
     text: `${sec(n, r.removed_section_id).replace(/^s/, "S")} is taken to be rewritten as ${sec(n, r.added_section_id)}.`,
   }),
@@ -408,6 +414,7 @@ export const INFERENCE_TABLES = new Set([
   "resolutions",
   "benefits",
   "attention",
+  "attention_checks",
   "counterparts",
   "section_scores",
 ]);

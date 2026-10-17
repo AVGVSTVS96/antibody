@@ -3,7 +3,7 @@ import type { Row } from "@antibody/core";
 import { BIG_STAKES, MIN_SECTIONS_TO_BURY } from "@antibody/core";
 import { attention, percentile } from "../src/attention.ts";
 import type { MatchRun } from "../src/match.ts";
-import { BOILERPLATE, buried, label, quiet, SCORE, sectionDollars, stakes } from "../src/score.ts";
+import { BOILERPLATE, buried, label, quiet, SCORE, scoreRows, sectionDollars, stakes } from "../src/score.ts";
 
 test("stakes put dollars and lobbying on log scales, and cuts count the same as costs", () => {
   expect(stakes({ dollarsMusd: 1000, lobbyingReports: 0 })).toBeCloseTo(0.5, 2);
@@ -245,4 +245,75 @@ test("swapping the left and right outlets changes nothing", () => {
   const two = make("foxnews.com", "rawstory.com");
   expect(two.share.get("b")).toBe(one.share.get("b")!);
   expect(two.rows.map((r) => r.pct)).toEqual(one.rows.map((r) => r.pct));
+});
+
+test("the share of a set of articles weighs each side equally, like a section's own share", () => {
+  const arts = [
+    ...Array.from({ length: 30 }, (_, i) => article(`L${i}`, "rawstory.com")),
+    ...Array.from({ length: 10 }, (_, i) => article(`C${i}`, "thehill.com")),
+    ...Array.from({ length: 10 }, (_, i) => article(`R${i}`, "foxnews.com")),
+  ];
+  const matches: MatchRun["matches"] = {};
+  for (const a of arts)
+    matches[a.id] = { about: "bill", sections: a.id === "L0" ? ["a"] : [], whole: false, outside: null };
+  const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
+  const res = attention("119-hr-1", [section("a"), section("b")], arts, run);
+  expect(res.shareOf(["L0"])).toBeCloseTo(res.share.get("a")!, 6);
+  expect(res.shareOf(["L0", "R0"])).toBeCloseTo((1 / 30 + 1 / 10) / 3, 6);
+  expect(res.shareOf([])).toBe(0);
+  expect(res.counted.length).toBe(50);
+});
+
+const att = (section_id: string, over: Partial<Row<"attention">> = {}) =>
+  ({
+    id: `b:${section_id}`,
+    section_id,
+    hits: 0,
+    pct: 0,
+    evidence: { balanced_share: 0 },
+    rests_on: [],
+    ...over,
+  }) as Row<"attention">;
+
+test("a section the matcher missed but a direct check found in the coverage is no longer quiet", () => {
+  const sections = Array.from(
+    { length: 12 },
+    (_, i) =>
+      ({ ...section(`s${i}`), path: "title:I/sec:1", late: false, heading: "h", preview: "p" }) as Row<"sections">,
+  );
+  const est = {
+    id: "e",
+    per_section: true,
+    baseline: "current-law",
+    published_on: "2025-07-21",
+  } as Row<"cbo_estimates">;
+  const dollars = sectionDollars(
+    [est],
+    [line({ id: "x", section_ids: ["s0"], measure: "deficit", total_musd: 30_000 })],
+  );
+  const rows = (checks: Row<"attention_checks">[]) =>
+    scoreRows(
+      "119-hr-1",
+      sections,
+      sections.map((s) => att(s.id)),
+      dollars,
+      new Map(),
+      new Map(),
+      checks,
+    );
+  const missed = rows([]).find((r) => r.section_id === "s0")!;
+  expect(missed.label).toBe("buried");
+  expect(missed.attention_checked).toBeNull();
+  const check = {
+    id: "b:s0",
+    section_id: "s0",
+    article_ids: ["a1", "a2", "a3"],
+    share: 0.03,
+  } as Row<"attention_checks">;
+  const found = rows([check]).find((r) => r.section_id === "s0")!;
+  expect(found.label).toBe("normal");
+  expect(found.attention_checked).toBe(3);
+  expect(found.attention_share).toBe(0.03);
+  expect(found.rests_on).toContain("attention_checks/b:s0");
+  expect((found.evidence as { attention_hits: number }).attention_hits).toBe(3);
 });

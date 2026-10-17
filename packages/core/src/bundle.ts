@@ -108,6 +108,8 @@ export const Score = z.object({
     attentionPct: z.number().nullable(),
     /** Share of the bill's relevant articles that discuss the section (sides weighted equally); the buried label needs it under 1%. */
     attentionShare: z.number().nullable().default(null),
+    /** Articles a second look found that the section matcher had missed; null when the section was not given one. */
+    attentionChecked: z.number().int().nullable().default(null),
     late: z.boolean(),
     offTopic: z.number().nullable(),
     lobbyingReports: z.number().int(),

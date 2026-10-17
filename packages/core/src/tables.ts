@@ -491,6 +491,18 @@ export const TABLES = {
     example_article_ids: z.array(z.string()),
     ...inference,
   }),
+  /** A second look at sections that are costly and look quiet: news passages closest in meaning to the section, judged by a model. */
+  attention_checks: table("@antibody/analyze", {
+    bill_id: billId,
+    section_id: z.string(),
+    /** News passages put to the model for this section (one per article, the closest in meaning). */
+    passages: z.number().int(),
+    /** Articles from counted outlets the model said describe the section that the section matcher had not matched to it. */
+    article_ids: z.array(z.string()),
+    /** The section's share of the bill's relevant articles with those added (sides weighted equally). */
+    share: z.number(),
+    ...inference,
+  }),
   section_scores: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
@@ -501,6 +513,8 @@ export const TABLES = {
     attention_pct: z.number().nullable(),
     /** Share of the bill's relevant articles that discuss the section (sides weighted equally); null when the bill's sections are not ranked. */
     attention_share: z.number().nullable().default(null),
+    /** Articles the second look added to the section's matcher hits; null when the section was not given one. */
+    attention_checked: z.number().int().nullable().default(null),
     late: z.boolean(),
     off_topic: z.number().nullable(),
     lobbying_reports: z.number().int(),

@@ -422,6 +422,7 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           v.s.attention?.pct != null || hits ? (
             <>
               {hits} of {(A.sample?.relevant ?? A.articles).toLocaleString("en-US")} articles
+              {c?.attentionChecked ? `, plus ${c.attentionChecked} a second look found` : ""}
             </>
           ) : (
             "Not ranked"

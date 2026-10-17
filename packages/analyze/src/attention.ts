@@ -42,6 +42,10 @@ export interface AttentionResult {
   /** Balanced share per section id, for the score. */
   share: Map<string, number>;
   relevant: number;
+  /** The relevant articles from counted outlets: the pool a section's attention is a share of. */
+  counted: Row<"articles">[];
+  /** The balanced share of the given counted articles (each weighted side counts equally), as for a section's hits. */
+  shareOf: (articleIds: Iterable<string>) => number;
 }
 
 export function attention(
@@ -178,5 +182,9 @@ export function attention(
         .map(([topic, n]) => ({ topic, articles: n })),
     },
   });
-  return { rows, share, relevant: counted.length };
+  const shareOf = (ids: Iterable<string>) => {
+    const wanted = new Set(ids);
+    return balanced(counted.filter((a) => wanted.has(a.id)));
+  };
+  return { rows, share, relevant: counted.length, counted, shareOf };
 }

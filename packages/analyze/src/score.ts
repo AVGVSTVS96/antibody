@@ -154,14 +154,18 @@ export function scoreRows(
   dollars: ReturnType<typeof sectionDollars>,
   reports: Reports,
   offTopic: Map<string, number>,
+  checks: Row<"attention_checks">[] = [],
 ): Row<"section_scores">[] {
   const att = new Map(attention.filter((a) => a.section_id).map((a) => [a.section_id!, a]));
+  const checked = new Map(checks.map((c) => [c.section_id, c]));
   const final = sections.filter((s) => s.in_final);
   const lateShare = final.length ? final.filter((s) => s.late).length / final.length : 0;
   const titles = new Set(final.map((s) => s.path.split("/")[0]).filter((p) => /^(title|division):/.test(p!))).size;
   return final.map((s) => {
     const a = att.get(s.id);
-    const share = a && a.pct !== null ? Number((a.evidence as { balanced_share: number }).balanced_share) : null;
+    const check = checked.get(s.id);
+    const share =
+      check?.share ?? (a && a.pct !== null ? Number((a.evidence as { balanced_share: number }).balanced_share) : null);
     const d = dollars.bySection.get(s.id) ?? null;
     const { filings, refs } = reports.get(s.id) ?? { filings: [], refs: [] };
     const c: Components = {
@@ -181,6 +185,7 @@ export function scoreRows(
       ...(a ? [`attention/${a.id}`] : []),
       ...(d?.lineIds.map((id) => `cbo_lines/${id}`) ?? []),
       ...refs.map((id) => `lda_bill_refs/${id}`),
+      ...(check ? [`attention_checks/${check.id}`] : []),
     ];
     return {
       id: `${bill}:${s.id}`,
@@ -192,6 +197,7 @@ export function scoreRows(
       dollars_split: d?.split ?? null,
       attention_pct: c.attentionPct,
       attention_share: share,
+      attention_checked: check ? check.article_ids.length : null,
       late: c.late,
       off_topic: c.offTopic,
       lobbying_reports: c.lobbyingReports,
@@ -207,7 +213,7 @@ export function scoreRows(
         dollars_measure: d?.measure ?? null,
         cbo_estimate: d?.estimateId ?? null,
         lobbying_filings: filings,
-        attention_hits: a?.hits ?? 0,
+        attention_hits: (a?.hits ?? 0) + (check?.article_ids.length ?? 0),
       },
     };
   });
