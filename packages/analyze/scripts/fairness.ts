@@ -78,6 +78,16 @@ for (const arg of Bun.argv.slice(2)) {
       SCORE.costlyMin,
   );
   const buriedN = count("buried");
+  const byBaseline = (s: (typeof scores)[number]) =>
+    (s.evidence as { dollars_by_baseline?: { musd: number }[] }).dollars_by_baseline ?? [];
+  const twoBaselines = scores.filter((s) => byBaseline(s).length > 1);
+  if (twoBaselines.length) {
+    const bar = (musd: number) =>
+      stakes({ dollarsMusd: musd, dollarsSplit: "exact", lobbyingReports: 0 }) >= SCORE.costlyMin;
+    console.log(
+      `CBO printed ${twoBaselines.length} sections against two baselines: ${twoBaselines.filter((s) => byBaseline(s).some((b) => bar(b.musd))).length} are costly on at least one, ${twoBaselines.filter((s) => byBaseline(s).every((b) => bar(b.musd))).length} on every one (only those count)`,
+    );
+  }
   const measured = scores.some((s) => s.dollars_musd !== null && s.dollars_split !== "even_split") || costly.length > 0;
   console.log(
     `costly (stakes at least ${SCORE.costlyMin.toFixed(3)}): ${costly.length}; of them quiet (buried) ${pct(buriedN, costly.length)}, loud (headline) ${pct(costly.filter((s) => s.label === "headline").length, costly.length)}; late among buried ${pct(scores.filter((s) => s.label === "buried" && s.late).length, buriedN)} (late among all sections ${pct(late.length, final)})`,
