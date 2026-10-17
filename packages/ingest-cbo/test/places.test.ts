@@ -93,6 +93,34 @@ test("a number joins within the division CBO's table names, so a repeated number
   expect(join("102", "Annuity Supplement")).toBe("y102");
 });
 
+test("in a numbering the estimate's other rows confirm, a label that shares a word only its section's heading has still joins", () => {
+  const bill = [
+    section(
+      "m",
+      "title:II/sec:20004",
+      "Enhancement of Department of Defense resources for munitions and defense supply chain resiliency",
+    ),
+    section(
+      "a",
+      "title:II/sec:20005",
+      "Enhancement of Department of Defense resources for scaling low-cost weapons into production",
+    ),
+    section("c", "title:IV/sec:44121", "Expansion of Medicaid community engagement"),
+    section("d", "title:IV/sec:44122", "Reducing State Medicaid costs"),
+    section("e", "title:IV/sec:44123", "Medicaid provider taxes"),
+  ];
+  const confirmed = [
+    { num: "20005", title: "Scaling Low-Cost Weapons Into Production" },
+    { num: "44123", title: "Medicaid Provider Taxes" },
+  ];
+  const join = sectionMap(bill, "enr", confirmed);
+  expect(join("20004", "Munitions and Industrial Base")).toBe("m");
+  expect(join("44122", "Expansion FMAP for Emergency Medicaid")).toBeUndefined();
+  expect(
+    sectionMap(bill, "enr", [{ num: "20005", title: "Unrelated" }])("20004", "Munitions and Industrial Base"),
+  ).toBeUndefined();
+});
+
 const years = ["2021", "2021-2031"];
 const row = (
   r: Partial<ParsedRow> & Pick<ParsedRow, "line" | "line_kind" | "measure_kind" | "section_title">,

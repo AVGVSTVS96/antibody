@@ -189,7 +189,7 @@ def row(ws, title, current, ctx, label, data, years, i):
         "block": ctx["block"],
         "line_kind": current["kind"],
         "_line": current,
-        "section_title": current["section_title"],
+        "section_title": current["section_title"].strip(),
         "component": current["component"],
         "measure": label,
         "measure_kind": measure_kind(label),
@@ -391,7 +391,7 @@ DIVISION = re.compile(r"^(?:DIVISION|Division)\s+([A-Z]{1,2})\s*[—–.:-]+\s*(
 UNIT_TITLE = re.compile(r"^(?:TITLE|Title)\s+([IVXLC]+)\s*[—–.:-]+\s*(.*)$")
 UNIT_TOTAL = re.compile(r"^(?:(?:DIVISION|Division)\s+[A-Z]{1,2}|(?:TITLE|Title)\s+[IVXLC]+)\s+Total$|^Total,\s*(?:Division|Title)\s+\S+$")
 ON_OFF_BUDGET = re.compile(r"^(On|Off)-budget(?:\s+(?:revenues|outlays))?$", re.I)
-END_OF_TABLE = re.compile(r"^(?:Sources?:|Estimates are relative|Components may not sum|Notes$)")
+END_OF_TABLE = re.compile(r"^(?:Sources?:|Estimates (?:are )?relative|Components may not sum|Notes$|\* =)")
 LEAF = ("section", "title", "program")
 STRUCTURE = ("division", "title", "program")
 SUPERSCRIPT_MAX = 7.0
@@ -457,10 +457,12 @@ def parse_tables(pages):
     rows, years = [], None
     table = title = block = None
     skip = reading = False
-    caption, heading, above = [], set(), ""
+    caption, heading, above, measure_start = [], set(), "", None
     unit = {"division": None, "title": None}
     ctx = {"Subtitle": None, "Chapter": None, "Subchapter": None, "Part": None}
     current = None
+    if not any(TABLE_HEAD.match(t) for page in pages for t, _ in page):
+        table = "1"
     for pno, lines in enumerate(pages, 1):
         if any(t.startswith("Table") and "Notes" in t for t, _ in lines[:6]):
             continue
@@ -481,7 +483,10 @@ def parse_tables(pages):
                 continue
             if found := parse_years(line, before):
                 years, reading = found, True
+                caption = caption[-6:]
                 head = " ".join(caption)
+                if block is None and "Changes in Direct Spending" in head:
+                    block = "direct_spending"
                 skip = skip or "Discretionary Spending" in head or head.startswith("Summary")
                 if (m := TABLE_DIVISION.search(head)) and not unit["division"]:
                     unit = {"division": m.group(1), "title": None}
@@ -492,7 +497,7 @@ def parse_tables(pages):
                 if m := TABLE_TITLE.search(line):
                     title = {"number": m.group(1).split()[1], "name": m.group(2)}
                 continue
-            if line in heading or line.startswith("By Fiscal Year"):
+            if line.replace(" (Continued)", "") in heading or line.startswith("By Fiscal Year") or line == "(Continued)":
                 continue
             if skip or not years:
                 continue
@@ -552,6 +557,9 @@ def parse_tables(pages):
             elif m := UNIT_TITLE.match(label):
                 unit = {**unit, "title": m.group(1)}
                 current = new_line(lines_seq, "title", m.group(2), pno, ctx, None, unit, x0)
+            elif current and not nums and not note and re.fullmatch(r"(?:Estimated )?Budget", label):
+                measure_start = label
+                continue
             elif current and not nums and not note:
                 opens = current["kind"] == "program" or (current["kind"] in ("division", "title") and not current["has_rows"])
                 if (unit["division"] or unit["title"]) and opens:
@@ -566,6 +574,9 @@ def parse_tables(pages):
                     current["section_title"] += f" {label}"
                 continue
             elif current and nums:
+                if measure_start and label == "Authority":
+                    label = f"{measure_start} Authority"
+                measure_start = None
                 if measure_kind(label) == "other" and current["kind"] in LEAF and not current["has_rows"]:
                     current["section_title"] += f" {label}"
                     label = implied_measure(block)
@@ -655,7 +666,7 @@ def emit(table, title, block, current, measure, years, nums, pno, seq):
         "block": block,
         "line_kind": current["kind"],
         "_line": current,
-        "section_title": current["section_title"],
+        "section_title": current["section_title"].strip(),
         "component": current["component"],
         "measure": measure,
         "measure_kind": measure_kind(measure) if measure else "note",

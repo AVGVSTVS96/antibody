@@ -33,7 +33,7 @@ export function sameSection(label: string | null, heading: string | null | undef
 }
 
 /** Like `words`, but plurals fold ("drugs" and "drug" are one word): a row with no number has only its label to go on. */
-function stems(s: string | null | undefined): Set<string> {
+export function stems(s: string | null | undefined): Set<string> {
   return new Set(
     (s ?? "")
       .toLowerCase()

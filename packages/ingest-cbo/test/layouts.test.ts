@@ -151,3 +151,23 @@ test.skipIf(!parsers)("a division named in the table's caption applies to its ti
   expect(firearms).toMatchObject({ division: "A", title_no: "II", section_title: "Firearms" });
   expect(firearms.values["2022-2032"]).toBe(12);
 });
+
+// National Defense Authorization Act for FY2026, CBO publication 61935: no 'Table N' heading, labels wrapped over lines
+test.skipIf(!parsers)(
+  "a table without a Table N heading is read from its column labels, wrapped measure labels included",
+  async () => {
+    const parsed = await parse("ndaa-direct-spending.json");
+    const sections = rowsOf(parsed).filter((r) => r.line_kind === "section" && r.measure_kind === "budget_authority");
+    expect(sections.map((r) => [r.sections[0], r.section_title, r.values["2026-2035"]])).toEqual([
+      ["603", "Early Retirement Authority", -25],
+      ["652", "Commissaries and Exchanges", -2],
+      ["1411", "Strategic Stockpile", -20],
+      ["6502", "Tort Claims Related to Unmanned Aircraft Systems", 1],
+      ["7222", "Deferred Retirement for Health Professions Officers", -4],
+      ["8204", "Death Benefits for Public Safety Officers", 1],
+      ["8205", "Benefits for Public Safety Officers and Rescission", 10],
+    ]);
+    expect(sections.every((r) => r.block === "direct_spending")).toBe(true);
+    expect(reconcile(parsed.sheets)).toMatchObject({ failing: [], checks: 24 });
+  },
+);

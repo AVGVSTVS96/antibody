@@ -1,5 +1,5 @@
 import type { Row } from "@antibody/core";
-import { headingScore, sameSection } from "./headings.ts";
+import { headingScore, sameSection, stems } from "./headings.ts";
 
 /** A CBO row's section number and the label CBO printed beside it. */
 export interface Labelled {
@@ -45,7 +45,13 @@ export interface Places {
 /** A heading wins when it shares at least this many more words with CBO's label than the runner-up, or holds all of them and the runner-up doesn't. */
 const MARGIN = 2;
 
-/** A group's members are trusted by number when this share of the estimate's one-section rows match their headings. */
+/**
+ * A group's members are trusted by number when this share of the estimate's one-section rows match their headings.
+ * In such an estimate a single row also joins on a looser fit: the section holding its number shares with its label a
+ * word that no other heading of that version has (CBO's "Munitions and Industrial Base" for "Enhancement of
+ * Department of Defense resources for munitions and defense supply chain resiliency"). A number that is wrong
+ * lands on a heading that shares only common words ("Medicaid").
+ */
 const VERIFIED = 0.6;
 
 /**
@@ -71,6 +77,21 @@ export function sectionIndex(
     const placed = all.filter((s) => at(s, v).division);
     return division && placed.length ? placed.filter((s) => at(s, v).division === division) : all;
   };
+  const uses = new Map<string, Map<string, number>>();
+  const useOf = (v: string) => {
+    if (!uses.has(v)) {
+      const count = new Map<string, number>();
+      for (const s of uniqueById(sections))
+        if (s.history[v]) for (const w of stems(at(s, v).heading)) count.set(w, (count.get(w) ?? 0) + 1);
+      uses.set(v, count);
+    }
+    return uses.get(v)!;
+  };
+  /** Whether CBO's label and a heading share a word that no other heading of the version has. */
+  const names = (v: string, label: string | null, heading: string) => {
+    const count = useOf(v);
+    return [...stems(label)].some((w) => stems(heading).has(w) && count.get(w) === 1);
+  };
   const fits = (v: string, num: string, title: string | null, division?: string | null) => {
     const hits = candidates(v, num, division).filter((s) => sameSection(title, at(s, v).heading));
     return hits.length === 1 ? hits[0]!.id : undefined;
@@ -86,8 +107,9 @@ export function sectionIndex(
       const id = fits(v, num, title, division);
       if (id) return id;
     }
-    if (!group || !verified) return undefined;
-    const trusted = candidates(order[0]!, num, division);
+    if (!verified) return undefined;
+    const v = order[0]!;
+    const trusted = candidates(v, num, division).filter((s) => group || names(v, title, at(s, v).heading));
     return trusted.length === 1 ? trusted[0]!.id : undefined;
   };
   return { join, places: placesOf(sections, order) };
