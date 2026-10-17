@@ -236,6 +236,9 @@ export function XrayList({ m }: { m: BillModel }) {
                       ) : (
                         <span className="money" title={figureNote(v)}>
                           {musd(v.dollarsMusd)}
+                          {v.figure?.byBaseline.some((b) => b.musd !== v.figure!.musd) && (
+                            <span className="dim base">against {baselineWords(v.figure.baseline)}</span>
+                          )}
                           {!s.inFinal && <span className="dim"> est. for an earlier version</span>}
                         </span>
                       )}

@@ -1492,6 +1492,10 @@ a.cname:hover {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.secs .cbo .base {
+  display: block;
+  font-size: 11px;
+}
 .secs .n {
   white-space: nowrap;
   color: var(--ink-3);

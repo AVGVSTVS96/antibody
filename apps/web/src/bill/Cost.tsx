@@ -387,6 +387,7 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
   const lobbyEdge = m.b.edges.find((e) => e.kind === "lobbied" && e.dst === `section:${v.s.id}`);
   const payFor = v.s.score?.offsets ? m.sections.find((x) => x.s.id === v.s.score?.offsets) : undefined;
   const paidBy = m.sections.find((x) => x.s.score?.offsets === v.s.id);
+  const same = !!v.figure?.byBaseline.every((b) => b.musd === v.figure!.musd);
   const why = [
     v.dollarsMusd != null || (c?.lobbyingReports ?? 0) >= BIG_STAKES.reports ? "big" : null,
     "quiet",
@@ -412,7 +413,15 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           v.dollarsMusd != null ? (
             <>
               {deficitWords(v.dollarsMusd).replace(/^./, (x) => x.toUpperCase())}
-              {v.figure && v.figure.byBaseline.length > 1 && ` against ${baselineWords(v.figure.baseline)}`}
+              {v.figure && v.figure.byBaseline.length > 1 && (
+                <>
+                  {" "}
+                  against{" "}
+                  {same
+                    ? `both baselines CBO printed (${v.figure.byBaseline.map((b) => baselineWords(b.baseline)).join(" and ")})`
+                    : baselineWords(v.figure.baseline)}
+                </>
+              )}
               {v.figure?.split === "even_split" && " (an even split of a CBO group line)"}
             </>
           ) : (
@@ -421,7 +430,7 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           v.figure && <Src id={v.figure.claims[0]!} label="CBO" />,
         )}
         {v.figure?.byBaseline
-          .filter((b) => b.baseline !== v.figure!.baseline)
+          .filter((b) => !same && b.baseline !== v.figure!.baseline)
           .map((b) => (
             <Fragment key={b.baseline}>
               {row(
