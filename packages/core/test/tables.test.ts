@@ -64,6 +64,33 @@ test("cbo lines name their spending kind and estimates keep the PDF they quote",
   expect(Object.fromEntries(columns("cbo_estimates")).pdf_url).toBe("VARCHAR");
 });
 
+test("cbo lines say how CBO's row was tied to sections; rows from before the column read as null", () => {
+  const line = {
+    id: "117-hr-3684.cbo-57406:s90006:outlays",
+    estimate_id: "117-hr-3684.cbo-57406",
+    bill_id: "117-hr-3684",
+    line_kind: "section",
+    section_nums: ["90006"],
+    section_ids: ["117-hr-3684@eas:division:I/sec:90006"],
+    title: "Delaying Rule Affecting Treatment of Certain Rebates for Prescription Drugs",
+    measure: "outlays",
+    spending: "direct",
+    period: "2021-2031",
+    total_musd: -50807,
+    values: { "2021-2031": -50807 },
+    split: "exact",
+    archive_url: null,
+    rests_on: [],
+    source_url: "https://www.cbo.gov/system/files/2021-08/hr3684_infrastructure.pdf",
+    source_locator: "page 6",
+  };
+  expect(TABLES.cbo_lines.schema.parse(line).join).toBeNull();
+  for (const join of ["number", "heading", "title"])
+    expect(TABLES.cbo_lines.schema.safeParse({ ...line, join }).success).toBe(true);
+  expect(TABLES.cbo_lines.schema.safeParse({ ...line, join: "guess" }).success).toBe(false);
+  expect(Object.fromEntries(columns("cbo_lines")).join).toBe("VARCHAR");
+});
+
 test("lobbying: topic-only refs are inference rows, spend rows carry both facets", () => {
   const topic = {
     id: "u#0#119-s-1582",

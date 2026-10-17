@@ -171,6 +171,14 @@ export const TABLES = {
     values: json,
     /** even_split = a CBO group line divided evenly over its sections (CBO never made that split): an inference. */
     split: z.enum(["exact", "even_split"]),
+    /**
+     * How CBO's row was tied to the sections. number (or null, rows written before this column): CBO printed the section
+     * number and its label matches the section heading. heading: CBO printed no number; the row's label matches
+     * exactly one section heading under the division and title it sits in. title: CBO printed the figure for a whole
+     * title and the sections are all those under it. heading and title are inferences; the line's source_locator
+     * says what they rest on.
+     */
+    join: z.enum(["number", "heading", "title"]).nullable().default(null),
     archive_url: z.url().nullable(),
     /** A derived deficit line rests on the outlay and revenue lines it adds up. */
     rests_on: z.array(z.string()),
