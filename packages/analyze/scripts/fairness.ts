@@ -84,7 +84,8 @@ for (const arg of Bun.argv.slice(2)) {
   );
   const p = party.get(b?.sponsor_bioguide ?? "") ?? "?";
   if (measured && scores.some((s) => s.attention_pct !== null)) {
-    const t = (byParty[p] ??= { bills: 0, sections: 0, headline: 0, costly: 0, buried: 0 });
+    byParty[p] ??= { bills: 0, sections: 0, headline: 0, costly: 0, buried: 0 };
+    const t = byParty[p];
     t.bills++;
     t.sections += final;
     t.headline += count("headline");

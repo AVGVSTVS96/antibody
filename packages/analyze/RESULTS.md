@@ -26,15 +26,22 @@ Not detected here. `section_scores.late` is read from the bills lineage (`sectio
 
 ## The buried score, in plain words
 
-Every constant is in `analyze/src/score.ts` and printed in the published rule (`SCORE_TEXT`, version `buried-v1`):
+Every constant is in `analyze/src/score.ts` and printed in the published rule (`SCORE_TEXT`, version `buried-v2`):
 
 1. **Stakes** (0 to 1): the larger of dollars and lobbying. Dollars = CBO's 10-year estimate for the section, log scale ($1M = 0, $1B = 0.5, $1T = 1; cuts and costs count the same), current-law baseline, baseline named on the row. Lobbying = number of lobbying reports naming the section, log scale (1 = 0.15, 10 = 0.52, 100 = 1).
-2. **Quiet** = 1 - attention percentile within the bill.
-3. **Sneak** = 1 + up to 0.25 if the section was late (times the share of the bill that was NOT late: when most of a bill arrives late, being late says little about one section) + 0.25 x off-topic distance (0 to 1; embedding distance from the rest of the bill, boilerplate headings excluded).
-4. **Buried score** = stakes x quiet x sneak (0 to 1.5). All of stakes, quiet, late, off-topic, dollars and lobbying reports are stored on the row and shown next to the label.
-5. **Label.** `headline`: top tenth of the bill by attention with at least 3 articles. `buried`: score at least 0.45, stakes at least 0.667 ($10B, or about 20 lobbying reports), and a sneak signal (late, or in the most off-topic quarter). Everything else `normal`.
+2. **Costly** = stakes of at least two thirds: $10B in CBO's figure for the section itself (an even share of a CBO group line never counts), or 21 lobbying reports.
+3. **Quiet** = under 1 in 100 of the bill's relevant articles (left, center and right weighted equally) discuss the section. It runs from 1 (none did) to 0 (1 in 100 or more). Before a costly section is called quiet it gets the `quiet-check` second look (below).
+4. **Sneak** = 1 + up to 0.25 if the section was late (times the share of the bill that was NOT late) + 0.25 x off-topic distance (only in a bill with one committee title). It ranks the buried sections; it is not needed for the label.
+5. **Buried score** = stakes x quiet x sneak (0 to 1.5): the order of the buried list.
+6. **Label.** `headline`: top tenth of the bill by attention with at least 3 articles. `buried`: costly and quiet, in a bill of at least 10 sections. Everything else `normal`.
 
-A buried label needs per-section dollars or lobbying. Bills whose CBO estimate is whole-bill only (GENIUS, TAKE IT DOWN, Laken Riley, SAVE) have no per-section dollars, so they can show headline sections and quiet sections but no `buried` label; the row says `dollars_musd: null` and the site should show "no per-section CBO figure", not zero.
+buried-v1 also required the section to be late, or off-topic in a bill with one committee title. Late is withheld on every bill that began as a shell and off-topic never counts in a bill built from several titles, so v1 could not fire on 14 of 22 bills, and on the rest it needed a section to be late as well as quiet and costly.
+
+**Can't be tested** (the page says which, never a bare zero): fewer than 10 sections; news too thin to rank the sections (under 20 relevant articles or 30 section mentions); no section with a measured cost (CBO gave no section its own figure and no section is named in 21 lobbying reports).
+
+### The second look (`quiet-check`, rule `quiet-check-v1`)
+
+The matcher assigns each article to sections from a shortlist, so a provision the press words differently reads as untouched (IRA's Part D "benefit redesign" is the "$2,000 cap" in news copy: 11+ articles, 1 matched). For each costly section under 1 article in 100, a model restates the provision in news words and lists phrases; the 8 passages that use those phrases, or sit closest in meaning (one per article), go back to the model, which says which describe the provision. The articles it names are added and the share is worked out again. Only costly sections are checked, so it can take a buried label away but never give one, and it does not touch attention percentiles or headlines. Rows: `attention_checks`.
 
 ## Same rules for every party: what was checked
 
