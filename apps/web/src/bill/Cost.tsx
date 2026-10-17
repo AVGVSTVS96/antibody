@@ -413,11 +413,11 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           v.dollarsMusd != null ? (
             <>
               {deficitWords(v.dollarsMusd).replace(/^./, (x) => x.toUpperCase())}
-              {v.figure && v.figure.byBaseline.length > 1 && (
+              {v.figure && (
                 <>
                   {" "}
                   against{" "}
-                  {same
+                  {same && v.figure.byBaseline.length > 1
                     ? `both baselines CBO printed (${v.figure.byBaseline.map((b) => baselineWords(b.baseline)).join(" and ")})`
                     : baselineWords(v.figure.baseline)}
                 </>
