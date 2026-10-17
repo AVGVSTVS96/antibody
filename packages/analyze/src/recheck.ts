@@ -9,7 +9,7 @@ export const RECHECK = "quiet-check-v1";
 /** Bumped when the judge's question changes, so earlier answers are asked again. */
 const JUDGE = "quote-v1";
 /** Bumped when the description prompt or the passage finder changes. */
-const FINDER = "phrases-v2";
+const FINDER = "phrases-v4";
 
 export const CHECK_RULE =
   "quiet-check-v1: a section that looks quiet and costly gets a second look before it is called quiet. A language " +
