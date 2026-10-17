@@ -106,6 +106,8 @@ export const Score = z.object({
     dollarsMusd: z.number().nullable(),
     dollarsSplit: z.enum(["exact", "even_split"]).nullable(),
     attentionPct: z.number().nullable(),
+    /** Share of the bill's relevant articles that discuss the section (sides weighted equally); the buried label needs it under 1%. */
+    attentionShare: z.number().nullable().default(null),
     late: z.boolean(),
     offTopic: z.number().nullable(),
     lobbyingReports: z.number().int(),
@@ -324,9 +326,10 @@ export const BillStats = z.object({
   membersTradedDuring: z.number().int().default(0),
   /**
    * Whether the buried label could be tested on this bill, and how many sections had stakes big enough to qualify.
-   * `tested` is false when the rule cannot fire (too few articles to rank sections, or no late flag and several committee
-   * titles, so neither late nor off-topic can count). `dollarsMeasured` is false when CBO gave no section its own figure,
-   * so only lobbying can show big stakes and "none have big stakes" would only mean "not measured".
+   * `tested` is false when the rule cannot fire: the bill is too short to bury anything, there are too few articles to
+   * rank its sections, or no section has a measured cost (CBO gave none its own figure and no section is named in
+   * enough lobbying reports). `dollarsMeasured` is false when CBO gave no section its own figure, so only lobbying can
+   * show big stakes and "none have big stakes" would only mean "not measured".
    */
   buriedTest: z
     .object({
@@ -478,8 +481,13 @@ function finalVote(b: Bundle) {
   };
 }
 
-/** Stakes big enough for the buried label: $10B in a CBO figure CBO gave the section itself, or about 20 lobbying reports (buried-v1's 0.667 bar). */
-export const BIG_STAKES = { dollarsMusd: 10_000, reports: 22 };
+/**
+ * Stakes big enough for the buried label (buried-v2's 2/3 bar on the stakes scale): $10B in a CBO figure CBO gave the
+ * section itself, or 21 lobbying reports. A test in packages/analyze keeps these in step with `SCORE.costlyMin`.
+ */
+export const BIG_STAKES = { dollarsMusd: 10_000, reports: 21 };
+/** A bill with fewer sections has nothing for one to be buried among (`SCORE.minSections`). */
+export const MIN_SECTIONS_TO_BURY = 10;
 const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null; lobbyingReports: number }) =>
   (c.dollarsMusd !== null && c.dollarsSplit !== "even_split" && Math.abs(c.dollarsMusd) >= BIG_STAKES.dollarsMusd) ||
   c.lobbyingReports >= BIG_STAKES.reports;
@@ -513,15 +521,18 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
       : [],
   );
   const ranked = final.some((s) => s.attention?.pct != null);
-  const titles = new Set(final.map((s) => s.path.split("/")[0]).filter((p) => /^(title|division):/.test(p!))).size;
-  const cannotFire = !!b.bill.lateUnavailable && titles > 1;
-  const why = !ranked
-    ? "too few news articles to rank this bill's sections"
-    : cannotFire
-      ? "the late flag is unavailable and the bill has several committee titles, so neither can count"
-      : b.bill.lateUnavailable
-        ? "the late flag is unavailable on this bill, so only being off-topic can count"
-        : null;
+  const dollarsMeasured = final.some(
+    (s) => s.score?.components.dollarsMusd != null && s.score.components.dollarsSplit !== "even_split",
+  );
+  const big = final.filter((s) => s.score && bigStakes(s.score.components)).length;
+  const why =
+    final.length < MIN_SECTIONS_TO_BURY
+      ? `the bill has only ${final.length} ${final.length === 1 ? "section" : "sections"}, too few for anything to be buried among`
+      : !ranked
+        ? "too few news articles to rank this bill's sections"
+        : !dollarsMeasured && !big
+          ? "CBO gave no section its own dollar figure and no section is named in enough lobbying reports, so no section's cost is known"
+          : null;
   return {
     sections: final.length,
     headline: final.filter((s) => s.score?.label === "headline").length,
@@ -532,14 +543,7 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     companies: b.nodes.filter((n) => n.kind === "company").length,
     membersTraded: new Set(traders.map((e) => e.src)).size,
     membersTradedDuring: during.size,
-    buriedTest: {
-      tested: ranked && !cannotFire,
-      why,
-      bigStakes: final.filter((s) => s.score && bigStakes(s.score.components)).length,
-      dollarsMeasured: final.some(
-        (s) => s.score?.components.dollarsMusd != null && s.score.components.dollarsSplit !== "even_split",
-      ),
-    },
+    buriedTest: { tested: why === null, why, bigStakes: big, dollarsMeasured },
     cboPublished: b.dollars.estimates.length > 0,
     deficitDirectOnly: isAppropriations(b) && !!deficit,
     tradeSpan: span,

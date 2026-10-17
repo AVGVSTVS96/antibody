@@ -101,7 +101,7 @@ export const RULES: Record<string, { version: string; text: string }> = {
 };
 
 /** Rules whose full text is written by another stage and travels with each claim; docs/rules.md still explains them. */
-export const CLAIM_TEXT_RULES = ["buried-v1", "attention-v1"];
+export const CLAIM_TEXT_RULES = ["buried-v2", "attention-v1"];
 
 /** `"subsidiary-parent: a subsidiary's lobbying counts…"` or `"tied-stock"` → a published rule entry. */
 export function ruleFor(rule: string): Rule {

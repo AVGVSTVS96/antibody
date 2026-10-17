@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import fixture from "../fixtures/genius-mini.bundle.json";
-import { Bundle, BundleIndex, billStats, checkBundle, headlineDeficit } from "../src/bundle.ts";
+import { BIG_STAKES, Bundle, BundleIndex, billStats, checkBundle, headlineDeficit } from "../src/bundle.ts";
 
 test("the fixture is a valid, sound bundle", () => {
   const parsed = Bundle.safeParse(fixture);
@@ -52,7 +52,7 @@ test("billStats counts the index card numbers", () => {
     membersTradedDuring: expect.any(Number),
     buriedTest: {
       tested: false,
-      why: "too few news articles to rank this bill's sections",
+      why: "the bill has only 1 section, too few for anything to be buried among",
       bigStakes: 0,
       dollarsMeasured: false,
     },
@@ -107,28 +107,65 @@ test("checkBundle also follows *Claim props, like a lobbied edge's shareClaim", 
   expect(checkBundle(broken)).toEqual([".edges[4].props.shareClaim: unknown claim lda_spend/missing#share"]);
 });
 
-test("the buried test cannot fire on a multi-title bill with no late flag, and says dollars were not measured", () => {
+function bill(n: number, over: (i: number) => object = () => ({})) {
   const b = structuredClone(Bundle.parse(fixture));
   const [only] = b.sections;
-  b.sections = [
-    { ...only!, id: "a", path: "title:I/sec:1", inFinal: true },
-    { ...only!, id: "b", path: "title:II/sec:2", inFinal: true },
-  ].map((s) => ({
-    ...s,
-    attention: {
-      hits: 1,
-      pct: 0.5,
-      hitsByGroup: {},
-      tradeLegalHits: 0,
-      examples: [],
-      claim: Object.keys(b.claims)[0]!,
-    },
+  const claim = Object.keys(b.claims)[0]!;
+  b.sections = Array.from({ length: n }, (_, i) => ({
+    ...only!,
+    id: `s${i}`,
+    path: `title:I/sec:${i + 1}`,
+    inFinal: true,
+    attention: { hits: 0, pct: 0, hitsByGroup: {}, tradeLegalHits: 0, examples: [], claim },
+    score: null,
+    ...over(i),
   }));
-  b.bill.lateUnavailable = "began as a shell";
-  const t = billStats(b).buriedTest;
+  return b;
+}
+
+const score = (dollarsMusd: number | null, lobbyingReports = 0) => ({
+  label: "normal" as const,
+  buried: null,
+  components: {
+    dollarsMusd,
+    dollarsSplit: dollarsMusd === null ? null : ("exact" as const),
+    attentionPct: 0,
+    attentionShare: 0,
+    late: false,
+    offTopic: null,
+    lobbyingReports,
+  },
+  claim: Object.keys(Bundle.parse(fixture).claims)[0]!,
+});
+
+test("the buried test cannot fire on a bill too short to bury anything in", () => {
+  const t = billStats(bill(2)).buriedTest;
   expect(t.tested).toBe(false);
-  expect(t.why).toContain("several committee titles");
+  expect(t.why).toBe("the bill has only 2 sections, too few for anything to be buried among");
+});
+
+test("the buried test cannot fire when the bill's sections are not ranked", () => {
+  const t = billStats(bill(12, () => ({ attention: null }))).buriedTest;
+  expect(t.tested).toBe(false);
+  expect(t.why).toBe("too few news articles to rank this bill's sections");
+});
+
+test("the buried test cannot fire when no section has a measured cost, and says dollars were not measured", () => {
+  const t = billStats(bill(12, () => ({ score: score(null) }))).buriedTest;
+  expect(t.tested).toBe(false);
+  expect(t.why).toContain("no section its own dollar figure");
   expect(t.dollarsMeasured).toBe(false);
+});
+
+test("the buried test fires once any section has a CBO figure, or enough lobbying reports", () => {
+  const withDollars = billStats(bill(12, (i) => ({ score: score(i === 0 ? 500 : null) }))).buriedTest;
+  expect(withDollars).toMatchObject({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true });
+  const withLobbying = billStats(
+    bill(12, (i) => ({ score: score(null, i === 0 ? BIG_STAKES.reports : 0) })),
+  ).buriedTest;
+  expect(withLobbying).toMatchObject({ tested: true, why: null, bigStakes: 1, dollarsMeasured: false });
+  const big = billStats(bill(12, (i) => ({ score: score(i === 0 ? -BIG_STAKES.dollarsMusd : null) }))).buriedTest;
+  expect(big.bigStakes).toBe(1);
 });
 
 test("an appropriations act's deficit is marked as direct spending and revenue only", () => {

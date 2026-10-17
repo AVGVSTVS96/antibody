@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
 import type { Row } from "@antibody/core";
+import { BIG_STAKES, MIN_SECTIONS_TO_BURY } from "@antibody/core";
 import { attention, percentile } from "../src/attention.ts";
 import type { MatchRun } from "../src/match.ts";
-import { BOILERPLATE, buried, label, SCORE, sectionDollars, stakes } from "../src/score.ts";
+import { BOILERPLATE, buried, label, quiet, SCORE, sectionDollars, stakes } from "../src/score.ts";
 
 test("stakes put dollars and lobbying on log scales, and cuts count the same as costs", () => {
   expect(stakes({ dollarsMusd: 1000, lobbyingReports: 0 })).toBeCloseTo(0.5, 2);
@@ -12,27 +13,91 @@ test("stakes put dollars and lobbying on log scales, and cuts count the same as 
   expect(stakes({ dollarsMusd: null, lobbyingReports: 10 })).toBeCloseTo(0.52, 2);
 });
 
+test("quiet runs from 1 (nobody discussed it) down to 0 at one article in a hundred", () => {
+  expect(quiet({ attentionPct: 0, attentionShare: 0 })).toBe(1);
+  expect(quiet({ attentionPct: 0.7, attentionShare: 0.005 })).toBeCloseTo(0.5, 6);
+  expect(quiet({ attentionPct: 0.9, attentionShare: SCORE.quietShare })).toBe(0);
+  expect(quiet({ attentionPct: 0.99, attentionShare: 0.2 })).toBe(0);
+  expect(quiet({ attentionPct: null, attentionShare: null })).toBeNull();
+});
+
 test("buried = stakes × quiet × sneak, and needs attention to exist", () => {
-  const base = { dollarsMusd: 10_000, attentionPct: 0.2, late: false, offTopic: 0, lobbyingReports: 0 };
+  const base = {
+    dollarsMusd: 10_000,
+    attentionPct: 0.7,
+    attentionShare: 0.002,
+    late: false,
+    offTopic: 0,
+    lobbyingReports: 0,
+  };
   const s = stakes(base);
   expect(buried(base)).toBeCloseTo(s * 0.8, 3);
   expect(buried({ ...base, late: true })).toBeCloseTo(s * 0.8 * 1.25, 3);
   expect(buried({ ...base, late: true, offTopic: 1 })).toBeCloseTo(s * 0.8 * 1.5, 3);
-  expect(buried({ ...base, attentionPct: null })).toBeNull();
+  expect(buried({ ...base, attentionPct: null, attentionShare: null })).toBeNull();
 });
 
-test("labels use one set of thresholds", () => {
-  const quiet = { dollarsMusd: 100_000, attentionPct: 0.05, late: true, offTopic: null, lobbyingReports: 0 };
-  expect(label(quiet, 0)).toBe("buried");
-  expect(label({ ...quiet, dollarsMusd: 500 }, 0)).toBe("normal");
-  expect(label({ ...quiet, late: false }, 0)).toBe("normal");
-  expect(label({ ...quiet, late: false, offTopic: 0.8 }, 0)).toBe("buried");
-  expect(label({ ...quiet, attentionPct: 0.95 }, SCORE.headlineMinHits)).toBe("headline");
-  expect(label({ ...quiet, attentionPct: 0.95 }, SCORE.headlineMinHits - 1)).not.toBe("headline");
+const costlyQuiet = {
+  dollarsMusd: 100_000,
+  attentionPct: 0,
+  attentionShare: 0,
+  late: false,
+  offTopic: null,
+  lobbyingReports: 0,
+  sections: 150,
+};
+
+test("costly and quiet is buried; late or off-topic is not needed", () => {
+  expect(label(costlyQuiet, 0)).toBe("buried");
+  expect(label({ ...costlyQuiet, titles: 9, offTopic: 0.1 }, 0)).toBe("buried");
+  expect(label({ ...costlyQuiet, late: true }, 0)).toBe("buried");
+});
+
+test("a section that is not costly, or not quiet, is normal", () => {
+  expect(label({ ...costlyQuiet, dollarsMusd: 9_000 }, 0)).toBe("normal");
+  expect(label({ ...costlyQuiet, attentionPct: 0.8, attentionShare: 0.02 }, 2)).toBe("normal");
+  expect(label({ ...costlyQuiet, attentionPct: 0.7, attentionShare: SCORE.quietShare }, 3)).toBe("normal");
+});
+
+test("one stray article in a few hundred still counts as quiet", () => {
+  expect(label({ ...costlyQuiet, attentionPct: 0.7, attentionShare: 0.004 }, 1)).toBe("buried");
+});
+
+test("lobbying alone can make a section costly, an even-split dollar figure cannot", () => {
+  expect(label({ ...costlyQuiet, dollarsMusd: null, lobbyingReports: 21 }, 0)).toBe("buried");
+  expect(label({ ...costlyQuiet, dollarsMusd: null, lobbyingReports: 20 }, 0)).toBe("normal");
+  expect(label({ ...costlyQuiet, dollarsSplit: "even_split" }, 0)).toBe("normal");
+});
+
+test("a loud, costly section is a headline, never buried", () => {
+  const loud = { ...costlyQuiet, attentionPct: 0.95, attentionShare: 0.1 };
+  expect(label(loud, SCORE.headlineMinHits)).toBe("headline");
+  expect(label(loud, SCORE.headlineMinHits - 1)).toBe("normal");
+});
+
+test("a bill shorter than the minimum has nothing to bury a section among", () => {
+  expect(label({ ...costlyQuiet, sections: SCORE.minSections - 1 }, 0)).toBe("normal");
+  expect(label({ ...costlyQuiet, sections: SCORE.minSections }, 0)).toBe("buried");
+});
+
+test("a bill whose sections are not ranked has no buried label and no score", () => {
+  const c = { ...costlyQuiet, attentionPct: null, attentionShare: null };
+  expect(label(c, 0)).toBe("normal");
+  expect(buried(c)).toBeNull();
+});
+
+test("the bundle's big-stakes bar is the score's costly bar", () => {
+  const edge = (musd: number | null, reports: number) =>
+    stakes({ dollarsMusd: musd, lobbyingReports: reports }) >= SCORE.costlyMin;
+  expect(edge(BIG_STAKES.dollarsMusd, 0)).toBe(true);
+  expect(edge(BIG_STAKES.dollarsMusd - 1, 0)).toBe(false);
+  expect(edge(null, BIG_STAKES.reports)).toBe(true);
+  expect(edge(null, BIG_STAKES.reports - 1)).toBe(false);
+  expect(MIN_SECTIONS_TO_BURY).toBe(SCORE.minSections);
 });
 
 test("the late bonus shrinks smoothly as more of the bill arrives late, with no cutoff", () => {
-  const base = { dollarsMusd: 10_000, attentionPct: 0, late: true, offTopic: 0, lobbyingReports: 0 };
+  const base = { dollarsMusd: 10_000, attentionPct: 0, attentionShare: 0, late: true, offTopic: 0, lobbyingReports: 0 };
   const s = stakes(base);
   expect(buried({ ...base, lateShare: 0 })).toBeCloseTo(s * 1.25, 3);
   expect(buried({ ...base, lateShare: 0.4 })).toBeCloseTo(s * 1.15, 3);
@@ -41,22 +106,28 @@ test("the late bonus shrinks smoothly as more of the bill arrives late, with no 
 });
 
 test("the same sections get the same label in a bill that is 49% late and one that is 51% late", () => {
-  const c = { dollarsMusd: 100_000, attentionPct: 0.05, late: true, offTopic: null, lobbyingReports: 0 };
+  const c = { ...costlyQuiet, late: true };
   expect(label({ ...c, lateShare: 0.49 }, 0)).toBe("buried");
   expect(label({ ...c, lateShare: 0.51 }, 0)).toBe("buried");
   const gap = Math.abs(buried({ ...c, lateShare: 0.49 })! - buried({ ...c, lateShare: 0.51 })!);
   expect(gap).toBeLessThan(0.01);
 });
 
-test("off-topic distance counts only in a bill with one committee title", () => {
-  const c = { dollarsMusd: 100_000, attentionPct: 0.05, late: false, offTopic: 0.98, lobbyingReports: 0 };
-  expect(label({ ...c, titles: 1 }, 0)).toBe("buried");
-  expect(label({ ...c, titles: 9 }, 0)).toBe("normal");
-  expect(buried({ ...c, titles: 9 })).toBeCloseTo(stakes(c) * 0.95, 3);
+test("off-topic distance raises the score only in a bill with one committee title", () => {
+  const c = { ...costlyQuiet, offTopic: 0.98 };
+  expect(buried({ ...c, titles: 1 })).toBeCloseTo(stakes(c) * 1.245, 3);
+  expect(buried({ ...c, titles: 9 })).toBeCloseTo(stakes(c), 3);
 });
 
 test("the score never sees party: the same components give the same score for any bill", () => {
-  const c = { dollarsMusd: 4000, attentionPct: 0.1, late: true, offTopic: 0.7, lobbyingReports: 3 };
+  const c = {
+    dollarsMusd: 4000,
+    attentionPct: 0.1,
+    attentionShare: 0.001,
+    late: true,
+    offTopic: 0.7,
+    lobbyingReports: 3,
+  };
   expect(buried.length).toBe(1);
   expect(buried({ ...c })).toBe(buried({ ...c }));
 });

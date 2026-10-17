@@ -499,6 +499,8 @@ export const TABLES = {
     dollars_musd: z.number().nullable(),
     dollars_split: z.enum(["exact", "even_split"]).nullable(),
     attention_pct: z.number().nullable(),
+    /** Share of the bill's relevant articles that discuss the section (sides weighted equally); null when the bill's sections are not ranked. */
+    attention_share: z.number().nullable().default(null),
     late: z.boolean(),
     off_topic: z.number().nullable(),
     lobbying_reports: z.number().int(),

@@ -31,7 +31,7 @@ export const RULES = [
       "press is shown apart and never counted.",
     url: null,
   },
-  { id: "buried-v1", version: "1", text: SCORE_TEXT.join(" "), url: null },
+  { id: "buried-v2", version: "2", text: SCORE_TEXT.join(" "), url: null },
 ];
 
 async function runAttention(ctx: StageContext) {

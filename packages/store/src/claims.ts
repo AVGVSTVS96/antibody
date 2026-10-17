@@ -385,9 +385,11 @@ export const TEMPLATES: Record<string, Template> = {
       r.dollars_musd != null
         ? `CBO says it ${r.dollars_musd < 0 ? "cuts" : "adds"} ${musd(r.dollars_musd)} ${r.dollars_musd < 0 ? "from" : "to"} the deficit${r.dollars_split === "even_split" ? " (even split)" : ""}`
         : "no CBO dollars",
-      r.attention_pct != null
-        ? `attention at the ${ordinal(Math.round(r.attention_pct * 100))} percentile`
-        : "attention unmeasured",
+      r.attention_share != null
+        ? `${(r.attention_share * 100).toFixed(1)}% of the bill's relevant articles discussed it`
+        : r.attention_pct != null
+          ? `attention at the ${ordinal(Math.round(r.attention_pct * 100))} percentile`
+          : "attention unmeasured",
       r.late ? "added late" : "not added late",
       r.off_topic != null ? `off-topic distance ${r.off_topic.toFixed(2)}` : null,
       count(r.lobbying_reports, "lobbying report"),
