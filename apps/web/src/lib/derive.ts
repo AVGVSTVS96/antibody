@@ -179,7 +179,7 @@ export function answers(m: BillModel): Answer[] {
           label: "What slipped by",
           big: "None found",
           text: test.bigStakes
-            ? `${count(test.bigStakes, "section")} had stakes this big (a CBO figure of $10 billion or more, or ${BIG_STAKES.reports} lobbying reports), and each got at least 1 article in 100.`
+            ? `${count(test.bigStakes, "section")} had stakes this big (a CBO figure of $10 billion or more on every baseline CBO printed, or ${BIG_STAKES.reports} lobbying reports), and each got at least 1 article in 100.`
             : `No section has stakes this big: none has a CBO figure of $10 billion or more, or ${BIG_STAKES.reports} lobbying reports. CBO gave ${test.costMeasured} of ${m.sections.filter((v) => v.s.inFinal).length} sections its own figure.`,
           link: "How we test it",
           target: "read",

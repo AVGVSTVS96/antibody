@@ -1,7 +1,7 @@
 import { BIG_STAKES } from "@antibody/core";
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { dots, quietZone, sectionName } from "../lib/derive.ts";
-import { count, day, deficitWords, usd } from "../lib/format.ts";
+import { baselineWords, count, day, deficitWords, usd } from "../lib/format.ts";
 import { useWidth } from "../lib/hooks.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { frameFor, notes, type Placed, place, scales } from "../lib/scatter.ts";
@@ -410,6 +410,7 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           v.dollarsMusd != null ? (
             <>
               {deficitWords(v.dollarsMusd).replace(/^./, (x) => x.toUpperCase())}
+              {v.figure && v.figure.byBaseline.length > 1 && ` against ${baselineWords(v.figure.baseline)}`}
               {v.figure?.split === "even_split" && " (an even split of a CBO group line)"}
             </>
           ) : (
@@ -417,6 +418,20 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           ),
           v.figure && <Src id={v.figure.claims[0]!} label="CBO" />,
         )}
+        {v.figure?.byBaseline
+          .filter((b) => b.baseline !== v.figure!.baseline)
+          .map((b) => (
+            <Fragment key={b.baseline}>
+              {row(
+                "Other baseline",
+                <>
+                  {deficitWords(b.musd).replace(/^./, (x) => x.toUpperCase())} against {baselineWords(b.baseline)}. The
+                  smaller of the two counts.
+                </>,
+                <Src id={b.claims[0]!} label="CBO" />,
+              )}
+            </Fragment>
+          ))}
         {row(
           "News",
           v.s.attention?.pct != null || hits ? (

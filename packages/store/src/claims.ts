@@ -396,9 +396,22 @@ export const TEMPLATES: Record<string, Template> = {
   }),
 
   section_scores: (r, _f, n) => {
+    const ev = r.evidence as {
+      dollars_baseline?: string | null;
+      dollars_by_baseline?: { baseline: string; musd: number }[];
+    };
+    const against = ev.dollars_by_baseline ?? [];
+    const baseName = (b: string) => (b === "current-policy" ? "current policy" : "current law");
+    const others = against.filter((b) => b.baseline !== ev.dollars_baseline);
+    const both =
+      against.length < 2
+        ? ""
+        : others.every((b) => b.musd === r.dollars_musd)
+          ? " (the same against current law and current policy)"
+          : ` against ${baseName(ev.dollars_baseline ?? "")} (${others.map((b) => `${musd(b.musd)} against ${baseName(b.baseline)}`).join(", ")}; the smaller counts)`;
     const bits = [
       r.dollars_musd != null
-        ? `CBO says it ${r.dollars_musd < 0 ? "cuts" : "adds"} ${musd(r.dollars_musd)} ${r.dollars_musd < 0 ? "from" : "to"} the deficit${r.dollars_split === "even_split" ? " (even split)" : ""}`
+        ? `CBO says it ${r.dollars_musd < 0 ? "cuts" : "adds"} ${musd(r.dollars_musd)} ${r.dollars_musd < 0 ? "from" : "to"} the deficit${both}${r.dollars_split === "even_split" ? " (even split)" : ""}`
         : "no CBO dollars",
       r.attention_share != null
         ? `${(r.attention_share * 100).toFixed(1)}% of the bill's relevant articles discussed it`

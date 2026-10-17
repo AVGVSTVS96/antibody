@@ -93,6 +93,10 @@ export function sourceName(url: string): string {
 export const deficitWords = (m: number) =>
   `${m < 0 ? "cuts" : "adds"} ${usd(Math.abs(m) * 1e6)} ${m < 0 ? "from" : "to"} the deficit`;
 
+/** CBO's two baselines in a reader's words. */
+export const baselineWords = (b: "current-law" | "current-policy") =>
+  b === "current-policy" ? "current policy" : "current law";
+
 export const RULES_URL = "https://github.com/AVGVSTVS96/antibody/blob/main/docs/rules.md";
 
 /** Who held Congress and the White House, so a card's era is visible next to its sponsor's party. */

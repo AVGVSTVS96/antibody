@@ -24,7 +24,7 @@ export interface SectionView {
   /** Lobbying reports that cite this section by number. */
   lobbied: number;
   dollarsMusd: number | null;
-  /** The one CBO estimate the section's dollars come from, with the estimate's own wording (null when none lists it). */
+  /** The CBO figure that counts for the section (the smaller one when CBO printed two baselines), with the estimate's own wording; null when none lists it. */
   figure: (Figure & { estimate: Bundle["dollars"]["estimates"][number] }) | null;
 }
 
@@ -131,10 +131,7 @@ export function buildModel(b: Bundle): BillModel {
 
   const estimateById = new Map(b.dollars.estimates.map((e) => [e.id, e]));
   const sections: SectionView[] = b.sections.map((s) => {
-    const f = sectionFigure(
-      s.dollars.filter((d) => d.baseline === "current-law"),
-      b.dollars.estimates,
-    );
+    const f = sectionFigure(s.dollars, b.dollars.estimates);
     const shown = f && (f.fromLatest || !s.inFinal) ? f : null;
     return {
       s,
