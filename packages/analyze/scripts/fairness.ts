@@ -74,8 +74,9 @@ for (const arg of Bun.argv.slice(2)) {
 
   const costly = scores.filter(
     (s) =>
+      !s.offsets_section_id &&
       stakes({ dollarsMusd: s.dollars_musd, dollarsSplit: s.dollars_split, lobbyingReports: s.lobbying_reports }) >=
-      SCORE.costlyMin,
+        SCORE.costlyMin,
   );
   const buriedN = count("buried");
   const byBaseline = (s: (typeof scores)[number]) =>
