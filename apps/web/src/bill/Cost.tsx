@@ -1,3 +1,4 @@
+import { BIG_STAKES } from "@antibody/core";
 import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { dots, quietZone, sectionName } from "../lib/derive.ts";
 import { count, day, deficitWords, usd } from "../lib/format.ts";
@@ -385,7 +386,7 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
   const hits = v.s.attention?.hits ?? 0;
   const lobbyEdge = m.b.edges.find((e) => e.kind === "lobbied" && e.dst === `section:${v.s.id}`);
   const why = [
-    v.dollarsMusd != null || (c?.lobbyingReports ?? 0) >= 22 ? "big" : null,
+    v.dollarsMusd != null || (c?.lobbyingReports ?? 0) >= BIG_STAKES.reports ? "big" : null,
     "quiet",
     c?.late ? "arrived late" : c?.offTopic != null && c.offTopic >= 0.5 ? "unlike the rest of the bill" : null,
   ].filter(Boolean);

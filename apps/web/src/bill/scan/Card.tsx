@@ -208,7 +208,7 @@ function GroupBody({ d, onClear }: { d: GroupCard; onClear: () => void }) {
       <p className="sc-foot">
         Each figure is CBO’s estimate of the section’s effect on the deficit, linked to its source.
         {d.flagged > 0 &&
-          " Orange marks a section flagged as buried: big stakes, little news, added late or off-topic. That label is an inference."}
+          " Orange marks a section flagged as buried: big stakes and almost no news. That label is an inference."}
         {top.some((r) => r.estimate) &&
           " An estimate splits a CBO group figure evenly across its sections, also an inference."}
       </p>

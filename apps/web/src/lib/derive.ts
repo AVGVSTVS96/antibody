@@ -1,4 +1,4 @@
-import { BIG_STAKES, headlineDeficit } from "@antibody/core";
+import { BIG_STAKES, billStats, headlineDeficit } from "@antibody/core";
 import { count, day, musd, usd } from "./format.ts";
 import type { BillModel, MemberView, SectionView } from "./model.ts";
 
@@ -133,6 +133,7 @@ export function answers(m: BillModel): Answer[] {
   const ranked = m.sections.some((v) => v.s.attention?.pct != null);
   const loud = m.headline[0];
   const quiet = m.buried[0];
+  const test = billStats(b).buriedTest;
   const L = b.lobbying;
   const total = L.byPhase.bill + L.byPhase.enactmentQuarter + L.byPhase.law;
   const lateShare = total ? L.byPhase.law / total : 0;
@@ -164,14 +165,12 @@ export function answers(m: BillModel): Answer[] {
         link: "Why it’s flagged",
         target: "news",
       }
-    : !ranked || !b.attention.sample
+    : !test.tested
       ? {
           tone: "quiet",
           label: "What slipped by",
           big: "Can’t be tested",
-          text: ranked
-            ? "The rule can’t fire on this bill."
-            : "There are too few news articles to say which sections are quiet.",
+          text: `${(test.why ?? "The rule can’t fire on this bill").replace(/^./, (x) => x.toUpperCase())}.`,
           link: "How we test it",
           target: "read",
         }
@@ -179,7 +178,9 @@ export function answers(m: BillModel): Answer[] {
           tone: "quiet",
           label: "What slipped by",
           big: "None found",
-          text: "No section was big, quiet and either added late or off-topic.",
+          text: test.bigStakes
+            ? `${count(test.bigStakes, "section")} had stakes this big (a CBO figure of $10 billion or more, or ${BIG_STAKES.reports} lobbying reports), and each got at least 1 article in 100.`
+            : `No section has stakes this big: none has a CBO figure of $10 billion or more, or ${BIG_STAKES.reports} lobbying reports.`,
           link: "How we test it",
           target: "read",
         };

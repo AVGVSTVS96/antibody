@@ -137,9 +137,10 @@ export function IndexPage() {
               <h3>Loud and quiet sections</h3>
               <p>
                 Loud sections are the top tenth of a bill by news attention. A quiet and costly one has big stakes (a
-                CBO figure of $10 billion or more, or about 20 lobbying reports), almost no news, and was added late or
-                has little to do with the rest of the bill. The sub-scores sit next to every label, never just a
-                verdict. {testable} of {curated.length} laws here had enough news and a late flag to test at all.
+                CBO figure of $10 billion or more for that section, or 21 lobbying reports) and under 1 in 100 of the
+                bill’s news articles discussed it. Being added late or off-topic ranks it higher but isn’t needed. The
+                sub-scores sit next to every label, never just a verdict. {testable} of {curated.length} laws here had
+                enough news, enough sections and a measured cost to test at all.
               </p>
             </article>
             <article>
@@ -270,7 +271,9 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
                 </span>
                 <span className="c-quiet">
                   {cannotFire ? (
-                    <b className="soft">Can’t be tested</b>
+                    <b className="soft" title={t?.why ?? undefined}>
+                      Can’t be tested
+                    </b>
                   ) : (
                     <b className={`n ${s.buried ? "flare" : "zero"}`}>{s.buried}</b>
                   )}

@@ -134,8 +134,10 @@ export function XrayList({ m }: { m: BillModel }) {
           <b>Loudness</b>: 0 to 100, where 100 is the most-covered section of this bill; the number after the dot is how
           many news articles matched it. <b>CBO 10-yr $</b>: the section’s ten-year effect on the deficit, + adds to it
           and − cuts it; hover for the estimate and baseline.
-          <b> Buried score</b>: stakes × quietness × (late or off-topic), from 0 to 1.5; a section is flagged at 0.45 or
-          more with big stakes. It is 0.00 for most sections, which means nothing about them stands out.
+          <b> Buried score</b>: stakes × quietness × (late or off-topic), from 0 to 1.5. A section is flagged when its
+          stakes are big (a CBO figure of $10 billion or more, or 21 lobbying reports) and under 1 in 100 articles
+          discussed it; the score only orders the flagged ones. It is 0.00 for most sections, which means nothing about
+          them stands out.
           {!m.perSectionDollars && " CBO scored only the whole bill, so no section has a dollar figure here."}
         </p>
       </details>
