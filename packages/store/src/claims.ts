@@ -1,5 +1,5 @@
 import { Claim, type ClaimId } from "@antibody/core";
-import { CBO_EVEN_SPLIT, COUNTERPART_REF, DOCS } from "./rules.ts";
+import { CBO_EVEN_SPLIT, CBO_HEADING_JOIN, COUNTERPART_REF, DOCS } from "./rules.ts";
 
 const ATTENTION_LOCATOR = 'how attention is counted; the counted articles are under "rests on"';
 
@@ -207,6 +207,15 @@ export const TEMPLATES: Record<string, Template> = {
         confidence: 0.5,
       };
     }
+    const tied = r.section_ids.length === 1 && (r.join === "heading" || r.join === "title") ? r.section_ids[0]! : null;
+    if (tied)
+      return {
+        text: `CBO: ${what} ${cboChange(r.measure, r.total_musd)} over ${r.period} (${base} baseline). CBO printed no section number; the row is tied to ${sec(n, tied)} ${r.join === "heading" ? "because its label matches that section's heading" : "because it is the only section under the title the figure covers"}.`,
+        kind: "inference",
+        rule: CBO_HEADING_JOIN,
+        restsOn: [`sections/${tied}`],
+        confidence: 0.8,
+      };
     return { text: `CBO: ${what} ${cboChange(r.measure, r.total_musd)} over ${r.period} (${base} baseline).` };
   },
 

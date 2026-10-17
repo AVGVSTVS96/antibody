@@ -42,6 +42,10 @@ export const RULES: Record<string, { version: string; text: string }> = {
     version: "1",
     text: "When one CBO line covers several sections, each section is shown an even share of it, labeled an inference: CBO did not split it.",
   },
+  "cbo-heading-join": {
+    version: "1",
+    text: "CBO printed a figure for a provision without a section number. It is tied to the one section whose heading the row's label matches, under the division and title the row sits in, with a clear margin over every other heading there (or, for a figure CBO printed for a whole title, to the only section under that title). CBO's own footnote or letter naming the section makes it a fact instead.",
+  },
   "entity-ticker": {
     version: "1",
     text: "A ticker written on a trade disclosure, found in SEC's ticker list under a matching company name, identifies the company.",
@@ -121,5 +125,6 @@ export function ruleFor(rule: string): Rule {
   };
 }
 
+export const CBO_HEADING_JOIN = `cbo-heading-join: ${RULES["cbo-heading-join"]!.text}`;
 export const CBO_EVEN_SPLIT = `cbo-even-split: ${RULES["cbo-even-split"]!.text}`;
 export const COUNTERPART_REF = `counterpart-ref: ${RULES["counterpart-ref"]!.text}`;

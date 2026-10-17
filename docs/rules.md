@@ -29,6 +29,10 @@ A section's attention is the share of each side's sampled articles about the bil
 
 When one CBO line covers several sections, each section is shown an even share of it, labeled an inference: CBO did not split it. Even shares are never counted toward a section's stakes.
 
+## cbo-heading-join
+
+CBO printed a figure for a provision without a section number (a program row under a division and title heading, as in the infrastructure law's table, or a figure for a whole title). It is tied to the one section whose heading the row's label matches, under the division and title the row sits in, with a clear margin over every other heading there; a figure printed for a whole title is tied to the only section under it. Where CBO's own footnote or letter names the section, the figure is a fact and needs no rule. A row that matches no single heading is kept as a group line and is not counted toward any section's stakes.
+
 ## cbo-prose-to-section
 
 A model linked a sentence of CBO's estimate to the bill section whose provision it describes. The quote is checked word for word against the cited PDF page before the link is kept.

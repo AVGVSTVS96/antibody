@@ -238,6 +238,43 @@ test("an even split of a CBO group line is an inference that keeps the sign, and
   expect(checkBundle(bundle)).toEqual([]);
 });
 
+test("a CBO row tied to a section by its heading is an inference that rests on the section; a numbered row stays a fact", async () => {
+  const bill = GENIUS_ROWS.bills!;
+  const secs = GENIUS_ROWS.sections!;
+  const est = { ...GENIUS_ROWS.cbo_estimates![0]!, per_section: true };
+  const row = (id: string, i: number, join: "number" | "heading") => ({
+    ...GENIUS_ROWS.cbo_lines![0]!,
+    id,
+    line_kind: "section",
+    section_nums: [secs[i]!.num],
+    section_ids: [secs[i]!.id],
+    measure: "outlays",
+    total_musd: -50_807,
+    split: "exact",
+    join,
+    rests_on: [],
+  });
+  const { bundle } = await buildBundle(
+    await load({
+      bills: bill,
+      sections: secs,
+      cbo_estimates: [est],
+      cbo_lines: [row("s1582-es:h", 0, "heading"), row("s1582-es:n", 1, "number")],
+    }),
+    "119-s-1582",
+    { now: NOW },
+  );
+  const dollarsOf = (i: number) => bundle.sections.find((x) => x.num === secs[i]!.num)!.dollars;
+  const byHeading = bundle.claims[dollarsOf(0)[0]!.claim]!;
+  expect(byHeading.kind).toBe("inference");
+  expect(byHeading.rule).toContain("cbo-heading-join");
+  expect(byHeading.restsOn).toEqual([`sections/${secs[0]!.id}`]);
+  expect(byHeading.text).toContain("CBO printed no section number");
+  const byNumber = bundle.claims[dollarsOf(1)[0]!.claim]!;
+  expect(byNumber.kind).toBe("fact");
+  expect(checkBundle(bundle)).toEqual([]);
+});
+
 test("a bundle rebuilds byte for byte, however the rows were loaded", async () => {
   const reversed = Object.fromEntries(Object.entries(GENIUS_ROWS).map(([t, rs]) => [t, [...rs!].reverse()]));
   const again = await buildBundle(await load(reversed), "119-s-1582", { now: NOW });
