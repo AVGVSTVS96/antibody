@@ -1162,6 +1162,7 @@ class Builder {
       section.score = {
         label: s.label,
         buried: s.buried,
+        offsets: s.offsets_section_id,
         components: {
           dollarsMusd: s.dollars_musd,
           dollarsSplit: s.dollars_split,

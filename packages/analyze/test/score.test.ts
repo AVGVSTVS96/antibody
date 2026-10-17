@@ -8,6 +8,7 @@ import {
   buried,
   label,
   NAMES_BILL,
+  payFors,
   quiet,
   SCORE,
   scoreRows,
@@ -243,6 +244,49 @@ test("a short title or table of contents is never a headline, whatever articles 
   for (const h of ["Short title", "Short Title, etc", "Table of contents"]) expect(NAMES_BILL.test(h)).toBe(true);
   for (const h of ["Definitions", "Authorization of appropriations", "Short-term limited duration insurance"])
     expect(NAMES_BILL.test(h)).toBe(false);
+});
+
+const dollarsOf = (figures: Record<string, [number, "exact" | "even_split"]>) =>
+  ({
+    estimates: [],
+    bySection: new Map(
+      Object.entries(figures).map(([id, [musd, split]]) => [
+        id,
+        { musd, split, baseline: "current-law", lineIds: [], measure: "deficit", estimateId: "e", byBaseline: [] },
+      ]),
+    ),
+  }) as unknown as ReturnType<typeof sectionDollars>;
+const at = (id: string, path: string) => ({ id, path, in_final: true }) as Row<"sections">;
+
+test("a section that cuts exactly what another in the same title spends is that section's pay-for", () => {
+  const spend = at("502", "division:HH/title:IV/sec:502");
+  const offset = at("503", "division:HH/title:IV/sec:503");
+  const d = dollarsOf({ "502": [23_400, "exact"], "503": [-23_400, "exact"] });
+  expect(payFors([spend, offset], d)).toEqual(new Map([["503", "502"]]));
+});
+
+test("a pay-for needs the same title, an exact figure to the million, a size that is costly, and a cut", () => {
+  const spend = at("a", "title:I/sec:1");
+  const d = (a: [number, "exact" | "even_split"], b: [number, "exact" | "even_split"]) => dollarsOf({ a, b });
+  expect(payFors([spend, at("b", "title:II/sec:2")], d([23_400, "exact"], [-23_400, "exact"])).size).toBe(0);
+  expect(payFors([spend, at("b", "title:I/sec:2")], d([23_400, "exact"], [-23_399, "exact"])).size).toBe(0);
+  expect(payFors([spend, at("b", "title:I/sec:2")], d([23_400, "exact"], [-23_400, "even_split"])).size).toBe(0);
+  expect(payFors([spend, at("b", "title:I/sec:2")], d([900, "exact"], [-900, "exact"])).size).toBe(0);
+  expect(payFors([spend, at("b", "title:I/sec:2")], d([-23_400, "exact"], [23_400, "exact"])).get("a")).toBe("b");
+});
+
+test("a pay-for is not labeled buried on its own, a section that spends is", () => {
+  const costlyQuiet = {
+    dollarsMusd: -23_400,
+    attentionPct: 0,
+    attentionShare: 0,
+    late: false,
+    offTopic: null,
+    lobbyingReports: 0,
+    sections: 1865,
+  };
+  expect(label(costlyQuiet, 0)).toBe("buried");
+  expect(label({ ...costlyQuiet, offsets: "502" }, 0)).toBe("normal");
 });
 
 const section = (id: string, in_final = true) => ({ id, in_final }) as Row<"sections">;

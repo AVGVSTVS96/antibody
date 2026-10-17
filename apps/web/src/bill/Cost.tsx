@@ -385,6 +385,8 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
   const A = m.b.attention;
   const hits = v.s.attention?.hits ?? 0;
   const lobbyEdge = m.b.edges.find((e) => e.kind === "lobbied" && e.dst === `section:${v.s.id}`);
+  const payFor = v.s.score?.offsets ? m.sections.find((x) => x.s.id === v.s.score?.offsets) : undefined;
+  const paidBy = m.sections.find((x) => x.s.score?.offsets === v.s.id);
   const why = [
     v.dollarsMusd != null || (c?.lobbyingReports ?? 0) >= BIG_STAKES.reports ? "big" : null,
     "quiet",
@@ -432,6 +434,23 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
               )}
             </Fragment>
           ))}
+        {payFor &&
+          row(
+            "Pays for",
+            <>
+              §{payFor.s.num} {sectionName(payFor.s.heading, 60)}: CBO prints exactly the opposite figure for both, so
+              this is not flagged on its own.
+            </>,
+            v.s.score && <Src id={v.s.score.claim} label="Rule" />,
+          )}
+        {paidBy &&
+          row(
+            "Paid for by",
+            <>
+              §{paidBy.s.num} {sectionName(paidBy.s.heading, 60)}: CBO prints exactly the opposite figure for it.
+            </>,
+            paidBy.s.score && <Src id={paidBy.s.score.claim} label="Rule" />,
+          )}
         {row(
           "News",
           v.s.attention?.pct != null || hits ? (

@@ -18,6 +18,29 @@ test("checkBundle catches a dangling claim and edge", () => {
   ]);
 });
 
+test("checkBundle catches a pay-for that names a section the bundle does not have", () => {
+  const b = structuredClone(Bundle.parse(fixture));
+  const [s] = b.sections;
+  const score = {
+    label: "normal",
+    buried: null,
+    offsets: "no-such-section",
+    components: {
+      dollarsMusd: null,
+      dollarsSplit: null,
+      attentionPct: null,
+      late: false,
+      offTopic: null,
+      lobbyingReports: 0,
+    },
+    claim: Object.keys(b.claims)[0]!,
+  };
+  s!.score = Bundle.shape.sections.element.shape.score.parse(score);
+  expect(checkBundle(b)).toEqual([`section ${s!.id}: offsets unknown section no-such-section`]);
+  s!.score!.offsets = s!.id;
+  expect(checkBundle(b)).toEqual([]);
+});
+
 test("an index without stats or watch picks still parses", () => {
   const index = BundleIndex.parse({
     generatedAt: "2026-10-13T21:00:00-07:00",

@@ -526,6 +526,8 @@ export const TABLES = {
     late: z.boolean(),
     off_topic: z.number().nullable(),
     lobbying_reports: z.number().int(),
+    /** The section this one pays for: CBO prints exactly the opposite figure for both in the same title, so it is not a finding of its own. */
+    offsets_section_id: z.string().nullable().default(null),
     ...inference,
   }),
 

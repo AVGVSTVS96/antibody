@@ -101,6 +101,8 @@ export const SectionAttention = z.object({
 export const Score = z.object({
   label: z.enum(["headline", "buried", "normal"]),
   buried: z.number().nullable(),
+  /** The section this one pays for (CBO prints exactly the opposite figure for both in the same title); an offset is not flagged on its own. */
+  offsets: z.string().nullable().default(null),
   /** Sub-scores are always shown next to the label, never just a verdict. */
   components: z.object({
     dollarsMusd: z.number().nullable(),
@@ -428,6 +430,10 @@ export function checkBundle(b: Bundle): string[] {
     }
   };
   walk(b, "");
+  const sectionIds = new Set(b.sections.map((s) => s.id));
+  for (const s of b.sections)
+    if (s.score?.offsets && !sectionIds.has(s.score.offsets))
+      problems.push(`section ${s.id}: offsets unknown section ${s.score.offsets}`);
   for (const c of Object.values(b.claims))
     for (const id of c.restsOn) if (!(id in b.claims)) problems.push(`claims.${c.id}.restsOn: unknown claim ${id}`);
   return problems;

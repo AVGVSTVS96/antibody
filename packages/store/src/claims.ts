@@ -423,7 +423,12 @@ export const TEMPLATES: Record<string, Template> = {
       count(r.lobbying_reports, "lobbying report"),
     ].filter(Boolean);
     const score = r.buried != null ? ` (buried score ${r.buried.toFixed(2)})` : "";
-    return { text: `${sec(n, r.section_id).replace(/^s/, "S")} is scored ${r.label}${score}: ${bits.join(", ")}.` };
+    const pays = r.offsets_section_id
+      ? ` CBO prints exactly the opposite figure for ${sec(n, r.offsets_section_id)}, so this is read as the section's pay-for and is not flagged on its own.`
+      : "";
+    return {
+      text: `${sec(n, r.section_id).replace(/^s/, "S")} is scored ${r.label}${score}: ${bits.join(", ")}.${pays}`,
+    };
   },
 };
 
