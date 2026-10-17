@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { type BillId, parseBillId } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
-import { OUTLETS, sideOf } from "@antibody/ingest-news";
+import { OUTLETS, type Side, sideOf } from "@antibody/ingest-news";
 import { MIN_TEXT_CHARS } from "../src/attention.ts";
 import { SCORE, stakes } from "../src/score.ts";
 
@@ -82,6 +82,25 @@ for (const arg of Bun.argv.slice(2)) {
   console.log(
     `costly (stakes at least ${SCORE.costlyMin.toFixed(3)}): ${costly.length}; of them quiet (buried) ${pct(buriedN, costly.length)}, loud (headline) ${pct(costly.filter((s) => s.label === "headline").length, costly.length)}; late among buried ${pct(scores.filter((s) => s.label === "buried" && s.late).length, buriedN)} (late among all sections ${pct(late.length, final)})`,
   );
+  const att = await readRows("attention", bill);
+  const relevantBySide = (
+    att.find((a) => a.section_id === null)?.evidence as { relevant_by_side?: Record<string, number> } | undefined
+  )?.relevant_by_side;
+  if (relevantBySide && costly.length) {
+    const costlyIds = new Set(costly.map((s) => s.section_id));
+    const quietOn = (side: Side) =>
+      att
+        .filter((a) => a.section_id && costlyIds.has(a.section_id))
+        .filter((a) => {
+          const hits = Object.entries(a.hits_by_group as Record<string, number>)
+            .filter(([g]) => sideOf(g as Parameters<typeof sideOf>[0]) === side)
+            .reduce((n, [, h]) => n + h, 0);
+          return hits / Math.max(relevantBySide[side] ?? 1, 1) < SCORE.quietShare;
+        }).length;
+    console.log(
+      `costly sections that would be quiet counting one side's press alone: left ${pct(quietOn("left"), costly.length)}, center ${pct(quietOn("center"), costly.length)}, right ${pct(quietOn("right"), costly.length)} (balanced: ${pct(buriedN, costly.length)})`,
+    );
+  }
   const p = party.get(b?.sponsor_bioguide ?? "") ?? "?";
   if (measured && scores.some((s) => s.attention_pct !== null)) {
     byParty[p] ??= { bills: 0, sections: 0, headline: 0, costly: 0, buried: 0 };
