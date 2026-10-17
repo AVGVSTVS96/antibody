@@ -7,6 +7,40 @@ export interface Listing {
   title: string;
   description: string;
   pubDate: string;
+  /** Set when the estimate is listed on a bill that carried this bill's text, and names that bill. */
+  via?: BillId;
+}
+
+const BILL_TYPES: Record<string, string> = { HR: "hr", S: "s", HJRES: "hjres", SJRES: "sjres" };
+const SAME_TEXT = /identical bill|public law contains the text/i;
+const norm = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/**
+ * Bills BILLSTATUS says carried the same text as this one: those it calls an identical bill or a public law that
+ * contains its text, and related bills of the same Congress that bear this bill's own short title (a House vehicle
+ * whose text the Senate replaced with a Senate bill's). CBO often scores only the other bill.
+ */
+export function companions(xml: string, bill: BillId): BillId[] {
+  const own = billRef(bill);
+  const short = new Set(
+    [...xml.matchAll(/<titleType>([^<]*)<\/titleType>\s*<title>([^<]*)<\/title>/g)]
+      .filter(([, kind]) => /short title/i.test(kind!) && !/portions/i.test(kind!))
+      .map(([, , title]) => norm(decode(title!))),
+  );
+  const related = xml.match(/<relatedBills>([\s\S]*?)<\/relatedBills>/)?.[1] ?? "";
+  return related.split(/<\/relationshipDetails>\s*<\/item>/).flatMap((item) => {
+    const [head = "", details = ""] = item.split("<relationshipDetails>");
+    const tag = (name: string) => decode(head.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1] ?? "");
+    const type = BILL_TYPES[tag("type")];
+    const id = `${tag("congress")}-${type}-${tag("number")}` as BillId;
+    const relations = [...details.matchAll(/<type>([^<]*)<\/type>/g)].map((m) => m[1]!);
+    const same = relations.some((r) => SAME_TEXT.test(r)) || short.has(norm(tag("title")));
+    return type && +tag("congress") === own.congress && id !== bill && same ? [id] : [];
+  });
 }
 
 /** BILLSTATUS can list one publication twice (once per action it relates to); each is kept once. */

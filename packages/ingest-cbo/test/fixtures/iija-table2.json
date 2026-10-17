@@ -38,7 +38,8 @@
 ],
 [
 "TITLE I—Federal-Aid Highways",
-38.4
+38.4,
+"ab"
 ],
 [
 "Contract Authority for Programs Funded by the Highway Trust Fund",
@@ -54,7 +55,8 @@
 ],
 [
 "TITLE II—Transportation Infrastructure Finance and Innovation",
-38.4
+38.4,
+"bc"
 ],
 [
 "Budget Authority 0 0 0 0 0 0 0 0 0 0 0 0 0",
@@ -82,7 +84,8 @@
 ],
 [
 "TITLE I—Multimodal and Freight Transportation",
-38.4
+38.4,
+"de"
 ],
 [
 "Budget Authority 0 0 0 0 0 0 0 0 0 0 0 0 0",
@@ -94,7 +97,8 @@
 ],
 [
 "TITLE II—Rail",
-38.4
+38.4,
+"e"
 ],
 [
 "Estimated Budget Authority 0 1 * * * * * * * * * 3 5",
@@ -106,7 +110,8 @@
 ],
 [
 "TITLE III—Motor Carrier Safety",
-38.4
+38.4,
+"ae"
 ],
 [
 "Contract Authority for Programs Funded by the Highway Trust Fund",
@@ -122,7 +127,8 @@
 ],
 [
 "TITLE IV—Highway and Motor Vehicle Safety",
-38.4
+38.4,
+"ae"
 ],
 [
 "Contract Authority for Programs Funded by the Highway Trust Fund",
@@ -138,7 +144,8 @@
 ],
 [
 "TITLE VI—Hazardous Materials",
-38.4
+38.4,
+"e"
 ],
 [
 "Emergency Preparedness",
@@ -166,7 +173,8 @@
 ],
 [
 "DIVISION C—TRANSIT",
-38.4
+38.4,
+"a"
 ],
 [
 "Contract Authority for Programs Funded by the Highway Trust Fund",
@@ -220,7 +228,8 @@
 ],
 [
 "DIVISION D—ENERGY",
-38.4
+38.4,
+"f"
 ],
 [
 "TITLE I—Grid Infrastructure and Resiliency",
@@ -228,7 +237,8 @@
 ],
 [
 "Transmission Facilitation Program",
-63.2
+63.2,
+"g"
 ],
 [
 "Estimated Budget Authority 0 0 160 780 780 780 780 175 170 165 160 2,500 3,950",
@@ -240,7 +250,8 @@
 ],
 [
 "Power Marketing Administration Transmission Borrowing Authority",
-63.2
+63.2,
+"h"
 ],
 [
 "Estimated Budget Authority 0 80 120 170 250 230 160 160 160 170 170 850 1,670",
@@ -264,7 +275,8 @@
 ],
 [
 "TITLE VII—Abandoned Mine Land Reclamation",
-38.4
+38.4,
+"i"
 ],
 [
 "Estimated Budget Authority 0 47 50 74 109 137 153 166 175 177 171 417 1,259",
@@ -394,7 +406,8 @@
 ],
 [
 "DIVISION H—REVENUE PROVISIONS",
-38.4
+38.4,
+"j"
 ],
 [
 "TITLE III—Customs User Fees",
@@ -410,7 +423,8 @@
 ],
 [
 "TITLE VI—Other Provisions",
-38.4
+38.4,
+"k"
 ],
 [
 "Estimated Budget Authority 0 0 0 0 0 0 0 0 0 0 0 0 0",
@@ -434,7 +448,8 @@
 ],
 [
 "DIVISION I—OTHER MATTERS",
-38.4
+38.4,
+"l"
 ],
 [
 "Extension of Direct Spending Reductions Through Fiscal Year 2031",
@@ -474,7 +489,8 @@
 ],
 [
 "Extension of Enterprise Guarantee Fees",
-63.2
+63.2,
+"m"
 ],
 [
 "Estimated Budget Authority 0 -2,900 -3,300 -3,200 -2,500 -2,100 -1,800 -1,500 -1,300 -1,200 -1,200 -14,000 -21,000",
@@ -498,7 +514,8 @@
 ],
 [
 "Rescission of COVID-19 Appropriations",
-63.2
+63.2,
+"n"
 ],
 [
 "Estimated Budget Authority 0 -21,367 0 0 0 0 0 0 0 0 0 -21,367 -21,367",
@@ -510,7 +527,8 @@
 ],
 [
 "Spectrum Auctions",
-63.2
+63.2,
+"o"
 ],
 [
 "Estimated Budget Authority 0 50 0 0 0 0 -3,415 -3,415 -3,415 10 10 50 -10,175",
@@ -592,7 +610,8 @@
 ],
 [
 "TITLE VII—Abandoned Mine Land Reclamation 0 114 107 97 87 85 84 84 84 83 82 490 907",
-38.4
+38.4,
+"p"
 ],
 [
 "DIVISION D Total 0 114 107 97 86 82 81 81 81 80 79 485 888",
@@ -600,7 +619,8 @@
 ],
 [
 "DIVISION E—DRINKING WATER AND WASTEWATER INFRASTRUCTURE",
-38.4
+38.4,
+"q"
 ],
 [
 "TITLE I—Drinking Water 0 * -2 -9 -23 -44 -70 -96 -114 -123 -125 -78 -606",
@@ -648,7 +668,8 @@
 ],
 [
 "TITLE III—Energy and Water Development and Related Agencies 0 * -3 -12 -31 -59 -93 -128 -155 -172 -179 -104 -830",
-38.4
+38.4,
+"r"
 ],
 [
 "Total Changes in Revenues 0 8,495 1,071 2,842 4,157 4,657 4,966 5,331 5,658 6,071 6,430 21,221 49,681",
@@ -673,6 +694,512 @@
 [
 "7",
 394.0
+]
+],
+[
+[
+"Congressional Budget Office August 5, 2021",
+122.9
+],
+[
+"Cost Estimate",
+122.9
+],
+[
+"Table 2.",
+77.4
+],
+[
+"Senate Amendment 2137 to H.R. 3684, the Infrastructure Investment and Jobs Act, as Proposed on August 1, 2021",
+77.4
+],
+[
+"Estimated Changes in Direct Spending and Revenues",
+77.4
+],
+[
+"Notes",
+77.4
+],
+[
+"a. The legislation would provide $382.9 billion in contract authority (a form of mandatory budget authority)",
+126.0
+],
+[
+"for a variety of transportation programs over the 2022-2026 period. Under the rules governing baseline",
+144.0
+],
+[
+"projections that are specified in the Balanced Budget and Emergency Deficit Control Act of 1985, this",
+144.0
+],
+[
+"estimate incorporates an assumption that the contract authority of about $79.9 billion that would be",
+144.0
+],
+[
+"provided in 2026 (the final year of the authorization) would also be provided in each subsequent year.",
+144.0
+],
+[
+"CBO therefore estimates that an additional $399.6 billion in contract authority would be available over",
+144.0
+],
+[
+"the 2027-2031 period, for a total of $782.5 billion over the 10-year period. Over the 2022-2031 period,",
+144.0
+],
+[
+"that total would be $196.5 billion more that the amount in CBO’s July 2021 baseline.",
+144.0
+],
+[
+"Spending from contract authority is controlled by obligation limitations specified in annual appropriation",
+144.0
+],
+[
+"acts; therefore, the outlays for most surface transportation programs are considered discretionary and",
+144.0
+],
+[
+"will be accounted for in a future appropriation bill that sets those limits. CBO estimates that outlays from",
+144.0
+],
+[
+"obligation limitations equal to all of the available contract authority would total $362.7 billion over the",
+144.0
+],
+[
+"2021-2031 period: $287.0 billion for Federal Highway Administration programs, $66.5 billion for Federal",
+144.0
+],
+[
+"Transit Administration programs, $4.3 billion for Federal Motor Carrier Safety Administration programs,",
+144.0
+],
+[
+"and $4.9 billion for National Highway Traffic Safety Administration programs. Some of those outlays",
+144.0
+],
+[
+"would result from contract authority and obligation limitations already projected in CBO’s baseline.",
+144.0
+],
+[
+"b. For additional information, see Congressional Budget Office, cost estimate for S. 1931, the Surface",
+129.6
+],
+[
+"Transportation Reauthorization Act (July 15, 2021), www.cbo.gov/publication/57357.",
+147.6
+],
+[
+"c. Section 12001 would allow the Department of Transportation to use unspent balances from the",
+129.6
+],
+[
+"Transportation Infrastructure Finance and Innovation Act program to subsidize loans for airport",
+147.6
+],
+[
+"construction projects authorized under the bill.",
+147.6
+],
+[
+"8",
+394.0
+]
+],
+[
+[
+"CBO Cost Estimate Senate Amendment to H.R. 3684, the Infrastructure Investment and Jobs Act,",
+114.1
+],
+[
+"as Proposed on August 1, 2021",
+531.8
+],
+[
+"Table 2 Notes",
+608.6
+],
+[
+"d. Title I of division B would authorize the Department of Transportation to use unobligated balances to",
+129.6
+],
+[
+"help state, local, and tribal governments to develop projects that would be eligible for other department",
+147.6
+],
+[
+"programs and to refund premiums paid by borrowers under the Railroad Rehabilitation and",
+147.6
+],
+[
+"Improvement Financing program.",
+147.6
+],
+[
+"e. For additional information, see Congressional Budget Office, cost estimate for S. 2016, the Surface Transportation",
+129.6
+],
+[
+"Investment Act (June 16, 2021), www.cbo.gov/publication/57359.",
+147.6
+],
+[
+"f. Section 40304 would authorize various forms of financial assistance for carbon capture infrastructure",
+129.6
+],
+[
+"projects and would authorize appropriations for such purposes. It includes provisions authorizing",
+147.6
+],
+[
+"contractual obligations and loan commitments in excess of the amounts provided in appropriation acts,",
+147.6
+],
+[
+"subject to certain conditions. CBO estimates that the use of that indefinite obligational authority would",
+147.6
+],
+[
+"increase outlays by $500 million, an increase of about 20 percent relative to the amounts authorized to",
+147.6
+],
+[
+"be appropriated. Implementation of those initiatives is contingent on funds provided in appropriation",
+147.6
+],
+[
+"legislation. Because division J would appropriate funds to carry out section 40304, those additional costs",
+147.6
+],
+[
+"are attributed to division J.",
+147.6
+],
+[
+"g. CBO estimates that implementing section 40106 would increase net direct spending by $3.8 billion over",
+129.6
+],
+[
+"2021-2031 period. That cost reflects both the cash flows from the use of borrowing authority and",
+147.6
+],
+[
+"expected spending for governmental projects. CBO expects that those costs would be largely offset in",
+147.6
+],
+[
+"subsequent decades by income collected from the sale of transmission services.",
+147.6
+],
+[
+"h. Section 40110 would increase the amount that the Bonneville Power Administration can borrow from the",
+129.6
+],
+[
+"Treasury for its electric power system. Under current law, that agency is permitted to have up to",
+147.6
+],
+[
+"$7.7 billion in Treasury debt outstanding at any time; the legislation would increase that limit to",
+147.6
+],
+[
+"$17.7 billion. CBO estimates that increasing the Bonneville Power Authority’s borrowing authority would",
+147.6
+],
+[
+"result in higher capital spending or lower collections than would otherwise occur under current law,",
+147.6
+],
+[
+"resulting in a net increase in outlays of $1.7 billion over the 2021-2031 period.",
+147.6
+],
+[
+"i. This proposal also would affect revenues.",
+129.6
+],
+[
+"9",
+394.0
+]
+],
+[
+[
+"CBO Cost Estimate Senate Amendment to H.R. 3684, the Infrastructure Investment and Jobs Act,",
+114.1
+],
+[
+"as Proposed on August 1, 2021",
+531.8
+],
+[
+"Table 2 Notes",
+608.6
+],
+[
+"j. The estimated budget effects for tax provisions were provided by the staff of the Joint Committee on",
+129.6
+],
+[
+"Taxation. See Joint Committee on Taxation, Estimated Revenue Effects of the Provisions in Division H of",
+147.6
+],
+[
+"an Amendment in the Nature of a Substitute to H.R. 3684, Offered by Ms. Sinema, Mr. Portman,",
+147.6
+],
+[
+"Mr. Manchin, Mr. Cassidy, Mrs. Shaheen, Ms. Collins, Mr. Tester, Ms. Murkowski, Mr. Warner and",
+147.6
+],
+[
+"Mr. Romney, the “Infrastructure Investment and Jobs Act,” JCX-33-21 (August 3, 2021),",
+147.6
+],
+[
+"www.jct.gov/publications/2021/jcx-33-21.",
+147.6
+],
+[
+"k. Because the Pension Benefit Guaranty Corporation has permanent authority to spend from its revolving",
+129.6
+],
+[
+"funds, enacting this provision would not provide budget authority.",
+147.6
+],
+[
+"l. Section 90003 states that expanded unemployment compensation as extended by the American Rescue",
+129.6
+],
+[
+"Plan Act of 2021 is now expected to cost $53 billion less than originally estimated. Those lower outlays",
+147.6
+],
+[
+"are incorporated into CBO’s July 2021 baseline and thus are not shown here as a reduction in spending",
+147.6
+],
+[
+"attributable to this bill.",
+147.6
+],
+[
+"m. Under section 90005, Fannie Mae and Freddie Mac would be required to increase—by an average of",
+129.6
+],
+[
+"10 basis points—the guarantee fee they assess on loans included in mortgage-backed securities over the",
+147.6
+],
+[
+"2022-2032 period. The guarantee fee was established in 2011 and is scheduled to expire in 2021. CBO",
+147.6
+],
+[
+"considers Fannie Mae and Freddie Mac to be governmental entities.",
+147.6
+],
+[
+"n. Title IX of division I would rescind certain unobligated balances related to the government’s response to",
+129.6
+],
+[
+"the coronavirus pandemic. It also would expand the purposes for which certain funding provided under",
+147.6
+],
+[
+"section 5002(b) of the American Rescue Plan Act of 2021 could be spent. Taken as a whole, CBO",
+147.6
+],
+[
+"estimates, the resulting net reductions in budget authority and outlays over the 2022-2031 period would",
+147.6
+],
+[
+"total $35,220 million and $13,783 million, respectively. Consistent with section 901 of title IX of division J",
+147.6
+],
+[
+"of Senate Amendment 2137 to H.R. 3684 and in consultation with the Senate Committee on the Budget,",
+147.6
+],
+[
+"CBO treats a portion of those estimated reductions in spending as changes in discretionary spending (see",
+147.6
+],
+[
+"Table 3).",
+147.6
+],
+[
+"10",
+391.9
+]
+],
+[
+[
+"CBO Cost Estimate Senate Amendment to H.R. 3684, the Infrastructure Investment and Jobs Act,",
+114.1
+],
+[
+"as Proposed on August 1, 2021",
+531.8
+],
+[
+"Table 2 Notes",
+608.6
+],
+[
+"More specifically, over the 2022-2031 period, CBO estimates, enacting title IX of division I would reduce",
+147.6
+],
+[
+"mandatory budget authority and outlays by $21,367 million and $13,430 million, respectively. Of those",
+147.6
+],
+[
+"amounts, CBO estimates that $4,366 million in budget authority would be rescinded from amounts that",
+147.6
+],
+[
+"were designated by the Congress as an emergency requirement in keeping with section 4(g) of the",
+147.6
+],
+[
+"Statutory-Pay-As-You-Go Act of 2010 and with section 4112(a) of H. Con. Res. 71 (115th Congress), the",
+147.6
+],
+[
+"Concurrent Resolution on the Budget for Fiscal Year 2018. CBO estimates that rescinding those",
+147.6
+],
+[
+"emergency-designated balances would not affect outlays.",
+147.6
+],
+[
+"Title IX of division I also would reduce discretionary budget authority and outlays by $13,853 million and",
+147.6
+],
+[
+"$353 million, respectively (see Table 3). Those amounts were designated by the Congress as an",
+147.6
+],
+[
+"emergency requirement in keeping with section 251(b)(2)(A)(i) of the Balanced Budget and Emergency",
+147.6
+],
+[
+"Deficit Control Act of 1985.",
+147.6
+],
+[
+"o. Section 90008 would extend the Federal Communications Commission’s authority to auction",
+129.6
+],
+[
+"electromagnetic spectrum licenses from September 30, 2022, to a period ending seven years after the",
+147.6
+],
+[
+"date of enactment to make the spectrum available on a shared basis between federal and nonfederal",
+147.6
+],
+[
+"users in the 3.1-3.45 megahertz band, subject to certain conditions.",
+147.6
+],
+[
+"p. This title also would affect direct spending.",
+129.6
+],
+[
+"q. Some of the funds authorized to be appropriated under titles I and II for grants to state revolving funds",
+129.6
+],
+[
+"would be used by state and local governments to leverage additional funds. CBO expects that those",
+147.6
+],
+[
+"governments would issue tax-exempt bonds that the staff of the Joint Committee on Taxation estimates",
+147.6
+],
+[
+"would reduce federal revenues by about $1 billion over the 2021-2031 period. For additional",
+147.6
+],
+[
+"information, see Congressional Budget Office, CBO’s Estimate of Effects on Revenues of Senate",
+147.6
+],
+[
+"Amendment 1460 for S. 914, the Drinking Water and Wastewater Infrastructure Act of 2021 (April 27,",
+147.6
+],
+[
+"2021), www.cbo.gov/publication/57178.",
+147.6
+],
+[
+"r. Section 614 of title VI of division J would authorize appropriations for the Environmental Protection",
+129.6
+],
+[
+"Agency to make grants to state revolving funds that would be used by state and local governments to",
+147.6
+],
+[
+"11",
+391.9
+]
+],
+[
+[
+"CBO Cost Estimate Senate Amendment to H.R. 3684, the Infrastructure Investment and Jobs Act,",
+114.1
+],
+[
+"as Proposed on August 1, 2021",
+531.8
+],
+[
+"Table 2 Notes",
+608.6
+],
+[
+"leverage additional funds to carry out capital projects. Assuming the appropriation of such amounts, CBO",
+147.6
+],
+[
+"expects that those governments would issue tax-exempt bonds, which the staff of the Joint Committee",
+147.6
+],
+[
+"on Taxation estimates would reduce federal revenues by about $830 million over the 2021-2031 period.",
+147.6
+],
+[
+"Because division J is considered appropriation legislation, that change in revenues is not shown in",
+147.6
+],
+[
+"Table 3, consistent with scorekeeping guideline 3. However, to fully show the deficit effect of the",
+147.6
+],
+[
+"legislation, CBO has shown those revenue changes in this table.",
+147.6
+],
+[
+"12",
+391.9
 ]
 ]
 ]

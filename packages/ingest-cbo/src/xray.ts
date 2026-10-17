@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
-import type { BillId, Row, StageContext } from "@antibody/core";
+import { type BillId, billDisplay, type Row, type StageContext } from "@antibody/core";
 import { python, readRows, writeRows } from "@antibody/core/node";
-import { baselineOf, type Listing, parseListings, versionCode } from "./estimates.ts";
+import { baselineOf, companions, type Listing, parseListings, versionCode } from "./estimates.ts";
 import { billstatus, type Fetched, publicationFiles } from "./fetch.ts";
 import { baseNum, buildLines } from "./lines.ts";
 import type { Glance, Parsed } from "./parsed.ts";
@@ -84,19 +84,30 @@ async function read(files: Fetched[], bill: BillId): Promise<Read> {
 export async function xray(ctx: StageContext) {
   const bill = ctx.bill!;
   const opts = { refresh: ctx.refresh, signal: ctx.signal };
-  const listings = parseListings(await billstatus(bill, opts));
+  const status = await billstatus(bill, opts);
+  const listings = parseListings(status);
+  if (!listings.length)
+    for (const other of companions(status, bill)) {
+      const theirs = await billstatus(other, opts).catch(() => null);
+      const seen = new Set(listings.map((l) => l.pubId));
+      for (const l of theirs ? parseListings(theirs) : []) if (!seen.has(l.pubId)) listings.push({ ...l, via: other });
+    }
   const [sections, versions] = await Promise.all([readRows("sections", bill), readRows("versions", bill)]);
   const known = versions.map((v) => v.code);
-  ctx.log(`${listings.length} CBO estimates listed in BILLSTATUS; ${sections.length} sections to map onto`);
+  const borrowed = [...new Set(listings.flatMap((l) => l.via ?? []))];
+  ctx.log(
+    `${listings.length} CBO estimates listed in BILLSTATUS${borrowed.length ? ` of ${borrowed.map(billDisplay).join(", ")}, which carried the same text` : ""}; ${sections.length} sections to map onto`,
+  );
 
   const estimates: Row<"cbo_estimates">[] = [];
   const lines: Row<"cbo_lines">[] = [];
   for (const l of listings) {
     const id = estimateId(bill, l);
-    const files = await publicationFiles(l, bill, opts);
-    const { main, pdf, glance } = await read(files, bill);
+    const scored = l.via ?? bill;
+    const files = await publicationFiles(l, scored, opts);
+    const { main, pdf, glance } = await read(files, scored);
     if (main && glance) scopeRows(main.sheets, glance.pages);
-    const code = versionCode(l.description, bill, known);
+    const code = l.via ? null : versionCode(l.description, bill, known);
     const { baseline, label } = baselineOf(
       l,
       glance ? { month: glance.baseline_month, enforcement: glance.budget_enforcement_baseline } : null,
@@ -121,6 +132,9 @@ export async function xray(ctx: StageContext) {
         numbering: close
           ? `CBO scored text GovInfo does not publish (${l.description}); its section numbers are joined to the ${close.code} text, which numbers ${close.covered} of them the same way`
           : undefined,
+        carried: l.via
+          ? `CBO's estimate is of ${billDisplay(l.via)}, which BILLSTATUS relates to this bill as carrying the same text`
+          : undefined,
       },
       main,
       glance,
@@ -136,7 +150,7 @@ export async function xray(ctx: StageContext) {
       archive_url: source?.archiveUrl ?? null,
       published_on: l.pubDate.slice(0, 10) || null,
       version_code: code,
-      version_scored: l.description || l.title,
+      version_scored: l.via ? `${billDisplay(l.via)}: ${l.description || l.title}` : l.description || l.title,
       baseline,
       baseline_label: label,
       per_section: built.lines.some((x) => x.line_kind === "section"),

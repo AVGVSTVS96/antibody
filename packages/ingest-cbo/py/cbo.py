@@ -371,14 +371,14 @@ def xlsx(path):
             rows, unit = provision_sheet(ws, years, lines)
             out["sheets"].append({"sheet": ws.title, "title": None, "years": years, "unit": unit, "rows": rows})
             if not out["summary"]:
-                out["summary"] = {"sheet": ws.title, "years": years, "rows": provision_totals(rows)}
+                out["summary"] = {"sheet": ws.title, "years": years, "unit": unit, "rows": provision_totals(rows)}
             continue
         if not ws.title.startswith("Title"):
             continue
         title, rows = parse_sheet(ws, years, lines)
         out["sheets"].append({"sheet": ws.title, "title": title, "years": years, "rows": rows})
     return out
-NUM = re.compile(r"^(-?\d{1,3}(,\d{3})*|-?\d+|\*|n\.e\.|n\.a\.)$")
+NUM = re.compile(r"^(-?\d{1,3}(,\d{3})*(\.\d+)?|-?\d+(\.\d+)?|\*|n\.e\.|n\.a\.)$")
 YEARS = re.compile(r"^(\d{4}\s+){9,}\d{4}-\d{4}\s+\d{4}-\d{4}$")
 HIERARCHY = re.compile(r"^(Subtitle|Chapter|Subchapter|Part)\s+([0-9A-Z]+)\.\s*(.*)$")
 SEC_NUMBER = r"\d+[A-Za-z]?(?:\([a-z0-9]+\))*"
@@ -395,6 +395,10 @@ END_OF_TABLE = re.compile(r"^(?:Sources?:|Estimates (?:are )?relative|Components
 LEAF = ("section", "title", "program")
 STRUCTURE = ("division", "title", "program")
 SUPERSCRIPT_MAX = 7.0
+
+
+def scaled(x, scale):
+    return x if x is None or scale == 1 else round(x * scale, 6)
 
 
 def value(tok):
@@ -439,40 +443,92 @@ def section_label(label):
 
 
 def page_lines(page):
-    """A page's text lines with their left edge; small superscript characters (footnote marks) are left out."""
+    """A page's text lines as (text, left edge, footnote marks). The small superscript characters are left out of the
+    text; each is a mark for the line it sits beside, at its right end and about level with it."""
     clean = page.filter(lambda o: o.get("object_type") != "char" or o["size"] > SUPERSCRIPT_MAX)
-    return [(l["text"].strip(), l["x0"]) for l in clean.extract_text_lines()]
+    lines = clean.extract_text_lines()
+    marks = [""] * len(lines)
+    for c in sorted(page.chars, key=lambda c: c["x0"]):
+        if c["size"] > SUPERSCRIPT_MAX or not re.fullmatch(r"[a-z]", c["text"]) or not lines:
+            continue
+        mid = (c["top"] + c["bottom"]) / 2
+        k = min(range(len(lines)), key=lambda k: abs((lines[k]["top"] + lines[k]["bottom"]) / 2 - mid))
+        near = lines[k]
+        if abs((near["top"] + near["bottom"]) / 2 - mid) <= 6 and near["x0"] - 2 <= c["x0"] <= near["x1"] + 30:
+            marks[k] += c["text"]
+    return [(l["text"].strip(), l["x0"], marks[k]) for k, l in enumerate(lines)]
+
+
+CHROME = ("Congressional Budget Office", "CBO Cost Estimate", "Cost Estimate", "See also", "How CBO", "Table ")
+
+
+def footnotes(pages):
+    """The lettered notes under each table, by table number: {'2': {'g': 'CBO estimates that implementing section 40106 ...'}}.
+    A note is a line 'g. text' whose letter follows the previous note's; it runs until the next note."""
+    out, table, expect, last = {}, None, "a", None
+    if not any(TABLE_HEAD.match(line[0]) for page in pages for line in page):
+        table = "1"
+    for lines in pages:
+        for text, *_ in lines:
+            if m := TABLE_HEAD.match(text):
+                if table != m.group(1):
+                    table, expect, last = m.group(1), "a", None
+                continue
+            if not table or not text or text.isdigit() or text.startswith(CHROME):
+                continue
+            if (m := re.match(r"^([a-z])\.\s+(\S.*)$", text)) and m.group(1) == expect:
+                last, expect = m.group(1), chr(ord(expect) + 1)
+                out.setdefault(table, {})[last] = m.group(2)
+            elif last and len(out[table][last]) < 700:
+                out[table][last] += f" {text}"
+    return out
 
 
 def per_section_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         pages = [page_lines(page) for page in pdf.pages]
-    return {"format": "pdf", "sheets": parse_tables(pages), "summary": pdf_summary(pdf_path)}
+    sheets = parse_tables(pages)
+    return {"format": "pdf", "sheets": sheets, "summary": pdf_summary(pdf_path) or table_totals(sheets)}
+
+
+def table_totals(sheets):
+    """Whole-bill totals from the one table of a PDF that has no summary of its own."""
+    if len(sheets) != 1:
+        return None
+    sheet = sheets[0]
+    rows = [
+        {"block": r["block"], "measure": r["measure"], "measure_kind": r["measure_kind"], "values": r["values"], "range": r["range"]}
+        for r in sheet["rows"]
+        if r["line_kind"] == "total" and r["block"] in ("direct_spending", "revenues") and r["measure_kind"] in ("budget_authority", "outlays", "revenues")
+    ]
+    return {"sheet": sheet["sheet"], "years": sheet["years"], "unit": sheet.get("unit"), "rows": rows} if rows else None
 
 
 def parse_tables(pages):
     """Per-section, per-title and per-provision rows of the numbered tables in a PDF, from its pages' text lines
-    (`(text, left edge)` pairs)."""
+    (`(text, left edge, footnote marks)`)."""
+    pages = [[(*line, "")[:3] for line in page] for page in pages]
     lines_seq = itertools.count(1)
     rows, years = [], None
     table = title = block = None
     skip = reading = False
     caption, heading, above, measure_start = [], set(), "", None
+    scale, numbered = 1, False
     unit = {"division": None, "title": None}
     ctx = {"Subtitle": None, "Chapter": None, "Subchapter": None, "Part": None}
     current = None
-    if not any(TABLE_HEAD.match(t) for page in pages for t, _ in page):
+    if not any(TABLE_HEAD.match(t) for page in pages for t, *_ in page):
         table = "1"
     for pno, lines in enumerate(pages, 1):
-        if any(t.startswith("Table") and "Notes" in t for t, _ in lines[:6]):
+        if any(t.startswith("Table") and "Notes" in t for t, *_ in lines[:6]):
             continue
-        for line, x0 in lines:
+        for line, x0, marks in lines:
             if not line or line.isdigit() or line.startswith(("See also", "How CBO", "Congressional Budget Office")) or line == "Cost Estimate":
                 continue
             before, above = above, line
             if m := TABLE_HEAD.match(line):
                 if table != m.group(1):
-                    table, title, block, current, years, skip = m.group(1), None, None, None, None, False
+                    table, title, block, current, years, skip, numbered = m.group(1), None, None, None, None, False, False
                     ctx, unit = dict.fromkeys(ctx), {"division": None, "title": None}
                     heading = set()
                 caption = [m.group(2)] if m.group(2) else []
@@ -485,6 +541,7 @@ def parse_tables(pages):
                 years, reading = found, True
                 caption = caption[-6:]
                 head = " ".join(caption)
+                scale = 1000 if "Billions of Dollars" in head else 1
                 if block is None and "Changes in Direct Spending" in head:
                     block = "direct_spending"
                 skip = skip or "Discretionary Spending" in head or head.startswith("Summary")
@@ -539,7 +596,8 @@ def parse_tables(pages):
                 label = f"{m.group(1).title()}-Budget {'Revenues' if block == 'revenues' else 'Outlays'}"
             sec = section_label(label)
             if sec and not (current and current.get("joining")):
-                current = new_line(lines_seq, "section", sec[1], pno, ctx, sec[0], unit, x0)
+                numbered = True
+                current = new_line(lines_seq, "section", sec[1], pno, ctx, sec[0], unit, x0, marks)
             elif sec and current and current.get("joining"):
                 current["section_raw"] += f" and {sec[0]}"
                 current["section_title"] += f" and {sec[1]}"
@@ -547,16 +605,25 @@ def parse_tables(pages):
             elif label == "and" and current and current["kind"] == "section":
                 current["joining"] = True
                 continue
-            elif label.startswith(("Total Changes in", "Net Effect on the Deficit")):
+            elif label.startswith(("Total Changes in", "Net Effect on the Deficit")) or re.fullmatch(r"Total (?:Direct|Discretionary) Spending|Total Revenues", label):
                 current = new_line(lines_seq, "total", label, pno, {}, None, unit, x0)
             elif UNIT_TOTAL.match(label) or label.startswith(("Subtotal", "Interaction", "Total Interaction")):
                 current = new_line(lines_seq, classify_line(label), label, pno, ctx, None, unit, x0)
             elif m := DIVISION.match(label):
+                numbered = True
                 unit = {"division": m.group(1), "title": None}
-                current = new_line(lines_seq, "division", m.group(2), pno, ctx, None, unit, x0)
+                current = new_line(lines_seq, "division", m.group(2), pno, ctx, None, unit, x0, marks)
             elif m := UNIT_TITLE.match(label):
+                numbered = True
                 unit = {**unit, "title": m.group(1)}
-                current = new_line(lines_seq, "title", m.group(2), pno, ctx, None, unit, x0)
+                current = new_line(lines_seq, "title", m.group(2), pno, ctx, None, unit, x0, marks)
+            elif not nums and not note and not numbered and block in ("direct_spending", "revenues") and label != "Estimated":
+                if current and current["kind"] == "program" and not current["has_rows"]:
+                    current["section_title"] += f" {label}"
+                    current["marks"] += marks
+                else:
+                    current = new_line(lines_seq, "program", label, pno, ctx, None, unit, x0, marks)
+                continue
             elif current and not nums and not note and re.fullmatch(r"(?:Estimated )?Budget", label):
                 measure_start = label
                 continue
@@ -566,8 +633,9 @@ def parse_tables(pages):
                     wraps = not current["has_rows"] and (current["kind"] == "program" or x0 < current["x0"] + 3)
                     if wraps:
                         current["section_title"] += f" {label}"
+                        current["marks"] += marks
                     else:
-                        current = new_line(lines_seq, "program", label, pno, ctx, None, unit, x0)
+                        current = new_line(lines_seq, "program", label, pno, ctx, None, unit, x0, marks)
                 elif current["has_rows"]:
                     current["component"] = label
                 else:
@@ -576,22 +644,24 @@ def parse_tables(pages):
             elif current and nums:
                 if measure_start and label == "Authority":
                     label = f"{measure_start} Authority"
+                if block == "direct_spending" and label == "Estimated Authorization":
+                    label = "Estimated Budget Authority"
                 measure_start = None
                 if measure_kind(label) == "other" and current["kind"] in LEAF and not current["has_rows"]:
                     current["section_title"] += f" {label}"
                     label = implied_measure(block)
-                rows.append(emit(table, title, block, current, label, years, nums, pno, lines_seq))
+                rows.append(emit(table, title, block, current, label, years, nums, pno, lines_seq, scale))
                 continue
             else:
                 continue
 
             if note:
                 current["has_rows"] = True
-                rows.append({**emit(table, title, block, current, "", years, None, pno, lines_seq), "note": note,
+                rows.append({**emit(table, title, block, current, "", years, None, pno, lines_seq, scale), "note": note,
                              "included_in": re.findall(r"\d{4,6}", note)})
             elif nums:
-                rows.append(emit(table, title, block, current, implied_measure(block), years, nums, pno, lines_seq))
-    return group(rows)
+                rows.append(emit(table, title, block, current, implied_measure(block), years, nums, pno, lines_seq, scale))
+    return group(rows, footnotes(pages))
 
 
 def pdf_summary(pdf_path):
@@ -646,12 +716,12 @@ def pdf_summary(pdf_path):
     return {"sheet": "Summary", "years": years, "rows": rows} if rows else None
 
 
-def new_line(seq, kind, text, pno, ctx, section_raw, unit=None, x0=0.0):
+def new_line(seq, kind, text, pno, ctx, section_raw, unit=None, x0=0.0, marks=""):
     return {"line": None if kind in STRUCTURE else next(seq), "kind": kind, "section_raw": section_raw, "section_title": text, "component": None, "page0": pno,
-            "has_rows": False, "joining": False, "context": dict(ctx), "unit": dict(unit or {}), "x0": x0}
+            "has_rows": False, "joining": False, "context": dict(ctx), "unit": dict(unit or {}), "x0": x0, "marks": marks}
 
 
-def emit(table, title, block, current, measure, years, nums, pno, seq):
+def emit(table, title, block, current, measure, years, nums, pno, seq, scale=1):
     current["has_rows"] = True
     if current["line"] is None:
         current["line"] = next(seq) if current["kind"] != "division" else 0
@@ -661,6 +731,7 @@ def emit(table, title, block, current, measure, years, nums, pno, seq):
         "sheet": f"Table {table}",
         "title": title,
         **current["context"],
+        "marks": list(dict.fromkeys(current["marks"])),
         "division": current["unit"].get("division"),
         "title_no": current["unit"].get("title"),
         "block": block,
@@ -671,14 +742,15 @@ def emit(table, title, block, current, measure, years, nums, pno, seq):
         "measure": measure,
         "measure_kind": measure_kind(measure) if measure else "note",
         "scored_by": scorer(measure),
-        "values": dict(zip(years, [value(t) for t in nums])) if nums else dict.fromkeys(years),
+        "values": dict(zip(years, [scaled(value(t), scale) for t in nums])) if nums else dict.fromkeys(years),
+        "unit": "billions" if scale == 1000 else None,
         "raw": dict(zip(years, nums)) if nums else {},
         "pages": pages,
         "range": f"page {pages[0]}" if len(pages) == 1 else f"pages {pages[0]}-{pages[-1]}",
     }
 
 
-def group(rows):
+def group(rows, notes=None):
     for r in rows:
         line = r.pop("_line")
         r["line"] = line["line"]
@@ -689,7 +761,7 @@ def group(rows):
     tables = {}
     for r in rows:
         r["breakdown_of_total"] = bool(r["component"]) and (r.pop("_line_id"), r["block"]) in with_totals
-        t = tables.setdefault(r["table"], {"sheet": r["sheet"], "title": r["title"], "years": list(r["values"]), "rows": []})
+        t = tables.setdefault(r["table"], {"sheet": r["sheet"], "title": r["title"], "years": list(r["values"]), "unit": r.get("unit"), "notes": (notes or {}).get(r["table"], {}), "rows": []})
         t["rows"].append(r)
     return list(tables.values())
 
@@ -826,9 +898,9 @@ def glance(path):
 
 
 def pages(path):
-    """The `pdf` tables from a JSON list of pages of `[text, left edge]` lines, for tests that have no PDF."""
+    """The `pdf` tables from a JSON list of pages of `[text, left edge, marks]` lines, for tests that have no PDF."""
     with open(path) as f:
-        return {"format": "pdf", "sheets": parse_tables([[(t, x0) for t, x0 in page] for page in json.load(f)]), "summary": None}
+        return {"format": "pdf", "sheets": parse_tables([[tuple(line) for line in page] for page in json.load(f)]), "summary": None}
 
 
 if __name__ == "__main__":

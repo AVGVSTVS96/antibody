@@ -101,7 +101,7 @@ test.skipIf(!uv)(
       ["deficit", 900, "title", "exact"],
     ]);
     expect(irs[0]?.source_locator).toContain(
-      "CBO prints this sheet in billions of dollars; shown here in millions (x 1,000)",
+      "CBO prints this table in billions of dollars; shown here in millions (x 1,000)",
     );
     expect(irs[0]?.source_locator).toContain("CBO's text says (page 5) \"Title II of division B would rescind");
 

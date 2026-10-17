@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Row } from "@antibody/core";
-import { baselineOf, parseListings, versionCode } from "../src/estimates.ts";
+import { baselineOf, companions, parseListings, versionCode } from "../src/estimates.ts";
 import { sectionMap } from "../src/sections.ts";
 
 const xml = `<billStatus><bill><cboCostEstimates>
@@ -82,6 +82,30 @@ test("a number whose section has a different heading stays unjoined (CBO 112207 
   const map = sectionMap(bill, "eh", [{ num: "112207", title: "Task force on the termination of Direct File" }]);
   expect(map("112207", "Task force on the termination of Direct File")).toBe("s-direct-file");
   expect(map("112207", "Inspector General")).toBeUndefined();
+});
+
+const related = (title: string, type: string, number: number, relation: string, congress = 117) =>
+  `<item><title>${title}</title><congress>${congress}</congress><number>${number}</number><type>${type}</type>
+    <latestAction><actionDate>2022-06-16</actionDate><text>Message on Senate action sent to the House.</text></latestAction>
+    <relationshipDetails><item><type>${relation}</type><identifiedBy>CRS</identifiedBy></item></relationshipDetails></item>`;
+
+test("bills that carried the same text: identical bills, public laws that contain it, and related bills with its short title", () => {
+  const status = `<billStatus><bill>
+    <relatedBills>
+      ${related("Honoring our PACT Act of 2022", "HR", 3967, "Related bill")}
+      ${related("Build a Better VA Act", "HR", 913, "Related bill")}
+      ${related("A bill with the same words", "S", 77, "Identical bill")}
+      ${related("Another vehicle", "HR", 29, "Public law contains the text")}
+      ${related("Honoring our PACT Act of 2022", "HR", 3967, "Related bill", 116)}
+      ${related("Honoring our PACT Act of 2022", "HRES", 1224, "Related bill")}
+      ${related("TEAM Act of 2022", "HR", 55, "Related bill")}
+    </relatedBills>
+    <titles>
+      <item><titleType>Short Titles as Enacted</titleType><title>Honoring our PACT Act of 2022</title></item>
+      <item><titleType>Other Short Titles for portions of a bill</titleType><title>TEAM Act of 2022</title></item>
+      <item><titleType>Official Title as Introduced</titleType><title>Build a Better VA Act</title></item>
+    </titles></bill></billStatus>`;
+  expect(companions(status, "117-s-3373")).toEqual(["117-hr-3967", "117-s-77", "117-hr-29"]);
 });
 
 test("a group's members join by number only when the estimate's numbering is verified by its one-section rows", () => {

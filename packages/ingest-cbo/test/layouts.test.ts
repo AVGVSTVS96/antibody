@@ -152,6 +152,50 @@ test.skipIf(!parsers)("a division named in the table's caption applies to its ti
   expect(firearms.values["2022-2032"]).toBe(12);
 });
 
+test.skipIf(!parsers)(
+  "footnote marks printed beside a label are kept with the row, and the lettered notes with the table",
+  async () => {
+    const parsed = await parse("iija-table2.json");
+    expect(parsed.sheets[0]?.notes?.g).toStartWith("CBO estimates that implementing section 40106 would increase");
+    const marks = (title: string) => rowsOf(parsed).find((r) => r.section_title === title)?.marks;
+    expect(marks("Transmission Facilitation Program")).toEqual(["g"]);
+    expect(marks("Spectrum Auctions")).toEqual(["o"]);
+    expect(marks("Strategic Petroleum Reserve")).toEqual([]);
+  },
+);
+
+// H.R. 3967 as amended by the Senate Committee on Veterans' Affairs, CBO publication 58177: billions, decimals, provision names
+test.skipIf(!parsers)(
+  "a table in billions with decimals and provision names reads in millions and adds up to its total",
+  async () => {
+    const parsed = await parse("pact-senate-version.json");
+    const sheet = parsed.sheets[0]!;
+    expect(sheet.unit).toBe("billions");
+    const programs = sheet.rows.filter((r) => r.line_kind === "program" && r.measure_kind === "outlays");
+    expect(programs.map((r) => [r.section_title, r.values["2022-2031"]])).toEqual([
+      ["Compensation", 151700],
+      ["Other Mandatory Benefits", 1200],
+      ["Leases", 4200],
+      ["Direct Appropriation", 500],
+      ["Camp Lejeune Claims", 6100],
+      ["Discretionary Spending Classified as Direct Spending", 113000],
+      ["Current-Law Discretionary Spending Reclassified as Direct Spending", 390300],
+    ]);
+    expect(
+      total(
+        rowsOf(parsed).filter((r) => r.line_kind === "total"),
+        "outlays",
+        "2022-2031",
+      ),
+    ).toBe(667000);
+    expect(reconcile(parsed.sheets).failing).toEqual([]);
+    expect(rowsOf(parsed).find((r) => r.section_title === "Camp Lejeune Claims")?.marks).toEqual(["e"]);
+    expect(sheet.notes?.e).toStartWith(
+      "Section 804 would allow people who worked or resided at Marine Corps Base Camp Lejeune",
+    );
+  },
+);
+
 // National Defense Authorization Act for FY2026, CBO publication 61935: no 'Table N' heading, labels wrapped over lines
 test.skipIf(!parsers)(
   "a table without a Table N heading is read from its column labels, wrapped measure labels included",

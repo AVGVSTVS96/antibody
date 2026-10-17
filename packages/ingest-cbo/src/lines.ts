@@ -23,6 +23,8 @@ export interface Source {
   pdfArchiveUrl: string | null;
   /** Set when CBO scored text GovInfo doesn't publish and its section numbers were joined to the closest version's numbering. */
   numbering?: string;
+  /** Set when the estimate is of another bill that carried this bill's text. */
+  carried?: string;
 }
 
 export interface Reconcile {
@@ -55,6 +57,7 @@ const LEAF = new Set(["section", "title", "program"]);
 const ADDITIVE = new Set([...LEAF, "interaction", "sequestration", "other"]);
 const RECONCILED = new Set(["budget_authority", "outlays", "revenues", "off_budget_revenues"]);
 const DIVISION_TOTAL = /^division\s+([a-z]+)\s+total$/i;
+const BILLIONS_NOTE = "CBO prints this table in billions of dollars; shown here in millions (x 1,000)";
 /** A sheet printed in billions to one decimal rounds each row to $50 million, so a total can be off by $100 million. */
 const BILLIONS_ROUNDING = 100;
 
@@ -120,6 +123,8 @@ interface CboLine {
   key: string;
   kind: "section" | "title" | "program";
   scope?: Scope;
+  /** The one bill section a footnote on the row names. */
+  noted?: Noted;
   title: string | null;
   nums: string[];
   place: Place;
@@ -148,6 +153,27 @@ interface Member {
 
 const WEAKNESS: Record<Join, number> = { number: 0, title: 1, heading: 2 };
 const weakest = (joins: Join[]): Join => joins.reduce((a, b) => (WEAKNESS[b] > WEAKNESS[a] ? b : a), "number");
+interface Noted {
+  num: string;
+  mark: string;
+  quote: string;
+}
+
+/**
+ * The section a footnote on a row names: the one section number in the note's first sentence, as in "Section 804
+ * would allow …". A row with notes naming different sections, or none, names none.
+ */
+function notedSection(row: ParsedRow, notes: Record<string, string> = {}): Noted | undefined {
+  const found = (row.marks ?? []).flatMap((mark) => {
+    const quote = (notes[mark] ?? "").split(/(?<=\.) /)[0] ?? "";
+    const nums = [...quote.matchAll(/\b[Ss]ections? (\d+[A-Z]?)(?= would|,| of title| of division| states)/g)].map(
+      (m) => m[1]!,
+    );
+    return nums.length === 1 ? [{ num: nums[0]!, mark, quote }] : [];
+  });
+  return found.length === 1 ? found[0] : undefined;
+}
+
 const placeOf = (r: ParsedRow): Place =>
   r.division || r.title_no || !r.scope
     ? { division: r.division ?? null, title: r.title_no ?? null }
@@ -202,6 +228,7 @@ export function buildLines(
           nums: [...new Set(rows.flatMap((r) => r.sections).map(baseNum))],
           place: placeOf(rows[0]!),
           scope: rows[0]!.scope,
+          noted: notedSection(rows[0]!, sheet.notes),
           flow,
           amount,
           sheet,
@@ -300,7 +327,11 @@ export function buildLines(
   };
 
   for (const it of items) {
-    if (it.kind === "program" && !it.scope) {
+    const sid = it.noted && it.kind !== "section" ? find(it.noted.num, it.title, false, it.place.division) : undefined;
+    if (it.noted && sid) {
+      const how = `CBO's note ${it.noted.mark} on this row names section ${it.noted.num}: "${it.noted.quote}"`;
+      push(parts, `${it.place.division ?? ""}|${it.noted.num}|${it.flow}`, { ...plain(it), sid, how });
+    } else if (it.kind === "program" && !it.scope) {
       const m = programs.get(it.key);
       if (!m) {
         unjoined(it);
@@ -496,12 +527,19 @@ function wholeBill(src: Source, summary: Summary | null, glance: Glance | null):
       archive_url: file.archiveUrl,
       rests_on: [],
       source_url: file.url,
-      source_locator: where,
+      source_locator: [where, src.carried].filter(Boolean).join("; "),
     });
   };
   const summaryFile = summary?.file ?? { url: src.fileUrl, archiveUrl: src.archiveUrl };
   for (const r of summary?.rows ?? [])
-    add(r.measure, r.block, r.values, summary!.years, summaryFile, locator([r.range]));
+    add(
+      r.measure,
+      r.block,
+      r.values,
+      summary!.years,
+      summaryFile,
+      [locator([r.range]), summary!.unit === "billions" && BILLIONS_NOTE].filter(Boolean).join("; "),
+    );
   if (glance?.glance && src.pdfUrl)
     for (const r of glance.glance.rows)
       add(
@@ -538,7 +576,7 @@ function line(
     values: amount.values,
     archive_url: amount.file.archiveUrl,
     source_url: amount.file.url,
-    source_locator: [locator(amount.ranges), amount.note, how, l.section_ids.length ? src.numbering : null]
+    source_locator: [locator(amount.ranges), amount.note, how, src.carried, l.section_ids.length ? src.numbering : null]
       .filter(Boolean)
       .join("; "),
   };
@@ -576,9 +614,7 @@ function sum(rows: ParsedRow[], sheet: ParsedSheet, file: SourceFile): Amount {
     values: addValues(rows.map((r) => pick(r.values, sheet.years))),
     ranges: rows.map((r) => r.range),
     file,
-    ...(sheet.unit === "billions" && {
-      note: "CBO prints this sheet in billions of dollars; shown here in millions (x 1,000)",
-    }),
+    ...(sheet.unit === "billions" && { note: BILLIONS_NOTE }),
   };
 }
 

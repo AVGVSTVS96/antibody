@@ -274,6 +274,59 @@ test(`a title of more than ${EVEN_SPLIT_MAX} sections stays one group line: an e
   expect(group.source_locator).toContain(`more than ${EVEN_SPLIT_MAX} sections`);
 });
 
+test("a footnote on a provision row that names one section ties the row to it, when the heading fits", () => {
+  const notes = {
+    g: "CBO estimates that implementing section 40106 would increase net direct spending by $3.8 billion. The rest.",
+    h: "Section 40110 would increase the amount. Section 40111 is also named.",
+    i: "This proposal also would affect revenues.",
+  };
+  const parsed = table(
+    row(
+      {
+        line: 1,
+        line_kind: "program",
+        measure_kind: "outlays",
+        section_title: "Transmission Facilitation Program",
+        division: "D",
+        title_no: "I",
+        marks: ["g"],
+      },
+      3785,
+    ),
+    row(
+      {
+        line: 2,
+        line_kind: "program",
+        measure_kind: "outlays",
+        section_title: "Something Else Entirely",
+        division: "D",
+        title_no: "I",
+        marks: ["g"],
+      },
+      9,
+    ),
+    row(
+      {
+        line: 3,
+        line_kind: "program",
+        measure_kind: "outlays",
+        section_title: "Power Marketing Borrowing",
+        division: "D",
+        marks: ["h", "i"],
+      },
+      5,
+    ),
+  );
+  parsed.sheets[0]!.notes = notes;
+  const lines = build(parsed, divisionI);
+  const named = lines.find((l) => l.id.endsWith(":sD.40106:outlays"))!;
+  expect(named).toMatchObject({ join: "number", split: "exact", total_musd: 3785, section_ids: ["d40106"] });
+  expect(named.source_locator).toContain(
+    'CBO\'s note g on this row names section 40106: "CBO estimates that implementing section 40106 would increase net direct spending by $3.8 billion."',
+  );
+  expect(lines.filter((l) => l.line_kind === "section" && l.total_musd === 9)).toEqual([]);
+});
+
 test("a repeated section number in two divisions makes two lines, not one summed line", () => {
   const omnibus = [
     section("u102", "division:U/sec:102", "Prostate cancer research"),

@@ -10,6 +10,8 @@ export interface ParsedRow {
   /** The division letter and title numeral the row sits under in CBO's table. */
   division?: string | null;
   title_no?: string | null;
+  /** Footnote letters printed beside the row's label; the sheet's `notes` has their text. */
+  marks?: string[];
   /** The heading above the one this provision sits under (a "Work Requirements" over its "Supplemental Nutrition Assistance Program"). */
   parent?: string | null;
   /** Where CBO's own text says the provision sits, for a row whose table names no division or title. */
@@ -44,6 +46,8 @@ export interface ParsedSheet {
   years: string[];
   /** "billions" when the sheet prints billions; rows are already in millions, and the citation says so. */
   unit?: string | null;
+  /** The table's lettered notes. */
+  notes?: Record<string, string>;
   rows: ParsedRow[];
 }
 
@@ -60,6 +64,8 @@ export interface Summary {
   file?: SourceFile;
   sheet: string;
   years: string[];
+  /** "billions" when the sheet prints billions; rows are already in millions. */
+  unit?: string | null;
   rows: TotalRow[];
 }
 
