@@ -156,12 +156,17 @@ export function answers(m: BillModel): Answer[] {
         link: "See every section",
         target: "news",
       };
+  const reports = quiet?.s.score?.components.lobbyingReports ?? 0;
+  const lobbied =
+    reports >= BIG_STAKES.reports && Math.abs(quiet?.dollarsMusd ?? 0) < BIG_STAKES.dollarsMusd
+      ? `${count(reports, "lobbying report")} named it; `
+      : "";
   const second: Answer = quiet
     ? {
         tone: "quiet",
         label: "What slipped by",
         big: quiet.dollarsMusd != null ? usd(Math.abs(quiet.dollarsMusd) * 1e6) : count(m.buried.length, "section"),
-        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${trim(quiet.s.heading, 56)}.` : `quiet, with big stakes: §${quiet.s.num}, ${trim(quiet.s.heading, 56)}.`} ${count(quiet.s.attention?.hits ?? 0, "article")} matched it${quiet.s.late ? ", and it was added after the first text" : ""}.`,
+        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${trim(quiet.s.heading, 56)}.` : `quiet, with big stakes: §${quiet.s.num}, ${trim(quiet.s.heading, 56)}.`} ${lobbied}${count(quiet.s.attention?.hits ?? 0, "article")} matched it${quiet.s.late ? ", and it was added after the first text" : ""}.`,
         link: "Why it’s flagged",
         target: "news",
       }
