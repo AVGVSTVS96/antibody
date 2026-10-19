@@ -1,4 +1,4 @@
-import { BIG_STAKES, billStats, headlineDeficit } from "@antibody/core";
+import { articlesOf, BIG_STAKES, billStats, headlineDeficit } from "@antibody/core";
 import { count, day, musd, usd } from "./format.ts";
 import type { BillModel, MemberView, SectionView } from "./model.ts";
 
@@ -154,7 +154,7 @@ export function answers(m: BillModel): Answer[] {
     ? {
         tone: "loud",
         label: "What got the attention",
-        big: count(loud.s.attention?.hits ?? 0, "article"),
+        big: count(articlesOf(loud.s) ?? 0, "article"),
         text: `${A.sample ? `of the ${A.sample.relevant.toLocaleString("en-US")} we read were` : "were"} about §${loud.s.num}, ${trim(loud.s.heading, 56)}, more than any other section.`,
         link: m.headline.length > 1 ? `See the ${m.headline.length} loud sections` : "See the loud section",
         target: "news",
@@ -184,7 +184,7 @@ export function answers(m: BillModel): Answer[] {
           quiet.dollarsMusd != null
             ? `${quiet.dollarsMusd < 0 ? "saves" : "costs"} ${usd(Math.abs(quiet.dollarsMusd) * 1e6)}`
             : count(m.buried.length, "section"),
-        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(quiet.s.attention?.hits ?? 0, "article")} matched it${quiet.s.late ? ", and it was added after the first text" : ""}.`,
+        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(articlesOf(quiet.s) ?? 0, "article")} matched it${quiet.s.late ? ", and it was added after the first text" : ""}.`,
         link: "Why it’s flagged",
         target: "news",
       }
@@ -267,7 +267,7 @@ export function dots(m: BillModel): Dot[] {
     )
     .map((v) => ({
       v,
-      hits: v.s.attention?.hits ?? 0,
+      hits: articlesOf(v.s) ?? 0,
       musd: v.dollarsMusd!,
       kind: v.kind === "headline" || v.kind === "buried" ? v.kind : "normal",
     }));

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import fixture from "../fixtures/genius-mini.bundle.json";
-import { BIG_STAKES, Bundle, BundleIndex, billStats, checkBundle, headlineDeficit } from "../src/bundle.ts";
+import { articlesOf, BIG_STAKES, Bundle, BundleIndex, billStats, checkBundle, headlineDeficit } from "../src/bundle.ts";
 
 test("the fixture is a valid, sound bundle", () => {
   const parsed = Bundle.safeParse(fixture);
@@ -197,4 +197,17 @@ test("an appropriations act's deficit is marked as direct spending and revenue o
   b.bill.title = "Consolidated Appropriations Act, 2023";
   b.bill.shortTitle = null;
   expect(billStats(b).deficitDirectOnly).toBe(true);
+});
+
+test("a section's articles are the matcher's plus a second look's, the count its score uses", () => {
+  const b = structuredClone(Bundle.parse(fixture));
+  const s = b.sections.find((x) => x.inFinal)!;
+  s.attention = { hits: 3 } as never;
+  s.score = Bundle.shape.sections.element.shape.score.parse(score(null));
+  s.score!.components.attentionChecked = 2;
+  expect(articlesOf(s)).toBe(5);
+  s.score!.components.attentionChecked = null;
+  expect(articlesOf(s)).toBe(3);
+  s.attention = null;
+  expect(articlesOf(s)).toBeNull();
 });

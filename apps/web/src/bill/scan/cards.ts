@@ -1,3 +1,4 @@
+import { articlesOf } from "@antibody/core";
 import { plainName } from "../../lib/format.ts";
 import type { Actor, BillModel, MemberView } from "../../lib/model.ts";
 import type { SectionGroup } from "./groups.ts";
@@ -199,7 +200,7 @@ export function groupCard(group: SectionGroup): GroupCard {
     priced: rows.length,
     netMusd: rows.reduce((s, r) => s + r.musd, 0),
     scored: scored.length,
-    noNews: scored.filter((v) => v.s.attention!.hits === 0).length,
+    noNews: scored.filter((v) => articlesOf(v.s) === 0).length,
     flagged: group.sections.filter((v) => v.kind === "buried").length,
     rows,
   };

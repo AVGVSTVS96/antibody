@@ -1,4 +1,4 @@
-import { BIG_STAKES } from "@antibody/core";
+import { articlesOf, BIG_STAKES } from "@antibody/core";
 import { Fragment, type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { dots, quietZone, sectionName } from "../lib/derive.ts";
 import { baselineWords, count, day, deficitWords, usd } from "../lib/format.ts";
@@ -334,7 +334,7 @@ function Coverage({ m }: { m: BillModel }) {
   const final = m.sections.filter((v) => v.s.inFinal);
   const bins = new Map<number, { n: number; loud: number; flagged: number }>();
   for (const v of final) {
-    const k = Math.min(v.s.attention?.hits ?? 0, 20);
+    const k = Math.min(articlesOf(v.s) ?? 0, 20);
     const b = bins.get(k) ?? { n: 0, loud: 0, flagged: 0 };
     b.n++;
     if (v.kind === "headline") b.loud++;
@@ -384,6 +384,7 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
   const version = m.versions.find((x) => x.code === v.s.firstVersion);
   const A = m.b.attention;
   const hits = v.s.attention?.hits ?? 0;
+  const checked = c?.attentionChecked ?? 0;
   const lobbyEdge = m.b.edges.find((e) => e.kind === "lobbied" && e.dst === `section:${v.s.id}`);
   const payFor = v.s.score?.offsets ? m.sections.find((x) => x.s.id === v.s.score?.offsets) : undefined;
   const paidBy = m.sections.find((x) => x.s.score?.offsets === v.s.id);
@@ -464,8 +465,8 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           "News",
           v.s.attention?.pct != null || hits ? (
             <>
-              {hits} of {(A.sample?.relevant ?? A.articles).toLocaleString("en-US")} articles
-              {c?.attentionChecked ? `, plus ${c.attentionChecked} a second look found` : ""}
+              {hits + checked} of {(A.sample?.relevant ?? A.articles).toLocaleString("en-US")} articles
+              {checked ? ` (${hits} on the first read, ${checked} more on a second look)` : ""}
             </>
           ) : (
             "Not ranked"

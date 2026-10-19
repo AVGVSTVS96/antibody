@@ -1,3 +1,4 @@
+import { articlesOf } from "@antibody/core";
 import {
   memo,
   type PointerEvent as ReactPointer,
@@ -919,7 +920,7 @@ function flaggedLabel(scenes: Scenes, fs: number, avoid: Box[]): Flag | null {
   const o = scenes.index.get(best.id)! * CHANNELS;
   const a = t[o + CH.angle]!;
   const r = t[o + CH.r1]!;
-  const hits = best.v.s.attention?.hits;
+  const hits = articlesOf(best.v.s);
   const sub = hits == null ? "not scored for news" : `${count(hits, "article")}`;
   const sign = best.v.dollarsMusd! < 0 ? "−" : "+";
   const text = `${clip(best.v.s.heading, 30)}, ${sign}${money(Math.abs(best.v.dollarsMusd!) * 1e6)}`;

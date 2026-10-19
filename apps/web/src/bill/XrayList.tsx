@@ -1,3 +1,4 @@
+import { articlesOf } from "@antibody/core";
 import { Fragment, useMemo, useState } from "react";
 import { baselineWords, count, day, musd, rank } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
@@ -217,15 +218,15 @@ export function XrayList({ m }: { m: BillModel }) {
                     <td className="loud">
                       {s.attention?.pct == null ? (
                         <span className="miss" title="Too little news coverage on this bill to rank sections">
-                          {s.attention ? count(s.attention.hits, "article") : "—"}
+                          {s.attention ? count(articlesOf(s) ?? 0, "article") : "—"}
                         </span>
                       ) : (
-                        <div className="att" title={`${count(s.attention.hits, "article")} matched this section`}>
+                        <div className="att" title={`${count(articlesOf(s) ?? 0, "article")} matched this section`}>
                           <div className="bar">
                             <i style={{ width: `${s.attention.pct * 100}%` }} />
                           </div>
                           <span>
-                            {rank(s.attention.pct)} <span className="dim">· {s.attention.hits}</span>
+                            {rank(s.attention.pct)} <span className="dim">· {articlesOf(s)}</span>
                           </span>
                         </div>
                       )}

@@ -502,6 +502,10 @@ const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null;
   (c.dollarsMusd !== null && c.dollarsSplit !== "even_split" && Math.abs(c.dollarsMusd) >= BIG_STAKES.dollarsMusd) ||
   c.lobbyingReports >= BIG_STAKES.reports;
 
+/** Articles that discuss a section, counted the way the score counts them: the matcher's plus a second look's. Null when news is unmeasured for it. */
+export const articlesOf = (s: Pick<Section, "attention" | "score">) =>
+  s.attention ? s.attention.hits + (s.score?.components.attentionChecked ?? 0) : null;
+
 /** Trade dates from the first text through signing (or the last dated action): the span in which a trade could be about the bill. */
 export function activeSpan(b: Bundle): [string, string] | null {
   const own = b.versions.filter((v) => !v.predecessor && v.date).map((v) => v.date!);
