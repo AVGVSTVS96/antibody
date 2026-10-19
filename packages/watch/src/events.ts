@@ -46,7 +46,7 @@ export function tally(text: string): Tally | null {
 /** A recorded floor vote's count; committee markup votes are left out. */
 const floorTally = (a: Action) => (a.type === "Committee" ? null : tally(a.text));
 
-const passedIn = (a: Action) => a.text.match(/^Passed\/agreed to in (House|Senate)/)?.[1] ?? null;
+const passedIn = (a: Action) => a.text.match(/^Passed(?:\/agreed to in)? (House|Senate)\b/)?.[1] ?? null;
 
 export function classify(a: Action, passedBefore: Set<string>): Step | null {
   const t = a.text;

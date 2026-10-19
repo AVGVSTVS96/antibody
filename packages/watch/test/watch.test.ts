@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { parseBillStatus, parsePackage } from "../src/billstatus.ts";
+import { type Action, parseBillStatus, parsePackage } from "../src/billstatus.ts";
 import { deficitEffect, digestJson, digestMarkdown, money, reasons } from "../src/digest.ts";
 import { billEvents, classify, closedRule, closedRuleBills, tally, voteClock } from "../src/events.ts";
 import { lobbyingQuery } from "../src/lda.ts";
@@ -225,6 +225,23 @@ test("a Senate referral recorded as a floor action is not floor action", () => {
   expect(classify(act(referral), new Set())).toBeNull();
   expect(classify(act("Read twice and referred to the Committee on Finance."), new Set())).toBeNull();
   expect(classify(act("Motion to proceed to consideration of measure made in Senate."), new Set())).toBe("floor");
+});
+
+test("'Passed Senate …' counts as passing a chamber, once, next to its 'Passed/agreed to' twin", () => {
+  const act = (text: string): Action => ({ date: "2026-10-15", text, type: "Floor", code: null, votes: [] });
+  const plain = "Passed Senate without amendment by Unanimous Consent. (consideration: CR S5186)";
+  const twin = `Passed/agreed to in Senate: ${plain}`;
+  expect(classify(act(plain), new Set())).toBe("passed");
+  expect(classify(act("Passed Senate with an amendment by Voice Vote."), new Set())).toBe("passed");
+  expect(classify(act(plain), new Set(["House"]))).toBe("passed_second");
+  expect(classify(act(twin), new Set())).toBe("passed");
+  const s = {
+    ...status(),
+    versions: [],
+    cbo: [],
+    actions: [plain, twin].map(act),
+  };
+  expect(billEvents(s, "2026-10-01").map((e) => e.step)).toEqual(["passed"]);
 });
 
 test("only flagged bills are x-rayed and published, best first, never padded up to the count", () => {
