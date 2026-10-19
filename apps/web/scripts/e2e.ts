@@ -48,6 +48,13 @@ async function open(path: string, width = 1440) {
   await box.fill("GENIUS");
   await page.waitForTimeout(300);
   check((await page.locator("a[href='/bill/119-s-1582']").count()) > 0, "search 'GENIUS' keeps the GENIUS bill");
+  await box.fill("");
+  for (const width of [768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.waitForTimeout(200);
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+    check(over <= 0, `index at ${width}: no horizontal overflow (${over}px)`);
+  }
   check(errors.length === 0, `index has no console errors ${errors.join(" | ")}`);
   await page.close();
 }

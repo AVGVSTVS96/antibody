@@ -79,6 +79,8 @@ export interface Note {
 }
 
 const CHAR = 6.4;
+/** Below the chart's two title lines. */
+const TITLE_BOTTOM = 38;
 
 export function notes(placed: Placed[], f: Frame, zone: { x: number; y: number } | null): Note[] {
   const picks: { p: Placed; tone: Note["tone"]; extra: string }[] = [];
@@ -99,7 +101,16 @@ export function notes(placed: Placed[], f: Frame, zone: { x: number; y: number }
       "ink",
       "the largest figure",
     );
-  const boxes: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  const boxes: { x0: number; x1: number; y0: number; y1: number }[] = [
+    { x0: f.l - 2, x1: f.l + 36 * CHAR, y0: 0, y1: TITLE_BOTTOM },
+    ...(zone
+      ? [
+          phone
+            ? { x0: zone.x + 4, x1: zone.x + 8 + 16 * CHAR, y0: f.t - 24, y1: f.t - 4 }
+            : { x0: f.l + 6, x1: f.l + 10 + 11 * CHAR, y0: f.t + 4, y1: f.t + 40 },
+        ]
+      : []),
+  ];
   const hit = (b: (typeof boxes)[number], pad: number) =>
     boxes.some((k) => b.x0 < k.x1 + pad && b.x1 > k.x0 - pad && b.y0 < k.y1 + pad && b.y1 > k.y0 - pad);
   const dotBoxes = placed.map((p) => ({ x0: p.cx - p.r, x1: p.cx + p.r, y0: p.cy - p.r, y1: p.cy + p.r }));
@@ -119,7 +130,7 @@ export function notes(placed: Placed[], f: Frame, zone: { x: number; y: number }
         const x = p.cx + dx + (anchor === "start" ? 4 : -4);
         const y = p.cy + dy;
         const box = { x0: anchor === "start" ? x : x - w, x1: anchor === "start" ? x + w : x, y0: y - 12, y1: y + 22 };
-        if (box.x0 < f.l + 2 || box.x1 > f.w - 4 || box.y0 < 6 || box.y1 > f.h - f.b - 6) continue;
+        if (box.x0 < f.l + 2 || box.x1 > f.w - 4 || box.y0 < TITLE_BOTTOM || box.y1 > f.h - f.b - 6) continue;
         if (zone && box.x0 < zone.x + 2 && box.y1 > f.t && box.y0 < zone.y + 6 && p.kind !== "buried") continue;
         if (hit(box, 4) || hitDot(box)) continue;
         const cross = out.some((o) => segmentHitsBox(p.cx, p.cy, x, y, o.p === p ? null : boxOf(o, w)));

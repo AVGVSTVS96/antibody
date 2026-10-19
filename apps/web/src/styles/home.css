@@ -455,6 +455,7 @@
   }
   .stats {
     display: flex;
+    flex-wrap: wrap;
     width: 100%;
     align-items: flex-start;
     gap: 16px 0;
@@ -572,5 +573,15 @@
   }
   .read-g {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats {
+    justify-content: space-between;
+    column-gap: 8px;
+  }
+  .stats > span {
+    padding-right: 0;
   }
 }

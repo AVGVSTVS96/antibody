@@ -839,7 +839,7 @@ details p {
 }
 .clients li {
   display: grid;
-  grid-template-columns: 136px minmax(0, 1fr) 44px;
+  grid-template-columns: 192px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 16px;
   padding: 13px 0;
@@ -1032,7 +1032,27 @@ a.cname:hover {
   color: var(--ink-2);
 }
 .bar-key {
-  display: none;
+  display: flex;
+  gap: 20px;
+  padding: 14px 0 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.bar-key > * {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bar-key i {
+  width: 22px;
+  height: 8px;
+  border-radius: 4px;
+}
+.bar-key .b {
+  background: var(--ink);
+}
+.bar-key .a {
+  background: var(--quiet-dot);
 }
 .toptr li b {
   text-align: right;
@@ -1081,6 +1101,10 @@ a.cname:hover {
   font-size: 12px;
   font-weight: 600;
   fill: var(--ink);
+  stroke: var(--paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  paint-order: stroke;
 }
 .gaps {
   padding-top: 20px;
@@ -1244,7 +1268,7 @@ a.cname:hover {
     --gap: 6px;
   }
   .clients li {
-    grid-template-columns: 124px minmax(0, 1fr) 36px;
+    grid-template-columns: 148px minmax(0, 1fr) 36px;
     gap: 12px;
   }
   .toptr header {
@@ -1253,29 +1277,6 @@ a.cname:hover {
   }
   .toptr header .tr-bar-h {
     display: none;
-  }
-  .bar-key {
-    display: flex;
-    gap: 20px;
-    padding: 14px 0 4px;
-    font-size: 13px;
-    color: var(--ink-2);
-  }
-  .bar-key span {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .bar-key i {
-    width: 22px;
-    height: 8px;
-    border-radius: 4px;
-  }
-  .bar-key .b {
-    background: var(--ink);
-  }
-  .bar-key .a {
-    background: var(--quiet-dot);
   }
   .toptr li {
     grid-template-columns: minmax(0, 1fr) 64px 60px;

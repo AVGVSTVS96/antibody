@@ -26,6 +26,19 @@ export function missingBill(raw: string) {
   return id;
 }
 
+/** What a reader gets for a bill that isn't on the site: where to read it, not a command to run. */
+export function NotXrayed({ id }: { id: BillId }) {
+  return (
+    <>
+      {billDisplay(id)} ({id.split("-")[0]}th Congress) isn’t x-rayed yet.{" "}
+      <a href={congressGovUrl(id)} target="_blank" rel="noopener">
+        Read it on congress.gov
+      </a>
+      .
+    </>
+  );
+}
+
 export function Find() {
   const [index, setIndex] = useState<BundleIndex | null>(null);
   const [q, setQ] = useState("");
@@ -153,13 +166,7 @@ export function Find() {
           {!hits.length && (
             <div className="find-none">
               {unknown ? (
-                <>
-                  {billDisplay(unknown)} ({unknown.split("-")[0]}th Congress) isn’t x-rayed yet.{" "}
-                  <a href={congressGovUrl(unknown)} target="_blank" rel="noopener">
-                    Read it on congress.gov
-                  </a>
-                  .
-                </>
+                <NotXrayed id={unknown} />
               ) : (
                 <>No bill matches “{q.trim()}”. Try a number like S.1582 or H.R. 1.</>
               )}

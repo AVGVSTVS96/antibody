@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { isPassage, memberLine, monthly, monthName, niceMax, passageDate, traders } from "../lib/derive.ts";
+import { isPassage, layMarks, memberLine, monthly, monthName, niceMax, passageDate, traders } from "../lib/derive.ts";
 import { count, day } from "../lib/format.ts";
 import { useWidth } from "../lib/hooks.ts";
 import type { BillModel } from "../lib/model.ts";
@@ -40,15 +40,15 @@ export function Trades({ m }: { m: BillModel }) {
           <SeatGrid filled={m.tradersDuring} />
           <p className="fine">
             One dot per seat.
-            {unread ? ` ${unread} members filed on paper and haven’t been read yet, so they may be missing.` : ""}
+            {unread
+              ? ` ${count(unread, "member")} filed on paper and ${unread === 1 ? "hasn’t" : "haven’t"} been read yet, so their trades may be missing.`
+              : ""}
           </p>
         </div>
         <div className="toptr">
           <header>
             <h3>Most trades</h3>
-            <span className="tr-bar-h">
-              Dark before {own ? "the vote" : m.b.bill.law ? "signing" : "the latest action"}, light after
-            </span>
+            <span className="tr-bar-h" />
             <span className="tr-vote-h">Voted</span>
             <span className="tr-n-h">Trades</span>
           </header>
@@ -162,16 +162,12 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
   const [hover, setHover] = useState<number | null>(null);
   if (!months.length) return null;
   const phone = w < 560;
-  const H = phone ? 252 : 240;
   const L = phone ? 34 : 44;
   const R = 2;
-  const T = phone ? 64 : 44;
   const B = 36;
   const top = niceMax(Math.max(...months.map((x) => x.n)));
   const bw = (w - L - R) / months.length;
   const X = (i: number) => L + i * bw;
-  const Y = (n: number) => T + (H - T - B) * (1 - n / top);
-  const base = H - B;
   const peak = months.reduce((a, x) => (x.n > a.n ? x : a), months[0]!);
   const idx = (iso: string) => months.findIndex((x) => x.key === iso.slice(0, 7));
   const firstPass = m.b.votes.filter(isPassage).sort((a, b) => a.date.localeCompare(b.date))[0];
@@ -186,6 +182,15 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
       label: `${m.b.bill.law ? "Signed" : "Latest action"}, ${day(span[1]).replace(/, \d{4}$/, "")}`,
     },
   ].filter((x): x is { at: string; label: string } => !!x && idx(x.at) >= 0);
+  const laid = layMarks(
+    marks.map((k) => ({ ...k, x: X(idx(k.at)) + bw * (Number(k.at.slice(8, 10)) / 31) })),
+    phone,
+  );
+  const rows = Math.max(1, ...laid.map((k) => k.row + 1));
+  const T = Math.max(phone ? 64 : 44, 12 + rows * 16);
+  const H = phone ? 252 : 240;
+  const Y = (n: number) => T + (H - T - B) * (1 - n / top);
+  const base = H - B;
   const yticks = Array.from({ length: 6 }, (_, i) => (top / 5) * i).filter((v, i, a) => a.indexOf(v) === i);
   const years = months.map((x, i) => ({ x, i })).filter(({ x, i }) => i === 0 || x.key.endsWith("-01"));
   const inSpan = peak.during;
@@ -248,19 +253,19 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
             )}
           </g>
         ))}
-        {marks.map((k, j) => {
-          const x = X(idx(k.at)) + bw * (Number(k.at.slice(8, 10)) / 31);
-          const row = phone ? j : j === 1 ? 1 : 0;
-          const end = j === 2 && !phone;
-          return (
-            <g key={k.at + k.label} pointerEvents="none">
-              <line x1={x} x2={x} y1={4 + row * 16} y2={base} stroke="var(--ink)" strokeDasharray="1 3" />
-              <text x={end ? x - 5 : x + 5} y={15 + row * 16} textAnchor={end ? "end" : "start"} className="mk-l">
-                {k.label}
-              </text>
-            </g>
-          );
-        })}
+        {laid.map((k) => (
+          <g key={k.at + k.label} pointerEvents="none">
+            <line x1={k.x} x2={k.x} y1={4 + k.row * 16} y2={base} stroke="var(--ink)" strokeDasharray="1 3" />
+            <text
+              x={k.end ? k.x - 5 : k.x + 5}
+              y={15 + k.row * 16}
+              textAnchor={k.end ? "end" : "start"}
+              className="mk-l"
+            >
+              {k.label}
+            </text>
+          </g>
+        ))}
       </svg>
       <p className="fine">
         The busiest month was {monthName(peak.key)}, with {count(peak.n, "trade")}

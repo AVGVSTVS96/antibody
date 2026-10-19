@@ -474,3 +474,19 @@ export const monthName = (key: string) => {
 };
 
 export { musd };
+
+const MARK_CHAR = 6.6;
+
+/** Puts each dated label on the first row where it clears the labels before it; on a phone each takes its own row. */
+export function layMarks(marks: { at: string; label: string; x: number }[], phone: boolean) {
+  const taken: { row: number; x0: number; x1: number }[] = [];
+  return marks.map((k, j) => {
+    const end = j === marks.length - 1 && j > 0 && !phone;
+    const width = k.label.length * MARK_CHAR;
+    const x0 = end ? k.x - 5 - width : k.x + 5;
+    let row = phone ? j : 0;
+    while (!phone && taken.some((t) => t.row === row && x0 < t.x1 + 8 && x0 + width > t.x0 - 8)) row++;
+    taken.push({ row, x0, x1: x0 + width });
+    return { ...k, row, end };
+  });
+}

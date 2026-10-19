@@ -186,9 +186,8 @@ export function Records({ m }: { m: BillModel }) {
               Companies tied to the bill ({tied.length}) <Inf />
             </summary>
             <p>
-              {b.rules.find((r) => r.id === "tied-stock")?.text ??
-                "Companies that lobbied on the bill or are named in its text."}{" "}
-              A tie is not proof of gain; it is where to look.
+              {b.rules.find((r) => r.id === "tied-stock")?.text ?? "Companies that lobbied on the bill."} A tie is not
+              proof of gain; it is where to look.
             </p>
             <ul className="recl">
               {tied.map((a) => (

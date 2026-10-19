@@ -6,6 +6,7 @@ import {
   eraLine,
   eras,
   introLine,
+  layMarks,
   monthly,
   niceMax,
   phases,
@@ -119,4 +120,15 @@ test("members with unread paper filings come from the bundle, drawn in the graph
   const b = Bundle.parse(structuredClone(genius));
   b.paperUnread = { R: 1, D: 1, I: 0 };
   expect(buildModel(b).unread).toEqual({ R: 1, D: 1, I: 0 });
+});
+
+test("dated labels on the month chart never share a row where they would overlap", () => {
+  const at = (label: string, x: number) => ({ at: "2025-01-01", label, x });
+  const rows = layMarks(
+    [at("First text, May 20", 700), at("House passes, May 22", 708), at("Signed, Jul 4", 770)],
+    false,
+  );
+  expect(rows.map((r) => r.row)).toEqual([0, 1, 2]);
+  expect(layMarks([at("First text, May 20", 100), at("Signed, Jul 4", 700)], false).map((r) => r.row)).toEqual([0, 0]);
+  expect(layMarks([at("First text, May 20", 100), at("Signed, Jul 4", 120)], true).map((r) => r.row)).toEqual([0, 1]);
 });

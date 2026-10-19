@@ -4,7 +4,7 @@ import { loadIndex, prefetchBundle } from "../lib/data.ts";
 import { count, day } from "../lib/format.ts";
 import { useMedia } from "../lib/media.ts";
 import { billHref, navigate, onLink } from "../lib/router.ts";
-import { matchBills, missingBill } from "../ui/Find.tsx";
+import { matchBills, missingBill, NotXrayed } from "../ui/Find.tsx";
 import { Fingerprint, fingerprintNote } from "../ui/Fingerprint.tsx";
 import { Search } from "../ui/icons.tsx";
 import { Footer, Top } from "../ui/Top.tsx";
@@ -47,12 +47,7 @@ export function IndexPage() {
     if (hit) return navigate(billHref(hit.id));
     if (hits.length) return setNotice(<>{count(hits.length, "bill")} match. Pick one below, or be more specific.</>);
     if (!id) return setNotice(<>No bill matches “{raw}”. Try a number like S.1582, H.R. 1, or a congress.gov link.</>);
-    setNotice(
-      <>
-        That bill isn’t x-rayed yet. The daily watch x-rays the bills that move, or build it with{" "}
-        <code>bun run antibody xray {id}</code>.
-      </>,
-    );
+    setNotice(<NotXrayed id={id} />);
   }
 
   const needle = q.trim();
