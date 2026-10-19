@@ -22,14 +22,14 @@ Row = `attention` table, an inference: rule `attention-v1`, confidence 0.75 (0.4
 
 ## Late adds
 
-Not detected here. `section_scores.late` is read from the bills lineage (`sections.late`), as decision `fix-late-flag` requires.
+Not detected here. `sections.late` is the bills lineage's, as decision `fix-late-flag` requires. `section_scores.late` is that flag after the counterpart check (buried-v4): a late section that a model paired with an older section that was not late (the pair the page shows as "Rewritten as...") is not new text, and `late_cleared_by` names the older one. OBBBA: 24 of 112 late sections cleared; IRA: 7 of 23.
 
 ## The buried score, in plain words
 
-Every constant is in `analyze/src/score.ts` and printed in the published rule (`SCORE_TEXT`, version `buried-v3`):
+Every constant is in `analyze/src/score.ts` and printed in the published rule (`SCORE_TEXT`, version `buried-v4`):
 
-1. **Stakes** (0 to 1): the larger of dollars and lobbying. Dollars = CBO's 10-year estimate for the section, log scale ($1M = 0, $1B = 0.5, $1T = 1; cuts and costs count the same), baseline named on the row. When CBO printed the section against two baselines for the same text (only H.R. 1: current law in 61570, the Senate's current-policy baseline in 61569), the smaller figure counts and both are shown. Lobbying = number of lobbying reports naming the section, log scale (1 = 0.15, 10 = 0.52, 100 = 1).
-2. **Costly** = stakes of at least two thirds: $10B in CBO's figure for the section itself (on every baseline CBO printed; an even share of a CBO group line never counts), or 21 lobbying reports.
+1. **Stakes** (0 to 1): the larger of dollars and lobbying. Dollars = CBO's 10-year estimate for the section, log scale ($1M = 0, $1B = 0.5, $1T = 1; cuts and costs count the same), baseline named on the row. When CBO printed the section against two baselines for the same text (only H.R. 1: current law in 61570, the Senate's current-policy baseline in 61569), the smaller figure counts and both are shown. Lobbying = number of lobbying firms with a live report naming the section, log scale (1 = 0.15, 10 = 0.52, 100 = 1); a firm counts once however many clients or quarters it filed for.
+2. **Costly** = stakes of at least two thirds: $10B in CBO's figure for the section itself (on every baseline CBO printed; an even share of a CBO group line never counts), or 21 lobbying firms.
 3. **Quiet** = under 1 in 100 of the bill's relevant articles (left, center and right weighted equally) discuss the section. It runs from 1 (none did) to 0 (1 in 100 or more). Before a costly section is called quiet it gets the `quiet-check` second look (below).
 4. **Sneak** = 1 + up to 0.25 if the section was late (times the share of the bill that was NOT late) + 0.25 x off-topic distance (only in a bill with one committee title). It ranks the buried sections; it is not needed for the label.
 5. **Buried score** = stakes x quiet x sneak (0 to 1.5): the order of the buried list.
@@ -37,7 +37,7 @@ Every constant is in `analyze/src/score.ts` and printed in the published rule (`
 
 buried-v1 also required the section to be late, or off-topic in a bill with one committee title. Late is withheld on every bill that began as a shell and off-topic never counts in a bill built from several titles, so on CHIPS, IIJA, the omnibus, the NDAA and PACT neither could count and v1 could not fire at all; on the rest it needed a section to be late as well as quiet and costly, and dropped 63 of 76 costly, quiet sections.
 
-**Can't be tested** (the page says which, never a bare zero): fewer than 10 sections; news too thin to rank the sections (under 20 relevant articles or 30 section mentions); no section with a measured cost (CBO gave no section its own figure and no section is named in 21 lobbying reports).
+**Can't be tested** (the page says which, never a bare zero): fewer than 10 sections; news too thin to rank the sections (under 20 relevant articles or 30 section mentions); no section with a measured cost (CBO gave no section its own figure and no section is named by 21 lobbying firms).
 
 ### The second look (`quiet-check`, rule `quiet-check-v1`)
 
@@ -50,7 +50,7 @@ The matcher assigns each article to sections from a shortlist, so a provision th
 
 | bill | sponsor party | final sections | headline | buried | costly sections | costly and quiet |
 |---|---|---|---|---|---|---|
-| OBBBA (119-hr-1) | R | 310 | 10% | 18% | 91 | 62% |
+| OBBBA (119-hr-1) | R | 310 | 10% | 17% | 88 | 60% |
 | GENIUS (119-s-1582) | R | 20 | 10% | 0% | 0 (no per-section $) | - |
 | Safer Communities (117-s-2938) | R | 32 | 13% | 3% | 1 | 100% |
 | SAVE Act (119-hr-22) | R | 8 | 13% | 0% | 0 | - |
