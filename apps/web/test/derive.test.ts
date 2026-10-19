@@ -74,3 +74,43 @@ test("dot offsets are stable and chart ticks are round", () => {
   expect(niceMax(36)).toBe(40);
   expect(niceMax(229)).toBe(250);
 });
+
+const withBuriedDollars = (musd: number, heading?: string) => {
+  const b = Bundle.parse(structuredClone(genius));
+  b.dollars.estimates[0]!.perSection = true;
+  const s = b.sections.find((x) => x.inFinal && x.score?.label === "buried")!;
+  if (heading) s.heading = heading;
+  s.dollars = [
+    {
+      estimateId: b.dollars.estimates[0]!.id,
+      baseline: "current-law",
+      measure: "deficit",
+      spending: null,
+      period: "2025-2035",
+      amountMusd: musd,
+      split: "exact",
+      claim: Object.keys(b.claims)[0]!,
+    },
+  ];
+  return buildModel(b);
+};
+
+test("the flagged tile says whether the figure saves or costs", () => {
+  expect(answers(withBuriedDollars(-122_151))[1]!.big).toBe("saves $122B");
+  expect(answers(withBuriedDollars(23_400))[1]!.big).toBe("costs $23B");
+});
+
+test("a long heading ends the flagged tile's sentence once, not with an ellipsis and a period", () => {
+  const long = "Extension of moratorium on implementation of rule relating to the elimination of the safe harbor";
+  expect(answers(withBuriedDollars(-122_151, long))[1]!.text).toMatch(/…\s\d+ articles? matched it/);
+  expect(answers(withBuriedDollars(-122_151, "Short heading"))[1]!.text).toMatch(/§19, short heading\. \d/);
+});
+
+test("revenue CBO lists but does not score is said beside the scored deficit line", () => {
+  const b = Bundle.parse(structuredClone(genius));
+  const d = b.dollars.wholeBill.find((w) => w.measure === "deficit")!;
+  b.dollars.wholeBill.push({ ...d, measure: "nonscorable_revenues", amountMusd: 180_388, claim: d.claim });
+  expect(introLine(buildModel(b))).toContain(
+    "adds $120 million to the deficit over 11 years, and expects $180 billion more in revenue that it does not score.",
+  );
+});

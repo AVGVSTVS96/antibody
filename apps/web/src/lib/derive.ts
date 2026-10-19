@@ -85,6 +85,12 @@ export function timeline(m: BillModel): Step[] {
   return steps.map(({ on: _on, ...s }) => s);
 }
 
+const spelled = (musd: number) =>
+  usd(Math.abs(musd) * 1e6)
+    .replace(/B$/, " billion")
+    .replace(/T$/, " trillion")
+    .replace(/M$/, " million");
+
 export function introLine(m: BillModel): string {
   const { b } = m;
   const finals = m.sections.filter((v) => v.s.inFinal).length;
@@ -94,10 +100,7 @@ export function introLine(m: BillModel): string {
   if (d) {
     const years = d.period.split("-").map(Number);
     const span = years[1] && years[0] ? years[1] - years[0] + 1 : null;
-    const size = usd(Math.abs(d.amountMusd) * 1e6)
-      .replace(/B$/, " billion")
-      .replace(/T$/, " trillion")
-      .replace(/M$/, " million");
+    const size = spelled(d.amountMusd);
     const over = span ? ` over ${span === 10 ? "ten" : span} years` : "";
     const words =
       Math.abs(d.amountMusd) < 0.5
@@ -105,7 +108,17 @@ export function introLine(m: BillModel): string {
         : d.amountMusd < 0
           ? `cuts the deficit by ${size}${over}`
           : `adds ${size} to the deficit${over}`;
-    parts.push(`CBO says the ${law ? "law" : "bill"} ${words}.`);
+    const unscored = b.dollars.wholeBill.find(
+      (w) =>
+        w.measure === "nonscorable_revenues" &&
+        w.estimateId === d.estimateId &&
+        w.baseline === d.baseline &&
+        w.period === d.period &&
+        w.amountMusd !== 0,
+    );
+    parts.push(
+      `CBO says the ${law ? "law" : "bill"} ${words}${unscored ? `, and expects ${spelled(unscored.amountMusd)} more in revenue that it does not score` : ""}.`,
+    );
   } else if (b.dollars.estimates.length) parts.push("CBO published an estimate, but its total isn’t read yet.");
   else parts.push("CBO has no score for it.");
   const ranked = m.sections.some((v) => v.s.attention?.pct != null);
@@ -161,12 +174,17 @@ export function answers(m: BillModel): Answer[] {
     reports >= BIG_STAKES.reports && Math.abs(quiet?.dollarsMusd ?? 0) < BIG_STAKES.dollarsMusd
       ? `${count(reports, "lobbying report")} named it; `
       : "";
+  const heading = quiet ? trim(quiet.s.heading, 56) : "";
+  const named = heading.endsWith("…") ? heading : `${heading}.`;
   const second: Answer = quiet
     ? {
         tone: "quiet",
         label: "What slipped by",
-        big: quiet.dollarsMusd != null ? usd(Math.abs(quiet.dollarsMusd) * 1e6) : count(m.buried.length, "section"),
-        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${trim(quiet.s.heading, 56)}.` : `quiet, with big stakes: §${quiet.s.num}, ${trim(quiet.s.heading, 56)}.`} ${lobbied}${count(quiet.s.attention?.hits ?? 0, "article")} matched it${quiet.s.late ? ", and it was added after the first text" : ""}.`,
+        big:
+          quiet.dollarsMusd != null
+            ? `${quiet.dollarsMusd < 0 ? "saves" : "costs"} ${usd(Math.abs(quiet.dollarsMusd) * 1e6)}`
+            : count(m.buried.length, "section"),
+        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(quiet.s.attention?.hits ?? 0, "article")} matched it${quiet.s.late ? ", and it was added after the first text" : ""}.`,
         link: "Why it’s flagged",
         target: "news",
       }
