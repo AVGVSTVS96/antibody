@@ -1,4 +1,4 @@
-import { articlesOf, BIG_STAKES, billStats, headlineDeficit } from "@antibody/core";
+import { articlesOf, BIG_STAKES, billStats, headlineDeficit, isLate } from "@antibody/core";
 import { count, day, musd, usd } from "./format.ts";
 import type { BillModel, MemberView, SectionView } from "./model.ts";
 
@@ -169,10 +169,10 @@ export function answers(m: BillModel): Answer[] {
         link: "See every section",
         target: "news",
       };
-  const reports = quiet?.s.score?.components.lobbyingReports ?? 0;
+  const firms = quiet?.s.score?.components.lobbyingFirms ?? 0;
   const lobbied =
-    reports >= BIG_STAKES.reports && Math.abs(quiet?.dollarsMusd ?? 0) < BIG_STAKES.dollarsMusd
-      ? `${count(reports, "lobbying report")} named it; `
+    firms >= BIG_STAKES.firms && Math.abs(quiet?.dollarsMusd ?? 0) < BIG_STAKES.dollarsMusd
+      ? `${count(firms, "lobbying firm")} named it; `
       : "";
   const heading = quiet ? trim(quiet.s.heading, 56) : "";
   const named = heading.endsWith("…") ? heading : `${heading}.`;
@@ -184,7 +184,7 @@ export function answers(m: BillModel): Answer[] {
           quiet.dollarsMusd != null
             ? `${quiet.dollarsMusd < 0 ? "saves" : "costs"} ${usd(Math.abs(quiet.dollarsMusd) * 1e6)}`
             : count(m.buried.length, "section"),
-        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(articlesOf(quiet.s) ?? 0, "article")} matched it${quiet.s.late ? ", and it was added after the first text" : ""}.`,
+        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(articlesOf(quiet.s) ?? 0, "article")} matched it${isLate(quiet.s) ? ", and it was added after the first text" : ""}.`,
         link: "Why it’s flagged",
         target: "news",
       }
@@ -202,8 +202,8 @@ export function answers(m: BillModel): Answer[] {
           label: "What slipped by",
           big: "None found",
           text: test.bigStakes
-            ? `${count(test.bigStakes, "section")} had stakes this big (a CBO figure of $10 billion or more on every baseline CBO printed, or ${BIG_STAKES.reports} lobbying reports), and each got at least 1 article in 100.`
-            : `No section has stakes this big: none has a CBO figure of $10 billion or more, or ${BIG_STAKES.reports} lobbying reports. CBO gave ${test.costMeasured} of ${m.sections.filter((v) => v.s.inFinal).length} sections its own figure.`,
+            ? `${count(test.bigStakes, "section")} had stakes this big (a CBO figure of $10 billion or more on every baseline CBO printed, or ${BIG_STAKES.firms} lobbying firms), and each got at least 1 article in 100.`
+            : `No section has stakes this big: none has a CBO figure of $10 billion or more, or ${BIG_STAKES.firms} lobbying firms. CBO gave ${test.costMeasured} of ${m.sections.filter((v) => v.s.inFinal).length} sections its own figure.`,
           link: "How we test it",
           target: "read",
         };
@@ -324,7 +324,7 @@ export function eras(m: BillModel): Era[] {
       seenFirst = true;
       const loud = sections.filter((s) => s.kind === "headline").length;
       const flagged = sections.filter((s) => s.kind === "buried").length;
-      const late = !m.b.bill.lateUnavailable && sections.filter((s) => s.s.late).length > sections.length / 2;
+      const late = !m.b.bill.lateUnavailable && sections.filter((s) => isLate(s.s)).length > sections.length / 2;
       const days =
         lastVote && v.date ? Math.round((Date.parse(lastVote.date) - Date.parse(v.date)) / 86_400_000) : null;
       return {

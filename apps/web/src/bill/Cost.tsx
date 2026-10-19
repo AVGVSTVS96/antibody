@@ -1,4 +1,4 @@
-import { articlesOf, BIG_STAKES } from "@antibody/core";
+import { articlesOf, BIG_STAKES, isLate } from "@antibody/core";
 import { Fragment, type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { dots, quietZone, sectionName } from "../lib/derive.ts";
 import { baselineWords, count, day, deficitWords, usd } from "../lib/format.ts";
@@ -386,11 +386,13 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
   const hits = v.s.attention?.hits ?? 0;
   const checked = c?.attentionChecked ?? 0;
   const lobbyEdge = m.b.edges.find((e) => e.kind === "lobbied" && e.dst === `section:${v.s.id}`);
+  const counterpart = v.s.counterpart ? m.sectionById.get(v.s.counterpart.sectionId) : undefined;
+  const earlier = counterpart && counterpart.stage < v.stage ? counterpart : undefined;
   const payFor = v.s.score?.offsets ? m.sections.find((x) => x.s.id === v.s.score?.offsets) : undefined;
   const paidBy = m.sections.find((x) => x.s.score?.offsets === v.s.id);
   const same = !!v.figure?.byBaseline.every((b) => b.musd === v.figure!.musd);
   const why = [
-    v.dollarsMusd != null || (c?.lobbyingReports ?? 0) >= BIG_STAKES.reports ? "big" : null,
+    v.dollarsMusd != null || (c?.lobbyingFirms ?? 0) >= BIG_STAKES.firms ? "big" : null,
     "quiet",
     c?.late ? "arrived late" : c?.offTopic != null && c.offTopic >= 0.5 ? "unlike the rest of the bill" : null,
   ].filter(Boolean);
@@ -478,9 +480,23 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           <>{version ? `${version.name}${version.date ? `, ${day(version.date)}` : ""}` : v.stageName}</>,
           v.s.claims[0] && <Src id={v.s.claims[0]} label="GovInfo" />,
         )}
+        {earlier &&
+          row(
+            "Earlier text",
+            <>
+              Rewrites §{earlier.s.num} {sectionName(earlier.s.heading, 60)} ({earlier.stageName}), as a model paired
+              them <Inf />
+              {v.s.late && !isLate(v.s) ? ". So it is not counted as added late." : "."}
+            </>,
+            <Src id={v.s.counterpart!.claim} label="Pairing" />,
+          )}
         {row(
           "Lobbying",
-          v.lobbied ? `${count(v.lobbied, "report")} name it` : "No reports name it",
+          c?.lobbyingReports
+            ? `${count(c.lobbyingReports, "report")} from ${count(c.lobbyingFirms, "firm")} name it`
+            : v.lobbied
+              ? `${count(v.lobbied, "report")} name it`
+              : "No reports name it",
           lobbyEdge?.claims[0] && <Src id={lobbyEdge.claims[0]} label="LDA" />,
         )}
       </dl>

@@ -1,6 +1,15 @@
 import { expect, test } from "bun:test";
 import fixture from "../fixtures/genius-mini.bundle.json";
-import { articlesOf, BIG_STAKES, Bundle, BundleIndex, billStats, checkBundle, headlineDeficit } from "../src/bundle.ts";
+import {
+  articlesOf,
+  BIG_STAKES,
+  Bundle,
+  BundleIndex,
+  billStats,
+  checkBundle,
+  headlineDeficit,
+  isLate,
+} from "../src/bundle.ts";
 
 test("the fixture is a valid, sound bundle", () => {
   const parsed = Bundle.safeParse(fixture);
@@ -147,7 +156,7 @@ function bill(n: number, over: (i: number) => object = () => ({})) {
   return b;
 }
 
-const score = (dollarsMusd: number | null, lobbyingReports = 0) => ({
+const score = (dollarsMusd: number | null, lobbyingFirms = 0) => ({
   label: "normal" as const,
   buried: null,
   components: {
@@ -157,7 +166,8 @@ const score = (dollarsMusd: number | null, lobbyingReports = 0) => ({
     attentionShare: 0,
     late: false,
     offTopic: null,
-    lobbyingReports,
+    lobbyingReports: lobbyingFirms,
+    lobbyingFirms,
   },
   claim: Object.keys(Bundle.parse(fixture).claims)[0]!,
 });
@@ -184,9 +194,7 @@ test("the buried test cannot fire when no section has a measured cost, and says 
 test("the buried test fires once any section has a CBO figure, or enough lobbying reports", () => {
   const withDollars = billStats(bill(12, (i) => ({ score: score(i === 0 ? 500 : null) }))).buriedTest;
   expect(withDollars).toMatchObject({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true, costMeasured: 1 });
-  const withLobbying = billStats(
-    bill(12, (i) => ({ score: score(null, i === 0 ? BIG_STAKES.reports : 0) })),
-  ).buriedTest;
+  const withLobbying = billStats(bill(12, (i) => ({ score: score(null, i === 0 ? BIG_STAKES.firms : 0) }))).buriedTest;
   expect(withLobbying).toMatchObject({ tested: true, why: null, bigStakes: 1, dollarsMeasured: false });
   const big = billStats(bill(12, (i) => ({ score: score(i === 0 ? -BIG_STAKES.dollarsMusd : null) }))).buriedTest;
   expect(big.bigStakes).toBe(1);
@@ -199,11 +207,24 @@ test("an appropriations act's deficit is marked as direct spending and revenue o
   expect(billStats(b).deficitDirectOnly).toBe(true);
 });
 
+const parsed = (x: ReturnType<typeof score>) => Bundle.shape.sections.element.shape.score.parse(x);
+
+test("a section is late as its score says, so a model-paired older section can clear the lineage flag", () => {
+  const b = structuredClone(Bundle.parse(fixture));
+  const s = b.sections.find((x) => x.inFinal)!;
+  s.late = true;
+  s.score = parsed(score(null));
+  s.score!.components.late = false;
+  expect(isLate(s)).toBe(false);
+  s.score = null;
+  expect(isLate(s)).toBe(true);
+});
+
 test("a section's articles are the matcher's plus a second look's, the count its score uses", () => {
   const b = structuredClone(Bundle.parse(fixture));
   const s = b.sections.find((x) => x.inFinal)!;
   s.attention = { hits: 3 } as never;
-  s.score = Bundle.shape.sections.element.shape.score.parse(score(null));
+  s.score = parsed(score(null));
   s.score!.components.attentionChecked = 2;
   expect(articlesOf(s)).toBe(5);
   s.score!.components.attentionChecked = null;

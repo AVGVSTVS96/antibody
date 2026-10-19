@@ -112,9 +112,15 @@ export const Score = z.object({
     attentionShare: z.number().nullable().default(null),
     /** Articles a second look found that the section matcher had missed; null when the section was not given one. */
     attentionChecked: z.number().int().nullable().default(null),
+    /** Late after the counterpart check; the section's own `late` is the lineage fact. */
     late: z.boolean(),
+    /** The older section whose model-paired counterpart cleared `late`. */
+    lateClearedBy: z.string().nullable().default(null),
     offTopic: z.number().nullable(),
+    /** Reports that name the section, each filing once. */
     lobbyingReports: z.number().int(),
+    /** Distinct lobbying firms behind those reports: what stakes count. */
+    lobbyingFirms: z.number().int().default(0),
   }),
   claim: ClaimId,
 });
@@ -138,7 +144,7 @@ export const Section = z.object({
   path: z.string(),
   firstVersion: z.string(),
   inFinal: z.boolean(),
-  /** From the bills lineage: first appears after the first chamber-passed text and wasn't split out of an older section. */
+  /** From the bills lineage, a fact: first appears after the first chamber-passed text and wasn't split out of an older section. Use `isLate` for the flag the page shows. */
   late: z.boolean(),
   changedIn: z.array(z.string()),
   removedIn: z.string().nullable(),
@@ -493,14 +499,17 @@ function finalVote(b: Bundle) {
 
 /**
  * Stakes big enough for the buried label (buried-v2's 2/3 bar on the stakes scale): $10B in a CBO figure CBO gave the
- * section itself, or 21 lobbying reports. A test in packages/analyze keeps these in step with `SCORE.costlyMin`.
+ * section itself, or 21 lobbying firms. A test in packages/analyze keeps these in step with `SCORE.costlyMin`.
  */
-export const BIG_STAKES = { dollarsMusd: 10_000, reports: 21 };
+export const BIG_STAKES = { dollarsMusd: 10_000, firms: 21 };
 /** A bill with fewer sections has nothing for one to be buried among (`SCORE.minSections`). */
 export const MIN_SECTIONS_TO_BURY = 10;
-const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null; lobbyingReports: number }) =>
+const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null; lobbyingFirms: number }) =>
   (c.dollarsMusd !== null && c.dollarsSplit !== "even_split" && Math.abs(c.dollarsMusd) >= BIG_STAKES.dollarsMusd) ||
-  c.lobbyingReports >= BIG_STAKES.reports;
+  c.lobbyingFirms >= BIG_STAKES.firms;
+
+/** Whether the page calls a section late: the lineage flag, unless a model-paired older section was already in the text. */
+export const isLate = (s: Pick<Section, "late" | "score">) => s.score?.components.late ?? s.late;
 
 /** Articles that discuss a section, counted the way the score counts them: the matcher's plus a second look's. Null when news is unmeasured for it. */
 export const articlesOf = (s: Pick<Section, "attention" | "score">) =>
@@ -552,7 +561,7 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     sections: final.length,
     headline: final.filter((s) => s.score?.label === "headline").length,
     buried: final.filter((s) => s.score?.label === "buried").length,
-    late: b.bill.lateUnavailable ? null : final.filter((s) => s.late).length,
+    late: b.bill.lateUnavailable ? null : final.filter(isLate).length,
     tally: finalVote(b),
     lobbyingReports: b.lobbying.reports,
     companies: b.nodes.filter((n) => n.kind === "company").length,
@@ -562,7 +571,7 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     cboPublished: b.dollars.estimates.length > 0,
     deficitDirectOnly: isAppropriations(b) && !!deficit,
     tradeSpan: span,
-    lateShare: b.bill.lateUnavailable || !final.length ? null : final.filter((s) => s.late).length / final.length,
+    lateShare: b.bill.lateUnavailable || !final.length ? null : final.filter(isLate).length / final.length,
     vehicle: !!b.bill.vehicle,
     deficitMusd: deficit?.amountMusd ?? null,
     fingerprint: final.map((s) => (s.score ? s.score.label[0] : "u")).join(""),

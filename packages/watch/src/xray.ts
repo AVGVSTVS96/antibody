@@ -48,7 +48,7 @@ export interface Section {
 export interface BuriedSection extends Section {
   dollarsMusd: number | null;
   attentionPct: number | null;
-  lobbyingReports: number;
+  lobbyingFirms: number;
   late: boolean;
 }
 
@@ -100,7 +100,11 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
   const general = attention.find((a) => a.section_id === null);
 
   return {
-    lateSections: sections.length ? sections.filter((s) => s.late && s.in_final).map((s) => section(s.id)) : null,
+    lateSections: scores.length
+      ? scores.filter((s) => s.late).map((s) => section(s.section_id))
+      : sections.length
+        ? sections.filter((s) => s.late && s.in_final).map((s) => section(s.id))
+        : null,
     finalSections: sections.length ? sections.filter((s) => s.in_final).length : null,
     deficit,
     lobbying: refs.length ? { filings: filingIds.size, clients: filings.length ? clients.size : null } : null,
@@ -112,7 +116,7 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
             ...section(s.section_id),
             dollarsMusd: s.dollars_musd,
             attentionPct: s.attention_pct,
-            lobbyingReports: s.lobbying_reports,
+            lobbyingFirms: s.lobbying_firms,
             late: s.late,
           }))
       : null,

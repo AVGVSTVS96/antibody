@@ -75,7 +75,7 @@ for (const arg of Bun.argv.slice(2)) {
   const costly = scores.filter(
     (s) =>
       !s.offsets_section_id &&
-      stakes({ dollarsMusd: s.dollars_musd, dollarsSplit: s.dollars_split, lobbyingReports: s.lobbying_reports }) >=
+      stakes({ dollarsMusd: s.dollars_musd, dollarsSplit: s.dollars_split, lobbyingFirms: s.lobbying_firms }) >=
         SCORE.costlyMin,
   );
   const buriedN = count("buried");
@@ -84,7 +84,7 @@ for (const arg of Bun.argv.slice(2)) {
   const twoBaselines = scores.filter((s) => byBaseline(s).length > 1);
   if (twoBaselines.length) {
     const bar = (musd: number) =>
-      stakes({ dollarsMusd: musd, dollarsSplit: "exact", lobbyingReports: 0 }) >= SCORE.costlyMin;
+      stakes({ dollarsMusd: musd, dollarsSplit: "exact", lobbyingFirms: 0 }) >= SCORE.costlyMin;
     console.log(
       `CBO printed ${twoBaselines.length} sections against two baselines: ${twoBaselines.filter((s) => byBaseline(s).some((b) => bar(b.musd))).length} are costly on at least one, ${twoBaselines.filter((s) => byBaseline(s).every((b) => bar(b.musd))).length} on every one (only those count)`,
     );

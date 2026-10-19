@@ -1,3 +1,4 @@
+import { isLate } from "@antibody/core";
 import { type Dot, niceMax, spread } from "./derive.ts";
 import { usd } from "./format.ts";
 
@@ -90,7 +91,7 @@ export function notes(placed: Placed[], f: Frame, zone: { x: number; y: number }
   const big = [...placed].sort((a, b) => Math.abs(b.musd) - Math.abs(a.musd));
   const phone = f.w < 560;
   for (const p of flagged.slice(0, phone ? 1 : 2))
-    add(p, "flare", `${p.hits} ${p.hits === 1 ? "article" : "articles"}${p.v.s.late ? ", added late" : ""}`);
+    add(p, "flare", `${p.hits} ${p.hits === 1 ? "article" : "articles"}${isLate(p.v.s) ? ", added late" : ""}`);
   add(loud[0], "iris", `${loud[0]?.hits} articles, the most of any section`);
   if (!phone)
     add(

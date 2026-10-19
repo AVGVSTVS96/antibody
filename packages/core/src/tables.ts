@@ -79,7 +79,8 @@ export const TABLES = {
     merged_into: z.string().nullable(),
     /**
      * First appears in the first chamber-passed version or later (a floor amendment, the other chamber, conference),
-     * and is not just split out of an older section. Lineage only: an LLM counterpart (see `counterparts`) never sets it.
+     * and is not just split out of an older section. Lineage only, a fact: an LLM counterpart (see `counterparts`) never
+     * sets it here; the scores stage reads the pairs and clears the flag on `section_scores.late` instead.
      */
     late: z.boolean(),
     words: z.number().int(),
@@ -523,9 +524,15 @@ export const TABLES = {
     attention_share: z.number().nullable().default(null),
     /** Articles the second look added to the section's matcher hits; null when the section was not given one. */
     attention_checked: z.number().int().nullable().default(null),
+    /** Late after the counterpart check: a section a model paired with an older section that was not late is not new text. */
     late: z.boolean(),
+    /** The older section whose pairing cleared `late` (the lineage flag stays on `sections`); null when nothing was cleared. */
+    late_cleared_by: z.string().nullable().default(null),
     off_topic: z.number().nullable(),
+    /** Distinct reports (one filing per registrant, client and period, no low-confidence match) that name the section. */
     lobbying_reports: z.number().int(),
+    /** Distinct lobbying firms (registrants) with such a report: the number stakes count, so one firm's repeated line is one voice. */
+    lobbying_firms: z.number().int().default(0),
     /** The section this one pays for: CBO prints exactly the opposite figure for both in the same title, so it is not a finding of its own. */
     offsets_section_id: z.string().nullable().default(null),
     ...inference,

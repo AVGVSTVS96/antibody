@@ -6,6 +6,7 @@ import type { MatchRun } from "../src/match.ts";
 import {
   BOILERPLATE,
   buried,
+  clearedLate,
   label,
   NAMES_BILL,
   payFors,
@@ -13,15 +14,16 @@ import {
   SCORE,
   scoreRows,
   sectionDollars,
+  sectionReports,
   stakes,
 } from "../src/score.ts";
 
 test("stakes put dollars and lobbying on log scales, and cuts count the same as costs", () => {
-  expect(stakes({ dollarsMusd: 1000, lobbyingReports: 0 })).toBeCloseTo(0.5, 2);
-  expect(stakes({ dollarsMusd: -1000, lobbyingReports: 0 })).toBeCloseTo(0.5, 2);
-  expect(stakes({ dollarsMusd: 1_000_000, lobbyingReports: 0 })).toBeCloseTo(1, 2);
-  expect(stakes({ dollarsMusd: null, lobbyingReports: 100 })).toBeCloseTo(1, 2);
-  expect(stakes({ dollarsMusd: null, lobbyingReports: 10 })).toBeCloseTo(0.52, 2);
+  expect(stakes({ dollarsMusd: 1000, lobbyingFirms: 0 })).toBeCloseTo(0.5, 2);
+  expect(stakes({ dollarsMusd: -1000, lobbyingFirms: 0 })).toBeCloseTo(0.5, 2);
+  expect(stakes({ dollarsMusd: 1_000_000, lobbyingFirms: 0 })).toBeCloseTo(1, 2);
+  expect(stakes({ dollarsMusd: null, lobbyingFirms: 100 })).toBeCloseTo(1, 2);
+  expect(stakes({ dollarsMusd: null, lobbyingFirms: 10 })).toBeCloseTo(0.52, 2);
 });
 
 test("quiet runs from 1 (nobody discussed it) down to 0 at one article in a hundred", () => {
@@ -39,7 +41,7 @@ test("buried = stakes × quiet × sneak, and needs attention to exist", () => {
     attentionShare: 0.002,
     late: false,
     offTopic: 0,
-    lobbyingReports: 0,
+    lobbyingFirms: 0,
   };
   const s = stakes(base);
   expect(buried(base)).toBeCloseTo(s * 0.8, 3);
@@ -54,7 +56,7 @@ const costlyQuiet = {
   attentionShare: 0,
   late: false,
   offTopic: null,
-  lobbyingReports: 0,
+  lobbyingFirms: 0,
   sections: 150,
 };
 
@@ -75,8 +77,8 @@ test("one stray article in a few hundred still counts as quiet", () => {
 });
 
 test("lobbying alone can make a section costly, an even-split dollar figure cannot", () => {
-  expect(label({ ...costlyQuiet, dollarsMusd: null, lobbyingReports: 21 }, 0)).toBe("buried");
-  expect(label({ ...costlyQuiet, dollarsMusd: null, lobbyingReports: 20 }, 0)).toBe("normal");
+  expect(label({ ...costlyQuiet, dollarsMusd: null, lobbyingFirms: 21 }, 0)).toBe("buried");
+  expect(label({ ...costlyQuiet, dollarsMusd: null, lobbyingFirms: 20 }, 0)).toBe("normal");
   expect(label({ ...costlyQuiet, dollarsSplit: "even_split" }, 0)).toBe("normal");
 });
 
@@ -99,16 +101,16 @@ test("a bill whose sections are not ranked has no buried label and no score", ()
 
 test("the bundle's big-stakes bar is the score's costly bar", () => {
   const edge = (musd: number | null, reports: number) =>
-    stakes({ dollarsMusd: musd, lobbyingReports: reports }) >= SCORE.costlyMin;
+    stakes({ dollarsMusd: musd, lobbyingFirms: reports }) >= SCORE.costlyMin;
   expect(edge(BIG_STAKES.dollarsMusd, 0)).toBe(true);
   expect(edge(BIG_STAKES.dollarsMusd - 1, 0)).toBe(false);
-  expect(edge(null, BIG_STAKES.reports)).toBe(true);
-  expect(edge(null, BIG_STAKES.reports - 1)).toBe(false);
+  expect(edge(null, BIG_STAKES.firms)).toBe(true);
+  expect(edge(null, BIG_STAKES.firms - 1)).toBe(false);
   expect(MIN_SECTIONS_TO_BURY).toBe(SCORE.minSections);
 });
 
 test("the late bonus shrinks smoothly as more of the bill arrives late, with no cutoff", () => {
-  const base = { dollarsMusd: 10_000, attentionPct: 0, attentionShare: 0, late: true, offTopic: 0, lobbyingReports: 0 };
+  const base = { dollarsMusd: 10_000, attentionPct: 0, attentionShare: 0, late: true, offTopic: 0, lobbyingFirms: 0 };
   const s = stakes(base);
   expect(buried({ ...base, lateShare: 0 })).toBeCloseTo(s * 1.25, 3);
   expect(buried({ ...base, lateShare: 0.4 })).toBeCloseTo(s * 1.15, 3);
@@ -137,7 +139,7 @@ test("the score never sees party: the same components give the same score for an
     attentionShare: 0.001,
     late: true,
     offTopic: 0.7,
-    lobbyingReports: 3,
+    lobbyingFirms: 3,
   };
   expect(buried.length).toBe(1);
   expect(buried({ ...c })).toBe(buried({ ...c }));
@@ -223,7 +225,7 @@ test("an extension that is huge only against current law is not costly once curr
     attentionShare: 0,
     late: false,
     offTopic: null,
-    lobbyingReports: 0,
+    lobbyingFirms: 0,
     sections: 300,
   };
   expect(label({ ...costlyQuiet, dollarsMusd: 1_362_810 }, 0)).toBe("buried");
@@ -237,7 +239,7 @@ test("a short title or table of contents is never a headline, whatever articles 
     attentionShare: 0.3,
     late: false,
     offTopic: null,
-    lobbyingReports: 0,
+    lobbyingFirms: 0,
   };
   expect(label(loud, 55)).toBe("headline");
   expect(label({ ...loud, namesBill: true }, 55)).toBe("normal");
@@ -282,7 +284,7 @@ test("a pay-for is not labeled buried on its own, a section that spends is", () 
     attentionShare: 0,
     late: false,
     offTopic: null,
-    lobbyingReports: 0,
+    lobbyingFirms: 0,
     sections: 1865,
   };
   expect(label(costlyQuiet, 0)).toBe("buried");
@@ -421,4 +423,138 @@ test("a section the matcher missed but a direct check found in the coverage is n
   expect(found.attention_share).toBe(0.03);
   expect(found.rests_on).toContain("attention_checks/b:s0");
   expect((found.evidence as { attention_hits: number }).attention_hits).toBe(3);
+});
+
+const ref = (id: string, filing_id: string, section_nums: string[], match: "high" | "medium" | "low" = "medium") =>
+  ({ id, filing_id, section_nums, match }) as Row<"lda_bill_refs">;
+const filer = (registrant_id: string, superseded = false, form: "LD-1" | "LD-2" = "LD-2") => ({
+  registrant_id,
+  superseded,
+  form,
+});
+
+test("one firm repeating one line for many clients and quarters is one voice, not fifty reports", () => {
+  const refs = Array.from({ length: 50 }, (_, i) => ref(`r${i}`, `f${i}`, ["70322", "70323", "70321"]));
+  const filings = new Map(refs.map((r) => [r.filing_id, filer("tax-group")] as const));
+  filings.set("g1", filer("other-firm"));
+  refs.push(ref("rg", "g1", ["70322"]));
+  const out = sectionReports(
+    [at("a", "title:VII/sec:70322")].map((s) => ({ ...s, num: "70322" })),
+    refs,
+    filings,
+  );
+  expect(out.get("a")!.filings.length).toBe(51);
+  expect(out.get("a")!.firms.toSorted()).toEqual(["other-firm", "tax-group"]);
+});
+
+test("a superseded report, a low-confidence match and a registration do not count toward a section", () => {
+  const sec = [{ ...at("a", "title:I/sec:1"), num: "1" }];
+  const refs = [
+    ref("r1", "live", ["1"]),
+    ref("r2", "old", ["1"]),
+    ref("r3", "weak", ["1"], "low"),
+    ref("r4", "reg", ["1"]),
+  ];
+  const filings = new Map([
+    ["live", filer("a")],
+    ["old", filer("b", true)],
+    ["weak", filer("c")],
+    ["reg", filer("d", false, "LD-1")],
+  ]);
+  expect(sectionReports(sec, refs, filings).get("a")).toEqual({ filings: ["live"], firms: ["a"], refs: ["r1"] });
+});
+
+test("lobbying stakes count firms: 21 firms is costly, 20 is not, however many reports each filed", () => {
+  expect(
+    label(
+      {
+        ...{ attentionPct: 0, attentionShare: 0, late: false, offTopic: null, sections: 300 },
+        dollarsMusd: null,
+        lobbyingFirms: 21,
+      },
+      0,
+    ),
+  ).toBe("buried");
+  expect(
+    label(
+      {
+        ...{ attentionPct: 0, attentionShare: 0, late: false, offTopic: null, sections: 300 },
+        dollarsMusd: null,
+        lobbyingFirms: 1,
+      },
+      0,
+    ),
+  ).toBe("normal");
+});
+
+const lineage = (id: string, late: boolean, in_final = true) => ({ id, late, in_final }) as Row<"sections">;
+const pair = (removed: string, added: string, confidence: number) =>
+  ({
+    id: `${removed}>${added}`,
+    removed_section_id: removed,
+    added_section_id: added,
+    confidence,
+  }) as Row<"counterparts">;
+
+test("a late section a model paired with an older, not-late section is not new text", () => {
+  const sections = [
+    lineage("old", false, false),
+    lineage("moved", true),
+    lineage("fresh", true),
+    lineage("floor", true, false),
+  ];
+  const cleared = clearedLate(sections, [pair("old", "moved", 0.9), pair("floor", "fresh", 0.9)]);
+  expect([...cleared.keys()]).toEqual(["moved"]);
+});
+
+test("where several pairs clear a section the most confident one is named, ties by id", () => {
+  const sections = [lineage("a", false, false), lineage("b", false, false), lineage("x", true)];
+  const cleared = clearedLate(sections, [pair("b", "x", 0.6), pair("a", "x", 0.9), pair("a2", "x", 0.9)]);
+  expect(cleared.get("x")!.removed_section_id).toBe("a");
+});
+
+test("the score reads late after the pairing: no late bonus, the share of late sections drops, the pair is a source", () => {
+  const sections = Array.from({ length: 12 }, (_, i) => ({
+    ...lineage(`s${i}`, i < 2),
+    num: String(i),
+    path: "title:I/sec:1",
+    heading: "h",
+    preview: "p",
+  })) as Row<"sections">[];
+  const older = {
+    ...lineage("old", false, false),
+    num: "99",
+    path: "title:I/sec:99",
+    heading: "h",
+    preview: "p",
+  } as Row<"sections">;
+  const est = {
+    id: "e",
+    per_section: true,
+    baseline: "current-law",
+    published_on: "2025-07-21",
+  } as Row<"cbo_estimates">;
+  const dollars = sectionDollars(
+    [est],
+    [line({ id: "x", section_ids: ["s0", "s1"], measure: "deficit", total_musd: 30_000 })],
+  );
+  const rows = scoreRows(
+    "119-hr-1",
+    [...sections, older],
+    sections.map((s) => att(s.id)),
+    dollars,
+    new Map(),
+    new Map(),
+    [],
+    [pair("old", "s0", 0.8)],
+  );
+  const s0 = rows.find((r) => r.section_id === "s0")!;
+  const s1 = rows.find((r) => r.section_id === "s1")!;
+  expect(s0.late).toBe(false);
+  expect(s0.late_cleared_by).toBe("old");
+  expect(s0.rests_on).toContain("counterparts/old>s0");
+  expect(s1.late).toBe(true);
+  expect(s1.late_cleared_by).toBeNull();
+  expect((s0.evidence as { late_share: number }).late_share).toBeCloseTo(1 / 12, 3);
+  expect(s0.buried).toBeLessThan(s1.buried!);
 });

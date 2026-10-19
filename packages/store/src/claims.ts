@@ -418,9 +418,15 @@ export const TEMPLATES: Record<string, Template> = {
         : r.attention_pct != null
           ? `attention at the ${ordinal(Math.round(r.attention_pct * 100))} percentile`
           : "attention unmeasured",
-      r.late ? "added late" : "not added late",
+      r.late
+        ? "added late"
+        : r.late_cleared_by
+          ? `not added late (it rewrites ${sec(n, r.late_cleared_by)}, which was in the text before a chamber passed it)`
+          : "not added late",
       r.off_topic != null ? `off-topic distance ${r.off_topic.toFixed(2)}` : null,
-      count(r.lobbying_reports, "lobbying report"),
+      r.lobbying_reports
+        ? `${count(r.lobbying_reports, "lobbying report")} from ${count(r.lobbying_firms, "firm")}`
+        : "no lobbying reports",
     ].filter(Boolean);
     const score = r.buried != null ? ` (buried score ${r.buried.toFixed(2)})` : "";
     const pays = r.offsets_section_id

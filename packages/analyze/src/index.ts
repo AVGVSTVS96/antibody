@@ -32,7 +32,7 @@ export const RULES = [
       "press is shown apart and never counted.",
     url: null,
   },
-  { id: "buried-v3", version: "3", text: SCORE_TEXT.join(" "), url: null },
+  { id: "buried-v4", version: "4", text: SCORE_TEXT.join(" "), url: null },
 ];
 
 /** What the matcher and the quiet check read for a bill: its sections, the articles read, and the bill's names. */
@@ -74,12 +74,20 @@ async function runAttention(ctx: StageContext) {
   ctx.log(`${res.rows.length} attention rows from ${res.relevant} relevant articles (matcher ${run.model})`);
 }
 
-/** Stakes of each final section from the bill's CBO figures and lobbying reports, as the scores stage reads them. */
+/** The filings a bill's lobbying references point to (the table is sharded by year, so it is read whole and trimmed). */
+async function filingsOf(refs: Row<"lda_bill_refs">[]) {
+  const named = new Set(refs.map((r) => r.filing_id));
+  return new Map((await readRows("lda_filings")).filter((f) => named.has(f.id)).map((f) => [f.id, f]));
+}
+
+/** Stakes of each final section from the bill's CBO figures and lobbying firms, as the scores stage reads them. */
 async function stakesBySection(bill: BillId, sections: Row<"sections">[]) {
   const dollars = sectionDollars(await readRows("cbo_estimates", bill), await readRows("cbo_lines", bill));
+  const refs = await readRows("lda_bill_refs", bill);
   const reports = sectionReports(
     sections.filter((s) => s.in_final),
-    await readRows("lda_bill_refs", bill),
+    refs,
+    await filingsOf(refs),
   );
   const by = new Map(
     sections.map((s) => {
@@ -89,7 +97,7 @@ async function stakesBySection(bill: BillId, sections: Row<"sections">[]) {
         stakes({
           dollarsMusd: d ? d.musd : null,
           dollarsSplit: d?.split ?? null,
-          lobbyingReports: reports.get(s.id)?.filings.length ?? 0,
+          lobbyingFirms: reports.get(s.id)?.firms.length ?? 0,
         }),
       ] as const;
     }),
@@ -191,15 +199,27 @@ async function runScores(ctx: StageContext) {
   const att = await readRows("attention", bill);
   const checks = await readRows("attention_checks", bill);
   const dollars = sectionDollars(await readRows("cbo_estimates", bill), await readRows("cbo_lines", bill));
+  const refs = await readRows("lda_bill_refs", bill);
   const reports = sectionReports(
     sections.filter((s) => s.in_final),
-    await readRows("lda_bill_refs", bill),
+    refs,
+    await filingsOf(refs),
   );
-  const rows = scoreRows(bill, sections, att, dollars, reports, await offTopic(bill, sections), checks);
+  const rows = scoreRows(
+    bill,
+    sections,
+    att,
+    dollars,
+    reports,
+    await offTopic(bill, sections),
+    checks,
+    await readRows("counterparts", bill),
+  );
   await writeRows("section_scores", bill, rows);
   const n = (l: string) => rows.filter((r) => r.label === l).length;
+  const cleared = rows.filter((r) => r.late_cleared_by).length;
   ctx.log(
-    `${rows.length} final sections: ${n("headline")} headline, ${n("buried")} buried; ` +
+    `${rows.length} final sections: ${n("headline")} headline, ${n("buried")} buried${cleared ? `, ${cleared} not late after the counterpart check` : ""}; ` +
       `dollars from ${dollars.estimates.map((e) => e.id).join(" and ") || "no per-section CBO estimate"}`,
   );
 }
@@ -216,7 +236,7 @@ export const stages: Stage[] = [
   {
     name: "scores",
     scope: "bill",
-    needs: ["attention", "cbo", "lobbying", "quiet-check"],
+    needs: ["attention", "bills", "cbo", "lobbying", "quiet-check"],
     writes: ["section_scores"],
     run: runScores,
   },

@@ -1,4 +1,4 @@
-import { articlesOf } from "@antibody/core";
+import { articlesOf, isLate } from "@antibody/core";
 import { Fragment, useMemo, useState } from "react";
 import { baselineWords, count, day, musd, rank } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
@@ -24,7 +24,7 @@ const keep: Record<Exclude<Filter, "top">, (v: SectionView) => boolean> = {
   all: () => true,
   headline: (v) => v.kind === "headline",
   buried: (v) => v.kind === "buried",
-  late: (v) => v.s.late,
+  late: (v) => isLate(v.s),
   money: (v) => v.s.dollars.length > 0,
   removed: (v) => !v.s.inFinal,
 };
@@ -51,7 +51,7 @@ const matches = (f: Filter, v: SectionView, top: Set<string>) => (f === "top" ? 
 /** What a reader should see first: buried candidates, headline sections, then late and lobbied ones, by news rank. */
 const priority = (v: SectionView) =>
   (v.kind === "buried" ? 4 : v.kind === "headline" ? 3 : 0) +
-  (v.s.late ? 2 : 0) +
+  (isLate(v.s) ? 2 : 0) +
   (v.s.attention?.pct ?? 0) +
   Math.min(1, v.lobbied / 20);
 
@@ -210,7 +210,7 @@ export function XrayList({ m }: { m: BillModel }) {
                     </td>
                     <td className="when">
                       {sort === "num" ? (
-                        <span className={`stagecode${s.late ? " late" : ""}`}>{s.late ? "late" : ""}</span>
+                        <span className={`stagecode${isLate(s) ? " late" : ""}`}>{isLate(s) ? "late" : ""}</span>
                       ) : (
                         <span className="stagecode">{v.stageName.replace(/ \(.*\)$/, "")}</span>
                       )}

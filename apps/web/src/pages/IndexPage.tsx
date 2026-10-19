@@ -277,7 +277,7 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
                   className="c-quiet"
                   title={
                     t?.tested && !s.buried
-                      ? `Tested on the ${t.costMeasured} of ${s.sections} sections CBO gave a figure, plus any named in ${BIG_STAKES.reports} lobbying reports`
+                      ? `Tested on the ${t.costMeasured} of ${s.sections} sections CBO gave a figure, plus any named by ${BIG_STAKES.firms} lobbying firms`
                       : undefined
                   }
                 >

@@ -4,18 +4,18 @@ import { type BillId, figureEstimates, type Row, sectionFigure } from "@antibody
  * The buried score, one formula for every bill and party. Every constant is here and in SCORE_TEXT.
  */
 export const SCORE = {
-  version: "buried-v3",
+  version: "buried-v4",
   /** $1M → 0, $1B → 0.5, $1T → 1 (log scale). */
   dollarsFullAt: 1_000_000,
-  /** 1 report → 0.15, 10 → 0.52, 100 → 1 (log scale). */
-  reportsFullAt: 100,
+  /** 1 firm → 0.15, 10 → 0.52, 100 → 1 (log scale). */
+  firmsFullAt: 100,
   /** Largest late bonus; scaled down by the share of the bill that arrived late (a rewrite is not a sneak). */
   lateBonus: 0.25,
   offTopicBonus: 0.25,
   /** headline: top tenth by attention, with at least this many articles. */
   headlinePct: 0.9,
   headlineMinHits: 3,
-  /** costly: stakes of at least this much, which is $10B in CBO's figure for the section itself (the smaller one when CBO printed it against two baselines), or 21 lobbying reports. */
+  /** costly: stakes of at least this much, which is $10B in CBO's figure for the section itself (the smaller one when CBO printed it against two baselines), or 21 lobbying firms. */
   costlyMin: 2 / 3,
   /** quiet: fewer than this share of the bill's relevant articles (each side weighted equally) discussed the section. */
   quietShare: 0.01,
@@ -24,11 +24,11 @@ export const SCORE = {
 } as const;
 
 export const SCORE_TEXT = [
-  "Stakes: how much the section matters, from 0 to 1. It is the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale, where $1 million is 0, $1 billion is 0.5 and $1 trillion is 1 (cuts and costs count the same; a dollar figure that is only an even share of a line CBO printed for several sections is shown but not counted). When CBO printed the section against two baselines for the same text, current law and the Senate's current-policy baseline (which treats the expiring 2017 tax cuts as continuing), the smaller figure counts, because a section that is big against only one of them is big because of the baseline, not because of what the section does. Both are shown. Where CBO printed only current law, a section that extends a provision set to expire keeps its full current-law figure, which is the cost of continuing it. Lobbying: the number of lobbying reports that name the section, on a log scale where 1 report is 0.15, 10 is 0.52 and 100 is 1.",
+  "Stakes: how much the section matters, from 0 to 1. It is the larger of two numbers. Dollars: CBO's 10-year estimate for the section on a log scale, where $1 million is 0, $1 billion is 0.5 and $1 trillion is 1 (cuts and costs count the same; a dollar figure that is only an even share of a line CBO printed for several sections is shown but not counted). When CBO printed the section against two baselines for the same text, current law and the Senate's current-policy baseline (which treats the expiring 2017 tax cuts as continuing), the smaller figure counts, because a section that is big against only one of them is big because of the baseline, not because of what the section does. Both are shown. Where CBO printed only current law, a section that extends a provision set to expire keeps its full current-law figure, which is the cost of continuing it. Lobbying: the number of lobbying firms with a report that names the section, on a log scale where 1 firm is 0.15, 10 is 0.52 and 100 is 1. A firm counts once however many clients or quarters it filed for, so one firm repeating one issue line for sixteen clients is one voice, not fifty reports; superseded reports and low-confidence matches do not count.",
   "Quiet: from 1 (no sampled article discussed the section) down to 0 (1 in 100 articles or more did). It is based on the share of the bill's relevant news articles that discuss the section, with the left, center and right press weighted equally. A section is quiet when under 1 in 100 articles discussed it, which is none or about one in a typical sample of 250 to 350 articles.",
-  "Late or off-topic (called 'sneak' in the code): 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill (from the bill's version history), plus 0.25 times how unlike the rest of the bill it is (0 to 1). The late bonus is multiplied by one minus the share of the bill that arrived late, so it shrinks smoothly as more of the bill is late (there is no cutoff): when a bill is rewritten late, being late says less about any one section. Off-topic distance counts only in a bill with a single committee title: a bill assembled from several committees' titles has a minority title by construction.",
+  "Late or off-topic (called 'sneak' in the code): 1, plus up to 0.25 if the section first appeared after a chamber had already passed the bill (from the bill's version history; a section a model paired with an older section, the same provision renumbered or rewritten and shown beside it as an inference, is not new when that older section was already in the text), plus 0.25 times how unlike the rest of the bill it is (0 to 1). The late bonus is multiplied by one minus the share of the bill that arrived late, so it shrinks smoothly as more of the bill is late (there is no cutoff): when a bill is rewritten late, being late says less about any one section. Off-topic distance counts only in a bill with a single committee title: a bill assembled from several committees' titles has a minority title by construction.",
   "Buried score = stakes × quiet × (late or off-topic), from 0 to 1.5. It ranks the buried sections of a bill; it does not decide the label.",
-  "Label: 'headline' when a section is in the top tenth of its bill by attention and at least 3 articles discussed it; a section that only gives the bill its name (a short title or table of contents) is never a headline, because an article that names the bill is not discussing a provision. 'Buried' (shown on the site as 'quiet and costly') when stakes are at least two thirds (CBO's figure for the section itself is $10 billion or more against every baseline CBO printed it against, or 21 or more lobbying reports name it) and the section is quiet, in a bill of at least 10 sections; a pay-for (a section that cuts, to the million dollars, exactly what another section in the same title spends, by CBO's figures) is shown with the section it pays for and is not labeled on its own, since the pair is one trade. Everything else is 'normal'.",
+  "Label: 'headline' when a section is in the top tenth of its bill by attention and at least 3 articles discussed it; a section that only gives the bill its name (a short title or table of contents) is never a headline, because an article that names the bill is not discussing a provision. 'Buried' (shown on the site as 'quiet and costly') when stakes are at least two thirds (CBO's figure for the section itself is $10 billion or more against every baseline CBO printed it against, or 21 or more lobbying firms name it) and the section is quiet, in a bill of at least 10 sections; a pay-for (a section that cuts, to the million dollars, exactly what another section in the same title spends, by CBO's figures) is shown with the section it pays for and is not labeled on its own, since the pair is one trade. Everything else is 'normal'.",
   "Being late or off-topic is shown and ranks a section higher, but a costly, quiet section is buried without it. The rule is not symmetric on purpose, and the page says so: a section with no CBO figure can still qualify through lobbying alone, and a big dollar figure with a loud news cycle is never labeled buried, whatever it does. A bill with no section-level dollars and no section named by lobbyists, a bill whose news cannot be ranked, and a bill of fewer than 10 sections cannot be tested: the page says which.",
   "All parts are shown next to the label. The formula never looks at party, sponsor or outlet lean; the thresholds are the same for every bill.",
 ];
@@ -40,7 +40,7 @@ const log01 = (x: number, full: number) => Math.min(1, Math.max(0, Math.log10(1 
 export interface Components {
   /** Dollars from an even split of a grouped CBO line are shown but do not count toward stakes: CBO never gave that section a number. */
   dollarsSplit?: "exact" | "even_split" | null;
-  /** Share of the bill's final sections that arrived late; scales the late bonus. */
+  /** Share of the bill's final sections that arrived late, after the counterpart check; scales the late bonus. */
   lateShare?: number;
   /** Distinct committee titles or divisions among the final sections; off-topic distance only counts in a bill with one. */
   titles?: number;
@@ -56,13 +56,14 @@ export interface Components {
   attentionShare?: number | null;
   late: boolean;
   offTopic: number | null;
-  lobbyingReports: number;
+  /** Distinct lobbying firms with a report naming the section. */
+  lobbyingFirms: number;
 }
 
-export function stakes(c: Pick<Components, "dollarsMusd" | "dollarsSplit" | "lobbyingReports">): number {
+export function stakes(c: Pick<Components, "dollarsMusd" | "dollarsSplit" | "lobbyingFirms">): number {
   return Math.max(
     c.dollarsMusd === null || c.dollarsSplit === "even_split" ? 0 : log01(c.dollarsMusd, SCORE.dollarsFullAt),
-    log01(c.lobbyingReports, SCORE.reportsFullAt),
+    log01(c.lobbyingFirms, SCORE.firmsFullAt),
   );
 }
 
@@ -167,7 +168,7 @@ export function payFors(sections: Row<"sections">[], dollars: ReturnType<typeof 
   const parent = (s: Row<"sections">) => s.path.split("/").slice(0, -1).join("/");
   const big = sections.flatMap((s) => {
     const d = dollars.bySection.get(s.id);
-    return d && d.split === "exact" && stakes({ dollarsMusd: d.musd, lobbyingReports: 0 }) >= SCORE.costlyMin
+    return d && d.split === "exact" && stakes({ dollarsMusd: d.musd, lobbyingFirms: 0 }) >= SCORE.costlyMin
       ? [{ s, musd: Math.round(d.musd) }]
       : [];
   });
@@ -180,14 +181,31 @@ export function payFors(sections: Row<"sections">[], dollars: ReturnType<typeof 
   );
 }
 
-/** Lobbying reports (distinct filings) whose bill reference names the section's number. */
-export function sectionReports(sections: Row<"sections">[], refs: Row<"lda_bill_refs">[]) {
+type Filer = Pick<Row<"lda_filings">, "form" | "superseded" | "registrant_id">;
+
+/**
+ * Lobbying that names a section by number: the reports (distinct filings) and the firms that filed them. A reference
+ * counts when its filing is a live LD-2 (not replaced by an amendment) and the bill match is high or medium: the lines
+ * the page counts everywhere else. Stakes count firms, so one firm's line repeated for many clients and quarters is one.
+ */
+export function sectionReports(sections: Row<"sections">[], refs: Row<"lda_bill_refs">[], filings: Map<string, Filer>) {
   const byNum = new Map<string, Row<"lda_bill_refs">[]>();
-  for (const r of refs) for (const n of r.section_nums) byNum.set(n, [...(byNum.get(n) ?? []), r]);
+  for (const r of refs) {
+    const f = filings.get(r.filing_id);
+    if (r.match === "low" || f?.form !== "LD-2" || f.superseded) continue;
+    for (const n of r.section_nums) byNum.set(n, [...(byNum.get(n) ?? []), r]);
+  }
   return new Map(
     sections.map((s) => {
       const rs = byNum.get(s.num) ?? [];
-      return [s.id, { filings: [...new Set(rs.map((r) => r.filing_id))], refs: rs.map((r) => r.id) }];
+      return [
+        s.id,
+        {
+          filings: [...new Set(rs.map((r) => r.filing_id))],
+          firms: [...new Set(rs.map((r) => filings.get(r.filing_id)!.registrant_id))],
+          refs: rs.map((r) => r.id),
+        },
+      ];
     }),
   );
 }
@@ -197,6 +215,21 @@ export type Reports = ReturnType<typeof sectionReports>;
 export const BOILERPLATE =
   /^(short title|table of contents|definitions?|effective dates?|severability|rules? of construction|references?|(clerical|conforming|technical)( and (clerical|conforming|technical))* amendments?|authorization of appropriations|sense of (congress|the senate|the house))\b/i;
 
+/**
+ * Late sections a model-paired counterpart shows are not new text: the pair's older section (renumbered or rewritten
+ * since) was already in the text before a chamber passed it. Where several pairs qualify the most confident wins.
+ */
+export function clearedLate(sections: Row<"sections">[], counterparts: Row<"counterparts">[]) {
+  const byId = new Map(sections.map((s) => [s.id, s]));
+  const cleared = new Map<string, Row<"counterparts">>();
+  for (const c of counterparts.toSorted((a, b) => b.confidence - a.confidence || a.id.localeCompare(b.id))) {
+    const added = byId.get(c.added_section_id);
+    const older = byId.get(c.removed_section_id);
+    if (added?.late && older && !older.late && !cleared.has(added.id)) cleared.set(added.id, c);
+  }
+  return cleared;
+}
+
 export function scoreRows(
   bill: BillId,
   sections: Row<"sections">[],
@@ -205,11 +238,14 @@ export function scoreRows(
   reports: Reports,
   offTopic: Map<string, number>,
   checks: Row<"attention_checks">[] = [],
+  counterparts: Row<"counterparts">[] = [],
 ): Row<"section_scores">[] {
   const att = new Map(attention.filter((a) => a.section_id).map((a) => [a.section_id!, a]));
   const checked = new Map(checks.map((c) => [c.section_id, c]));
   const final = sections.filter((s) => s.in_final);
-  const lateShare = final.length ? final.filter((s) => s.late).length / final.length : 0;
+  const cleared = clearedLate(sections, counterparts);
+  const lateOf = (s: Row<"sections">) => s.late && !cleared.has(s.id);
+  const lateShare = final.length ? final.filter(lateOf).length / final.length : 0;
   const pays = payFors(final, dollars);
   const titles = new Set(final.map((s) => s.path.split("/")[0]).filter((p) => /^(title|division):/.test(p!))).size;
   return final.map((s) => {
@@ -218,7 +254,8 @@ export function scoreRows(
     const share =
       check?.share ?? (a && a.pct !== null ? Number((a.evidence as { balanced_share: number }).balanced_share) : null);
     const d = dollars.bySection.get(s.id) ?? null;
-    const { filings, refs } = reports.get(s.id) ?? { filings: [], refs: [] };
+    const { filings, firms, refs } = reports.get(s.id) ?? { filings: [], firms: [], refs: [] };
+    const pair = cleared.get(s.id);
     const c: Components = {
       namesBill: NAMES_BILL.test(s.heading.trim()),
       offsets: pays.get(s.id) ?? null,
@@ -227,11 +264,11 @@ export function scoreRows(
       attentionPct: a?.pct ?? null,
       attentionShare: share,
       sections: final.length,
-      late: s.late,
+      late: lateOf(s),
       lateShare,
       titles,
       offTopic: offTopic.get(s.id) ?? null,
-      lobbyingReports: filings.length,
+      lobbyingFirms: firms.length,
     };
     const restsOn = [
       `sections/${s.id}`,
@@ -240,6 +277,7 @@ export function scoreRows(
       ...(c.offsets ? (dollars.bySection.get(c.offsets)?.lineIds.map((id) => `cbo_lines/${id}`) ?? []) : []),
       ...refs.map((id) => `lda_bill_refs/${id}`),
       ...(check ? [`attention_checks/${check.id}`] : []),
+      ...(pair ? [`counterparts/${pair.id}`] : []),
     ];
     return {
       id: `${bill}:${s.id}`,
@@ -253,8 +291,10 @@ export function scoreRows(
       attention_share: share,
       attention_checked: check ? check.article_ids.length : null,
       late: c.late,
+      late_cleared_by: pair?.removed_section_id ?? null,
       off_topic: c.offTopic,
-      lobbying_reports: c.lobbyingReports,
+      lobbying_reports: filings.length,
+      lobbying_firms: firms.length,
       offsets_section_id: c.offsets ?? null,
       rule: SCORE_RULE,
       confidence: d?.split === "even_split" ? 0.5 : 0.7,
@@ -262,6 +302,7 @@ export function scoreRows(
       evidence: {
         version: SCORE.version,
         late_share: Number(lateShare.toFixed(4)),
+        late_in_lineage: s.late,
         titles,
         stakes: Number(stakes(c).toFixed(4)),
         quiet: quiet(c) === null ? null : Number(quiet(c)!.toFixed(4)),

@@ -5,6 +5,7 @@ import {
   type Edge,
   type EdgeOf,
   type Figure,
+  isLate,
   type Node,
   type NodeId,
   type NodeOf,
@@ -417,7 +418,7 @@ export function buildModel(b: Bundle): BillModel {
     lateShare:
       b.bill.lateUnavailable || !finalSections.length
         ? null
-        : finalSections.filter((v) => v.s.late).length / finalSections.length,
+        : finalSections.filter((v) => isLate(v.s)).length / finalSections.length,
   };
 }
 

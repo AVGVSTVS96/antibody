@@ -1170,8 +1170,10 @@ class Builder {
           attentionShare: s.attention_share,
           attentionChecked: s.attention_checked,
           late: s.late,
+          lateClearedBy: s.late_cleared_by,
           offTopic: s.off_topic,
           lobbyingReports: s.lobbying_reports,
+          lobbyingFirms: s.lobbying_firms,
         },
         claim,
       };
