@@ -38,6 +38,12 @@ export function money(musd: number): string {
   return `${musd < 0 ? "−" : "+"}${s}`;
 }
 
+/** A whole-bill deficit figure in words; under half a million dollars is no measurable effect, not "+$0M". */
+export function deficitEffect(musd: number): string {
+  if (Math.abs(musd) < 0.5) return "no measurable effect on the deficit";
+  return `${musd < 0 ? "cuts the deficit by" : "adds"} ${money(Math.abs(musd)).slice(1)}${musd < 0 ? "" : " to the deficit"}`;
+}
+
 /** Why the bill was flagged, one line per signal that fired, each with its source. Same templates for every bill. */
 export function reasons(c: Candidate): Reason[] {
   const { facts: f, evidence: ev, status: s } = c;
@@ -51,7 +57,7 @@ export function reasons(c: Candidate): Reason[] {
   if (f.deficitMusd !== null && ev.xray?.deficit)
     out.push({
       signal: "dollars",
-      text: `CBO: ${money(f.deficitMusd)} to the deficit over ${ev.xray.deficit.period} (baseline: ${ev.xray.deficit.baselineLabel})`,
+      text: `CBO: ${deficitEffect(f.deficitMusd)} over ${ev.xray.deficit.period} (baseline: ${ev.xray.deficit.baselineLabel})`,
       url: ev.xray.deficit.url,
     });
   const buried = ev.xray?.buried ?? [];

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { type BillId, billDisplay, billstatusUrl, congressGovUrl } from "@antibody/core";
 import { paths, readRows, writeRows } from "@antibody/core/node";
 import { type BillStatus, parseBillStatus, type TextVersion } from "./billstatus.ts";
-import { links, reasons } from "./digest.ts";
+import { flaggedOf, links, reasons } from "./digest.ts";
 import { discover, type SourceReport } from "./discover.ts";
 import {
   type BillEvent,
@@ -170,6 +170,9 @@ function rescore(c: Candidate) {
   c.score = score(c.sub);
 }
 
+/** The bills worth an x-ray and a public page: the best flagged ones, at most `n`. A bill under the cutoff is not published. */
+export const toXray = (cs: Candidate[], n: number) => flaggedOf(rank(cs)).slice(0, n);
+
 export const rank = (cs: Candidate[]) => cs.sort((a, b) => b.score - a.score || a.status.id.localeCompare(b.status.id));
 
 /** Folds what the x-ray tables hold into the facts; table numbers replace the watcher's own estimates. */
@@ -254,7 +257,7 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   const xrayed: BillId[] = [];
   const site: Site = { published: [], deploy: { status: "pending" } };
   const logs = join(dir, "logs", date);
-  for (const c of rank(candidates).slice(0, cfg.xrays)) {
+  for (const c of toXray(candidates, cfg.xrays)) {
     const id = c.status.id;
     log(`x-ray ${billDisplay(id)} (score ${c.score})`);
     c.xray = await runXray(id, logs, signal);

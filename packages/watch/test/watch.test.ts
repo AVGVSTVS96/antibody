@@ -3,12 +3,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseBillStatus, parsePackage } from "../src/billstatus.ts";
-import { digestJson, digestMarkdown, money, reasons } from "../src/digest.ts";
-import { billEvents, closedRule, closedRuleBills, tally, voteClock } from "../src/events.ts";
+import { deficitEffect, digestJson, digestMarkdown, money, reasons } from "../src/digest.ts";
+import { billEvents, classify, closedRule, closedRuleBills, tally, voteClock } from "../src/events.ts";
 import { lobbyingQuery } from "../src/lda.ts";
 import { type Facts, score, subScores } from "../src/score.ts";
 import { newSections, textShape } from "../src/text.ts";
-import { candidate, type WatchResult, windowStart } from "../src/watch.ts";
+import { candidate, toXray, type WatchResult, windowStart } from "../src/watch.ts";
 
 const xml = await Bun.file(join(import.meta.dir, "fixtures/BILLSTATUS-119hr42.xml")).text();
 const status = () => parseBillStatus(xml);
@@ -216,4 +216,26 @@ test("only bills at the cutoff are flagged", async () => {
   const mk = (score: number) => ({ score }) as never;
   expect(flaggedOf([mk(40), mk(25), mk(24.9), mk(19)]).length).toBe(2);
   expect(flaggedOf([mk(5)]).length).toBe(0);
+});
+
+test("a Senate referral recorded as a floor action is not floor action", () => {
+  const act = (text: string, type = "Floor") => ({ date: "2026-10-15", text, type, votes: [] }) as never;
+  const referral =
+    "Under authority of the order of the Senate of September 30, 2026, ordered read twice and referred to the Committee on Foreign Relations.";
+  expect(classify(act(referral), new Set())).toBeNull();
+  expect(classify(act("Read twice and referred to the Committee on Finance."), new Set())).toBeNull();
+  expect(classify(act("Motion to proceed to consideration of measure made in Senate."), new Set())).toBe("floor");
+});
+
+test("only flagged bills are x-rayed and published, best first, never padded up to the count", () => {
+  const at = (id: string, score: number) => ({ status: { id }, score }) as never;
+  const picked = toXray([at("119-hr-1", 14.1), at("119-hr-2", 31.2), at("119-hr-3", 25), at("119-hr-4", 24.9)], 3);
+  expect(picked.map((c) => c.status.id)).toEqual(["119-hr-2", "119-hr-3"]);
+  expect(toXray([at("119-hr-5", 14.1), at("119-hr-6", 13.8)], 3)).toEqual([]);
+});
+
+test("a deficit figure reads in plain words, and a rounding error is no measurable effect", () => {
+  expect(deficitEffect(0)).toBe("no measurable effect on the deficit");
+  expect(deficitEffect(120)).toBe("adds $120M to the deficit");
+  expect(deficitEffect(-3400)).toBe("cuts the deficit by $3.4B");
 });

@@ -58,7 +58,12 @@ export function classify(a: Action, passedBefore: Set<string>): Step | null {
   if (chamber) return [...passedBefore].some((c) => c !== chamber) ? "passed_second" : "passed";
   if (/^Failed of passage|^Failed to pass|motion to proceed rejected|cloture .*not invoked/i.test(t)) return "failed";
   if (a.votes.length || floorTally(a)) return "vote";
-  if (a.type === "Floor" && !/amendment submitted|^Received in the|^Held at the desk|^Message on/i.test(t))
+  if (
+    a.type === "Floor" &&
+    !/amendment submitted|^Received in the|^Held at the desk|^Message on|read twice and referred|referred to the (sub)?committee/i.test(
+      t,
+    )
+  )
     return "floor";
   if (a.type === "Committee" && /reported|ordered to be reported/i.test(t)) return "reported";
   if (a.type === "Calendars") return "calendar";
