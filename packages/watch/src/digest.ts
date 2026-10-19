@@ -88,7 +88,7 @@ export function reasons(c: Candidate): Reason[] {
       signal: "lobbying",
       text:
         ev.lobbyingFrom === "x-ray"
-          ? `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} name${f.lobbyingFilings === 1 ? "s" : ""} it${ev.lobbyingClients !== null ? ` (${num(ev.lobbyingClients)} clients)` : ""}`
+          ? `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} name${f.lobbyingFilings === 1 ? "s" : ""} it${ev.lobbyingClients !== null ? ` (${num(ev.lobbyingClients)} client${ev.lobbyingClients === 1 ? "" : "s"})` : ""}`
           : `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} cite${f.lobbyingFilings === 1 ? "s" : ""} its number (read ${num(ev.lobbyingChecked?.checked ?? 0)} of ${num(ev.lobbyingChecked?.searched ?? 0)} search hits${ev.lobbyingChecked && ev.lobbyingChecked.checked < ev.lobbyingChecked.searched ? `, so at least ${num(f.lobbyingFilings)}` : ""}; the x-ray also matches names)`,
       url: ev.lobbyingUrls.at(-1) ?? congressGovUrl(s.id),
     });

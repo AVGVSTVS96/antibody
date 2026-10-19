@@ -184,6 +184,14 @@ test("digest: every reason links a source; party is shown only in the audit tall
   expect(md).toContain("closed rule");
   expect(md).toContain("Site: no new bundles published · not deployed (turned off)");
   expect(md).toContain("page: not published yet");
+  const lobbied = (clients: number) => {
+    c.facts.lobbyingFilings = 16;
+    c.evidence.lobbyingFrom = "x-ray";
+    c.evidence.lobbyingClients = clients;
+    return digestJson(r).flagged[0]!.reasons.find((x) => x.signal === "lobbying")!.text;
+  };
+  expect(lobbied(1)).toBe("16 lobbying filings name it (1 client)");
+  expect(lobbied(11)).toBe("16 lobbying filings name it (11 clients)");
   expect(money(-149_000)).toBe("−$149.0B");
   expect(money(120)).toBe("+$120M");
 });
