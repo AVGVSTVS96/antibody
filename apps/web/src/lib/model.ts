@@ -365,12 +365,9 @@ export function buildModel(b: Bundle): BillModel {
 
   const members = [...memberById.values()];
   const voters = { R: 0, D: 0, I: 0 };
-  const unread = { R: 0, D: 0, I: 0 };
   const voted = members.some((m) => m.vote);
-  for (const m of members) {
-    if (!voted || m.vote) voters[m.node.props.party]++;
-    if (m.node.props.paperFilingsUnread) unread[m.node.props.party]++;
-  }
+  for (const m of members) if (!voted || m.vote) voters[m.node.props.party]++;
+  const unread = b.paperUnread;
 
   const tradersVoted = { R: 0, D: 0, I: 0 };
   let tradersNoVote = 0;

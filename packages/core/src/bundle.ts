@@ -302,6 +302,10 @@ export const Bundle = z.object({
   edges: z.array(Edge),
   claims: z.record(ClaimId, Claim),
   gaps: z.array(Gap),
+  /** Members whose paper trade filings in the bill's window are unread, by party: counts everyone, drawn in the graph or not. */
+  paperUnread: z
+    .object({ R: z.number().int(), D: z.number().int(), I: z.number().int() })
+    .default({ R: 0, D: 0, I: 0 }),
   rules: z.array(Rule),
 });
 export type Bundle = z.infer<typeof Bundle>;
@@ -330,6 +334,7 @@ export const BillStats = z.object({
     .nullable()
     .default(null),
   lobbyingReports: z.number().int(),
+  /** Companies tied to the bill: the ones with a `benefits` edge, the count the page headlines. */
   companies: z.number().int(),
   membersTraded: z.number().int(),
   /** Of those, members with a trade dated from the first text through signing (or the last dated action). */
@@ -564,7 +569,7 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     late: b.bill.lateUnavailable ? null : final.filter(isLate).length,
     tally: finalVote(b),
     lobbyingReports: b.lobbying.reports,
-    companies: b.nodes.filter((n) => n.kind === "company").length,
+    companies: new Set(b.edges.filter((e) => e.kind === "benefits").map((e) => e.dst)).size,
     membersTraded: new Set(traders.map((e) => e.src)).size,
     membersTradedDuring: during.size,
     buriedTest: { tested: why === null, why, bigStakes: big, dollarsMeasured, costMeasured: priced },

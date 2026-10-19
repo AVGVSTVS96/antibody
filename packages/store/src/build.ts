@@ -320,6 +320,7 @@ class Builder {
       edges: [...this.edges.values()],
       claims: {},
       gaps: await this.buildGaps({ dollars, attention, lobbying, unread, sections }),
+      paperUnread: unread.byParty,
       rules: [],
     };
     bundle.claims = Object.fromEntries(this.claims);
@@ -1206,8 +1207,11 @@ class Builder {
         },
       });
     }
+    const members = [...unreadIds].map((id) => this.members.get(id)).filter(Boolean) as AnyRow[];
+    const by = (party: string) => members.filter((m) => m.party === party).length;
     return {
-      members: [...unreadIds].map((id) => this.members.get(id)).filter(Boolean) as AnyRow[],
+      members,
+      byParty: { R: by("R"), D: by("D"), I: by("I") },
       loaded: this.tables.has("ptr_documents") && (await this.count("ptr_documents")) > 0,
     };
   }
@@ -1220,7 +1224,7 @@ class Builder {
     dollars: Bundle["dollars"];
     attention: Bundle["attention"];
     lobbying: Bundle["lobbying"];
-    unread: { members: AnyRow[]; loaded: boolean };
+    unread: { members: AnyRow[]; byParty: Record<"R" | "D" | "I", number>; loaded: boolean };
     sections: Section[];
   }): Promise<Bundle["gaps"]> {
     const gaps: Bundle["gaps"] = [];
@@ -1271,7 +1275,9 @@ class Builder {
     if (!this.tables.has("lda_bill_refs") || !(await this.count("lda_bill_refs")))
       gap("no-lobbying", "other", "Lobbying filings aren't loaded yet, so no lobbying shows here.");
     else if (x.lobbying.clients) {
-      const clients = [...this.nodes.keys()].filter((k) => k.startsWith("client:"));
+      const clients = [...this.nodes.keys()].filter(
+        (k) => k.startsWith("client:") && this.edges.has(`lobbied:${k.slice(7)}`),
+      );
       const resolved = clients.filter((c) => this.edges.has(`resolves_to:${c}`));
       const reports = (c: string) => {
         const e = this.edges.get(`lobbied:${c.slice(7)}`);
@@ -1285,7 +1291,7 @@ class Builder {
       gap(
         "entity-recall",
         "entity_recall",
-        `${resolved.length} of ${count(clients.length, "lobbying client")} were matched to an SEC-listed company. The rest were not matched: many are trade groups, nonprofits and private firms, but some may be listed companies the matcher missed, and members' trades in those are not marked as tied. Unmatched with the most reports: ${loose.join("; ")}.`,
+        `${resolved.length} of the ${count(clients.length, "client")} that named this bill were matched to an SEC-listed company. The rest were not matched: many are trade groups, nonprofits and private firms, but some may be listed companies the matcher missed, and members' trades in those are not marked as tied. Unmatched with the most reports: ${loose.join("; ")}.`,
       );
     }
     const optionsAndBonds = this.nonStock.option + this.nonStock.bond + this.nonStock.other;

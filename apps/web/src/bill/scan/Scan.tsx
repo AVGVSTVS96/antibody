@@ -99,7 +99,9 @@ function copyFor(m: BillModel, s: Scenes, view: MapView): Copy {
       notes: [
         "Each PAC is matched to its company by a published rule, so these ties are inferences and drawn dashed.",
         ...(cut
-          ? [`Showing the ${data.companies.length} of ${data.candidates.companies} companies with the most PAC money.`]
+          ? [
+              `Showing the ${data.companies.length} of the ${data.candidates.companies} tied companies whose PACs gave, most money first.`,
+            ]
           : []),
       ],
     };
@@ -108,7 +110,7 @@ function copyFor(m: BillModel, s: Scenes, view: MapView): Copy {
     intro: `The bill sits in the middle, ringed by its ${count(n, "section")}. Around them are the companies that lobbied on it, and on the outside the members of Congress who traded those companies’ stock. Pick any company to light up its ties.`,
     notes: cut
       ? [
-          `Showing the ${data.companies.length} of ${data.candidates.companies} companies with the most members trading their stock.`,
+          `Showing the ${data.companies.length} of the ${data.candidates.companies} tied companies a member traded, most traders first.`,
         ]
       : [],
   };

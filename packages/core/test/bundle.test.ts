@@ -79,7 +79,7 @@ test("billStats counts the index card numbers", () => {
     late: 1,
     tally: null,
     lobbyingReports: 757,
-    companies: 1,
+    companies: 0,
     membersTraded: 2,
     membersTradedDuring: expect.any(Number),
     buriedTest: {
@@ -231,4 +231,24 @@ test("a section's articles are the matcher's plus a second look's, the count its
   expect(articlesOf(s)).toBe(3);
   s.attention = null;
   expect(articlesOf(s)).toBeNull();
+});
+
+test("a bundle built before the unread count existed reads as nobody unread", () => {
+  expect(Bundle.parse(fixture).paperUnread).toEqual({ R: 0, D: 0, I: 0 });
+});
+
+test("the companies a card counts are the ones tied to the bill, not every company drawn", () => {
+  const b = structuredClone(Bundle.parse(fixture));
+  const company = b.nodes.find((n) => n.kind === "company")!;
+  expect(billStats(b).companies).toBe(0);
+  b.edges.push({
+    id: `benefits:${company.id}`,
+    kind: "benefits",
+    src: `bill:${b.bill.id}`,
+    dst: company.id,
+    basis: "inference",
+    claims: [],
+    props: { rule: "lobbied" },
+  } as never);
+  expect(billStats(b).companies).toBe(1);
 });

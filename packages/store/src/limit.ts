@@ -20,6 +20,9 @@ export function limitGraph(b: Bundle, limits = LIMITS): Bundle {
       reports.set(e.src, (reports.get(e.src) ?? 0) + e.props.reports);
   const resolved = new Set(b.edges.filter((e) => e.kind === "resolves_to").map((e) => e.src));
   const clients = b.nodes.filter((n) => n.kind === "client");
+  const named = new Set(
+    b.edges.filter((e) => e.kind === "lobbied" && e.src.startsWith("client:") && !e.props.topicOnly).map((e) => e.src),
+  );
   const top = new Set(
     clients
       .toSorted((a, c) => (reports.get(c.id) ?? 0) - (reports.get(a.id) ?? 0) || a.id.localeCompare(c.id))
@@ -49,7 +52,7 @@ export function limitGraph(b: Bundle, limits = LIMITS): Bundle {
     b.gaps.push({
       id: "clients-limited",
       kind: "other",
-      text: `Drawn: the ${fmt(clients.length - dropped.size)} of ${fmt(clients.length)} lobbying clients with the most reports naming this bill, plus every client that resolves to a public company. The other ${fmt(dropped.size)} are in the filings (totals above count all of them).`,
+      text: `Drawn: ${fmt(clients.length - dropped.size)} of ${fmt(clients.length)} lobbying clients (${fmt(named.size)} named this bill${clients.length > named.size ? `, ${fmt(clients.length - named.size)} ${clients.length - named.size === 1 ? "only describes" : "only describe"} its subject` : ""}): the ${fmt(Math.min(limits.clients, clients.length))} with the most reports naming it, plus every client that resolves to a public company. The other ${fmt(dropped.size)} are in the filings (totals above count all of them).`,
       nodes: [],
       claim: null,
     });

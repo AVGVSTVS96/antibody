@@ -187,6 +187,10 @@ describe("GENIUS bundle from contract rows", () => {
     expect(node.kind === "member" && node.props.paperFilingsUnread).toBe(true);
   });
 
+  test("the bundle counts every member with unread paper filings, drawn in the graph or not", () => {
+    expect(b.paperUnread).toEqual({ R: 0, D: 1, I: 0 });
+  });
+
   test("published rules cover every inference rule used", () => {
     const ids = new Set(b.rules.map((r) => r.id));
     for (const c of Object.values(b.claims)) if (c.rule) expect(ids.has(c.rule.split(":")[0]!)).toBe(true);

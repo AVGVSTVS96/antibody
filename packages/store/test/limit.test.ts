@@ -59,6 +59,21 @@ test("keeps the clients with the most reports and every client that resolves to 
   expect(b.gaps[0]!.text).toContain("3 of 4");
 });
 
+test("the gap tells clients that named the bill from ones that only describe its subject", () => {
+  const b = bundle();
+  b.nodes.push(client("t") as never);
+  b.edges.push({
+    id: "lobbied:topic:t",
+    kind: "lobbied",
+    src: "client:t",
+    dst: "bill:119-s-1",
+    props: { reports: 0, topicOnly: true },
+  } as never);
+  expect(limitGraph(b, { clients: 2, fundersPerMember: 5 }).gaps[0]!.text).toContain(
+    "(4 named this bill, 1 only describes its subject)",
+  );
+});
+
 test("a registrant or lobbyist leaves with its last drawn client", () => {
   const b = limitGraph(bundle(), { clients: 2, fundersPerMember: 5 });
   const ids = b.nodes.map((n) => n.id);

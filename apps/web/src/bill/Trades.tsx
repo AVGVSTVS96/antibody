@@ -82,7 +82,9 @@ export function Trades({ m }: { m: BillModel }) {
           <footer>
             {all.length > 6 ? (
               <button type="button" className="link" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-                {open ? "Hide the list" : `All ${all.length} who traded${range ? `, ${range}` : ""}`}
+                {open
+                  ? "Hide the list"
+                  : `All ${all.length} who traded a tied stock in the full window${range ? `, ${range}` : ""}`}
               </button>
             ) : (
               <span />

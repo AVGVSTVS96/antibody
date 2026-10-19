@@ -114,3 +114,9 @@ test("revenue CBO lists but does not score is said beside the scored deficit lin
     "adds $120 million to the deficit over 11 years, and expects $180 billion more in revenue that it does not score.",
   );
 });
+
+test("members with unread paper filings come from the bundle, drawn in the graph or not", () => {
+  const b = Bundle.parse(structuredClone(genius));
+  b.paperUnread = { R: 1, D: 1, I: 0 };
+  expect(buildModel(b).unread).toEqual({ R: 1, D: 1, I: 0 });
+});

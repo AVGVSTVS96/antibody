@@ -100,7 +100,9 @@ export function Money({ m }: { m: BillModel }) {
                   );
                 }}
               >
-                {all ? "Hide the list" : `The ${clients.length.toLocaleString("en-US")} clients listed here`}
+                {all
+                  ? "Hide the list"
+                  : `The ${clients.length.toLocaleString("en-US")} companies and clients drawn here, of ${L.clients.toLocaleString("en-US")}`}
               </button>
             ) : (
               <span />
