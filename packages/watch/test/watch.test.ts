@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Action, parseBillStatus, parsePackage } from "../src/billstatus.ts";
@@ -242,6 +242,33 @@ test("'Passed Senate …' counts as passing a chamber, once, next to its 'Passed
     actions: [plain, twin].map(act),
   };
   expect(billEvents(s, "2026-10-01").map((e) => e.step)).toEqual(["passed"]);
+});
+
+test("the x-ray's lobbying client count reads lda_filings, which is sharded by year, not by bill", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "antibody-xray-"));
+  try {
+    const write = async (table: string, shard: string, rows: object[]) => {
+      await mkdir(join(dir, "out", table), { recursive: true });
+      await writeFile(join(dir, "out", table, `${shard}.jsonl`), rows.map((r) => JSON.stringify(r)).join("\n"));
+    };
+    const ref = (n: number) => ({ id: `f${n}#0#119-hr-9`, filing_id: `f${n}`, bill_id: "119-hr-9" });
+    await write("lda_bill_refs", "119-hr-9", [ref(1), ref(2), ref(3)]);
+    await write("lda_filings", "2025", [
+      { id: "f1", client_key: "acme" },
+      { id: "f2", client_key: "acme" },
+      { id: "other", client_key: "unrelated" },
+    ]);
+    await write("lda_filings", "2026", [{ id: "f3", client_key: "globex" }]);
+    const code = `import { xrayFacts } from "./packages/watch/src/xray.ts"; console.log(JSON.stringify((await xrayFacts("119-hr-9")).lobbying))`;
+    const run = Bun.spawn(["bun", "-e", code], {
+      cwd: join(import.meta.dir, "../../.."),
+      env: { ...process.env, ANTIBODY_DATA: dir },
+      stdout: "pipe",
+    });
+    expect(JSON.parse(await new Response(run.stdout).text())).toEqual({ filings: 3, clients: 2 });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("only flagged bills are x-rayed and published, best first, never padded up to the count", () => {

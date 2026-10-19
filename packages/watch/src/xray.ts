@@ -65,12 +65,11 @@ export interface XrayFacts {
 }
 
 export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
-  const [sections, estimates, lines, refs, filings, scores, attention] = await Promise.all([
+  const [sections, estimates, lines, refs, scores, attention] = await Promise.all([
     readRows("sections", bill),
     readRows("cbo_estimates", bill),
     readRows("cbo_lines", bill),
     readRows("lda_bill_refs", bill),
-    readRows("lda_filings", bill),
     readRows("section_scores", bill),
     readRows("attention", bill),
   ]);
@@ -96,7 +95,8 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
   }
 
   const filingIds = new Set(refs.map((r) => r.filing_id));
-  const clients = new Set(filings.filter((f) => filingIds.has(f.id)).map((f) => f.client_key));
+  const filings = filingIds.size ? (await readRows("lda_filings")).filter((f) => filingIds.has(f.id)) : [];
+  const clients = new Set(filings.map((f) => f.client_key));
   const general = attention.find((a) => a.section_id === null);
 
   return {
