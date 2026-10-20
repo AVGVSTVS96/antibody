@@ -1,4 +1,5 @@
 import { mkdir, readdir, rename } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { type Row, TABLES, type TableName } from "./tables.ts";
 
@@ -96,5 +97,9 @@ export async function heavy(
  * (`-I`, so a downloaded file named like a module is never imported). Capped like `heavy`.
  */
 export function python(pkgDir: string, script: string, args: string[], opts?: { memoryMax?: string }) {
-  return heavy(["uv", "run", "-q", "--project", pkgDir, "python", "-I", join(pkgDir, "py", script), ...args], opts);
+  const models = `FASTEMBED_CACHE_PATH=${join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "fastembed")}`;
+  return heavy(
+    ["env", models, "uv", "run", "-q", "--project", pkgDir, "python", "-I", join(pkgDir, "py", script), ...args],
+    opts,
+  );
 }
