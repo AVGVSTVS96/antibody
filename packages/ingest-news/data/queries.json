@@ -22,6 +22,12 @@
   "118-hr-815": {"terms": ["\"foreign aid package\"", "\"national security supplemental\"", "\"21st Century Peace through Strength Act\"", "\"H.R. 815\""], "window": ["2024-04-10", "2024-05-25"]},
   "118-hr-7888": {"terms": ["\"Reforming Intelligence and Securing America Act\"", "\"FISA reauthorization\"", "\"Section 702\""], "window": ["2024-04-01", "2024-05-20"]},
   "117-s-2938": {"terms": ["\"Bipartisan Safer Communities Act\"", "\"bipartisan gun bill\"", "\"gun safety bill\""], "window": ["2022-06-01", "2022-07-31"]},
-  "119-hr-7148": {"terms": ["\"Consolidated Appropriations Act, 2026\"", "\"spending package\"", "\"government funding package\""], "window": ["2026-01-15", "2026-02-28"]}
+  "119-hr-7148": {"terms": ["\"Consolidated Appropriations Act, 2026\"", "\"spending package\"", "\"government funding package\""], "window": ["2026-01-15", "2026-02-28"]},
+  "119-hr-1968": {"terms": ["\"Full-Year Continuing Appropriations\"", "\"H.R. 1968\"", "\"continuing resolution\"", "\"stopgap funding bill\""], "window": ["2025-03-05", "2025-04-30"]},
+  "119-hr-6500": {"terms": ["\"Continuing Appropriations and Extensions Act, 2027\"", "\"H.R. 6500\"", "\"continuing resolution\"", "\"stopgap funding bill\""], "window": ["2026-07-15", "2026-10-15"]},
+  "119-hjres-88": {"terms": ["\"H.J.Res. 88\"", "\"H.J. Res. 88\"", "\"California waiver\"", "\"California's waiver\"", "\"Advanced Clean Cars II\""], "window": ["2025-04-20", "2025-07-15"]},
+  "119-hr-5334": {"terms": ["\"Sanctioning Russia and Iran Act\"", "\"Sanctioning Russia Act\"", "\"Russia sanctions bill\""], "window": ["2026-01-01", "2026-10-20"]},
+  "117-hr-2471": {"terms": ["\"Consolidated Appropriations Act, 2022\"", "\"omnibus spending bill\"", "\"omnibus spending package\""], "window": ["2022-03-01", "2022-04-15"]},
+  "118-hr-2670": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2024\"", "\"NDAA\""], "window": ["2023-06-15", "2024-01-15"]}
  }
 }
