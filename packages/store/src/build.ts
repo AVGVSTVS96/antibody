@@ -565,7 +565,7 @@ class Builder {
       if (claim)
         this.edge(
           "sponsored",
-          `sponsored:${s.bioguide}`,
+          `sponsored:${s.id.slice(this.bill.length + 1)}`,
           nodeId("member", s.bioguide),
           nodeId("bill", this.bill),
           [claim],

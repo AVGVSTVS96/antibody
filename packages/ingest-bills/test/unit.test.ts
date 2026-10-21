@@ -8,6 +8,7 @@ import { candidates } from "../src/counterparts.ts";
 import { amendmentFrom } from "../src/crec.ts";
 import { wordDiff } from "../src/diff.ts";
 import { cached } from "../src/fetch.ts";
+import { sponsorshipRows } from "../src/ingest.ts";
 import { trace } from "../src/lineage.ts";
 import { match } from "../src/match.ts";
 import { parseSections, type Sec } from "../src/sections.ts";
@@ -181,4 +182,20 @@ test("cached: two downloads of one file at once both land", async () => {
     "<mods/>",
   ]);
   expect(await readdir(dir)).toEqual(["mods.xml"]);
+});
+
+test("sponsorships: a member who cosponsored twice keeps both rows, with distinct ids", () => {
+  const rows = sponsorshipRows(
+    "119-s-1383",
+    {
+      sponsor: "M001",
+      introducedOn: "2025-04-10",
+      cosponsors: [
+        { bioguide: "W000790", date: "2025-07-10", withdrawnOn: "2025-07-14" },
+        { bioguide: "W000790", date: "2025-09-18", withdrawnOn: "2026-02-25" },
+      ],
+    },
+    "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/s/BILLSTATUS-119s1383.xml",
+  );
+  expect(rows.map((r) => r.id)).toEqual(["119-s-1383:M001", "119-s-1383:W000790", "119-s-1383:W000790:2025-09-18"]);
 });

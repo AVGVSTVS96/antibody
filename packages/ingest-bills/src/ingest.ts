@@ -163,21 +163,7 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
     };
   });
 
-  rows.sponsorships = [
-    ...(status.sponsor
-      ? [{ bioguide: status.sponsor, role: "sponsor" as const, date: status.introducedOn, withdrawnOn: null }]
-      : []),
-    ...status.cosponsors.filter((c) => c.bioguide).map((c) => ({ ...c, role: "cosponsor" as const })),
-  ].map((s) => ({
-    id: `${bill}:${s.bioguide}`,
-    bill_id: bill,
-    bioguide: s.bioguide,
-    role: s.role,
-    date: s.date,
-    withdrawn_on: s.withdrawnOn,
-    source_url: src,
-    source_locator: s.role === "sponsor" ? "sponsors" : "cosponsors",
-  }));
+  rows.sponsorships = sponsorshipRows(bill, status, src);
 
   const committees = new Map(status.committees.filter((c) => c.code).map((c) => [c.code, c]));
   rows.bill_committees = [...committees.values()].map((c) => ({
@@ -257,4 +243,35 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   if (opts.write ?? true)
     for (const [table, list] of Object.entries(rows)) await writeRows(table as TableName, bill, list as never[]);
   return { status, versions, lineages, steps, rows, skipped };
+}
+
+/**
+ * One row per sponsorship. A member who cosponsored, withdrew and cosponsored again (Sen. Warnock on S.1383) has a
+ * row for each time; the later ones carry the date in their id.
+ */
+export function sponsorshipRows(
+  bill: BillId,
+  status: Pick<BillStatus, "sponsor" | "introducedOn" | "cosponsors">,
+  src: string,
+): Row<"sponsorships">[] {
+  const seen = new Set<string>();
+  return [
+    ...(status.sponsor
+      ? [{ bioguide: status.sponsor, role: "sponsor" as const, date: status.introducedOn, withdrawnOn: null }]
+      : []),
+    ...status.cosponsors.filter((c) => c.bioguide).map((c) => ({ ...c, role: "cosponsor" as const })),
+  ].map((s) => {
+    const again = seen.has(s.bioguide!);
+    seen.add(s.bioguide!);
+    return {
+      id: again ? `${bill}:${s.bioguide}:${s.date}` : `${bill}:${s.bioguide}`,
+      bill_id: bill,
+      bioguide: s.bioguide!,
+      role: s.role,
+      date: s.date,
+      withdrawn_on: s.withdrawnOn,
+      source_url: src,
+      source_locator: s.role === "sponsor" ? "sponsors" : "cosponsors",
+    };
+  });
 }
