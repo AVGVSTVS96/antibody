@@ -38,6 +38,13 @@ export interface BillEvent {
 
 const TALLY = /(?:Yeas and Nays|recorded vote|Yea-Nay Vote)\.?:?\s*(\d+)\s*-\s*(\d+)/i;
 
+/** The question an action's vote was on, without the tally: "On motion to commit Failed". */
+export const voteQuestion = (text: string): string | null =>
+  text
+    .slice(0, Math.max(0, text.search(TALLY)))
+    .replace(/[\s,:]*(?:by(?: the)?)?[\s,:]*$/i, "")
+    .trim() || null;
+
 export function tally(text: string): Tally | null {
   const m = text.match(TALLY);
   return m ? { yeas: +m[1]!, nays: +m[2]! } : null;

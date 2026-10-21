@@ -4,7 +4,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Action, parseBillStatus, parsePackage } from "../src/billstatus.ts";
 import { deficitEffect, digestJson, digestMarkdown, money, reasons } from "../src/digest.ts";
-import { beforeFloor, billEvents, classify, closedRule, closedRuleBills, tally, voteClock } from "../src/events.ts";
+import {
+  beforeFloor,
+  billEvents,
+  classify,
+  closedRule,
+  closedRuleBills,
+  tally,
+  voteClock,
+  voteQuestion,
+} from "../src/events.ts";
 import { lobbyingQuery } from "../src/lda.ts";
 import { type Facts, score, subScores } from "../src/score.ts";
 import { newSections, textShape } from "../src/text.ts";
@@ -64,6 +73,13 @@ test("events: second-chamber passage with its tally and roll call, new text, law
 test("tallies read every chamber's wording", () => {
   expect(tally("On passage Passed by the Yeas and Nays: 308 - 122 (Roll no. 200).")).toEqual({ yeas: 308, nays: 122 });
   expect(tally("Agreed to by recorded vote: 217 - 212 (Roll no. 198).")).toEqual({ yeas: 217, nays: 212 });
+  expect(voteQuestion("On motion to commit Failed by the Yeas and Nays: 209 - 216 (Roll no. 319).")).toBe(
+    "On motion to commit Failed",
+  );
+  expect(voteQuestion("Agreed to by recorded vote: 217 - 212 (Roll no. 198).")).toBe("Agreed to");
+  expect(voteQuestion("Passed Senate without amendment by Yea-Nay Vote. 77 - 20. Record Vote Number: 280.")).toBe(
+    "Passed Senate without amendment",
+  );
   expect(tally("Passed Senate by Yea-Nay Vote. 68 - 30. Record Vote Number: 172.")).toEqual({ yeas: 68, nays: 30 });
   expect(tally("Passed Senate without amendment by Unanimous Consent.")).toBeNull();
 });

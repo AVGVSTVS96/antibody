@@ -139,7 +139,7 @@ export function reasons(c: Candidate): Reason[] {
   if (f.closestVote && c.sub.divisive !== null && c.sub.divisive >= 0.8)
     out.push({
       signal: "divisive",
-      text: `Close vote: ${f.closestVote.yeas}-${f.closestVote.nays}`,
+      text: `Close vote: ${f.closestVote.yeas}-${f.closestVote.nays}${ev.closestVoteOn ? ` (${ev.closestVoteOn})` : ""}`,
       url: ev.closestVoteUrl ?? congressGovUrl(s.id),
     });
   if (f.words && f.words >= 20_000)

@@ -14,6 +14,7 @@ import {
   type Tally,
   type VoteClock,
   voteClock,
+  voteQuestion,
 } from "./events.ts";
 import { cachedText, get, pool } from "./http.ts";
 import { lobbyingFilings } from "./lda.ts";
@@ -36,6 +37,8 @@ export interface Evidence {
   lobbyingUrls: string[];
   lobbyingClients: number | null;
   closestVoteUrl: string | null;
+  /** What the closest vote was on, as the action reads ("On motion to commit Failed"). */
+  closestVoteOn?: string | null;
   firstVote: BillEvent | null;
   clock: VoteClock | null;
   news: NewsCount | null;
@@ -130,6 +133,7 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
       lobbyingUrls: [],
       lobbyingClients: null,
       closestVoteUrl: closest?.url ?? null,
+      closestVoteOn: closest ? voteQuestion(closest.text) : null,
       firstVote,
       clock,
       news: null,
