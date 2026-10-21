@@ -270,6 +270,14 @@ test("only bills at the cutoff are flagged", async () => {
   expect(flaggedOf([mk(5)]).length).toBe(0);
 });
 
+test("a day's digest flags at most 25 bills; a sweep of a whole Congress flags every bill at the cutoff", async () => {
+  const { flaggedOf, flagCap } = await import("../src/digest.ts");
+  const mk = (score: number) => ({ score, status: { id: "119-hr-1", title: "A bill" } }) as never;
+  const many = Array.from({ length: 30 }, () => mk(30));
+  expect(flaggedOf(many, flagCap({})).length).toBe(25);
+  expect(flaggedOf(many, flagCap({ sweep: 119 })).length).toBe(30);
+});
+
 test("a Senate referral recorded as a floor action is not floor action", () => {
   const act = (text: string, type = "Floor") => ({ date: "2026-10-15", text, type, votes: [] }) as never;
   const referral =

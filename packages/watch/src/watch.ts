@@ -205,7 +205,7 @@ function rescore(c: Candidate) {
 }
 
 /** The bills worth an x-ray and a public page: the best flagged ones, at most `n`. A bill under the cutoff is not published. */
-export const toXray = (cs: Candidate[], n: number) => flaggedOf(rank(cs)).slice(0, n);
+export const toXray = (cs: Candidate[], n: number, max?: number) => flaggedOf(rank(cs), max).slice(0, n);
 
 export const rank = (cs: Candidate[]) => cs.sort((a, b) => b.score - a.score || a.status.id.localeCompare(b.status.id));
 

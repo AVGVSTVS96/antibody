@@ -13,11 +13,14 @@ export interface Reason {
 }
 
 /**
- * Bills at the cutoff, best first. A House rule is never flagged on its score: its votes are party-line and a day
- * after it is filed by design, so it is listed only for its riders (`withRiders`).
+ * Bills at the cutoff, best first, at most `max`. A House rule is never flagged on its score: its votes are
+ * party-line and a day after it is filed by design, so it is listed only for its riders (`withRiders`).
  */
-export const flaggedOf = (cs: Candidate[]) =>
-  cs.filter((c) => !isSpecialRule(c.status) && c.score >= FLAG_CUTOFF).slice(0, MAX_FLAGGED);
+export const flaggedOf = (cs: Candidate[], max = MAX_FLAGGED) =>
+  cs.filter((c) => !isSpecialRule(c.status) && c.score >= FLAG_CUTOFF).slice(0, max);
+
+/** The cap keeps a day's digest readable; a sweep of a whole Congress flags every bill at the cutoff. */
+export const flagCap = (r: { sweep?: number | null }) => (r.sweep ? Number.POSITIVE_INFINITY : MAX_FLAGGED);
 
 /** House rules with a section that does more than set up debate, newest first. */
 export const withRiders = (cs: Candidate[]) =>
@@ -36,8 +39,8 @@ const ruleOutcome = (c: Candidate) => {
     : "no floor action";
 };
 
-export const movedBills = (cs: Candidate[]): MovedBill[] => {
-  const flagged = new Set(flaggedOf(cs));
+export const movedBills = (cs: Candidate[], max = MAX_FLAGGED): MovedBill[] => {
+  const flagged = new Set(flaggedOf(cs, max));
   return cs
     .filter((c) => !isSpecialRule(c.status))
     .map((c) => ({
@@ -195,8 +198,8 @@ const byParty = (cs: Candidate[]) => {
 };
 
 export function digestJson(r: WatchResult, earlier: MovedBill[][] = []) {
-  const flagged = flaggedOf(r.candidates);
-  const moved = movedBills(r.candidates);
+  const flagged = flaggedOf(r.candidates, flagCap(r));
+  const moved = movedBills(r.candidates, flagCap(r));
   const best = r.candidates.find((c) => !flagged.includes(c));
   return {
     schema: 1,
@@ -210,7 +213,7 @@ export function digestJson(r: WatchResult, earlier: MovedBill[][] = []) {
     alreadyReported: r.alreadyReported,
     xrayed: r.xrayed,
     site: r.site,
-    cutoff: { score: FLAG_CUTOFF, max: MAX_FLAGGED },
+    cutoff: { score: FLAG_CUTOFF, max: r.sweep ? null : MAX_FLAGGED },
     belowCutoff: r.candidates.length - flagged.length,
     highestBelow: best && { display: billDisplay(best.status.id), score: best.score },
     movedBills: moved,
@@ -380,7 +383,7 @@ export function digestMarkdown(d: Digest): string {
 
   L.push("", "## How bills are ranked", "");
   L.push(
-    `Score = 100 × Σ weight × sub-score; an unmeasured sub-score (—) counts as 0. A bill is flagged at ${d.cutoff.score} or more (at most ${d.cutoff.max}); ${d.belowCutoff} of ${d.moved} moved bills scored below. The sponsor's party is never an input.`,
+    `Score = 100 × Σ weight × sub-score; an unmeasured sub-score (—) counts as 0. A bill is flagged at ${d.cutoff.score} or more${d.cutoff.max === null ? "" : ` (at most ${d.cutoff.max})`}; ${d.belowCutoff} of ${d.moved} moved bills scored below. The sponsor's party is never an input.`,
     "",
     auditLine(d.partyAudit, d),
     "",

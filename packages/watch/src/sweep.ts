@@ -117,7 +117,7 @@ export async function sweep(congress: number, log: (m: string) => void, signal?:
   for (const c of shortlist) problems.push(...(await enrich(c, join(dir, "cache"), signal)));
 
   const site: Site = { published: [], deploy: { status: "pending" } };
-  const picks = toXray(candidates, Number.POSITIVE_INFINITY)
+  const picks = toXray(candidates, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)
     .filter((c) => !c.evidence.xray?.published)
     .slice(0, cfg.xrays);
   const xrayed = await xrayAndPublish(
