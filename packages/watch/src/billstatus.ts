@@ -95,10 +95,16 @@ export function parseBillStatus(xml: string): BillStatus {
   const sponsor = items(bill.sponsors)[0];
   const titles = items(bill.titles);
   const whole = titles.filter((t: X) => !/portions/i.test(t.titleType ?? ""));
+  const final = titles.filter((t: X) => /ENR \(Enrolled\)|as Enacted/i.test(t.titleType ?? ""));
+  // When the final text has short titles only for its parts, earlier ones can name the shell bill it rode on
+  // (H.R.815's "RELIEVE Act"), so only a popular title (H.R.1's "One Big Beautiful Bill Act") names it.
+  const popular = str(titles.find((t: X) => t.titleType === "Popular Titles")?.title);
   const shortTitle =
-    str(whole.find((t: X) => /^Short Titles? .*as Enacted/i.test(t.titleType ?? ""))?.title) ??
-    str(whole.find((t: X) => /^Short Title/i.test(t.titleType ?? ""))?.title) ??
-    str(titles.find((t: X) => t.titleType === "Popular Titles")?.title);
+    final.length && final.every((t: X) => /portions/i.test(t.titleType ?? ""))
+      ? popular
+      : (str(whole.find((t: X) => /^Short Titles? .*as Enacted/i.test(t.titleType ?? ""))?.title) ??
+        str(whole.find((t: X) => /^Short Title/i.test(t.titleType ?? ""))?.title) ??
+        str(titles.find((t: X) => t.titleType === "Popular Titles")?.title));
 
   const actions: Action[] = items(bill.actions).map((a: X) => ({
     date: day(a.actionDate)!,

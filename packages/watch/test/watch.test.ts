@@ -49,10 +49,18 @@ test("short title: a title for portions of the bill (H.R.1's \"FEHB Protection A
     "FEHB Protection Act of 2025",
   ];
   expect(titles([portion, ["Popular Titles", "One Big Beautiful Bill Act"]])).toBe("One Big Beautiful Bill Act");
-  expect(titles([portion, ["Short Title(s) as Passed House", "One Big Beautiful Bill Act"]])).toBe(
-    "One Big Beautiful Bill Act",
-  );
+  expect(titles([["Short Title(s) as Passed House", "One Big Beautiful Bill Act"]])).toBe("One Big Beautiful Bill Act");
   expect(titles([portion])).toBeNull();
+  // H.R.815: the enrolled foreign aid law names only its parts; its House title is the shell bill's.
+  expect(
+    titles([
+      [
+        "Short Titles for portions of this bill from ENR (Enrolled) bill text",
+        "Israel Security Supplemental Appropriations Act, 2024",
+      ],
+      ["Short Title(s) as Passed House", "RELIEVE Act"],
+    ]),
+  ).toBeNull();
 });
 
 test("events: second-chamber passage with its tally and roll call, new text, law; introduced text is not movement", () => {

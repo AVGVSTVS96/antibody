@@ -110,7 +110,18 @@ function committeeSponsor(a: Element): string | null {
   return at(a, "sponsors/item/name") === "Rules Committee" ? "HSRU" : null;
 }
 
+/**
+ * The bill's short title. When its final text has short titles only for its parts, earlier ones can name the shell
+ * bill it rode on (H.R.815, the April 2024 foreign aid law, as "RELIEVE Act"), so only a popular title names it.
+ */
 function shortTitle(titles: { type: string; title: string }[]): string | null {
+  const final = titles.filter((t) => /ENR \(Enrolled\)|as Enacted/i.test(t.type));
+  if (final.length && final.every((t) => /portions/i.test(t.type)))
+    return (
+      titles.find((t) => t.type === "Override Display Title")?.title ??
+      titles.find((t) => t.type === "Popular Titles")?.title ??
+      null
+    );
   const whole = titles.filter((t) => !/portions/i.test(t.type));
   return (
     titles.find((t) => t.type === "Override Display Title")?.title ??
