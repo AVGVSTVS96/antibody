@@ -21,12 +21,16 @@ const sources = COUNTED.flatMap((o) => (o.mediacloud_id ? [o.mediacloud_id] : []
 const outletsOn = (side: Side) =>
   COUNTED.filter((o) => o.mediacloud_id && (SIDES[side] as readonly string[]).includes(o.group)).length;
 
-/** From a week before introduction to 30 days after it became law (or today). */
+/**
+ * From a week before introduction to 30 days after it became law, or after its last action, and never past today. A
+ * bill that stopped moving keeps the same window, so its cached count holds on later days.
+ */
 export function newsWindow(s: BillStatus, today: string): { start: string; end: string } {
   const law = s.actions.find((a) => a.type === "BecameLaw" || /Became (Public|Private) Law/.test(a.text))?.date;
-  const from = s.introducedOn ?? s.actions.map((a) => a.date).sort()[0] ?? today;
-  const end = law ? iso(Math.min(Date.parse(law) + 30 * DAY, Date.parse(today))) : today;
-  return { start: iso(Date.parse(from) - 7 * DAY), end };
+  const dates = s.actions.map((a) => a.date).sort();
+  const from = s.introducedOn ?? dates[0] ?? today;
+  const last = law ?? dates.at(-1) ?? today;
+  return { start: iso(Date.parse(from) - 7 * DAY), end: iso(Math.min(Date.parse(last) + 30 * DAY, Date.parse(today))) };
 }
 
 /** Sums per-outlet counts into sides and weights the sides equally. */

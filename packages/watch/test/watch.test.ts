@@ -383,6 +383,18 @@ test("news attention weighs the left, center and right of the outlet list equall
 
   const s = status();
   expect(newsWindow(s, "2026-10-21")).toEqual({ start: "2026-08-25", end: "2026-10-21" });
+  // A bill that stopped moving: 30 days after its last action, the same on any later day.
+  const dormant = {
+    ...s,
+    actions: s.actions.filter((a) => !/Became (Public|Private) Law/.test(a.text) && a.type !== "BecameLaw"),
+  };
+  const lastAction = dormant.actions
+    .map((a) => a.date)
+    .sort()
+    .at(-1)!;
+  const end = new Date(Date.parse(lastAction) + 30 * 86_400_000).toISOString().slice(0, 10);
+  expect(newsWindow(dormant, "2027-06-01").end).toBe(end);
+  expect(newsWindow(dormant, "2028-01-01").end).toBe(end);
   expect(newsWindow(s, "2027-06-01")).toEqual({ start: "2026-08-25", end: "2026-11-08" });
 });
 
