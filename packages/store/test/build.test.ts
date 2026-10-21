@@ -343,6 +343,17 @@ test("a bill listed only by a description takes the name its first section gives
   expect(bundle.bill.shortTitle).toBe("One Big Beautiful Bill Act");
 });
 
+test("a division's short title is not the bill's (H.R.815's FEND Off Fentanyl Act)", async () => {
+  const rows = structuredClone(GENIUS_ROWS);
+  rows.bills![0]!.short_title = null;
+  const first = rows.sections!.find((s) => s.num === "1")!;
+  first.heading = "Short title";
+  first.path = "division:E/sec:3001";
+  first.preview = 'This division may be cited as the "FEND Off Fentanyl Act".';
+  const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW, names: {} });
+  expect(bundle.bill.shortTitle).toBeNull();
+});
+
 test("a lobbying total cites the first filing it adds and lists every one under rests on, never a search that cannot reproduce the number", () => {
   const total = b.claims["lda_spend/119-s-1582:coinbase#total"]!;
   expect(total.sourceUrl).not.toContain("/api/v1/filings/?");

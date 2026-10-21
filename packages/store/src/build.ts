@@ -413,12 +413,16 @@ class Builder {
     }
   }
 
-  /** BILLSTATUS sometimes lists only a description ("An act to provide for reconciliation…") where the bill names itself in its first section. */
+  /**
+   * BILLSTATUS sometimes lists only a description ("An act to provide for reconciliation…") where the bill names itself
+   * in its first section. Only a top-level short title names the whole bill: one inside a division names that division
+   * (H.R.815's "FEND Off Fentanyl Act").
+   */
   private async shortTitle(bill: AnyRow): Promise<string | null> {
     if (bill.short_title && !DESCRIPTION.test(bill.short_title)) return bill.short_title;
     const [first] = await this.select(
       "sections",
-      "bill_id = $b AND regexp_matches(heading, '^short titles?\\b', 'i')",
+      "bill_id = $b AND regexp_matches(heading, '^short titles?\\b', 'i') AND NOT contains(path, '/')",
       { b: this.bill },
       "in_final DESC, id",
     );
