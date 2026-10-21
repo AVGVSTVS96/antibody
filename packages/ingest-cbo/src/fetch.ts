@@ -104,7 +104,13 @@ export async function archived(url: string, file: string, opts: Opts & { near?: 
   const valid = VALID.find(([re]) => re.test(file))?.[1] ?? (() => true);
   const tried = new Set<string>();
   const attempt = async (stamp: string): Promise<Fetched | null> => {
-    const res = await get(`https://web.archive.org/web/${stamp}id_/${url}`, opts.signal, 180_000);
+    // The Wayback Machine sometimes answers a replay with a status of its own (900) after every retry; that capture
+    // is unreadable, not the whole estimate.
+    const res = await get(`https://web.archive.org/web/${stamp}id_/${url}`, opts.signal, 180_000).catch((e) => {
+      if (opts.signal?.aborted) throw e;
+      return null;
+    });
+    if (!res) return null;
     const ts = res.url.match(/\/web\/(\d{14})id_\//)?.[1] ?? stamp;
     if (tried.has(ts)) return null;
     tried.add(ts);
