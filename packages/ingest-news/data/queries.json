@@ -33,6 +33,14 @@
   "119-hr-8800": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2027\"", "\"NDAA\""], "window": ["2026-05-01", "2026-10-20"]},
   "119-s-1383": {"terms": ["\"SAVE America Act\""], "window": ["2025-04-01", "2026-10-20"]},
   "119-hr-1834": {"terms": ["\"Breaking the Gridlock Act\"", "\"H.R. 1834\"", "\"enhanced premium tax credits\"", "\"ACA subsidies\""], "window": ["2025-11-15", "2026-06-30"]},
-  "119-hr-7147": {"terms": ["\"Homeland Security and Further Additional Continuing Appropriations Act\"", "\"H.R. 7147\"", "\"DHS funding bill\"", "\"DHS shutdown\""], "window": ["2026-01-15", "2026-05-15"]}
+  "119-hr-7147": {"terms": ["\"Homeland Security and Further Additional Continuing Appropriations Act\"", "\"H.R. 7147\"", "\"DHS funding bill\"", "\"DHS shutdown\""], "window": ["2026-01-15", "2026-05-15"]},
+  "118-hr-2882": {"terms": ["\"Further Consolidated Appropriations Act, 2024\"", "\"spending package\"", "\"government funding package\""], "window": ["2024-03-15", "2024-04-30"]},
+  "118-hr-4366": {"terms": ["\"Consolidated Appropriations Act, 2024\"", "\"spending package\"", "\"minibus\""], "window": ["2024-02-25", "2024-04-10"]},
+  "118-hr-5009": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2025\"", "\"NDAA\""], "window": ["2024-06-01", "2025-01-15"]},
+  "118-hr-10545": {"terms": ["\"American Relief Act\"", "\"continuing resolution\"", "\"stopgap funding bill\""], "window": ["2024-12-15", "2025-01-31"]},
+  "119-hr-3633": {"terms": ["\"CLARITY Act\"", "\"Digital Asset Market Clarity Act\"", "\"market structure bill\""], "window": ["2025-05-20", "2026-10-20"]},
+  "119-sjres-18": {"terms": ["\"S.J.Res. 18\"", "\"S.J. Res. 18\"", "\"overdraft rule\""], "window": ["2025-02-10", "2025-06-10"]},
+  "119-hjres-25": {"terms": ["\"H.J.Res. 25\"", "\"H.J. Res. 25\"", "\"DeFi broker rule\"", "\"DeFi broker\""], "window": ["2025-01-15", "2025-05-10"]},
+  "119-hconres-86": {"terms": ["\"H.Con.Res. 86\"", "\"H. Con. Res. 86\"", "\"war powers resolution\""], "window": ["2026-03-01", "2026-10-20"]}
  }
 }
