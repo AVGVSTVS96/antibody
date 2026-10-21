@@ -1543,6 +1543,9 @@ a.cname:hover {
   border-color: var(--ink-2);
   color: var(--ink-2);
 }
+.ttl .pill + .pill {
+  margin-left: 4px;
+}
 .stagecode.late {
   color: var(--ink);
   font-weight: 600;
