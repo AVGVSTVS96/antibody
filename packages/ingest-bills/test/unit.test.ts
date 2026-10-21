@@ -199,3 +199,13 @@ test("sponsorships: a member who cosponsored twice keeps both rows, with distinc
   );
   expect(rows.map((r) => r.id)).toEqual(["119-s-1383:M001", "119-s-1383:W000790", "119-s-1383:W000790:2025-09-18"]);
 });
+
+test("sections: a reported bill whose first body is all struck reads the substitute after it", () => {
+  const sec = (n: string, h: string) =>
+    `<section><enum>${n}.</enum><header>${h}</header><text>Text of ${h}.</text></section>`;
+  const xml = `<?xml version="1.0"?><bill><form/><legis-body><title changed="deleted"><enum>I</enum>${sec("101", "House text")}</title></legis-body><legis-body>${sec("1", "Short title")}${sec("2", "Senate text")}</legis-body></bill>`;
+  expect(parseSections(xml).map((s) => s.heading)).toEqual(["Short title", "Senate text"]);
+  // Two committees' full texts: the first is the one read, as before.
+  const two = `<?xml version="1.0"?><bill><legis-body>${sec("1", "Agriculture")}</legis-body><legis-body>${sec("1", "Financial Services")}</legis-body></bill>`;
+  expect(parseSections(two).map((s) => s.heading)).toEqual(["Agriculture"]);
+});

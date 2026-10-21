@@ -40,21 +40,26 @@ function sectionText(section: Element): string {
 export class PartialAmendment extends Error {}
 
 /** Where a version's own provisions live: the bill body, the law's main, or a full-substitute amendment's block. */
-function body(root: Element): Element {
+/**
+ * The elements that can hold a text's sections. A reported bill can carry more than one body: two committees' texts
+ * (H.R.3633 as reported in the House), or the House text with every title struck and then the Senate committee's
+ * substitute (H.R.3633 as reported to the Senate).
+ */
+function bodies(root: Element): Element[] {
   const name = local(root);
   if (name === "amendment-doc") {
     const block = descendant(root, "amendment-block");
     const instruction = norm(textOf(descendant(root, "amendment-instruction") ?? root)).toLowerCase();
     if (!block || !/strike (out )?all after/.test(instruction))
       throw new PartialAmendment("amendment is not a full substitute; page-and-line amendments aren't split yet");
-    return block;
+    return [block];
   }
   if (name === "bill" || name === "resolution") {
-    const b = child(root, "legis-body") ?? child(root, "resolution-body") ?? child(root, "main");
-    if (!b) throw new Error(`${name} has no body`);
+    const b = kids(root).filter((c) => ["legis-body", "resolution-body", "main"].includes(local(c)));
+    if (!b.length) throw new Error(`${name} has no body`);
     return b;
   }
-  return child(root, "main") ?? root;
+  return [child(root, "main") ?? root];
 }
 
 const label = (e: Element) => child(e, "enum") ?? child(e, "num");
@@ -66,7 +71,16 @@ export function hashSection(heading: string, text: string): string {
     .slice(0, 16);
 }
 
+/** The sections of the first body that has any. */
 export function parseSections(xml: string): Sec[] {
+  for (const b of bodies(parseXml(xml))) {
+    const secs = sectionsOf(b);
+    if (secs.length) return secs;
+  }
+  return [];
+}
+
+function sectionsOf(root: Element): Sec[] {
   const out: Sec[] = [];
   const walk = (e: Element, trail: string[]) => {
     for (const c of kids(e)) {
@@ -92,7 +106,7 @@ export function parseSections(xml: string): Sec[] {
       } else walk(c, trail);
     }
   };
-  walk(body(parseXml(xml)), []);
+  walk(root, []);
   return out;
 }
 
