@@ -1,47 +1,444 @@
 {
- "about": "Search terms per bill: its official short title, the name the press used, and its number. Same shape for every bill; a bill not listed here is searched by its short title and number from BILLSTATUS. A window, when given, overrides the default (introduced - 7 days to law or last action + 30 days).",
- "bills": {
-  "119-s-1582": {"terms": ["\"GENIUS Act\"", "\"S. 1582\""], "window": ["2025-02-01", "2025-08-15"]},
-  "119-hr-1": {"terms": ["\"One Big Beautiful Bill\"", "\"Big Beautiful Bill\""], "window": ["2025-05-01", "2025-08-01"]},
-  "117-hr-5376": {"terms": ["\"Inflation Reduction Act\""], "window": ["2022-07-25", "2022-09-30"]},
-  "117-hr-4346": {"terms": ["\"CHIPS and Science Act\"", "\"CHIPS Act\""]},
-  "117-hr-3684": {"terms": ["\"Infrastructure Investment and Jobs Act\"", "\"bipartisan infrastructure bill\"", "\"bipartisan infrastructure law\""]},
-  "117-hr-1319": {"terms": ["\"American Rescue Plan\""]},
-  "118-hr-3746": {"terms": ["\"Fiscal Responsibility Act\"", "\"debt ceiling deal\""]},
-  "119-s-5": {"terms": ["\"Laken Riley Act\""]},
-  "119-s-146": {"terms": ["\"TAKE IT DOWN Act\""]},
-  "117-hr-2617": {"terms": ["\"Consolidated Appropriations Act, 2023\"", "\"omnibus spending bill\"", "\"omnibus spending package\""], "window": ["2022-12-01", "2023-01-15"]},
-  "117-s-3373": {"terms": ["\"PACT Act\"", "\"Honoring our PACT Act\""], "window": ["2022-06-01", "2022-09-15"]},
-  "117-s-3522": {"terms": ["\"Ukraine Democracy Defense Lend-Lease Act\"", "\"lend-lease\""], "window": ["2022-03-01", "2022-05-20"]},
-  "119-s-1071": {"terms": ["\"National Defense Authorization Act\"", "\"NDAA\""], "window": ["2025-07-01", "2026-01-05"]},
-  "119-hr-5371": {"terms": ["\"Continuing Appropriations, Agriculture\"", "\"H.R. 5371\"", "\"continuing resolution\"", "\"stopgap funding bill\"", "\"shutdown deal\""], "window": ["2025-09-15", "2025-12-12"]},
-  "119-hr-4": {"terms": ["\"Rescissions Act\"", "\"rescissions package\"", "\"rescission package\""], "window": ["2025-06-01", "2025-08-31"]},
-  "119-s-2": {"terms": ["\"Secure America Act\"", "\"reconciliation 2.0\""], "window": ["2026-05-01", "2026-07-10"]},
-  "119-hr-7008": {"terms": ["\"Stop Insider Trading Act\"", "\"stock trading ban\"", "\"stock-trading ban\""], "window": ["2026-01-05", "2026-10-20"]},
-  "119-hr-6644": {"terms": ["\"ROAD to Housing\"", "\"Housing for the 21st Century Act\""], "window": ["2025-12-04", "2026-08-10"]},
-  "118-hr-815": {"terms": ["\"foreign aid package\"", "\"national security supplemental\"", "\"21st Century Peace through Strength Act\"", "\"H.R. 815\""], "window": ["2024-04-10", "2024-05-25"]},
-  "118-hr-7888": {"terms": ["\"Reforming Intelligence and Securing America Act\"", "\"FISA reauthorization\"", "\"Section 702\""], "window": ["2024-04-01", "2024-05-20"]},
-  "117-s-2938": {"terms": ["\"Bipartisan Safer Communities Act\"", "\"bipartisan gun bill\"", "\"gun safety bill\""], "window": ["2022-06-01", "2022-07-31"]},
-  "119-hr-7148": {"terms": ["\"Consolidated Appropriations Act, 2026\"", "\"spending package\"", "\"government funding package\""], "window": ["2026-01-15", "2026-02-28"]},
-  "119-hr-1968": {"terms": ["\"Full-Year Continuing Appropriations\"", "\"H.R. 1968\"", "\"continuing resolution\"", "\"stopgap funding bill\""], "window": ["2025-03-05", "2025-04-30"]},
-  "119-hr-6500": {"terms": ["\"Continuing Appropriations and Extensions Act, 2027\"", "\"H.R. 6500\"", "\"continuing resolution\"", "\"stopgap funding bill\""], "window": ["2026-07-15", "2026-10-15"]},
-  "119-hjres-88": {"terms": ["\"H.J.Res. 88\"", "\"H.J. Res. 88\"", "\"California waiver\"", "\"California's waiver\"", "\"Advanced Clean Cars II\""], "window": ["2025-04-20", "2025-07-15"]},
-  "119-hr-5334": {"terms": ["\"Sanctioning Russia and Iran Act\"", "\"Sanctioning Russia Act\"", "\"Russia sanctions bill\""], "window": ["2026-01-01", "2026-10-20"]},
-  "117-hr-2471": {"terms": ["\"Consolidated Appropriations Act, 2022\"", "\"omnibus spending bill\"", "\"omnibus spending package\""], "window": ["2022-03-01", "2022-04-15"]},
-  "118-hr-2670": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2024\"", "\"NDAA\""], "window": ["2023-06-15", "2024-01-15"]},
-  "119-hjres-140": {"terms": ["\"Boundary Waters\"", "\"H.J.Res. 140\"", "\"H.J. Res. 140\""], "window": ["2026-01-01", "2026-05-31"]},
-  "119-hr-8800": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2027\"", "\"NDAA\""], "window": ["2026-05-01", "2026-10-20"]},
-  "119-s-1383": {"terms": ["\"SAVE America Act\""], "window": ["2025-04-01", "2026-10-20"]},
-  "119-hr-1834": {"terms": ["\"Breaking the Gridlock Act\"", "\"H.R. 1834\"", "\"enhanced premium tax credits\"", "\"ACA subsidies\""], "window": ["2025-11-15", "2026-06-30"]},
-  "119-hr-7147": {"terms": ["\"Homeland Security and Further Additional Continuing Appropriations Act\"", "\"H.R. 7147\"", "\"DHS funding bill\"", "\"DHS shutdown\""], "window": ["2026-01-15", "2026-05-15"]},
-  "118-hr-2882": {"terms": ["\"Further Consolidated Appropriations Act, 2024\"", "\"spending package\"", "\"government funding package\""], "window": ["2024-03-15", "2024-04-30"]},
-  "118-hr-4366": {"terms": ["\"Consolidated Appropriations Act, 2024\"", "\"spending package\"", "\"minibus\""], "window": ["2024-02-25", "2024-04-10"]},
-  "118-hr-5009": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2025\"", "\"NDAA\""], "window": ["2024-06-01", "2025-01-15"]},
-  "118-hr-10545": {"terms": ["\"American Relief Act\"", "\"continuing resolution\"", "\"stopgap funding bill\""], "window": ["2024-12-15", "2025-01-31"]},
-  "119-hr-3633": {"terms": ["\"CLARITY Act\"", "\"Digital Asset Market Clarity Act\"", "\"market structure bill\""], "window": ["2025-05-20", "2026-10-20"]},
-  "119-sjres-18": {"terms": ["\"S.J.Res. 18\"", "\"S.J. Res. 18\"", "\"overdraft rule\""], "window": ["2025-02-10", "2025-06-10"]},
-  "119-hjres-25": {"terms": ["\"H.J.Res. 25\"", "\"H.J. Res. 25\"", "\"DeFi broker rule\"", "\"DeFi broker\""], "window": ["2025-01-15", "2025-05-10"]},
-  "119-hconres-86": {"terms": ["\"H.Con.Res. 86\"", "\"H. Con. Res. 86\"", "\"war powers resolution\""], "window": ["2026-03-01", "2026-10-20"]},
-  "117-hr-7776": {"terms": ["\"James M. Inhofe National Defense Authorization Act\"", "\"National Defense Authorization Act for Fiscal Year 2023\"", "\"NDAA\""], "window": ["2022-06-01", "2023-01-15"]}
- }
+  "about": "Search terms per bill: its official short title, the name the press used, and its number. Same shape for every bill; a bill not listed here is searched by its short title and number from BILLSTATUS. A window, when given, overrides the default (introduced - 7 days to law or last action + 30 days).",
+  "bills": {
+    "119-s-1582": {
+      "terms": [
+        "\"GENIUS Act\"",
+        "\"S. 1582\""
+      ],
+      "window": [
+        "2025-02-01",
+        "2025-08-15"
+      ]
+    },
+    "119-hr-1": {
+      "terms": [
+        "\"One Big Beautiful Bill\"",
+        "\"Big Beautiful Bill\""
+      ],
+      "window": [
+        "2025-05-01",
+        "2025-08-01"
+      ]
+    },
+    "117-hr-5376": {
+      "terms": [
+        "\"Inflation Reduction Act\""
+      ],
+      "window": [
+        "2022-07-25",
+        "2022-09-30"
+      ]
+    },
+    "117-hr-4346": {
+      "terms": [
+        "\"CHIPS and Science Act\"",
+        "\"CHIPS Act\""
+      ]
+    },
+    "117-hr-3684": {
+      "terms": [
+        "\"Infrastructure Investment and Jobs Act\"",
+        "\"bipartisan infrastructure bill\"",
+        "\"bipartisan infrastructure law\""
+      ]
+    },
+    "117-hr-1319": {
+      "terms": [
+        "\"American Rescue Plan\""
+      ]
+    },
+    "118-hr-3746": {
+      "terms": [
+        "\"Fiscal Responsibility Act\"",
+        "\"debt ceiling deal\""
+      ]
+    },
+    "119-s-5": {
+      "terms": [
+        "\"Laken Riley Act\""
+      ]
+    },
+    "119-s-146": {
+      "terms": [
+        "\"TAKE IT DOWN Act\""
+      ]
+    },
+    "117-hr-2617": {
+      "terms": [
+        "\"Consolidated Appropriations Act, 2023\"",
+        "\"omnibus spending bill\"",
+        "\"omnibus spending package\""
+      ],
+      "window": [
+        "2022-12-01",
+        "2023-01-15"
+      ]
+    },
+    "117-s-3373": {
+      "terms": [
+        "\"PACT Act\"",
+        "\"Honoring our PACT Act\""
+      ],
+      "window": [
+        "2022-06-01",
+        "2022-09-15"
+      ]
+    },
+    "117-s-3522": {
+      "terms": [
+        "\"Ukraine Democracy Defense Lend-Lease Act\"",
+        "\"lend-lease\""
+      ],
+      "window": [
+        "2022-03-01",
+        "2022-05-20"
+      ]
+    },
+    "119-s-1071": {
+      "terms": [
+        "\"National Defense Authorization Act\"",
+        "\"NDAA\""
+      ],
+      "window": [
+        "2025-07-01",
+        "2026-01-05"
+      ]
+    },
+    "119-hr-5371": {
+      "terms": [
+        "\"Continuing Appropriations, Agriculture\"",
+        "\"H.R. 5371\"",
+        "\"continuing resolution\"",
+        "\"stopgap funding bill\"",
+        "\"shutdown deal\""
+      ],
+      "window": [
+        "2025-09-15",
+        "2025-12-12"
+      ]
+    },
+    "119-hr-4": {
+      "terms": [
+        "\"Rescissions Act\"",
+        "\"rescissions package\"",
+        "\"rescission package\""
+      ],
+      "window": [
+        "2025-06-01",
+        "2025-08-31"
+      ]
+    },
+    "119-s-2": {
+      "terms": [
+        "\"Secure America Act\"",
+        "\"reconciliation 2.0\""
+      ],
+      "window": [
+        "2026-05-01",
+        "2026-07-10"
+      ]
+    },
+    "119-hr-7008": {
+      "terms": [
+        "\"Stop Insider Trading Act\"",
+        "\"stock trading ban\"",
+        "\"stock-trading ban\""
+      ],
+      "window": [
+        "2026-01-05",
+        "2026-10-20"
+      ]
+    },
+    "119-hr-6644": {
+      "terms": [
+        "\"ROAD to Housing\"",
+        "\"Housing for the 21st Century Act\""
+      ],
+      "window": [
+        "2025-12-04",
+        "2026-08-10"
+      ]
+    },
+    "118-hr-815": {
+      "terms": [
+        "\"foreign aid package\"",
+        "\"national security supplemental\"",
+        "\"21st Century Peace through Strength Act\"",
+        "\"H.R. 815\""
+      ],
+      "window": [
+        "2024-04-10",
+        "2024-05-25"
+      ]
+    },
+    "118-hr-7888": {
+      "terms": [
+        "\"Reforming Intelligence and Securing America Act\"",
+        "\"FISA reauthorization\"",
+        "\"Section 702\""
+      ],
+      "window": [
+        "2024-04-01",
+        "2024-05-20"
+      ]
+    },
+    "117-s-2938": {
+      "terms": [
+        "\"Bipartisan Safer Communities Act\"",
+        "\"bipartisan gun bill\"",
+        "\"gun safety bill\""
+      ],
+      "window": [
+        "2022-06-01",
+        "2022-07-31"
+      ]
+    },
+    "119-hr-7148": {
+      "terms": [
+        "\"Consolidated Appropriations Act, 2026\"",
+        "\"spending package\"",
+        "\"government funding package\""
+      ],
+      "window": [
+        "2026-01-15",
+        "2026-02-28"
+      ]
+    },
+    "119-hr-1968": {
+      "terms": [
+        "\"Full-Year Continuing Appropriations\"",
+        "\"H.R. 1968\"",
+        "\"continuing resolution\"",
+        "\"stopgap funding bill\""
+      ],
+      "window": [
+        "2025-03-05",
+        "2025-04-30"
+      ]
+    },
+    "119-hr-6500": {
+      "terms": [
+        "\"Continuing Appropriations and Extensions Act, 2027\"",
+        "\"H.R. 6500\"",
+        "\"continuing resolution\"",
+        "\"stopgap funding bill\""
+      ],
+      "window": [
+        "2026-07-15",
+        "2026-10-15"
+      ]
+    },
+    "119-hjres-88": {
+      "terms": [
+        "\"H.J.Res. 88\"",
+        "\"H.J. Res. 88\"",
+        "\"California waiver\"",
+        "\"California's waiver\"",
+        "\"Advanced Clean Cars II\""
+      ],
+      "window": [
+        "2025-04-20",
+        "2025-07-15"
+      ]
+    },
+    "119-hr-5334": {
+      "terms": [
+        "\"Sanctioning Russia and Iran Act\"",
+        "\"Sanctioning Russia Act\"",
+        "\"Russia sanctions bill\""
+      ],
+      "window": [
+        "2026-01-01",
+        "2026-10-20"
+      ]
+    },
+    "117-hr-2471": {
+      "terms": [
+        "\"Consolidated Appropriations Act, 2022\"",
+        "\"omnibus spending bill\"",
+        "\"omnibus spending package\""
+      ],
+      "window": [
+        "2022-03-01",
+        "2022-04-15"
+      ]
+    },
+    "118-hr-2670": {
+      "terms": [
+        "\"National Defense Authorization Act for Fiscal Year 2024\"",
+        "\"NDAA\""
+      ],
+      "window": [
+        "2023-06-15",
+        "2024-01-15"
+      ]
+    },
+    "119-hjres-140": {
+      "terms": [
+        "\"Boundary Waters\"",
+        "\"H.J.Res. 140\"",
+        "\"H.J. Res. 140\""
+      ],
+      "window": [
+        "2026-01-01",
+        "2026-05-31"
+      ]
+    },
+    "119-hr-8800": {
+      "terms": [
+        "\"National Defense Authorization Act for Fiscal Year 2027\"",
+        "\"NDAA\""
+      ],
+      "window": [
+        "2026-05-01",
+        "2026-10-20"
+      ]
+    },
+    "119-s-1383": {
+      "terms": [
+        "\"SAVE America Act\""
+      ],
+      "window": [
+        "2025-04-01",
+        "2026-10-20"
+      ]
+    },
+    "119-hr-1834": {
+      "terms": [
+        "\"Breaking the Gridlock Act\"",
+        "\"H.R. 1834\"",
+        "\"enhanced premium tax credits\"",
+        "\"ACA subsidies\""
+      ],
+      "window": [
+        "2025-11-15",
+        "2026-06-30"
+      ]
+    },
+    "119-hr-7147": {
+      "terms": [
+        "\"Homeland Security and Further Additional Continuing Appropriations Act\"",
+        "\"H.R. 7147\"",
+        "\"DHS funding bill\"",
+        "\"DHS shutdown\""
+      ],
+      "window": [
+        "2026-01-15",
+        "2026-05-15"
+      ]
+    },
+    "118-hr-2882": {
+      "terms": [
+        "\"Further Consolidated Appropriations Act, 2024\"",
+        "\"spending package\"",
+        "\"government funding package\""
+      ],
+      "window": [
+        "2024-03-15",
+        "2024-04-30"
+      ]
+    },
+    "118-hr-4366": {
+      "terms": [
+        "\"Consolidated Appropriations Act, 2024\"",
+        "\"spending package\"",
+        "\"minibus\""
+      ],
+      "window": [
+        "2024-02-25",
+        "2024-04-10"
+      ]
+    },
+    "118-hr-5009": {
+      "terms": [
+        "\"National Defense Authorization Act for Fiscal Year 2025\"",
+        "\"NDAA\""
+      ],
+      "window": [
+        "2024-06-01",
+        "2025-01-15"
+      ]
+    },
+    "118-hr-10545": {
+      "terms": [
+        "\"American Relief Act\"",
+        "\"continuing resolution\"",
+        "\"stopgap funding bill\""
+      ],
+      "window": [
+        "2024-12-15",
+        "2025-01-31"
+      ]
+    },
+    "119-hr-3633": {
+      "terms": [
+        "\"CLARITY Act\"",
+        "\"Digital Asset Market Clarity Act\"",
+        "\"market structure bill\""
+      ],
+      "window": [
+        "2025-05-20",
+        "2026-10-20"
+      ]
+    },
+    "119-sjres-18": {
+      "terms": [
+        "\"S.J.Res. 18\"",
+        "\"S.J. Res. 18\"",
+        "\"overdraft rule\""
+      ],
+      "window": [
+        "2025-02-10",
+        "2025-06-10"
+      ]
+    },
+    "119-hjres-25": {
+      "terms": [
+        "\"H.J.Res. 25\"",
+        "\"H.J. Res. 25\"",
+        "\"DeFi broker rule\"",
+        "\"DeFi broker\""
+      ],
+      "window": [
+        "2025-01-15",
+        "2025-05-10"
+      ]
+    },
+    "119-hconres-86": {
+      "terms": [
+        "\"H.Con.Res. 86\"",
+        "\"H. Con. Res. 86\"",
+        "\"war powers resolution\""
+      ],
+      "window": [
+        "2026-03-01",
+        "2026-10-20"
+      ]
+    },
+    "117-hr-7776": {
+      "terms": [
+        "\"James M. Inhofe National Defense Authorization Act\"",
+        "\"National Defense Authorization Act for Fiscal Year 2023\"",
+        "\"NDAA\""
+      ],
+      "window": [
+        "2022-06-01",
+        "2023-01-15"
+      ]
+    },
+    "119-hr-6938": {
+      "terms": [
+        "\"Commerce, Justice, Science\"",
+        "\"minibus\"",
+        "\"three-bill\" spending",
+        "\"Energy and Water\" appropriations",
+        "\"H.R. 6938\""
+      ],
+      "window": [
+        "2026-01-01",
+        "2026-01-31"
+      ]
+    }
+  }
 }
