@@ -1,9 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtemp, readdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { amendmentStatus, versionStep } from "../src/amendments.ts";
 import type { AmendmentRecord } from "../src/billstatus.ts";
 import { candidates } from "../src/counterparts.ts";
 import { amendmentFrom } from "../src/crec.ts";
 import { wordDiff } from "../src/diff.ts";
+import { cached } from "../src/fetch.ts";
 import { trace } from "../src/lineage.ts";
 import { match } from "../src/match.ts";
 import { parseSections, type Sec } from "../src/sections.ts";
@@ -166,4 +170,15 @@ test("counterpart candidates need a shared heading word, cited law or wording", 
   expect(candidates(removed, added).map((l) => l.last.heading)).toEqual([
     "Modifications to SNAP work requirements for able-bodied adults",
   ]);
+});
+
+test("cached: two downloads of one file at once both land", async () => {
+  using server = Bun.serve({ port: 0, fetch: () => new Response("<mods/>") });
+  const dir = await mkdtemp(join(tmpdir(), "antibody-cached-"));
+  const url = `http://localhost:${server.port}/mods.xml`;
+  expect(await Promise.all([cached(url, "mods.xml", true, dir), cached(url, "mods.xml", true, dir)])).toEqual([
+    "<mods/>",
+    "<mods/>",
+  ]);
+  expect(await readdir(dir)).toEqual(["mods.xml"]);
 });

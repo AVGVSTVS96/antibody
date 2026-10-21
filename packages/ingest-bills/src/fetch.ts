@@ -8,6 +8,8 @@ const HEADERS = { "User-Agent": "antibody/1 (+https://github.com/AVGVSTVS96/anti
 
 export class NotFound extends Error {}
 
+let writes = 0;
+
 /** Downloads `url` once into data/bills/raw/<file> (again with `refresh`), retrying transient GovInfo errors. */
 export async function cached(url: string, file: string, refresh = false, dir = RAW): Promise<string> {
   const path = join(dir, file);
@@ -18,8 +20,9 @@ export async function cached(url: string, file: string, refresh = false, dir = R
     if (res.ok) {
       const text = await res.text();
       await mkdir(dir, { recursive: true });
-      await Bun.write(`${path}.tmp`, text);
-      await rename(`${path}.tmp`, path);
+      const tmp = `${path}.${process.pid}.${writes++}.tmp`;
+      await Bun.write(tmp, text);
+      await rename(tmp, path);
       return text;
     }
     if (res.status === 404) throw new NotFound(`${res.status} ${url}`);
