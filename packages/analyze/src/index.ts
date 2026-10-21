@@ -4,7 +4,7 @@ import { paths, python, readRows, writeRows } from "@antibody/core/node";
 import { sectionTexts } from "@antibody/ingest-bills";
 import { articleText, OUTLETS, searchPlan } from "@antibody/ingest-news";
 import { attention, MIN_TEXT_CHARS } from "./attention.ts";
-import { type ArticleIn, cachedMatchRun, claudeAvailable, matchArticles, matchEmbed } from "./match.ts";
+import { type ArticleIn, cachedMatchRun, claudeAvailable, matchArticles, matchEmbed, subjectOf } from "./match.ts";
 import { reach } from "./reach.ts";
 import { CHECK_RULE, recheck } from "./recheck.ts";
 import { BOILERPLATE, SCORE, SCORE_TEXT, scoreRows, sectionDollars, sectionReports, stakes } from "./score.ts";
@@ -40,8 +40,14 @@ export const RULES = [
 
 /** What the matcher and the quiet check read for a bill: its sections, the articles read, and the bill's names. */
 async function coverage(bill: BillId) {
-  const sections = await readRows("sections", bill);
-  if (!sections.length) throw new Error(`no sections for ${bill}: run the bills stage first`);
+  const rows = await readRows("sections", bill);
+  if (!rows.length) throw new Error(`no sections for ${bill}: run the bills stage first`);
+  const unnamed = rows.filter((s) => !s.heading.trim());
+  const texts = unnamed.length ? await sectionTexts(unnamed, await readRows("versions", bill)) : new Map();
+  const sections = rows.map((s) => {
+    const subject = texts.has(s.id) ? subjectOf(texts.get(s.id)!.text) : "";
+    return subject ? { ...s, heading: `(unnamed; about: ${subject})` } : s;
+  });
   const [b] = await readRows("bills", bill);
   const articles = await readRows("articles", bill);
   const read = articles.filter((a) => (a.text_chars ?? 0) >= MIN_TEXT_CHARS);

@@ -37,6 +37,32 @@ export interface MatchRun {
 
 const lead = (s: string, words: number) => s.split(/\s+/).slice(0, words).join(" ");
 
+/** Run-in headers that say nothing about what a provision is about. */
+const GENERIC =
+  /^(?:in general|definitions?|exceptions?|exclusions?|inclusions?|applicability|prohibition|effective date|rule of construction|limitation|authority|conforming amendments?|sense of congress|purpose|findings|report|other|requirements?)$/i;
+
+/**
+ * What an unnamed section is about, from its text: the terms it defines, its run-in headers, the documents and
+ * Acts it names. Appropriations bills leave most sections unnamed and open with a date or a cross-reference
+ * ("Effective 365 days after the enactment of this Act, Section 297A … is amended"), so without this the matcher
+ * never learns that the 2025 CR's sec. 781 is the hemp ban.
+ */
+export function subjectOf(text: string, max = 8): string {
+  const found: string[] = [];
+  const add = (t: string | undefined) => {
+    const v = t?.replace(/\s+/g, " ").trim();
+    if (v && !GENERIC.test(v) && !found.some((f) => f.toLowerCase() === v.toLowerCase())) found.push(v);
+  };
+  for (const m of text.matchAll(/term ['‘’"“”]\s*([^'‘’"“”]{2,40}?)\s*['‘’"“”] means/g)) add(m[1]);
+  for (const m of text.matchAll(/entitled ['‘’"“”]+\s*([^'‘’"“”]{5,160}?)\s*['‘’"“”]/g)) add(m[1]);
+  for (const m of text.matchAll(/(?:^|\)\s|\.\s|-\s)([A-Z][A-Za-z'’ ,-]{2,40}?) \.-/g)) add(m[1]);
+  for (const m of text.matchAll(
+    /\b((?:[A-Z][a-zA-Z]+ )(?:(?:[A-Z][a-zA-Z]+|of|and|the|for|on|to) ){0,6}Act(?: of \d{4})?)\b/g,
+  ))
+    add(m[1]);
+  return found.slice(0, max).join("; ");
+}
+
 const line = (s: Row<"sections">, key: string) =>
   `${key} | sec. ${s.num} | ${s.heading}${s.in_final ? "" : " [dropped before the final text]"} | ${lead(s.preview, 30)}`;
 

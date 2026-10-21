@@ -26,3 +26,17 @@ test("a shortlist menu keys its own sections from S1, so a key means one section
   expect([...m.ids.keys()]).toEqual(["S1", "S2"]);
   expect(m.ids.get("S1")).toBe("119-s-1@a:7");
 });
+
+test("an unnamed section's subject comes from the terms it defines, the documents and Acts it names", async () => {
+  const { subjectOf } = await import("../src/match.ts");
+  // H.R.5371 (P.L. 119-37) Div. B sec. 781, the hemp redefinition, as GovInfo's XML reads once tags are stripped.
+  const hemp =
+    "Effective 365 days after the enactment of this Act, Section 297A of the Agricultural Marketing Act of 1946 ( 7 U.S.C. 1639o ) is amended - (1) by redesignating paragraphs (2) through (6) as paragraphs (4) through (8), respectively; and (2) by striking paragraph (1) and inserting the following: (1) Hemp .- (A) In general .- The term ' hemp ' means the plant Cannabis sativa L.";
+  expect(subjectOf(hemp)).toBe("hemp; Agricultural Marketing Act of 1946");
+  const rule =
+    'None of the funds made available by this or any other Act may be used to enforce the final rule promulgated by the Food and Drug Administration entitled "Standards for the Growing, Harvesting, Packing, and Holding of Produce for Human Consumption", and published on November 27, 2015.';
+  expect(subjectOf(rule)).toBe(
+    "Standards for the Growing, Harvesting, Packing, and Holding of Produce for Human Consumption",
+  );
+  expect(subjectOf("(a) In general .- The Secretary shall carry out this section.")).toBe("");
+});
