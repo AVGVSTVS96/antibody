@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { type BillId, billDisplay, type Row } from "@antibody/core";
+import { type BillId, billDisplay, parseJson, type Row } from "@antibody/core";
 import { paths, python } from "@antibody/core/node";
-import { claude, parseJson, pool } from "./llm.ts";
+import { claude, pool } from "./llm.ts";
 
 /** Bumped whenever the prompt or the menu format changes; old matches are then re-done. */
 export const MATCHER = "section-matcher-v7";

@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { Row, StageContext } from "@antibody/core";
+import { parseJson, type Row, type StageContext } from "@antibody/core";
 import { paths, readRows, writeRows } from "@antibody/core/node";
 import { localFile } from "./fetch.ts";
 import { parse } from "./xray.ts";
@@ -94,9 +94,8 @@ async function ask(text: string, cacheFile: string, refresh: boolean): Promise<A
   const out = await new Response(proc.stdout).text();
   if ((await proc.exited) !== 0) throw new Error(`claude -p failed: ${await new Response(proc.stderr).text()}`);
   const reply = JSON.parse(out) as { result: string; total_cost_usd?: number };
-  const body = reply.result.slice(reply.result.indexOf("{"), reply.result.lastIndexOf("}") + 1);
   const result = {
-    links: (JSON.parse(body) as { links: Link[] }).links,
+    links: parseJson<{ links: Link[] }>(reply.result).links,
     costUsd: reply.total_cost_usd ?? 0,
     model: MODEL,
   };

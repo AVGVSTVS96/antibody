@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { exists, mkdir, readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { parseJson } from "@antibody/core";
 import { heavy, paths } from "@antibody/core/node";
 import { z } from "zod";
 import { pool } from "./http.ts";
@@ -155,10 +156,9 @@ async function ask(image: string, system: string, text: string): Promise<{ answe
     .find((m) => m.type === "result");
   if (!result || result.is_error)
     throw new Error(`claude -p failed: ${result?.result ?? (await new Response(proc.stderr).text())}`);
-  const json = String(result.result).match(/\{[\s\S]*\}/)?.[0];
-  if (!json) throw new Error(`no JSON in answer: ${String(result.result).slice(0, 200)}`);
+  if (!/[[{]/.test(String(result.result))) throw new Error(`no JSON in answer: ${String(result.result).slice(0, 200)}`);
   return {
-    answer: JSON.parse(json),
+    answer: parseJson(String(result.result)),
     call: {
       costUsd: result.total_cost_usd ?? 0,
       ms: result.duration_ms ?? 0,

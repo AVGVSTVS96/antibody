@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { type BillId, billDisplay, type Row } from "@antibody/core";
+import { type BillId, billDisplay, parseJson, type Row } from "@antibody/core";
 import { paths, python } from "@antibody/core/node";
-import { claude, parseJson, pool } from "./llm.ts";
+import { claude, pool } from "./llm.ts";
 import { type ArticleIn, MATCH_MODEL } from "./match.ts";
 
 export const RECHECK = "quiet-check-v1";
