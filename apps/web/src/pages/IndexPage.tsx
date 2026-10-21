@@ -136,7 +136,7 @@ export function IndexPage() {
                 legal reach in its text (it limits courts, overrides state law, opens lawsuits, skips public review or
                 blocks a rule), and under 1 in 100 of the bill’s news articles discussed it. Being added late or
                 off-topic ranks it higher but isn’t needed. The sub-scores sit next to every label, never just a
-                verdict. {testable} of {curated.length} laws here had enough news, enough sections and a measured cost
+                verdict. {testable} of {curated.length} laws here had enough news, enough sections and measured stakes
                 to test at all.
               </p>
             </article>
