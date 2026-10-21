@@ -558,3 +558,49 @@ test("the score reads late after the pairing: no late bonus, the share of late s
   expect((s0.evidence as { late_share: number }).late_share).toBeCloseTo(1 / 12, 3);
   expect(s0.buried).toBeLessThan(s1.buried!);
 });
+
+test("reach alone makes a quiet section's stakes big; a loud one with reach is still not buried", () => {
+  const reached = { ...costlyQuiet, dollarsMusd: null, reach: ["courts" as const] };
+  expect(stakes(reached)).toBeCloseTo(SCORE.costlyMin, 6);
+  expect(label(reached, 0)).toBe("buried");
+  expect(label({ ...reached, reach: [] }, 0)).toBe("normal");
+  expect(label({ ...reached, attentionPct: 0.8, attentionShare: 0.02 }, 2)).toBe("normal");
+  expect(buried(reached)).toBeCloseTo(SCORE.costlyMin, 3);
+});
+
+test("the score row carries a section's reach and rests on its tags", () => {
+  const sections = Array.from({ length: 12 }, (_, i) => ({
+    ...lineage(`s${i}`, false),
+    num: String(i),
+    path: `title:I/sec:${i}`,
+    heading: "h",
+    preview: "p",
+  })) as Row<"sections">[];
+  const tag = {
+    id: "s0#courts",
+    bill_id: "118-hr-3746",
+    section_id: "s0",
+    kind: "courts",
+    pattern: "no-court",
+    quote: "no court shall have jurisdiction to review any action",
+    version: "plaw",
+    source_url: "https://www.govinfo.gov/content/pkg/PLAW-118publ5/uslm/PLAW-118publ5.xml",
+    source_locator: "sec. 324, the sentence quoted",
+  } as Row<"section_reach">;
+  const rows = scoreRows(
+    "118-hr-3746",
+    sections,
+    sections.map((s) => att(s.id)),
+    sectionDollars([], []),
+    new Map(),
+    new Map(),
+    [],
+    [],
+    [tag],
+  );
+  const s0 = rows.find((r) => r.section_id === "s0")!;
+  expect(s0.reach).toEqual(["courts"]);
+  expect(s0.label).toBe("buried");
+  expect(s0.rests_on).toContain("section_reach/s0#courts");
+  expect(rows.find((r) => r.section_id === "s1")!.label).toBe("normal");
+});

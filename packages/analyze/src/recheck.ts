@@ -12,7 +12,7 @@ const JUDGE = "quote-v1";
 const FINDER = "phrases-v4";
 
 export const CHECK_RULE =
-  "quiet-check-v1: a section that looks quiet and costly gets a second look before it is called quiet. A language " +
+  "quiet-check-v1: a section that looks quiet with big stakes gets a second look before it is called quiet. A language " +
   "model restates the provision in everyday news words; the 8 passages from the articles read that use those words " +
   "or are closest in meaning (one per article) go back to the model, which says which of them describe what the " +
   "provision does. Articles it names add to the section's attention.";

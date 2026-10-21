@@ -28,3 +28,4 @@ export const stages: Stage[] = [
 ];
 
 export { ingestBill } from "./ingest.ts";
+export { type SectionText, sectionTexts } from "./texts.ts";

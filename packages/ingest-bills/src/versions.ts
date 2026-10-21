@@ -25,14 +25,17 @@ const rank = (code: string) => {
 
 function pick(urls: string[]): { url: string; file: string; code: string } | null {
   const plaw = urls.find((u) => /\/uslm\/PLAW-/.test(u));
-  if (plaw) return { url: plaw, file: plaw.slice(plaw.lastIndexOf("/") + 1), code: "plaw" };
+  if (plaw) return { url: plaw, file: versionFile(plaw), code: "plaw" };
   const url = urls.find((u) => /\/xml\/BILLS-/.test(u)) ?? urls.find((u) => /\/uslm\/BILLS-/.test(u));
   const m = url?.match(/BILLS-\d+[a-z]+?\d+([a-z]+)\.xml$/);
   if (!url || !m) return null;
-  const file = url.includes("/uslm/")
-    ? `USLM-${url.slice(url.lastIndexOf("/") + 1)}`
-    : url.slice(url.lastIndexOf("/") + 1);
-  return { url, file, code: m[1]! };
+  return { url, file: versionFile(url), code: m[1]! };
+}
+
+/** The file a version's XML is cached as in data/bills/raw (bill XML and USLM XML share a name, so USLM is prefixed). */
+export function versionFile(url: string): string {
+  const name = url.slice(url.lastIndexOf("/") + 1);
+  return url.includes("/uslm/BILLS-") ? `USLM-${name}` : name;
 }
 
 /** Every text version BILLSTATUS lists with an XML file, oldest first; the enrolled bill and then the law go last. */

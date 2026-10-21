@@ -51,6 +51,7 @@
       "name": "@antibody/analyze",
       "dependencies": {
         "@antibody/core": "workspace:*",
+        "@antibody/ingest-bills": "workspace:*",
         "@antibody/ingest-news": "workspace:*",
       },
     },

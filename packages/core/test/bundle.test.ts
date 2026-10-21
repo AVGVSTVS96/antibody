@@ -6,10 +6,12 @@ import {
   Bundle,
   BundleIndex,
   billStats,
+  buriedWords,
   checkBundle,
   headlineDeficit,
   isLate,
 } from "../src/bundle.ts";
+import type { ReachKind } from "../src/tables.ts";
 
 test("the fixture is a valid, sound bundle", () => {
   const parsed = Bundle.safeParse(fixture);
@@ -88,6 +90,7 @@ test("billStats counts the index card numbers", () => {
       bigStakes: 0,
       dollarsMeasured: false,
       costMeasured: 0,
+      reach: 0,
     },
     cboPublished: true,
     deficitDirectOnly: false,
@@ -156,7 +159,7 @@ function bill(n: number, over: (i: number) => object = () => ({})) {
   return b;
 }
 
-const score = (dollarsMusd: number | null, lobbyingFirms = 0) => ({
+const score = (dollarsMusd: number | null, lobbyingFirms = 0, reach: ReachKind[] = []) => ({
   label: "normal" as const,
   buried: null,
   components: {
@@ -168,6 +171,7 @@ const score = (dollarsMusd: number | null, lobbyingFirms = 0) => ({
     offTopic: null,
     lobbyingReports: lobbyingFirms,
     lobbyingFirms,
+    reach,
   },
   claim: Object.keys(Bundle.parse(fixture).claims)[0]!,
 });
@@ -198,6 +202,17 @@ test("the buried test fires once any section has a CBO figure, or enough lobbyin
   expect(withLobbying).toMatchObject({ tested: true, why: null, bigStakes: 1, dollarsMeasured: false });
   const big = billStats(bill(12, (i) => ({ score: score(i === 0 ? -BIG_STAKES.dollarsMusd : null) }))).buriedTest;
   expect(big.bigStakes).toBe(1);
+});
+
+test("a section whose text has reach makes the buried test fire with no dollars or lobbying", () => {
+  const t = billStats(bill(12, (i) => ({ score: score(null, 0, i === 0 ? ["courts"] : []) }))).buriedTest;
+  expect(t).toMatchObject({ tested: true, why: null, bigStakes: 0, reach: 1 });
+});
+
+test("a buried section says why: costly when dollars or lobbying are big, else its reach", () => {
+  expect(buriedWords(parsed(score(-BIG_STAKES.dollarsMusd, 0, ["courts"]))!)).toBe("quiet and costly");
+  expect(buriedWords(parsed(score(null, BIG_STAKES.firms))!)).toBe("quiet and costly");
+  expect(buriedWords(parsed(score(500, 0, ["courts", "states"]))!)).toBe("quiet, limits courts, overrides state law");
 });
 
 test("an appropriations act's deficit is marked as direct spending and revenue only", () => {

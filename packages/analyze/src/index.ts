@@ -1,9 +1,11 @@
 import { join } from "node:path";
 import type { BillId, Row, Stage, StageContext } from "@antibody/core";
 import { paths, python, readRows, writeRows } from "@antibody/core/node";
+import { sectionTexts } from "@antibody/ingest-bills";
 import { articleText, OUTLETS, searchPlan } from "@antibody/ingest-news";
 import { attention, MIN_TEXT_CHARS } from "./attention.ts";
 import { type ArticleIn, cachedMatchRun, claudeAvailable, matchArticles, matchEmbed } from "./match.ts";
+import { reach } from "./reach.ts";
 import { CHECK_RULE, recheck } from "./recheck.ts";
 import { BOILERPLATE, SCORE, SCORE_TEXT, scoreRows, sectionDollars, sectionReports, stakes } from "./score.ts";
 
@@ -17,6 +19,7 @@ export {
   percentile,
 } from "./attention.ts";
 export { EMBED_MATCHER, MATCH_MODEL, MATCHER } from "./match.ts";
+export { PATTERNS, REACH_VERSION, reach } from "./reach.ts";
 export { buried, label, NAMES_BILL, SCORE, SCORE_RULE, SCORE_TEXT, stakes } from "./score.ts";
 
 const PKG = join(import.meta.dir, "..");
@@ -32,7 +35,7 @@ export const RULES = [
       "press is shown apart and never counted.",
     url: null,
   },
-  { id: "buried-v4", version: "4", text: SCORE_TEXT.join(" "), url: null },
+  { id: "buried-v5", version: "5", text: SCORE_TEXT.join(" "), url: null },
 ];
 
 /** What the matcher and the quiet check read for a bill: its sections, the articles read, and the bill's names. */
@@ -80,8 +83,9 @@ async function filingsOf(refs: Row<"lda_bill_refs">[]) {
   return new Map((await readRows("lda_filings")).filter((f) => named.has(f.id)).map((f) => [f.id, f]));
 }
 
-/** Stakes of each final section from the bill's CBO figures and lobbying firms, as the scores stage reads them. */
+/** Stakes of each final section from the bill's CBO figures, lobbying firms and reach, as the scores stage reads them. */
 async function stakesBySection(bill: BillId, sections: Row<"sections">[]) {
+  const reachOf = Map.groupBy(await readRows("section_reach", bill), (r) => r.section_id);
   const dollars = sectionDollars(await readRows("cbo_estimates", bill), await readRows("cbo_lines", bill));
   const refs = await readRows("lda_bill_refs", bill);
   const reports = sectionReports(
@@ -98,6 +102,7 @@ async function stakesBySection(bill: BillId, sections: Row<"sections">[]) {
           dollarsMusd: d ? d.musd : null,
           dollarsSplit: d?.split ?? null,
           lobbyingFirms: reports.get(s.id)?.firms.length ?? 0,
+          reach: reachOf.get(s.id)?.map((r) => r.kind),
         }),
       ] as const;
     }),
@@ -106,7 +111,7 @@ async function stakesBySection(bill: BillId, sections: Row<"sections">[]) {
 }
 
 /**
- * A second look at the sections the buried rule would call quiet and costly: the matcher picks sections from a
+ * A second look at the sections the buried rule would call quiet with big stakes: the matcher picks sections from a
  * shortlist per article, so a provision the press describes in other words (a "$2,000 cap" for a Part D "benefit
  * redesign") can read as untouched. The news passages closest in meaning to each such section go to a model.
  */
@@ -168,7 +173,9 @@ async function runCheck(ctx: StageContext) {
   });
   await writeRows("attention_checks", bill, rows);
   const more = rows.filter((r) => r.article_ids.length).length;
-  ctx.log(`${candidates.length} costly, quiet-looking sections checked: ${more} had coverage the matcher missed`);
+  ctx.log(
+    `${candidates.length} quiet-looking sections with big stakes checked: ${more} had coverage the matcher missed`,
+  );
 }
 
 /** Off-topic distance for each final, non-boilerplate section, cached per bill. */
@@ -193,6 +200,39 @@ async function offTopic(bill: BillId, sections: Row<"sections">[]): Promise<Map<
   return new Map(ids.map((id) => [id, Number(rank(raw[id]!).toFixed(4))]));
 }
 
+/** Tags every section the bill ever had, removed ones too, with the reach its last text has (reach-v1). */
+async function runReach(ctx: StageContext) {
+  const bill = ctx.bill as BillId;
+  const sections = await readRows("sections", bill);
+  if (!sections.length) throw new Error(`no sections for ${bill}: run the bills stage first`);
+  const texts = await sectionTexts(sections, await readRows("versions", bill));
+  const rows = sections.flatMap((s): Row<"section_reach">[] => {
+    const t = texts.get(s.id);
+    return t
+      ? reach(t.text).map((tag) => ({
+          id: `${s.id}#${tag.kind}`,
+          bill_id: bill,
+          section_id: s.id,
+          kind: tag.kind,
+          pattern: tag.pattern,
+          quote: tag.quote,
+          version: t.version,
+          source_url: t.url,
+          source_locator: `${t.path
+            .replace(/\//g, ", ")
+            .replace(/:/g, " ")
+            .replace(/\bsec /, "sec. ")}, the sentence quoted`,
+        }))
+      : [];
+  });
+  await writeRows("section_reach", bill, rows);
+  const missing = sections.length - texts.size;
+  const kinds = Object.entries(Object.groupBy(rows, (r) => r.kind)).map(([k, v]) => `${v!.length} ${k}`);
+  ctx.log(
+    `${new Set(rows.map((r) => r.section_id)).size} of ${sections.length} sections have reach${kinds.length ? ` (${kinds.join(", ")})` : ""}${missing ? `; ${missing} sections' text not found` : ""}`,
+  );
+}
+
 async function runScores(ctx: StageContext) {
   const bill = ctx.bill as BillId;
   const sections = await readRows("sections", bill);
@@ -214,29 +254,37 @@ async function runScores(ctx: StageContext) {
     await offTopic(bill, sections),
     checks,
     await readRows("counterparts", bill),
+    await readRows("section_reach", bill),
   );
   await writeRows("section_scores", bill, rows);
   const n = (l: string) => rows.filter((r) => r.label === l).length;
   const cleared = rows.filter((r) => r.late_cleared_by).length;
+  const onReach = rows.filter(
+    (r) =>
+      r.label === "buried" &&
+      stakes({ dollarsMusd: r.dollars_musd, dollarsSplit: r.dollars_split, lobbyingFirms: r.lobbying_firms }) <
+        SCORE.costlyMin,
+  ).length;
   ctx.log(
-    `${rows.length} final sections: ${n("headline")} headline, ${n("buried")} buried${cleared ? `, ${cleared} not late after the counterpart check` : ""}; ` +
+    `${rows.length} final sections: ${n("headline")} headline, ${n("buried")} buried${onReach ? ` (${onReach} on reach alone)` : ""}${cleared ? `, ${cleared} not late after the counterpart check` : ""}; ` +
       `dollars from ${dollars.estimates.map((e) => e.id).join(" and ") || "no per-section CBO estimate"}`,
   );
 }
 
 export const stages: Stage[] = [
   { name: "attention", scope: "bill", needs: ["news", "bills"], writes: ["attention"], run: runAttention },
+  { name: "reach", scope: "bill", needs: ["bills"], writes: ["section_reach"], run: runReach },
   {
     name: "quiet-check",
     scope: "bill",
-    needs: ["attention", "cbo", "lobbying"],
+    needs: ["attention", "cbo", "lobbying", "reach"],
     writes: ["attention_checks"],
     run: runCheck,
   },
   {
     name: "scores",
     scope: "bill",
-    needs: ["attention", "bills", "cbo", "lobbying", "quiet-check"],
+    needs: ["attention", "bills", "cbo", "lobbying", "reach", "quiet-check"],
     writes: ["section_scores"],
     run: runScores,
   },

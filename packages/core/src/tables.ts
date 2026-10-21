@@ -25,6 +25,8 @@ const Chamber = z.enum(["House", "Senate"]);
 const Baseline = z.enum(["current-law", "current-policy"]);
 const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit", "nonscorable_revenues"]);
 const Spending = z.enum(["direct", "discretionary"]);
+export const ReachKind = z.enum(["courts", "states", "lawsuit", "review", "rule"]);
+export type ReachKind = z.infer<typeof ReachKind>;
 
 const table = <S extends z.ZodRawShape>(owner: string, shape: S) => ({
   owner,
@@ -512,6 +514,23 @@ export const TABLES = {
     share: z.number(),
     ...inference,
   }),
+  /**
+   * Wording in a section's text that reaches past its price (reach-v1 in docs/rules.md): it limits courts, overrides
+   * state law, opens lawsuits, skips public review or blocks an agency rule. A fact: the sentence quoted from the
+   * version text the section was last seen in, removed sections included. One row per section and kind.
+   */
+  section_reach: table("@antibody/analyze", {
+    bill_id: billId,
+    section_id: z.string(),
+    kind: ReachKind,
+    /** The published pattern that matched. */
+    pattern: z.string(),
+    /** The sentence it matched, the text's own words (cut around the match when long). */
+    quote: z.string().min(1),
+    /** The text version quoted. */
+    version: z.string(),
+    ...fact,
+  }),
   section_scores: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
@@ -535,6 +554,8 @@ export const TABLES = {
     lobbying_firms: z.number().int().default(0),
     /** The section this one pays for: CBO prints exactly the opposite figure for both in the same title, so it is not a finding of its own. */
     offsets_section_id: z.string().nullable().default(null),
+    /** Kinds of reach the section's text has (`section_reach`); any one gives it stakes enough for the buried label. */
+    reach: z.array(ReachKind).default([]),
     ...inference,
   }),
 

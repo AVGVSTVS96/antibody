@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { Claim, ClaimId } from "./claim.ts";
 import { Edge, NodeId, nodeId } from "./graph.ts";
+import { ReachKind } from "./tables.ts";
 
 /**
  * The per-bill Bundle: everything the web app renders for one bill, written by @antibody/store to
@@ -121,9 +122,14 @@ export const Score = z.object({
     lobbyingReports: z.number().int(),
     /** Distinct lobbying firms behind those reports: what stakes count. */
     lobbyingFirms: z.number().int().default(0),
+    /** Kinds of reach the section's text has; any one counts as big stakes. */
+    reach: z.array(ReachKind).default([]),
   }),
   claim: ClaimId,
 });
+
+/** Wording in a section's text that reaches past its price (reach-v1), quoted from the text it was last seen in: a fact. */
+export const Reach = z.object({ kind: ReachKind, quote: z.string(), claim: ClaimId });
 
 export const SectionStep = z.object({
   path: z.string(),
@@ -161,6 +167,8 @@ export const Section = z.object({
   dollars: z.array(Dollar),
   attention: SectionAttention.nullable(),
   score: Score.nullable(),
+  /** Reach tags, removed sections included, so a page can say what a dropped provision did. */
+  reach: z.array(Reach).default([]),
   claims: z.array(ClaimId),
 });
 export type Section = z.infer<typeof Section>;
@@ -354,8 +362,10 @@ export const BillStats = z.object({
       dollarsMeasured: z.boolean().default(true),
       /** Final sections CBO gave their own figure: the sections the cost half of the test could look at. */
       costMeasured: z.number().int().default(0),
+      /** Final sections whose text has reach: big stakes without a price. */
+      reach: z.number().int().default(0),
     })
-    .default({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true, costMeasured: 0 }),
+    .default({ tested: true, why: null, bigStakes: 0, dollarsMeasured: true, costMeasured: 0, reach: 0 }),
   /** CBO published at least one estimate for the bill (a whole-bill deficit may still be unread). */
   cboPublished: z.boolean().default(false),
   /** The headline deficit covers only direct spending and revenue; the bill's discretionary appropriations are not in it. */
@@ -509,9 +519,27 @@ function finalVote(b: Bundle) {
 export const BIG_STAKES = { dollarsMusd: 10_000, firms: 21 };
 /** A bill with fewer sections has nothing for one to be buried among (`SCORE.minSections`). */
 export const MIN_SECTIONS_TO_BURY = 10;
-const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null; lobbyingFirms: number }) =>
+/** Stakes big in dollars or lobbying: what "costly" means on the page. Reach is the other way to big stakes. */
+export const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null; lobbyingFirms: number }) =>
   (c.dollarsMusd !== null && c.dollarsSplit !== "even_split" && Math.abs(c.dollarsMusd) >= BIG_STAKES.dollarsMusd) ||
   c.lobbyingFirms >= BIG_STAKES.firms;
+
+/** What each kind of reach does, in the words the page uses. */
+export const REACH_WORDS: Record<ReachKind, string> = {
+  courts: "limits courts",
+  states: "overrides state law",
+  lawsuit: "opens lawsuits",
+  review: "skips public review",
+  rule: "blocks a rule",
+};
+
+/** Why a buried section is flagged: "quiet and costly" when dollars or lobbying make its stakes big, else its reach ("quiet, limits courts"). */
+export function buriedWords(score: z.infer<typeof Score>): string {
+  const c = score.components;
+  return bigStakes(c) || !c.reach.length
+    ? "quiet and costly"
+    : `quiet, ${c.reach.map((k) => REACH_WORDS[k]).join(", ")}`;
+}
 
 /** Whether the page calls a section late: the lineage flag, unless a model-paired older section was already in the text. */
 export const isLate = (s: Pick<Section, "late" | "score">) => s.score?.components.late ?? s.late;
@@ -554,13 +582,14 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
   ).length;
   const dollarsMeasured = priced > 0;
   const big = final.filter((s) => s.score && bigStakes(s.score.components)).length;
+  const reach = final.filter((s) => s.score?.components.reach.length).length;
   const why =
     final.length < MIN_SECTIONS_TO_BURY
       ? `the bill has only ${final.length} ${final.length === 1 ? "section" : "sections"}, too few for anything to be buried among`
       : !ranked
         ? "too few news articles to rank this bill's sections"
-        : !dollarsMeasured && !big
-          ? "CBO gave no section its own dollar figure and no section is named in enough lobbying reports, so no section's cost is known"
+        : !dollarsMeasured && !big && !reach
+          ? "CBO gave no section its own dollar figure, no section is named in enough lobbying reports, and no section's text has reach, so no section's stakes are known"
           : null;
   return {
     sections: final.length,
@@ -572,7 +601,7 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     companies: new Set(b.edges.filter((e) => e.kind === "benefits").map((e) => e.dst)).size,
     membersTraded: new Set(traders.map((e) => e.src)).size,
     membersTradedDuring: during.size,
-    buriedTest: { tested: why === null, why, bigStakes: big, dollarsMeasured, costMeasured: priced },
+    buriedTest: { tested: why === null, why, bigStakes: big, dollarsMeasured, costMeasured: priced, reach },
     cboPublished: b.dollars.estimates.length > 0,
     deficitDirectOnly: isAppropriations(b) && !!deficit,
     tradeSpan: span,

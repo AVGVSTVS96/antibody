@@ -1,5 +1,5 @@
 import { readdir } from "node:fs/promises";
-import { columns, ddl, TABLE_NAMES, type TableName } from "@antibody/core";
+import { columns, ddl, selectList, TABLE_NAMES, type TableName } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 import { DuckDBInstance, type DuckDBType, type DuckDBValue, INTEGER, LIST, listValue, VARCHAR } from "@duckdb/node-api";
 
@@ -34,7 +34,7 @@ export async function loadTables(
       const glob = `${dir}/*.jsonl`.replaceAll("'", "''");
       const source = `read_json('${glob}', format = 'newline_delimited', columns = {${cols}})`;
       try {
-        await db.run(`INSERT OR IGNORE INTO ${table} SELECT * FROM ${source}`);
+        await db.run(`INSERT OR IGNORE INTO ${table} SELECT ${selectList(table)} FROM ${source}`);
         const dupes = await db.runAndReadAll(`SELECT id FROM ${source} GROUP BY id HAVING count(*) > 1 ORDER BY id`);
         const ids = dupes.getRows().map((r) => String(r[0]));
         if (ids.length) report(table, `${ids.length} duplicate ids skipped, e.g. ${ids.slice(0, 3).join(", ")}`);

@@ -17,6 +17,7 @@ import {
   type NodeId,
   nodeId,
   OutletGroup,
+  ReachKind,
   type Section,
 } from "@antibody/core";
 import { norm, ownedOn, ownedSince, tokens } from "@antibody/resolve";
@@ -385,6 +386,7 @@ class Builder {
         dollars: [],
         attention: null,
         score: null,
+        reach: [],
         claims: [],
       });
     for (const s of rows) {
@@ -402,6 +404,12 @@ class Builder {
     for (const n of await this.select("cbo_notes", "bill_id = $b AND section_id IS NOT NULL", { b: this.bill })) {
       const claim = await this.cite("cbo_notes", n);
       if (claim) this.sections.get(n.section_id)?.claims.push(claim);
+    }
+    const kinds = ReachKind.options;
+    const tags = await this.select("section_reach", "bill_id = $b", { b: this.bill });
+    for (const r of tags.sort((x, y) => kinds.indexOf(x.kind) - kinds.indexOf(y.kind))) {
+      const claim = await this.cite("section_reach", r);
+      if (claim) this.sections.get(r.section_id)?.reach.push({ kind: r.kind, quote: r.quote, claim });
     }
   }
 
@@ -1175,6 +1183,7 @@ class Builder {
           offTopic: s.off_topic,
           lobbyingReports: s.lobbying_reports,
           lobbyingFirms: s.lobbying_firms,
+          reach: s.reach ?? [],
         },
         claim,
       };

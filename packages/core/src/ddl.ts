@@ -8,6 +8,7 @@ type JsonSchema = {
   anyOf?: JsonSchema[];
   enum?: unknown[];
   const?: unknown;
+  default?: unknown;
 };
 
 function sqlType(s: JsonSchema): { type: string; nullable: boolean } {
@@ -46,6 +47,31 @@ export function columns(table: TableName): [string, string][] {
     const { type, nullable } = sqlType(s);
     return [name, nullable || name === "id" ? type : `${type} NOT NULL`];
   });
+}
+
+const literal = (v: unknown, type: string): string =>
+  v === null
+    ? "NULL"
+    : Array.isArray(v)
+      ? `[${v.map((x) => literal(x, type.replace(/\[\]$/, ""))).join(", ")}]::${type}`
+      : typeof v === "string"
+        ? `'${v.replaceAll("'", "''")}'`
+        : typeof v === "object"
+          ? `'${JSON.stringify(v).replaceAll("'", "''")}'::JSON`
+          : String(v);
+
+/**
+ * The SELECT list that reads a table's shards: a column with a default reads as that default where a shard has no
+ * value, so a shard written before an additive column existed still loads.
+ */
+export function selectList(table: TableName): string {
+  const js = z.toJSONSchema(TABLES[table].schema, { io: "input" }) as { properties: Record<string, JsonSchema> };
+  return columns(table)
+    .map(([n, t]) => {
+      const d = js.properties[n]?.default;
+      return d === undefined ? `"${n}"` : `COALESCE("${n}", ${literal(d, t.replace(" NOT NULL", ""))}) AS "${n}"`;
+    })
+    .join(", ");
 }
 
 export function ddl(table: TableName): string {

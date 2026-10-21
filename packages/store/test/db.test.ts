@@ -76,3 +76,28 @@ test("query returns rows shaped like their JSONL: JSON and JSON[] parsed, BIGINT
     { n: 5, d: "2025-07-18", j: { a: 1 }, js: [{ start: "2025-01-03" }] },
   ]);
 });
+
+test("a shard written before an additive column existed loads with the column's default", async () => {
+  const row = {
+    id: "119-hr-1:s1",
+    bill_id: "119-hr-1",
+    section_id: "s1",
+    label: "normal",
+    buried: null,
+    dollars_musd: null,
+    dollars_split: null,
+    attention_pct: 0.5,
+    late: false,
+    off_topic: null,
+    lobbying_reports: 0,
+    rule: "buried-v4",
+    confidence: 0.7,
+    rests_on: ["sections/s1"],
+    evidence: {},
+  };
+  await Bun.write(join(dir, "section_scores", "old.jsonl"), `${JSON.stringify(row)}\n`);
+  const db = await openDb(":memory:");
+  expect((await loadTables(db, (t) => join(dir, t))).section_scores).toBe(1);
+  const [r] = await query(db, "SELECT reach, lobbying_firms, late_cleared_by FROM section_scores");
+  expect(r).toEqual({ reach: [], lobbying_firms: 0, late_cleared_by: null });
+});
