@@ -124,6 +124,14 @@ test("rule: voiding, delaying or defunding a named rule is tagged; a sunset or a
   ).toEqual([]);
 });
 
+test("a standing bar on rules Congress already disapproved is not tagged", () => {
+  expect(
+    kinds(
+      "None of the funds made available pursuant to the provisions of this or any other Act shall be used to implement, administer, or enforce any regulation which has been disapproved pursuant to a joint resolution duly adopted in accordance with the applicable law of the United States.",
+    ),
+  ).toEqual([]);
+});
+
 test("a bare 'notwithstanding any other provision of law' is not reach, and struck wording takes reach away", () => {
   expect(kinds("Notwithstanding any other provision of law, the Secretary shall make grants to States.")).toEqual([]);
   expect(

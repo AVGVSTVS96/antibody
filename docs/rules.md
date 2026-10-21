@@ -33,6 +33,7 @@ Left out, because they are routine in every big bill and would name provisions t
 - A clause that only says what the section does not do: "Nothing in this section shall be construed to preempt…", "shall not be construed as a waiver of sovereign immunity", or a list led by "shall not—"; wording a section strikes out of existing law.
 - The Medicare and Medicaid bar on reviewing payment determinations ("There shall be no administrative or judicial review under section 1869 or otherwise of the determination of …"), and "is not reviewable" for an agency's fee or waiver decisions.
 - Exemptions from the Paperwork Reduction Act (chapter 35 of title 44): nearly all cover surveys and data collection to run a program. Exemptions from FOIA under section 552(b)(3): nearly all keep security or business data confidential.
+- The standing appropriations bar on enforcing a regulation "disapproved pursuant to a joint resolution": Congress already voided those rules.
 - A sunset ("this section shall have no force or effect" after a date), a statute set aside by a later one, a proclamation renaming a monument, and "shall not apply" exceptions in tax and spending rules.
 - A state attorney general barred from suing while a federal case is pending, and conditions on a state's grant ("a State may not establish a [program] unless …").
 - Liability shields ("shall not be liable"): the text cannot tell a shield for a company from a routine one for a platform acting in good faith or for the government after a sale.

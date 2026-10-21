@@ -129,6 +129,8 @@ const NOT_BEFORE = /\b(?:not|nor|no)\s+$/i;
 const MAX_QUOTE = 420;
 /** A sentence that bars states from their own laws is about state law, not an agency's rule. */
 const STATE_PATTERNS = PATTERNS.filter((p) => p.kind === "states");
+/** A standing bar on enforcing rules Congress already disapproved blocks nothing new. */
+const DISAPPROVED = /\bdisapproved pursuant to a joint resolution\b/i;
 
 export interface ReachTag {
   kind: ReachKind;
@@ -171,7 +173,9 @@ export function reach(text: string): ReachTag[] {
       if (NEGATED.test(before) || NEGATED.test(m[0]) || STRUCK.test(text.slice(Math.max(0, start - 12), start)))
         continue;
       if (NOT_BEFORE.test(text.slice(Math.max(0, start - 12), start))) continue;
-      if (p.kind === "rule" && STATE_PATTERNS.some((s) => s.re.test(text.slice(from, to)))) continue;
+      const sentence = text.slice(from, to);
+      if (p.kind === "rule" && (STATE_PATTERNS.some((s) => s.re.test(sentence)) || DISAPPROVED.test(sentence)))
+        continue;
       out.set(p.kind, { kind: p.kind, pattern: p.id, quote: quoteOf(text, from, to, start, end) });
       break;
     }
