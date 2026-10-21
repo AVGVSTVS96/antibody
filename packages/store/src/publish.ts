@@ -120,7 +120,7 @@ function watcherNote(b: Bundle): string {
     ...(buriedTest.tested ? [] : [`buried sections were not ranked (${buriedTest.why})`]),
     ...(cboPublished ? [] : ["no CBO estimate was found, so no dollar figures show"]),
   ];
-  return `Added by the watcher (the daily watch, or its sweep that scores every bill of a Congress on its whole record) and not hand-checked; sponsor, law status and company matches come straight from the automated run${thin.map((t) => `; ${t}`).join("")}.`;
+  return `From the daily watch, or its sweep that scores every bill of a Congress on its whole record; not hand-checked. Sponsor, law status and company matches come straight from the automated run${thin.map((t) => `; ${t}`).join("")}.`;
 }
 
 function watcherProvenance(b: Bundle, events: Row<"watch_events">[]): Provenance {

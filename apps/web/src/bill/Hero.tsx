@@ -47,7 +47,7 @@ export function Hero({ m, entry }: { m: BillModel; entry?: BundleIndex["bills"][
         </p>
         {entry?.origin === "watcher" && (
           <p className="watched">
-            <b>Added by the daily watch{entry.addedOn ? ` on ${day(entry.addedOn)}` : ""}.</b> {entry.note}
+            <b>Added by the watch{entry.addedOn ? ` on ${day(entry.addedOn)}` : ""}.</b> {entry.note}
           </p>
         )}
       </div>
