@@ -49,6 +49,8 @@ export interface BuriedSection extends Section {
   dollarsMusd: number | null;
   attentionPct: number | null;
   lobbyingFirms: number;
+  /** Kinds of legal reach in its text (limits courts, overrides state law, …), from reach-v1. */
+  reach: string[];
   late: boolean;
 }
 
@@ -117,6 +119,7 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
             dollarsMusd: s.dollars_musd,
             attentionPct: s.attention_pct,
             lobbyingFirms: s.lobbying_firms,
+            reach: s.reach ?? [],
             late: s.late,
           }))
       : null,

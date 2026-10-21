@@ -18,7 +18,7 @@ export interface Facts {
   daysToVote: number | null;
   closedRule: boolean;
   closestVote: Tally | null;
-  /** Sections the x-ray labeled buried (big money or lobbying, little news attention). */
+  /** Sections the x-ray labeled buried (big money, lobbying or legal reach, little news attention). */
   buriedSections: number | null;
   /** News stories naming the bill in the counted outlets, each side of the list weighted equally. */
   newsStories: number | null;

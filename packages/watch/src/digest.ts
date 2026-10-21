@@ -156,6 +156,7 @@ function sectionLine(b: NonNullable<NonNullable<Candidate["evidence"]["xray"]>["
     b.dollarsMusd !== null ? money(b.dollarsMusd) : null,
     b.attentionPct !== null ? `${Math.round(b.attentionPct * 100)}% of news` : null,
     b.lobbyingFirms ? `${b.lobbyingFirms} lobbying ${b.lobbyingFirms === 1 ? "firm" : "firms"}` : null,
+    ...(b.reach ?? []).map((k) => `legal reach: ${k}`),
     b.late ? "added late" : null,
   ].filter(Boolean);
   return `Sec. ${b.num}${b.heading ? ` "${b.heading}"` : ""}${bits.length ? ` (${bits.join(", ")})` : ""}`;
