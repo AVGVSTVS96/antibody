@@ -4,6 +4,7 @@ import type { BillId } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 import { type BillStatus, parseBillStatus } from "./billstatus.ts";
 import { type SourceReport, WATCHED_TYPES } from "./discover.ts";
+import { STEPS } from "./events.ts";
 import { get } from "./http.ts";
 import { congressYears } from "./lda.ts";
 import type { Site } from "./site.ts";
@@ -80,6 +81,17 @@ export async function bulkStatuses(
 }
 
 /**
+ * The bills a sweep reads the text, news and lobbying of: the best `n` before those are known, and every bill that
+ * reached the President. The press is the biggest signal and costs a rate-limited search per bill, so most bills
+ * go without; a law passed by a lopsided vote scores low before it (the Epstein Files Transparency Act, 427-1, had
+ * only "became law") and would otherwise never be counted.
+ */
+export function sweepShortlist(candidates: Candidate[], n: number): Candidate[] {
+  const enacted = candidates.filter((c) => STEPS[c.facts.step].weight >= STEPS.enrolled.weight);
+  return [...new Set([...rank(candidates).slice(0, n), ...enacted])];
+}
+
+/**
  * Scores every bill of a Congress on its whole record, not one window: the per-bill view the daily watch can't give,
  * since it only sees bills that moved since its last run. Enriches the best `enrich`, then x-rays and publishes the
  * flagged bills that have no page yet, at most `xrays`.
@@ -98,8 +110,10 @@ export async function sweep(congress: number, log: (m: string) => void, signal?:
 
   await measureSize(candidates, signal);
   await readRiders(candidates, join(dir, "cache", "text"), signal);
-  const shortlist = rank(candidates).slice(0, cfg.enrich);
-  log(`enriching the top ${shortlist.length}: bill text, news, lobbying, x-ray tables`);
+  const shortlist = sweepShortlist(candidates, cfg.enrich);
+  log(
+    `enriching ${shortlist.length} (the top ${cfg.enrich} and every enacted bill): bill text, news, lobbying, x-ray tables`,
+  );
   for (const c of shortlist) problems.push(...(await enrich(c, join(dir, "cache"), signal)));
 
   const site: Site = { published: [], deploy: { status: "pending" } };

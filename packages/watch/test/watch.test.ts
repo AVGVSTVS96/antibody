@@ -417,3 +417,13 @@ test("late is measured from the last text before the floor, so a section added o
   expect(beforeFloor(s)?.code).toBe("rh");
   expect(beforeFloor({ ...s, versions: [v("rh", "2026-01-20"), v("ih", "2026-01-12")] })).toBeNull();
 });
+
+test("a sweep reads the press for its best bills and for every bill that reached the President", async () => {
+  const { sweepShortlist } = await import("../src/sweep.ts");
+  const mk = (id: string, score: number, step: string) =>
+    ({ score, status: { id }, facts: { step } }) as unknown as Parameters<typeof sweepShortlist>[0][number];
+  const law = mk("119-hr-4405", 15, "law");
+  const fight = mk("119-hr-22", 40, "passed");
+  const minor = mk("119-hr-9", 20, "passed");
+  expect(sweepShortlist([minor, law, fight], 1).map((c) => c.status.id)).toEqual(["119-hr-22", "119-hr-4405"]);
+});
