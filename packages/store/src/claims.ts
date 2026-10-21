@@ -368,7 +368,7 @@ export const TEMPLATES: Record<string, Template> = {
       return {
         text: `None of the ${n.sample.relevant.toLocaleString("en-US")} relevant articles read (out of ${n.sample.found.toLocaleString("en-US")} found) matched ${subject}. Only a few hundred articles are read, so zero means none among those, not that nobody covered it.${trade}`,
         sourceLocator: ATTENTION_LOCATOR,
-        sourceUrl: `${DOCS}#attention-v1`,
+        sourceUrl: `${DOCS}#attention-v2`,
       };
     const rank =
       r.pct == null
@@ -381,7 +381,7 @@ export const TEMPLATES: Record<string, Template> = {
     return {
       text: `${r.hits.toLocaleString("en-US")} of the ${n.sample.relevant.toLocaleString("en-US")} relevant articles read (out of ${n.sample.found.toLocaleString("en-US")} found) matched ${subject}${rank}.${trade}`,
       sourceLocator: ATTENTION_LOCATOR,
-      sourceUrl: `${DOCS}#attention-v1`,
+      sourceUrl: `${DOCS}#attention-v2`,
     };
   },
 
@@ -398,7 +398,7 @@ export const TEMPLATES: Record<string, Template> = {
   section_reach: (r, _f, n) => ({
     text: `${sec(n, r.section_id).replace(/^s/, "S")}, in the ${n.version(r.version)} text, reads: ${quote(r.quote, 600)}`,
     quote: r.quote,
-    sourceLocator: `${r.source_locator}; it is tagged "${REACH_WORDS[r.kind as keyof typeof REACH_WORDS]}" by the published reach-v1 patterns`,
+    sourceLocator: `${r.source_locator}; it is tagged "${REACH_WORDS[r.kind as keyof typeof REACH_WORDS]}" by the published reach-v2 patterns`,
   }),
 
   section_scores: (r, _f, n) => {
@@ -434,7 +434,7 @@ export const TEMPLATES: Record<string, Template> = {
         ? `${count(r.lobbying_reports, "lobbying report")} from ${count(r.lobbying_firms, "firm")}`
         : "no lobbying reports",
       r.reach?.length
-        ? `its text ${r.reach.map((k: keyof typeof REACH_WORDS) => REACH_WORDS[k]).join(" and ")} (reach-v1)`
+        ? `its text ${r.reach.map((k: keyof typeof REACH_WORDS) => REACH_WORDS[k]).join(" and ")} (reach-v2)`
         : null,
     ].filter(Boolean);
     const score = r.buried != null ? ` (buried score ${r.buried.toFixed(2)})` : "";

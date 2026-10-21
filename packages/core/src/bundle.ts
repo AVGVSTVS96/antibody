@@ -128,7 +128,7 @@ export const Score = z.object({
   claim: ClaimId,
 });
 
-/** Wording in a section's text that reaches past its price (reach-v1), quoted from the text it was last seen in: a fact. */
+/** Wording in a section's text that reaches past its price (reach-v2), quoted from the text it was last seen in: a fact. */
 export const Reach = z.object({ kind: ReachKind, quote: z.string(), claim: ClaimId });
 
 export const SectionStep = z.object({

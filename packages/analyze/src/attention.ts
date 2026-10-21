@@ -2,10 +2,13 @@ import { createHash } from "node:crypto";
 import type { BillId, Row } from "@antibody/core";
 import { OUTLET_LIST, OUTLETS, SIDES, type Side, sideOf } from "@antibody/ingest-news";
 import type { Match, MatchRun } from "./match.ts";
+import { NAMES_BILL } from "./score.ts";
 
 export const ATTENTION_RULE =
-  "attention-v1: a section's attention is the share of each side's sampled articles about the bill that discuss it " +
-  "(left, center and right weighted equally, from the published outlet list), ranked against the bill's other final sections; " +
+  "attention-v2: a section's attention is the share of each side's sampled articles about the bill that discuss it " +
+  "(left, center and right weighted equally, from the published outlet list), ranked against the bill's other final sections " +
+  "that are more than its name (a short title or table of contents); sections tied with it count half, and a bill's only " +
+  "such section ranks at the top once any article discusses it; " +
   "a bill with fewer than 20 relevant articles or 30 section mentions shows raw counts and no rank";
 
 /** Below this many sampled, relevant articles a bill's percentiles are not shown. */
@@ -30,12 +33,19 @@ type Group = Row<"outlets">["group"];
 const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group] as [string, Group]));
 
 /**
- * Percent rank within `reference`: the share of the other values strictly below v, so uncovered sections all rank 0.
- * A dropped section is ranked against the final ones, so it can be above all of them: that is 1.
+ * Percent rank of `v` among the other values of `reference`: those below count whole and ties half, so two sections
+ * tied at the top of a small bill both rank near 1. An uncovered section ranks 0, and a bill's only section ranks 1
+ * once any article discusses it. A dropped section is ranked against the final ones, so it can be above all of them.
  */
 export function percentile(v: number, reference: number[]): number {
-  if (reference.length < 2) return 0.5;
-  return Math.min(1, reference.filter((r) => r < v).length / (reference.length - 1));
+  if (v <= 0) return 0;
+  const others = [...reference];
+  const self = others.indexOf(v);
+  if (self >= 0) others.splice(self, 1);
+  if (!others.length) return 1;
+  const below = others.filter((r) => r < v).length;
+  const tied = others.filter((r) => r === v).length;
+  return Math.min(1, (below + tied / 2) / others.length);
 }
 
 const hash = (s: string) => createHash("sha1").update(s).digest("hex");
@@ -124,7 +134,7 @@ export function attention(
   const share = new Map(
     sections.map((s) => [s.id, balanced(hitsFor((m) => m.sections.includes(s.id)).counted)] as [string, number]),
   );
-  const reference = final.map((s) => share.get(s.id)!);
+  const reference = final.filter((s) => !NAMES_BILL.test(s.heading.trim())).map((s) => share.get(s.id)!);
 
   const evidenceBase = {
     matcher: run.matcher,

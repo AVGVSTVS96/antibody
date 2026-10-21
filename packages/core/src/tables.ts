@@ -515,7 +515,7 @@ export const TABLES = {
     ...inference,
   }),
   /**
-   * Wording in a section's text that reaches past its price (reach-v1 in docs/rules.md): it limits courts, overrides
+   * Wording in a section's text that reaches past its price (reach-v2 in docs/rules.md): it limits courts, overrides
    * state law, opens lawsuits, skips public review or blocks an agency rule. A fact: the sentence quoted from the
    * version text the section was last seen in, removed sections included. One row per section and kind.
    */

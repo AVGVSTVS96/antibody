@@ -153,6 +153,15 @@ test("percentile ranks every uncovered section at the bottom, ties included", ()
   expect(percentile(3, [0, 1, 2])).toBe(1);
 });
 
+test("percentile: ties at the top share it, and a bill's only section ranks at the top once discussed", () => {
+  // Two sections tied at the top of an 8-section bill (S.2 ranked both 0.857, under the headline bar).
+  expect(percentile(5, [0, 1, 1, 2, 2, 3, 5, 5])).toBeCloseTo(6.5 / 7);
+  expect(percentile(5, [0, 1, 1, 2, 2, 3, 5, 5])).toBeGreaterThanOrEqual(0.9);
+  // One-section bills (a CRA resolution, H.R.1834's ACA extension) used to rank 0.5.
+  expect(percentile(0.94, [0.94])).toBe(1);
+  expect(percentile(0, [0])).toBe(0);
+});
+
 test("boilerplate headings get no off-topic value", () => {
   for (const h of ["Short title", "Definitions", "Effective date", "Technical and conforming amendments"])
     expect(BOILERPLATE.test(h)).toBe(true);
@@ -293,7 +302,7 @@ test("a pay-for is not labeled buried on its own, a section that spends is", () 
   expect(label({ ...costlyQuiet, offsets: "502" }, 0)).toBe("normal");
 });
 
-const section = (id: string, in_final = true) => ({ id, in_final }) as Row<"sections">;
+const section = (id: string, in_final = true) => ({ id, in_final, heading: `Section ${id}` }) as Row<"sections">;
 const article = (id: string, outlet: string) =>
   ({ id, outlet_id: outlet, text_chars: 2000, via: "mediacloud" }) as Row<"articles">;
 

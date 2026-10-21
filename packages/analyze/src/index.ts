@@ -27,8 +27,8 @@ const PKG = join(import.meta.dir, "..");
 /** Published rules for the bundle's rules[]. */
 export const RULES = [
   {
-    id: "attention-v1",
-    version: "1",
+    id: "attention-v2",
+    version: "2",
     text:
       "News attention counts articles from a fixed, published outlet list, read by a language model that records " +
       "which sections each article discusses. Each side (left, center, right) is weighted equally. Trade and legal " +
@@ -206,7 +206,7 @@ async function offTopic(bill: BillId, sections: Row<"sections">[]): Promise<Map<
   return new Map(ids.map((id) => [id, Number(rank(raw[id]!).toFixed(4))]));
 }
 
-/** Tags every section the bill ever had, removed ones too, with the reach its last text has (reach-v1). */
+/** Tags every section the bill ever had, removed ones too, with the reach its last text has (reach-v2). */
 async function runReach(ctx: StageContext) {
   const bill = ctx.bill as BillId;
   const sections = await readRows("sections", bill);

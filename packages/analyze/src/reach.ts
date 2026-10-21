@@ -3,9 +3,9 @@ import type { Row } from "@antibody/core";
 /**
  * Legal reach a section has whatever its price: wording that limits courts, overrides state law, opens the
  * government to lawsuits, skips public review, or blocks an agency rule. Each pattern is published in docs/rules.md
- * (reach-v1); a tag quotes the sentence it matched, from the version text the section was last seen in.
+ * (reach-v2); a tag quotes the sentence it matched, from the version text the section was last seen in.
  */
-export const REACH_VERSION = "reach-v1";
+export const REACH_VERSION = "reach-v2";
 
 export type ReachKind = Row<"section_reach">["kind"];
 
@@ -33,6 +33,12 @@ export const PATTERNS: Pattern[] = [
     id: "no-judicial-review",
     kind: "courts",
     re: /\b(?:shall not be|is not|are not|not be) subject to (?:administrative or )?judicial review\b/i,
+  },
+  {
+    // "No determination, finding, action, or omission under this title shall be subject to judicial review."
+    id: "no-judicial-review",
+    kind: "courts",
+    re: /\bNo (?!later|earlier|more|less|fewer)[^.;]{0,160}?\bshall be subject to (?:administrative or )?judicial review\b/,
   },
   {
     id: "no-suit",
@@ -63,6 +69,12 @@ export const PATTERNS: Pattern[] = [
     id: "sue-the-united-states",
     kind: "lawsuit",
     re: /\bmay bring (?:a civil action|an action|suit) against the United States\b|\bmay bring (?:a civil action|an action) in [^.;]{0,120}to obtain appropriate relief for harm\b/i,
+  },
+  {
+    // Laken Riley Act: a State "shall have standing to bring an action against the Secretary of Homeland Security".
+    id: "standing-to-sue",
+    kind: "lawsuit",
+    re: /\bstanding to bring (?:a civil action|an action|suit) against (?:the United States|the (?:Attorney General|Secretary|Administrator|Director|Commissioner)\b)/i,
   },
   {
     id: "set-damages",

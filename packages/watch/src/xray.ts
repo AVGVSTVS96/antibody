@@ -49,7 +49,7 @@ export interface BuriedSection extends Section {
   dollarsMusd: number | null;
   attentionPct: number | null;
   lobbyingFirms: number;
-  /** Kinds of legal reach in its text (limits courts, overrides state law, …), from reach-v1. */
+  /** Kinds of legal reach in its text (limits courts, overrides state law, …), from reach-v2. */
   reach: string[];
   late: boolean;
 }

@@ -140,3 +140,24 @@ test("a bare 'notwithstanding any other provision of law' is not reach, and stru
     ),
   ).toEqual([]);
 });
+
+test("reach-v2: a bar on review worded as 'No … shall be subject to judicial review', and a State's standing to sue a Secretary", () => {
+  // Fiscal Responsibility Act §267.
+  expect(
+    kinds(
+      "267. Judicial review No determination, finding, action, or omission under this title shall be subject to judicial review.",
+    ),
+  ).toEqual(["courts/no-judicial-review"]);
+  expect(kinds("Not later than 30 days after it is made, the decision shall be subject to judicial review.")).toEqual(
+    [],
+  );
+  expect(kinds("No later than 30 days after it is made, the decision shall be subject to judicial review.")).toEqual(
+    [],
+  );
+  // Laken Riley Act §3.
+  expect(
+    kinds(
+      "The attorney general of a State alleging a violation that harms such State or its residents shall have standing to bring an action against the Secretary of Homeland Security on behalf of such State.",
+    ),
+  ).toEqual(["lawsuit/standing-to-sue"]);
+});
