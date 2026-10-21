@@ -1,6 +1,6 @@
 import { type BillId, billDisplay, billstatusUrl, congressGovUrl } from "@antibody/core";
 import { auditParties, type MovedBill, type PartyAudit } from "./audit.ts";
-import { STEPS } from "./events.ts";
+import { type BillEvent, STEPS } from "./events.ts";
 import { FLAG_CUTOFF, MAX_FLAGGED, RULE_TEXT, RULES_VERSION, type Signal, WEIGHTS } from "./score.ts";
 import { type Deploy, SITE_URL } from "./site.ts";
 import type { Candidate, WatchResult } from "./watch.ts";
@@ -48,12 +48,18 @@ export function deficitEffect(musd: number): string {
 export function reasons(c: Candidate): Reason[] {
   const { facts: f, evidence: ev, status: s } = c;
   const out: Reason[] = [];
-  const top = c.events.find((e) => e.step === f.step && c.fresh.has(e.id))!;
-  out.push({
-    signal: "moving",
-    text: `${STEPS[f.step].label[0]!.toUpperCase()}${STEPS[f.step].label.slice(1)} on ${fmtDate(top.date)}${top.tally ? ` (${top.tally.yeas}-${top.tally.nays})` : ""}`,
-    url: top.url,
-  });
+  const step = (e: BillEvent) =>
+    `${STEPS[e.step].label} on ${fmtDate(e.date)}${e.tally ? ` (${e.tally.yeas}-${e.tally.nays})` : ""}`;
+  const top = c.events.find((e) => e.step === f.step)!;
+  const now = c.events.filter((e) => c.fresh.has(e.id)).sort((a, b) => STEPS[b.step].weight - STEPS[a.step].weight)[0];
+  const text = `${step(top)}${now && !c.fresh.has(top.id) ? `; new: ${step(now)}` : ""}`;
+  out.push({ signal: "moving", text: `${text[0]!.toUpperCase()}${text.slice(1)}`, url: top.url });
+  if (f.newsStories && ev.news)
+    out.push({
+      signal: "attention",
+      text: `${num(f.newsStories)} news ${f.newsStories === 1 ? "story names" : "stories name"} it (left ${num(ev.news.bySide.left)}, center ${num(ev.news.bySide.center)}, right ${num(ev.news.bySide.right)}; sides weighted equally), ${fmtDate(ev.news.start)} to ${fmtDate(ev.news.end)}`,
+      url: ev.news.url,
+    });
   if (f.deficitMusd !== null && ev.xray?.deficit)
     out.push({
       signal: "dollars",
@@ -168,6 +174,7 @@ export function digestJson(r: WatchResult, earlier: MovedBill[][] = []) {
   const best = r.candidates.find((c) => !flagged.includes(c));
   return {
     schema: 1,
+    sweep: r.sweep ?? null,
     date: r.date,
     since: r.since,
     actionsSince: r.actionsSince,
@@ -260,10 +267,17 @@ const cell = (v: number | null) => (v === null ? "—" : v.toFixed(2));
 
 export function digestMarkdown(d: Digest): string {
   const L: string[] = [];
-  L.push(`# antibody watch · ${d.date}`, "");
-  L.push(
-    `Window: records updated ${d.since} → ${d.date}, actions dated from ${d.actionsSince} · ${d.moved} bills moved with new events (${d.alreadyReported} more were in an earlier digest) · rules ${d.rules.version}`,
-  );
+  if (d.sweep) {
+    L.push(`# antibody sweep · ${d.sweep}th Congress · ${d.date}`, "");
+    L.push(
+      `Every bill of the ${d.sweep}th Congress scored on its whole record since ${d.since} · ${d.moved} bills had floor or committee action · rules ${d.rules.version}`,
+    );
+  } else {
+    L.push(`# antibody watch · ${d.date}`, "");
+    L.push(
+      `Window: records updated ${d.since} → ${d.date}, actions dated from ${d.actionsSince} · ${d.moved} bills moved with new events (${d.alreadyReported} more were in an earlier digest) · rules ${d.rules.version}`,
+    );
+  }
   if (d.xrayed.length) L.push(`X-rayed: ${d.xrayed.map((b) => billDisplay(b as BillId)).join(", ")}`);
   L.push(siteLine(d.site));
   if (d.problems.length)

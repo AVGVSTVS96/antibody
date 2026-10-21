@@ -1,10 +1,11 @@
 import { mkdir, rename } from "node:fs/promises";
 import { join } from "node:path";
-import type { Stage } from "@antibody/core";
+import { CURRENT_CONGRESS, type Stage } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 import { recentMoved } from "./audit.ts";
 import { digestJson, digestMarkdown, flaggedOf, movedBills } from "./digest.ts";
 import { updateSite } from "./site.ts";
+import { sweep } from "./sweep.ts";
 import { recordEvents, watch } from "./watch.ts";
 
 export { digestJson, digestMarkdown, reasons } from "./digest.ts";
@@ -20,6 +21,31 @@ async function write(file: string, body: string) {
 }
 
 export const stages: Stage[] = [
+  {
+    name: "sweep",
+    scope: "global",
+    needs: [],
+    writes: [],
+    async run(ctx) {
+      const congress = Number(process.env.ANTIBODY_SWEEP_CONGRESS ?? CURRENT_CONGRESS);
+      const r = await sweep(congress, ctx.log, ctx.signal);
+      const file = join(paths.raw("watch"), `sweep-${congress}`);
+      const save = async () => {
+        const d = digestJson(r);
+        await write(`${file}.json`, `${JSON.stringify(d, null, 2)}\n`);
+        await write(`${file}.md`, digestMarkdown(d));
+        return d;
+      };
+      const d = await save();
+      ctx.log(`sweep ${file}.md: ${d.flagged.length} flagged, ${r.xrayed.length} x-rayed`);
+      const { problems } = await updateSite(r.site);
+      r.problems.push(...problems);
+      await save();
+      ctx.log(`site: ${r.site.deploy.status}, ${r.site.published.length} bundles published`);
+      for (const p of r.problems) ctx.log(`problem: ${p}`);
+      if (r.problems.length) process.exitCode = EXIT_DEGRADED;
+    },
+  },
   {
     name: "watch",
     scope: "global",

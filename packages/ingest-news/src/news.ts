@@ -31,10 +31,23 @@ interface Found {
   gnews: boolean;
 }
 
-/** The press drops the year from a short title ("Romance Scam Prevention Act of 2025" is "the Romance Scam Prevention Act"). */
+/**
+ * The press drops the year from a short title ("Romance Scam Prevention Act of 2025" is "the Romance Scam Prevention
+ * Act"), and writes a resolution's number both ways ("H.J.Res. 88", "H.J. Res. 88"). A named bill numbered under 100
+ * is searched by name only: "S. 2" or "H.R. 4" also matches lists, exhibits and other Congresses' bills.
+ */
 export function defaultTerms(shortTitle: string | null, display: string): string[] {
   const name = shortTitle?.replace(/\s+of\s+(?:19|20)\d\d$/i, "").trim();
-  return [...(name ? [`"${name}"`] : []), `"${display.replace(/(\D)(\d)/, "$1 $2")}"`];
+  const number = display.replace(/(\D)(\d)/, "$1 $2");
+  const spaced = number.replace(/\.(Res|Con)\./g, ". $1.");
+  const numbers = name && spaced === number && Number(number.match(/\d+$/)?.[0]) < 100 ? [] : [number, spaced];
+  return [...new Set([...(name ? [name] : []), ...numbers])].map((t) => `"${t}"`);
+}
+
+/** Search terms for a bill: data/queries.json when it is listed there, else its short title and number. */
+export function termsFor(bill: BillId, shortTitle: string | null): string[] {
+  const listed = (queries.bills as Record<string, { terms: string[] }>)[bill];
+  return listed?.terms ?? defaultTerms(shortTitle, billDisplay(bill));
 }
 
 /** The query and window: data/queries.json when the bill is listed, else its short title and number from BILLSTATUS. */
@@ -42,7 +55,7 @@ export async function searchPlan(bill: BillId): Promise<{ query: string; window:
   const listed = (queries.bills as Record<string, { terms: string[]; window?: string[] }>)[bill];
   const [row] = await readRows("bills", bill);
   const versions = await readRows("versions", bill);
-  const terms = listed?.terms ?? defaultTerms(row?.short_title ?? null, billDisplay(bill));
+  const terms = termsFor(bill, row?.short_title ?? null);
   let window: MCWindow;
   if (listed?.window) window = { start: listed.window[0]!, end: listed.window[1]! };
   else {

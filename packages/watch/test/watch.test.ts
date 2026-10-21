@@ -27,6 +27,25 @@ test("BILLSTATUS: bill, sponsor, versions newest first, CBO, substitute amendmen
   expect(parsePackage("BILLS-119hjres12enr")).toEqual({ bill: "119-hjres-12", code: "enr" });
 });
 
+test("short title: a title for portions of the bill (H.R.1's \"FEHB Protection Act\") is never the bill's own", () => {
+  const titles = (items: [string, string][]) =>
+    parseBillStatus(
+      xml.replace(
+        /<titles>[\s\S]*?<\/titles>/,
+        `<titles>${items.map(([type, title]) => `<item><titleType>${type}</titleType><title>${title}</title></item>`).join("")}</titles>`,
+      ),
+    ).shortTitle;
+  const portion: [string, string] = [
+    "Short Titles as Enacted for portions of this bill",
+    "FEHB Protection Act of 2025",
+  ];
+  expect(titles([portion, ["Popular Titles", "One Big Beautiful Bill Act"]])).toBe("One Big Beautiful Bill Act");
+  expect(titles([portion, ["Short Title(s) as Passed House", "One Big Beautiful Bill Act"]])).toBe(
+    "One Big Beautiful Bill Act",
+  );
+  expect(titles([portion])).toBeNull();
+});
+
 test("events: second-chamber passage with its tally and roll call, new text, law; introduced text is not movement", () => {
   const events = billEvents(status(), "2026-10-03", new Map([["BILLS-119hr42enr", "2026-10-09"]]));
   expect(events.map((e) => [e.step, e.date])).toEqual([
@@ -63,20 +82,26 @@ test("vote clock starts at introduction, or at a later substitute amendment", ()
   expect(voteClock(s, billEvents(s, "2026-10-01"))).toMatchObject({ days: 1, from: "samdt3000", voteOn: "2026-10-07" });
 });
 
-test("candidate: strongest step, closest vote, late measured against the first-passed text", () => {
+test("candidate: strongest step, closest vote and haste over the bill's whole record, late against the first-passed text", () => {
   const c = candidate(status(), "2026-10-01")!;
-  expect(c.facts).toMatchObject({ step: "law", closestVote: { yeas: 51, nays: 49 }, daysToVote: 1, closedRule: false });
+  expect(c.facts).toMatchObject({
+    step: "law",
+    closestVote: { yeas: 216, nays: 214 },
+    daysToVote: 9,
+    closedRule: true,
+  });
   expect(c.evidence.newest?.code).toBe("enr");
   expect(c.evidence.passed?.code).toBe("eh");
   expect(candidate(status(), "2026-12-01")).toBeNull();
 });
 
-test("a bill is scored on events no earlier digest reported", () => {
+test("new events decide which bills are looked at; the score is the bill's own, not the window's", () => {
   const law = "119-hr-42/action/2026-10-09/law";
   const c = candidate(status(), "2026-10-01", undefined, new Set([law]))!;
-  expect(c.facts.step).toBe("presented");
+  expect(c.facts.step).toBe("law");
   expect(c.fresh.has(law)).toBe(false);
-  expect(reasons(c)[0]!.text).toBe("Went to the President on Oct 8, 2026");
+  expect(reasons(c)[0]!.text).toBe("Became law on Oct 9, 2026; new: went to the President on Oct 8, 2026");
+  expect(c.score).toBe(candidate(status(), "2026-10-01")!.score);
   const everything = billEvents(status(), "2026-10-01").map((e) => e.id);
   expect(candidate(status(), "2026-10-01", undefined, new Set(everything))).toBeNull();
 });
@@ -92,11 +117,13 @@ const facts: Facts = {
   closedRule: false,
   closestVote: { yeas: 216, nays: 214 },
   buriedSections: 1,
+  newsStories: 99,
 };
 
 test("sub-scores follow the published scales", () => {
   expect(subScores(facts)).toEqual({
     moving: 0.75,
+    attention: 0.67,
     size: 0.63,
     dollars: 0.8,
     lobbying: 0.67,
@@ -105,7 +132,7 @@ test("sub-scores follow the published scales", () => {
     buried: 0.2,
     divisive: 1,
   });
-  expect(score(subScores(facts))).toBe(66.4);
+  expect(score(subScores(facts))).toBe(69.7);
   const none = subScores({
     ...facts,
     words: null,
@@ -115,9 +142,10 @@ test("sub-scores follow the published scales", () => {
     daysToVote: null,
     closestVote: null,
     buriedSections: null,
+    newsStories: null,
   });
-  expect(none).toMatchObject({ size: null, dollars: null, rushed: null, divisive: null });
-  expect(score(none)).toBe(15);
+  expect(none).toMatchObject({ attention: null, size: null, dollars: null, rushed: null, divisive: null });
+  expect(score(none)).toBe(11.2);
   expect(subScores({ ...facts, daysToVote: 30, closedRule: true }).rushed).toBe(0.5);
 });
 
@@ -290,4 +318,33 @@ test("a deficit figure reads in plain words, and a rounding error is no measurab
   expect(deficitEffect(0)).toBe("no measurable effect on the deficit");
   expect(deficitEffect(120)).toBe("adds $120M to the deficit");
   expect(deficitEffect(-3400)).toBe("cuts the deficit by $3.4B");
+});
+
+test("news attention weighs the left, center and right of the outlet list equally, whatever their outlet counts", async () => {
+  const { COUNTED, SIDES } = await import("@antibody/ingest-news");
+  const { newsWindow, weighSides } = await import("../src/news.ts");
+  const on = (side: keyof typeof SIDES) =>
+    COUNTED.filter((o) => o.mediacloud_id && (SIDES[side] as readonly string[]).includes(o.group));
+  const [left, center, right] = [on("left"), on("center"), on("right")];
+  const total = left.length + center.length + right.length;
+  // Every side runs one story per outlet it has: equal coverage, so the weighted count is the list's size.
+  const even = Object.fromEntries([...left, ...center, ...right].map((o) => [o.domain, 1]));
+  expect(weighSides(even)).toEqual({
+    bySide: { left: left.length, center: center.length, right: right.length },
+    stories: total,
+  });
+  // One side alone counts a third of the list, however many outlets it has.
+  const oneSide = weighSides({ [right[0]!.domain]: right.length * 3 });
+  expect(oneSide.stories).toBe(total);
+  expect(weighSides({ "example.com": 50 }).stories).toBe(0);
+
+  const s = status();
+  expect(newsWindow(s, "2026-10-21")).toEqual({ start: "2026-08-25", end: "2026-10-21" });
+  expect(newsWindow(s, "2027-06-01")).toEqual({ start: "2026-08-25", end: "2026-11-08" });
+});
+
+test("a sweep starts at the first day of its Congress", async () => {
+  const { congressStart } = await import("../src/sweep.ts");
+  expect(congressStart(119)).toBe("2025-01-03");
+  expect(congressStart(117)).toBe("2021-01-03");
 });

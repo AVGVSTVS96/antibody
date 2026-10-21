@@ -59,4 +59,7 @@ test("the default search drops the year from a short title and spaces the bill n
   ]);
   expect(defaultTerms("Small LENDER Act", "H.R.941")).toEqual(['"Small LENDER Act"', '"H.R. 941"']);
   expect(defaultTerms(null, "S.195")).toEqual(['"S. 195"']);
+  expect(defaultTerms(null, "H.J.Res.88")).toEqual(['"H.J.Res. 88"', '"H.J. Res. 88"']);
+  expect(defaultTerms("Secure America Act", "S.2")).toEqual(['"Secure America Act"']);
+  expect(defaultTerms(null, "S.2")).toEqual(['"S. 2"']);
 });

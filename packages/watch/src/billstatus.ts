@@ -94,9 +94,11 @@ export function parseBillStatus(xml: string): BillStatus {
 
   const sponsor = items(bill.sponsors)[0];
   const titles = items(bill.titles);
+  const whole = titles.filter((t: X) => !/portions/i.test(t.titleType ?? ""));
   const shortTitle =
-    str(titles.find((t: X) => /^Short Title/i.test(t.titleType ?? ""))?.title) ??
-    str(titles.find((t: X) => /^Short Titles? as/i.test(t.titleType ?? ""))?.title);
+    str(whole.find((t: X) => /^Short Titles? .*as Enacted/i.test(t.titleType ?? ""))?.title) ??
+    str(whole.find((t: X) => /^Short Title/i.test(t.titleType ?? ""))?.title) ??
+    str(titles.find((t: X) => t.titleType === "Popular Titles")?.title);
 
   const actions: Action[] = items(bill.actions).map((a: X) => ({
     date: day(a.actionDate)!,

@@ -13,6 +13,7 @@ const HELP = `antibody — x-ray a US federal bill
   antibody build [--refresh] [--no-stages]       x-ray the curated bills and publish them + the index for the site
   antibody run <stage> [<bill>] [--only]         run one stage (and what it needs)
   antibody watch [--no-deploy]                   the daily watcher: digest, x-ray, publish to the site, deploy
+  antibody sweep [<congress>] [--no-deploy]      score every bill of a Congress on its whole record, x-ray the flagged ones
   antibody stages                                list stages by package
 
 <bill> is anything like S.1582, "H.R. 1 (119th)", 119-s-1582 or a congress.gov URL.
@@ -171,6 +172,11 @@ switch (command) {
   case "watch":
     if (values["no-deploy"]) process.env.ANTIBODY_WATCH_DEPLOY = "0";
     await run(order(all, ["watch"]), null, ["watch"]);
+    break;
+  case "sweep":
+    if (values["no-deploy"]) process.env.ANTIBODY_WATCH_DEPLOY = "0";
+    if (args[0]) process.env.ANTIBODY_SWEEP_CONGRESS = String(Number.parseInt(args[0], 10));
+    await run(order(all, ["sweep"]), null, ["sweep"]);
     break;
   case "stages":
     for (const [pkg, stages] of Object.entries(PACKAGES))

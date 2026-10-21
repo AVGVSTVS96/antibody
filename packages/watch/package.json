@@ -2,6 +2,13 @@
   "name": "@antibody/watch",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@antibody/core": "workspace:*", "@antibody/store": "workspace:*", "fast-xml-parser": "5.11.2" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@antibody/core": "workspace:*",
+    "@antibody/ingest-news": "workspace:*",
+    "@antibody/store": "workspace:*",
+    "fast-xml-parser": "5.11.2"
+  }
 }

@@ -17,6 +17,7 @@ import {
 } from "./events.ts";
 import { cachedText, get, pool } from "./http.ts";
 import { lobbyingFilings } from "./lda.ts";
+import { type NewsCount, newsCount } from "./news.ts";
 import { type Facts, type SubScores, score, subScores } from "./score.ts";
 import { publishBundle, type Site } from "./site.ts";
 import { newSections, textShape, wordsFromBytes } from "./text.ts";
@@ -36,13 +37,15 @@ export interface Evidence {
   closestVoteUrl: string | null;
   firstVote: BillEvent | null;
   clock: VoteClock | null;
+  news: NewsCount | null;
   xray: XrayFacts | null;
 }
 
 export interface Candidate {
   status: BillStatus;
+  /** Every event in the bill's record, newest first. */
   events: BillEvent[];
-  /** Ids of events no earlier digest reported. */
+  /** Ids of events in the window that no earlier digest reported. */
   fresh: Set<string>;
   facts: Facts;
   evidence: Evidence;
@@ -63,6 +66,8 @@ export interface WatchResult {
   xrayed: BillId[];
   site: Site;
   problems: string[];
+  /** Set when every bill of this Congress was scored on its whole record (`antibody sweep`), not a window. */
+  sweep?: number;
 }
 
 export const settings = () => ({
@@ -88,6 +93,7 @@ export async function windowStart(dir: string, date: string): Promise<string> {
   return last ? (last < daysBefore(date, 14) ? daysBefore(date, 14) : last) : daysBefore(date, 3);
 }
 
+/** Facts about the bill as a whole: its furthest step, closest vote and haste over its whole record, not one window. */
 function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: Facts; evidence: Evidence } {
   const voted = events.filter((e) => e.tally);
   const closest = voted.reduce<BillEvent | null>(
@@ -109,6 +115,7 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
       closedRule: closedRule(s, since),
       closestVote: closest?.tally ?? null,
       buriedSections: null,
+      newsStories: null,
     },
     evidence: {
       newest: s.versions[0] ?? null,
@@ -122,30 +129,49 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
       closestVoteUrl: closest?.url ?? null,
       firstVote,
       clock,
+      news: null,
       xray: null,
     },
   };
 }
 
 /**
- * A bill that moved on or after `since`, scored on what BILLSTATUS alone says about its events no earlier digest
- * reported; null when nothing new happened.
+ * A bill with an event on or after `since` that no earlier digest reported, or null. The window only decides which
+ * bills to look at: the score is the bill's own, from its whole record in BILLSTATUS (a bill that passed the House
+ * 51 days ago and moves again today is scored as a bill that passed the House).
  */
 export function candidate(s: BillStatus, since: string, published?: Map<string, string>, seen = new Set<string>()) {
   const events = billEvents(s, since, published);
   const unseen = events.filter((e) => !seen.has(e.id));
   if (!unseen.length) return null;
-  const { facts, evidence } = baseFacts(s, unseen, since);
+  const start = s.introducedOn && s.introducedOn < since ? s.introducedOn : since;
+  const record = billEvents(s, start, published);
+  const { facts, evidence } = baseFacts(s, record, start);
   const fresh = new Set(unseen.map((e) => e.id));
-  const c: Candidate = { status: s, events, fresh, facts, evidence, sub: subScores(facts), score: 0, xray: null };
+  const c: Candidate = {
+    status: s,
+    events: record,
+    fresh,
+    facts,
+    evidence,
+    sub: subScores(facts),
+    score: 0,
+    xray: null,
+  };
   rescore(c);
   return c;
 }
 
-/** Adds the bill text (size, late sections), the lobbying search and any x-ray tables. Returns what failed. */
+/** Adds the bill text (size, late sections), the press, the lobbying search and any x-ray tables. Returns what failed. */
 export async function enrich(c: Candidate, cache: string, signal?: AbortSignal): Promise<string[]> {
   const id = c.status.id;
   const problems: string[] = [];
+  try {
+    c.evidence.news = await newsCount(c.status, today(), cache, signal);
+    c.facts.newsStories = c.evidence.news.stories;
+  } catch (e) {
+    problems.push(`${billDisplay(id)} news count: ${(e as Error).message}`);
+  }
   await textFacts(c, join(cache, "text"), signal).catch((e) =>
     problems.push(`${billDisplay(id)} text: ${(e as Error).message}`),
   );
@@ -239,43 +265,20 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   }
   log(`${candidates.length} moved with new events (${alreadyReported} already reported)`);
 
-  await pool(candidates, 8, async (c) => {
-    const url = c.evidence.newest?.xmlUrl;
-    if (!url) return;
-    try {
-      const res = await get(url, { method: "HEAD", signal });
-      const bytes = Number(res.headers.get("content-length"));
-      if (bytes) c.facts.words = wordsFromBytes(bytes);
-      rescore(c);
-    } catch {}
-  });
-
+  await measureSize(candidates, signal);
   const shortlist = rank(candidates).slice(0, cfg.enrich);
-  log(`enriching the top ${shortlist.length}: bill text, lobbying, x-ray tables`);
+  log(`enriching the top ${shortlist.length}: bill text, news, lobbying, x-ray tables`);
   for (const c of shortlist) problems.push(...(await enrich(c, join(dir, "cache"), signal)));
 
-  const xrayed: BillId[] = [];
   const site: Site = { published: [], deploy: { status: "pending" } };
-  const logs = join(dir, "logs", date);
-  for (const c of toXray(candidates, cfg.xrays)) {
-    const id = c.status.id;
-    log(`x-ray ${billDisplay(id)} (score ${c.score})`);
-    c.xray = await runXray(id, logs, signal);
-    if (!c.xray.ok) problems.push(`x-ray ${billDisplay(id)} failed: ${c.xray.error} (log ${c.xray.log})`);
-    let facts = await xrayFacts(id);
-    if (c.xray.ok && !facts.bundle)
-      problems.push(`x-ray ${billDisplay(id)} finished but wrote no bundle (log ${c.xray.log})`);
-    if (cfg.publish && c.xray.ok && facts.bundle) {
-      const problem = await publishBundle(id).catch(
-        (e: Error) => `${billDisplay(id)} bundle not published: ${e.message}`,
-      );
-      if (problem) problems.push(problem);
-      else site.published.push(id);
-      facts = await xrayFacts(id);
-    }
-    applyXray(c, facts);
-    xrayed.push(id);
-  }
+  const xrayed = await xrayAndPublish(
+    toXray(candidates, cfg.xrays),
+    join(dir, "logs", date),
+    site,
+    problems,
+    log,
+    signal,
+  );
   rank(candidates);
 
   return {
@@ -290,6 +293,52 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
     site,
     problems,
   };
+}
+
+/** Words from each newest text's Content-Length, for every candidate (one HEAD request each). */
+export async function measureSize(candidates: Candidate[], signal?: AbortSignal) {
+  await pool(candidates, 8, async (c) => {
+    const url = c.evidence.newest?.xmlUrl;
+    if (!url || c.facts.words !== null) return;
+    try {
+      const res = await get(url, { method: "HEAD", signal });
+      const bytes = Number(res.headers.get("content-length"));
+      if (bytes) c.facts.words = wordsFromBytes(bytes);
+      rescore(c);
+    } catch {}
+  });
+}
+
+/** Runs the x-ray of each bill, publishes the bundles that check out (unless publishing is off), and folds the tables back in. */
+export async function xrayAndPublish(
+  picks: Candidate[],
+  logs: string,
+  site: Site,
+  problems: string[],
+  log: (m: string) => void,
+  signal?: AbortSignal,
+): Promise<BillId[]> {
+  const xrayed: BillId[] = [];
+  for (const c of picks) {
+    const id = c.status.id;
+    log(`x-ray ${billDisplay(id)} (score ${c.score})`);
+    c.xray = await runXray(id, logs, signal);
+    if (!c.xray.ok) problems.push(`x-ray ${billDisplay(id)} failed: ${c.xray.error} (log ${c.xray.log})`);
+    let facts = await xrayFacts(id);
+    if (c.xray.ok && !facts.bundle)
+      problems.push(`x-ray ${billDisplay(id)} finished but wrote no bundle (log ${c.xray.log})`);
+    if (settings().publish && c.xray.ok && facts.bundle) {
+      const problem = await publishBundle(id).catch(
+        (e: Error) => `${billDisplay(id)} bundle not published: ${e.message}`,
+      );
+      if (problem) problems.push(problem);
+      else site.published.push(id);
+      facts = await xrayFacts(id);
+    }
+    applyXray(c, facts);
+    xrayed.push(id);
+  }
+  return xrayed;
 }
 
 async function textFacts(c: Candidate, cache: string, signal?: AbortSignal) {
