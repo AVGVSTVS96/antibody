@@ -49,5 +49,7 @@ test("a model reply's JSON survives a code fence, a trailing comma and a sentenc
     { a: 2, s: [] },
   ]);
   expect(parseJson('[{"a":1}]\nArticle 2 is unrelated.')).toEqual([{ a: 1 }]);
-  expect(parseJson('Here: {"a":"x, y"}')).toEqual({ a: "x, y" });
+  expect(parseJson('Here: {"a":"x, y ] }"}')).toEqual({ a: "x, y ] }" });
+  // The reply that stopped the FY27 CR's x-ray: the model answered twice.
+  expect(parseJson('[{"a":1,"s":["S7"]}]\n[{"a":1,"s":["S9"]}]')).toEqual([{ a: 1, s: ["S7"] }]);
 });
