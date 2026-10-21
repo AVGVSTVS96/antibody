@@ -66,7 +66,8 @@ const BILLIONS_ROUNDING = 100;
 /**
  * Checks every title × block × measure × period: the rows that add up must equal the total CBO prints, and where
  * CBO prints a total for a whole division, the rows under that division must add up to it too.
- * The check runs against CBO's own total lines, so it isn't circular. Within $2M counts as CBO's rounding.
+ * The check runs against CBO's own total lines, so it isn't circular. Within $2M counts as CBO's rounding. A block's
+ * first total is its total: some sheets keep blank template totals below it.
  */
 export function reconcile(sheets: ParsedSheet[]): Reconcile {
   let checks = 0;
@@ -102,7 +103,7 @@ export function reconcile(sheets: ParsedSheet[]): Reconcile {
       if (ADDITIVE.has(kind) && !r.breakdown_of_total) {
         add(sums, key, r);
         if (LEAF.has(kind) && r.division) add(divisionSums, `${key}|${r.division}`, r);
-      } else if (kind === "total") totals.set(key, r);
+      } else if (kind === "total" && !totals.has(key)) totals.set(key, r);
       else if (kind === "subtotal") {
         const division = r.section_title?.match(DIVISION_TOTAL)?.[1];
         if (division) divisionTotals.push([`${key}|${division.toUpperCase()}`, r]);

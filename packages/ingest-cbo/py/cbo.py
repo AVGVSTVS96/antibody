@@ -62,24 +62,106 @@ def scorer(label):
     return m.group(1).replace(" Estimate", "") if m else "CBO"
 
 
-def cell_range(sheet, r0, r1):
-    return f"'{sheet}'!A{r0}:O{r1}"
+def cell_range(sheet, r0, r1, last="O"):
+    return f"'{sheet}'!A{r0}:{last}{r1}"
 
 
-def parse_sheet(ws, years, lines):
+SEC_ALONE = re.compile(r"^Secs?\.?$")
+SEC_INLINE = re.compile(r"^(?:Se(?:cs?)?\.|Sections?)\s*(\d+[A-Za-z]?(?:\s*(?:,|and|-|–)\s*\d+[A-Za-z]?)*)\s*[-–—:.]?\s*(.*)$")
+TOTAL_LINE = re.compile(r"^(?:Total (?:Changes?|Increases?|Decreases?|Direct Spending|Revenues)\b|Net Effect on the Deficit)")
+BLOCK_HEAD = re.compile(r"^(?:(?:Increases|Decreases)(?: or Decreases \(-\))? in (?:Direct Spending|Revenues)|Net (?:Increase|Effect))")
+REVENUE_PARTS = {"on-budget": "on_budget_revenues", "off-budget": "off_budget_revenues", "total": "revenues"}
+
+
+class Layout:
+    """Where a Title sheet puts things. CBO's committees lay their sheets out differently: 'Sec.', number and title in
+    three cells or 'Sec. 1001 - Title' in one; measure labels in column A, B, C or E; numbers from column D or G, with
+    blank columns between. `split` reads any of them as parse_sheet's (a, b, c): a = 'Sec.' or a heading, b = the
+    section number or a line's own label, c = a title, its continuation, a measure or a component."""
+
+    def __init__(self, ws, cols):
+        self.cols = [j for j, _ in cols]
+        self.first = self.cols[0]
+        self.last = get_column_letter(self.cols[-1] + 1)
+        self.width = self.cols[-1] + 1
+        seen = {}
+        for r in ws.iter_rows(max_col=self.width, values_only=True):
+            cells = self.labels(r)
+            if cells and any(number(r[j]) is not None for j in self.cols if j < len(r)):
+                j, label = cells[-1]
+                if measure_kind(label) != "other" or label.lower() in REVENUE_PARTS:
+                    seen[j] = seen.get(j, 0) + 1
+        self.measure = max(seen, key=seen.get) if seen else 2
+
+    def labels(self, r):
+        return [(j, t) for j in range(min(self.first, len(r))) if (t := plain(r[j]))]
+
+    def split(self, r):
+        r = list(r) + [None] * self.width
+        data = [r[j] for j in self.cols]
+        has_data = any(number(x) is not None for x in data)
+        header = text(r[self.first])
+        cells = self.labels(r)
+        if not has_data and not header and len(cells) == 1 and BLOCK_HEAD.match(cells[0][1]):
+            header, cells = cells[0][1], []
+        slots = {"a": [], "b": [], "c": []}
+        if cells and SEC_ALONE.match(cells[0][1]):
+            slots = {"a": ["Sec."], "b": [t for _, t in cells[1:2]], "c": [t for _, t in cells[2:]]}
+        elif cells and (m := SEC_INLINE.match(cells[0][1])):
+            slots = {"a": ["Sec."], "b": [m.group(1)], "c": [m.group(2), *(t for _, t in cells[1:])]}
+        else:
+            for j, t in cells:
+                if has_data and t.lower() in REVENUE_PARTS:
+                    slots["c"].append(t)
+                elif HIERARCHY.match(t) or TITLE.match(t) or TOTAL_LINE.match(t):
+                    slots["a"].append(t)
+                elif has_data and measure_kind(t) != "other":
+                    slots["c"].append(t)
+                else:
+                    slots["a" if j == 0 else "b" if j < max(self.measure, 2) else "c"].append(t)
+        a, b, c = (" ".join(x for x in slots[k] if x) for k in "abc")
+        return a, b, c, data, has_data, header
+
+
+def parse_sheet(ws, cols, lines):
+    layout = Layout(ws, cols)
+    years = [label for _, label in cols]
     rows = []
     ctx = {"block": None, "Subtitle": None, "Chapter": None, "Subchapter": None, "Part": None}
     title = None
     current = None
+    bare = False
 
-    for i, r in enumerate(ws.iter_rows(values_only=True), 1):
-        r = list(r) + [None] * 16
-        a, b, c = text(r[0]), text(r[1]), text(r[2])
+    def kind_of(label, first):
+        """A subtotal printed straight under its heading is the only row that unit has, so it adds up like any other."""
+        kind = classify_line(label)
+        return "other" if kind == "subtotal" and first else kind
+
+    def row(current, label, data, i):
+        kind = measure_kind(label)
+        if kind == "other" and ctx["block"] == "revenues":
+            kind = REVENUE_PARTS.get(label.lower(), kind)
+        return {
+            "sheet": ws.title,
+            "title": title,
+            **current["context"],
+            "block": ctx["block"],
+            "line_kind": current["kind"],
+            "_line": current,
+            "_row": i,
+            "section_title": current["section_title"].strip(),
+            "component": current["component"],
+            "measure": label,
+            "measure_kind": kind,
+            "scored_by": scorer(label),
+            "values": dict(zip(map(str, years), [number(x) for x in data])),
+            "raw": dict(zip(map(str, years), [text(x) for x in data])),
+        }
+
+    for i, r in enumerate(ws.iter_rows(max_col=layout.width, values_only=True), 1):
+        a, b, c, data, has_data, header = layout.split(r)
         if not c and b and measure_kind(b) != "other":
             b, c = "", b
-        data = r[YEAR_COL0 : YEAR_COL0 + len(years)]
-        has_data = any(number(x) is not None for x in data)
-        header = text(r[YEAR_COL0])
 
         if header.startswith("Increases or Decreases (-) in Direct Spending") or header.startswith("Increases in Direct Spending") or header.startswith("Decreases in Direct Spending"):
             ctx["block"], current = "direct_spending", None
@@ -87,7 +169,7 @@ def parse_sheet(ws, years, lines):
         if "in Revenues" in header and not has_data:
             ctx["block"], current = "revenues", None
             continue
-        if header.startswith("Net Increases") or header.startswith("Net Effect"):
+        if header.startswith("Net Increase") or header.startswith("Net Effect"):
             ctx["block"], current = "deficit", None
             continue
 
@@ -99,8 +181,9 @@ def parse_sheet(ws, years, lines):
             ctx[level] = f"{level} {m.group(2)}. {m.group(3)}".strip()
             for lower in ["Subtitle", "Chapter", "Subchapter", "Part"][["Subtitle", "Chapter", "Subchapter", "Part"].index(level) + 1 :]:
                 ctx[lower] = None
-            current = None
+            current, bare = None, True
             continue
+        first, bare = bare, bare and not (a or b)
 
         if a.startswith("Sec"):
             inline = has_data and measure_kind(c) != "other"
@@ -117,36 +200,44 @@ def parse_sheet(ws, years, lines):
             }
             if has_data:
                 current["has_rows"] = True
-                rows.append(row(ws, title, current, ctx, c if inline else implied_measure(ctx["block"]), data, years, i))
+                rows.append(row(current, c if inline else implied_measure(ctx["block"]), data, i))
             continue
 
         if b.lower().startswith("memorand"):
             ctx["block"], current = "memorandum", None
             continue
 
+        if b and not has_data and current and current["kind"] == "section" and not current["has_rows"]:
+            if re.match(r"^\d", b):
+                current["section_raw"] = f"{current['section_raw']} {b}"
+                current["section_title"] = f"{current['section_title']} {c}".strip()
+                continue
+            if not c and classify_line(b) == "other":
+                current["section_title"] = f"{current['section_title']} {b}".strip()
+                continue
+
         if b and not re.match(r"^\d", b) and (not has_data or b.lower().startswith("subtotal")):
-            current = {"line": next(lines), "kind": classify_line(b), "section_raw": None, "section_title": b, "component": None, "row0": i, "has_rows": False,
+            current = {"line": next(lines), "kind": kind_of(b, first), "section_raw": None, "section_title": b, "component": None, "row0": i, "has_rows": False,
                        "context": {k: v for k, v in ctx.items() if k != "block"}}
             if has_data:
-                rows.append(row(ws, title, current, ctx, implied_measure(ctx["block"]) if measure_kind(b) == "other" else b, data, years, i))
+                rows.append(row(current, implied_measure(ctx["block"]) if measure_kind(b) == "other" else b, data, i))
             continue
 
-        if a.startswith("Total Changes in") or a.startswith("Net Effect on the Deficit"):
+        if TOTAL_LINE.match(a):
             current = {"line": next(lines), "kind": "total", "section_raw": None, "section_title": a, "component": None, "row0": i, "has_rows": False,
                        "context": {}}
             if has_data:
-                rows.append(row(ws, title, current, ctx, a, data, years, i))
+                rows.append(row(current, a, data, i))
             continue
 
         if a and not has_data and not header:
-            current = {"line": next(lines), "kind": classify_line(a), "section_raw": None, "section_title": a, "component": None, "row0": i, "has_rows": False,
+            current = {"line": next(lines), "kind": kind_of(a, first), "section_raw": None, "section_title": a, "component": None, "row0": i, "has_rows": False,
                        "context": {k: v for k, v in ctx.items() if k != "block"}}
             continue
 
-        if current and c and not has_data and text(r[YEAR_COL0]):
+        if current and c and not has_data and header:
             current["has_rows"] = True
-            rows.append({**row(ws, title, current, ctx, c, [None] * len(years), years, i), "note": text(r[YEAR_COL0]),
-                         "included_in": re.findall(r"\d{4,6}", text(r[YEAR_COL0]))})
+            rows.append({**row(current, c, [None] * len(years), i), "note": header, "included_in": re.findall(r"\d{4,6}", header)})
             continue
 
         if current and c and not has_data and current["kind"] == "section" and current["has_rows"] and classify_line(c) == "interaction":
@@ -167,13 +258,22 @@ def parse_sheet(ws, years, lines):
             if current["kind"] == "section" and b:
                 current["section_raw"] = f"{current['section_raw']} {b}"
             current["has_rows"] = True
-            rows.append(row(ws, title, current, ctx, c, data, years, i))
+            rows.append(row(current, c, data, i))
+    revenues = {}
+    for r in rows:
+        if r["block"] == "revenues":
+            revenues.setdefault(id(r["_line"]), []).append(r)
+    for rs in revenues.values():
+        # CBO prints a line's Off-budget and Total rows only when it has off-budget revenue
+        if {r["measure_kind"] for r in rs} == {"on_budget_revenues"}:
+            for r in rs:
+                r["measure_kind"] = "revenues"
     for r in rows:
         line = r.pop("_line")
         r["line"] = line["line"]
         r["section_raw"] = line["section_raw"]
         r["sections"] = expand_sections(line["section_raw"]) if line["section_raw"] else []
-        r["range"] = cell_range(ws.title, line["row0"], int(r["range"].split(":O")[1]))
+        r["range"] = cell_range(ws.title, line["row0"], r.pop("_row"), layout.last)
     return title, rows
 
 
@@ -181,30 +281,11 @@ def implied_measure(block):
     return {"revenues": "Estimated Revenues", "deficit": "Effect on the Deficit"}.get(block, "Estimated Outlays")
 
 
-def row(ws, title, current, ctx, label, data, years, i):
-    return {
-        "sheet": ws.title,
-        "title": title,
-        **current["context"],
-        "block": ctx["block"],
-        "line_kind": current["kind"],
-        "_line": current,
-        "section_title": current["section_title"].strip(),
-        "component": current["component"],
-        "measure": label,
-        "measure_kind": measure_kind(label),
-        "scored_by": scorer(label),
-        "values": dict(zip(map(str, years), [number(x) for x in data])),
-        "raw": dict(zip(map(str, years), [text(x) for x in data])),
-        "range": cell_range(ws.title, current["row0"], i),
-    }
-
-
 def classify_line(b):
     l = b.lower()
     if "interaction" in l:
         return "interaction"
-    if l.startswith("subtotal") or re.search(r"\btotal\b", l):
+    if "subtotal" in l or re.search(r"\btotal\b", l):
         return "subtotal"
     if "sequestration" in l:
         return "sequestration"
@@ -223,21 +304,24 @@ def expand_sections(raw):
     return out or [raw]
 
 
-def find_years(ws):
-    """Column labels of a sheet. Some CBO sheets print the two total columns over two rows (' 2021-' above '2030'),
-    which must read as '2021-2030', not collide with the annual 2030 column."""
+def columns(ws):
+    """[(column index, label)] of a sheet's numbers: the first row (of the top 30) holding two consecutive years, read
+    from there to its right end. Some sheets print the two total columns over two rows (' 2021-' above '2030'), which
+    must read as '2021-2030', not collide with the annual 2030 column; others print them whole on the row above."""
     rows = list(ws.iter_rows(min_row=1, max_row=30, values_only=True))
     for k, r in enumerate(rows):
-        if len(r) > YEAR_COL0 and text(r[YEAR_COL0]).isdigit():
-            above = rows[k - 1] if k else ()
-            out = []
-            for j in range(YEAR_COL0, len(r)):
-                if r[j] is None:
-                    continue
-                label = text(r[j]).replace(" ", "")
-                lead = text(above[j]).replace(" ", "") if j < len(above) and above[j] is not None else ""
-                out.append(lead + label if lead.endswith("-") and label.isdigit() else label)
-            return out
+        for j in range(len(r) - 1):
+            if re.fullmatch(r"\d{4}", text(r[j])) and text(r[j + 1]) == str(int(text(r[j])) + 1):
+                above = rows[k - 1] if k else ()
+                out = []
+                for col in range(j, max(len(r), len(above))):
+                    label = text(r[col]).replace(" ", "") if col < len(r) and r[col] is not None else ""
+                    lead = text(above[col]).replace(" ", "") if col < len(above) and above[col] is not None else ""
+                    if label:
+                        out.append((col, lead + label if lead.endswith("-") and label.isdigit() else label))
+                    elif re.fullmatch(r"\d{4}-\d{4}", lead):
+                        out.append((col, lead))
+                return out
     return None
 
 
@@ -362,8 +446,15 @@ def xlsx(path):
     lines = itertools.count(1)
     out = {"format": "xlsx", "sheets": [], "summary": None}
     for ws in wb.worksheets:
-        years = find_years(ws)
-        if not years:
+        cols = columns(ws)
+        if not cols:
+            continue
+        years = [label for _, label in cols]
+        if ws.title.startswith("Title") and "Summary" not in ws.title:
+            title, rows = parse_sheet(ws, cols, lines)
+            out["sheets"].append({"sheet": ws.title, "title": title, "years": years, "rows": rows})
+            continue
+        if cols[0][0] != YEAR_COL0:
             continue
         if ws.title.startswith("Summary"):
             out["summary"] = {"sheet": ws.title, "years": years, "rows": summary_totals(ws, years)}
@@ -372,11 +463,6 @@ def xlsx(path):
             out["sheets"].append({"sheet": ws.title, "title": None, "years": years, "unit": unit, "rows": rows})
             if not out["summary"]:
                 out["summary"] = {"sheet": ws.title, "years": years, "unit": unit, "rows": provision_totals(rows)}
-            continue
-        if not ws.title.startswith("Title"):
-            continue
-        title, rows = parse_sheet(ws, years, lines)
-        out["sheets"].append({"sheet": ws.title, "title": title, "years": years, "rows": rows})
     return out
 NUM = re.compile(r"^(-?\d{1,3}(,\d{3})*(\.\d+)?|-?\d+(\.\d+)?|\*|n\.e\.|n\.a\.)$")
 YEARS = re.compile(r"^(\d{4}\s+){9,}\d{4}-\d{4}\s+\d{4}-\d{4}$")
