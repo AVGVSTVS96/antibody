@@ -54,7 +54,7 @@ test("a bundle outside the curated list is marked as the watcher's, with the day
   const [curated, watcher] = index.bills;
   expect(curated).toMatchObject({ origin: "curated", note: null, addedOn: null });
   expect(watcher).toMatchObject({ id: "119-hr-9", origin: "watcher", addedOn: "2026-10-15" });
-  expect(watcher!.note).toStartWith("Added by the daily watcher and not hand-checked");
+  expect(watcher!.note).toStartWith("Added by the watcher (the daily watch, or its sweep");
   expect(index.watch.map((p) => [p.billId, p.file])).toEqual([["119-hr-9", "119-hr-9.json"]]);
 });
 

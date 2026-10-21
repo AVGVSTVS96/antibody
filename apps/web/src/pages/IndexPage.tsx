@@ -109,8 +109,11 @@ export function IndexPage() {
         {watched.some(seen) && (
           <section className="wrap list" aria-labelledby="watched">
             <header className="list-h">
-              <h2 id="watched">Added by the daily watch</h2>
-              <p>X-rayed automatically the day they moved. Not hand-checked.</p>
+              <h2 id="watched">Added by the watch</h2>
+              <p>
+                X-rayed automatically when the daily watch or a sweep of a whole Congress scored them at the cutoff. Not
+                hand-checked.
+              </p>
             </header>
             <Rows bills={watched.filter(seen)} />
           </section>
