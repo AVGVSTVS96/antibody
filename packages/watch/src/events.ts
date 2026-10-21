@@ -36,7 +36,7 @@ export interface BillEvent {
   tally: Tally | null;
 }
 
-const TALLY = /(?:Yeas and Nays|recorded vote|Yea-Nay Vote)\.?:?\s*(\d+)\s*-\s*(\d+)/i;
+const TALLY = /(?:Yeas and Nays|recorded vote|Yea-Nay Vote)\.?:?\s*(?:\(2\/3 required\):?\s*)?(\d+)\s*-\s*(\d+)/i;
 
 /** The question an action's vote was on, without the tally: "On motion to commit Failed". */
 export const voteQuestion = (text: string): string | null =>

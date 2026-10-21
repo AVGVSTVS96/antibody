@@ -73,10 +73,21 @@ test("events: second-chamber passage with its tally and roll call, new text, law
 test("tallies read every chamber's wording", () => {
   expect(tally("On passage Passed by the Yeas and Nays: 308 - 122 (Roll no. 200).")).toEqual({ yeas: 308, nays: 122 });
   expect(tally("Agreed to by recorded vote: 217 - 212 (Roll no. 198).")).toEqual({ yeas: 217, nays: 212 });
+  // A suspension vote, as the KIDS Act passed the House.
+  expect(
+    tally(
+      "On motion to suspend the rules and pass the bill, as amended Agreed to by the Yeas and Nays: (2/3 required): 267 - 117 (Roll no. 228).",
+    ),
+  ).toEqual({ yeas: 267, nays: 117 });
   expect(voteQuestion("On motion to commit Failed by the Yeas and Nays: 209 - 216 (Roll no. 319).")).toBe(
     "On motion to commit Failed",
   );
   expect(voteQuestion("Agreed to by recorded vote: 217 - 212 (Roll no. 198).")).toBe("Agreed to");
+  expect(
+    voteQuestion(
+      "On motion to suspend the rules and pass the bill Agreed to by the Yeas and Nays: (2/3 required): 267 - 117",
+    ),
+  ).toBe("On motion to suspend the rules and pass the bill Agreed to");
   expect(voteQuestion("Passed Senate without amendment by Yea-Nay Vote. 77 - 20. Record Vote Number: 280.")).toBe(
     "Passed Senate without amendment",
   );
@@ -442,12 +453,19 @@ test("late is measured from the last text before the floor, so a section added o
   expect(beforeFloor({ ...s, versions: [v("rh", "2026-01-20"), v("ih", "2026-01-12")] })).toBeNull();
 });
 
-test("a sweep reads the press for its best bills and for every bill that reached the President", async () => {
+test("a sweep reads the press for its best bills, every bill that reached the President and every contested vote", async () => {
   const { sweepShortlist } = await import("../src/sweep.ts");
-  const mk = (id: string, score: number, step: string) =>
-    ({ score, status: { id }, facts: { step } }) as unknown as Parameters<typeof sweepShortlist>[0][number];
+  const mk = (id: string, score: number, step: string, closestVote: { yeas: number; nays: number } | null = null) =>
+    ({ score, status: { id }, facts: { step, closestVote } }) as unknown as Parameters<
+      typeof sweepShortlist
+    >[0][number];
   const law = mk("119-hr-4405", 15, "law");
   const fight = mk("119-hr-22", 40, "passed");
-  const minor = mk("119-hr-9", 20, "passed");
-  expect(sweepShortlist([minor, law, fight], 1).map((c) => c.status.id)).toEqual(["119-hr-22", "119-hr-4405"]);
+  const minor = mk("119-hr-9", 20, "passed", { yeas: 400, nays: 3 });
+  const kids = mk("119-hr-7757", 11, "passed", { yeas: 267, nays: 117 });
+  expect(sweepShortlist([minor, law, kids, fight], 1).map((c) => c.status.id)).toEqual([
+    "119-hr-22",
+    "119-hr-4405",
+    "119-hr-7757",
+  ]);
 });

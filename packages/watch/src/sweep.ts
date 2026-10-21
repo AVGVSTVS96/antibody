@@ -80,15 +80,23 @@ export async function bulkStatuses(
   return { statuses, sources };
 }
 
+/** A recorded vote is contested when its losing side had at least this share of the votes. */
+export const CONTESTED_SHARE = 0.1;
+
 /**
- * The bills a sweep reads the text, news and lobbying of: the best `n` before those are known, and every bill that
- * reached the President. The press is the biggest signal and costs a rate-limited search per bill, so most bills
- * go without; a law passed by a lopsided vote scores low before it (the Epstein Files Transparency Act, 427-1, had
- * only "became law") and would otherwise never be counted.
+ * The bills a sweep reads the text, news and lobbying of: the best `n` before those are known, every bill that
+ * reached the President, and every bill with a contested recorded vote. The press is the biggest signal and costs a
+ * rate-limited search per bill, so most bills go without; a law passed by a lopsided vote scores low before it (the
+ * Epstein Files Transparency Act, 427-1, had only "became law"), and so does a fight that only reached a floor vote
+ * (the KIDS Act, 267-117; the Iran war powers votes), and they would otherwise never be counted.
  */
 export function sweepShortlist(candidates: Candidate[], n: number): Candidate[] {
   const enacted = candidates.filter((c) => STEPS[c.facts.step].weight >= STEPS.enrolled.weight);
-  return [...new Set([...rank(candidates).slice(0, n), ...enacted])];
+  const contested = candidates.filter((c) => {
+    const v = c.facts.closestVote;
+    return !!v && Math.min(v.yeas, v.nays) / (v.yeas + v.nays) >= CONTESTED_SHARE;
+  });
+  return [...new Set([...rank(candidates).slice(0, n), ...enacted, ...contested])];
 }
 
 /**
@@ -112,7 +120,7 @@ export async function sweep(congress: number, log: (m: string) => void, signal?:
   await readRiders(candidates, join(dir, "cache", "text"), signal);
   const shortlist = sweepShortlist(candidates, cfg.enrich);
   log(
-    `enriching ${shortlist.length} (the top ${cfg.enrich} and every enacted bill): bill text, news, lobbying, x-ray tables`,
+    `enriching ${shortlist.length} (the top ${cfg.enrich}, every enacted bill and every contested vote): bill text, news, lobbying, x-ray tables`,
   );
   for (const c of shortlist) problems.push(...(await enrich(c, join(dir, "cache"), signal)));
 
