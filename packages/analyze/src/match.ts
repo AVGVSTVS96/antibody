@@ -175,7 +175,9 @@ export async function matchArticles(
         try {
           out = parseJson(r.text);
         } catch (e) {
-          throw new Error(`${(e as Error).message}: ${JSON.stringify(r.text.slice(0, 160))}`);
+          const kept = `${file.name}.unreadable-${bi + 1}.txt`;
+          await Bun.write(kept, r.text);
+          throw new Error(`${(e as Error).message} (reply kept in ${kept})`);
         }
         for (const o of out) {
           const a = batch[o.a - 1];
