@@ -1,7 +1,7 @@
-import { articlesOf, BIG_STAKES, isLate } from "@antibody/core";
+import { articlesOf, BIG_STAKES, buriedWords, isLate, REACH_WORDS } from "@antibody/core";
 import { Fragment, type KeyboardEvent, useMemo, useRef, useState } from "react";
 import { dots, quietZone, sectionName } from "../lib/derive.ts";
-import { baselineWords, count, day, deficitWords, usd } from "../lib/format.ts";
+import { baselineWords, count, day, deficitWords, quoted, usd } from "../lib/format.ts";
 import { useWidth } from "../lib/hooks.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { frameFor, notes, type Placed, place, scales } from "../lib/scatter.ts";
@@ -36,7 +36,7 @@ export function Cost({ m }: { m: BillModel }) {
         </li>
         <li>
           <i className="dot flare big" />
-          Quiet and costly: {flagged || m.buried.length}
+          Quiet, big stakes: {flagged || m.buried.length}
         </li>
         <li>
           <i className="dot grey" />
@@ -391,17 +391,19 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
   const payFor = v.s.score?.offsets ? m.sections.find((x) => x.s.id === v.s.score?.offsets) : undefined;
   const paidBy = m.sections.find((x) => x.s.score?.offsets === v.s.id);
   const same = !!v.figure?.byBaseline.every((b) => b.musd === v.figure!.musd);
+  const costly = v.dollarsMusd != null || (c?.lobbyingFirms ?? 0) >= BIG_STAKES.firms;
   const why = [
-    v.dollarsMusd != null || (c?.lobbyingFirms ?? 0) >= BIG_STAKES.firms ? "big" : null,
+    costly ? "big" : null,
     "quiet",
+    ...(costly ? [] : (c?.reach ?? []).map((k) => `its text ${REACH_WORDS[k]}`)),
     c?.late ? "arrived late" : c?.offTopic != null && c.offTopic >= 0.5 ? "unlike the rest of the bill" : null,
   ].filter(Boolean);
   return (
     <aside className={`facts ${tone}`} aria-live="polite">
       <div className="facts-h">
         <b>
-          {v.kind === "buried"
-            ? "Flagged: quiet and costly"
+          {v.kind === "buried" && v.s.score
+            ? `Flagged: ${buriedWords(v.s.score)}`
             : v.kind === "headline"
               ? "The loud part"
               : "A section of the law"}
@@ -490,6 +492,17 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
             </>,
             <Src id={v.s.counterpart!.claim} label="Pairing" />,
           )}
+        {v.s.reach.map((r) => (
+          <Fragment key={r.claim}>
+            {row(
+              "Reach",
+              <>
+                {REACH_WORDS[r.kind].replace(/^./, (x) => x.toUpperCase())}: {quoted(r.quote)}
+              </>,
+              <Src id={r.claim} label="Text" />,
+            )}
+          </Fragment>
+        ))}
         {row(
           "Lobbying",
           c?.lobbyingReports

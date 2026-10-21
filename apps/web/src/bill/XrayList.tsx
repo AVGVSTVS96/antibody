@@ -1,17 +1,18 @@
-import { articlesOf, isLate } from "@antibody/core";
+import { articlesOf, buriedWords, isLate, REACH_WORDS } from "@antibody/core";
 import { Fragment, useMemo, useState } from "react";
-import { baselineWords, count, day, musd, rank } from "../lib/format.ts";
+import { baselineWords, count, day, musd, quoted, rank } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
 
-type Filter = "top" | "all" | "headline" | "buried" | "late" | "money" | "removed";
+type Filter = "top" | "all" | "headline" | "buried" | "reach" | "late" | "money" | "removed";
 type Sort = "num" | "attention" | "dollars" | "buried";
 
 const FILTERS: [Filter, string][] = [
   ["top", "Top 25"],
   ["all", "All"],
   ["headline", "Loud"],
-  ["buried", "Quiet and costly"],
+  ["buried", "Quiet, big stakes"],
+  ["reach", "Legal reach"],
   ["late", "Added late"],
   ["money", "Has CBO $"],
   ["removed", "Dropped"],
@@ -24,6 +25,7 @@ const keep: Record<Exclude<Filter, "top">, (v: SectionView) => boolean> = {
   all: () => true,
   headline: (v) => v.kind === "headline",
   buried: (v) => v.kind === "buried",
+  reach: (v) => v.s.reach.length > 0,
   late: (v) => isLate(v.s),
   money: (v) => v.s.dollars.length > 0,
   removed: (v) => !v.s.inFinal,
@@ -143,9 +145,11 @@ export function XrayList({ m }: { m: BillModel }) {
           many news articles matched it. <b>CBO 10-yr $</b>: the section’s ten-year effect on the deficit, + adds to it
           and − cuts it; hover for the estimate and baseline.
           <b> Buried score</b>: stakes × quietness × (late or off-topic), from 0 to 1.5. A section is flagged when its
-          stakes are big (a CBO figure of $10 billion or more, the smaller one when CBO printed two baselines, or 21
-          lobbying reports) and under 1 in 100 articles discussed it; the score only orders the flagged ones. It is 0.00
-          for most sections, which means nothing about them stands out.
+          stakes are big (a CBO figure of $10 billion or more, the smaller one when CBO printed two baselines, 21
+          lobbying firms, or legal reach) and under 1 in 100 articles discussed it; the score only orders the flagged
+          ones. It is 0.00 for most sections, which means nothing about them stands out. <b>Legal reach</b>: the text
+          limits courts, overrides state law, opens lawsuits, skips public review or blocks a rule, by published
+          patterns; the sentence is quoted under the row, dropped sections included.
           {!m.perSectionDollars && " CBO scored only the whole bill, so no section has a dollar figure here."}
         </p>
       </details>
@@ -201,7 +205,17 @@ export function XrayList({ m }: { m: BillModel }) {
                     <td className="n">{m.secLabel(v)}</td>
                     <td className="ttl">
                       {s.heading} {v.kind === "headline" && <span className="pill loud">loud</span>}
-                      {v.kind === "buried" && <span className="pill quiet">quiet and costly</span>}
+                      {v.kind === "buried" && s.score && <span className="pill quiet">{buriedWords(s.score)}</span>}
+                      {s.reach
+                        .filter(
+                          (r) =>
+                            !(v.kind === "buried" && s.score && buriedWords(s.score).includes(REACH_WORDS[r.kind])),
+                        )
+                        .map((r) => (
+                          <span key={r.kind} className="pill reach">
+                            {REACH_WORDS[r.kind]}
+                          </span>
+                        ))}
                       {!s.inFinal && (
                         <span className="pill removed">
                           {s.mergedInto ? "merged" : s.splitInto.length ? "split" : "dropped"}
@@ -326,6 +340,12 @@ function SectionDetail({ m, v }: { m: BillModel; v: SectionView }) {
             );
           })}
       </div>
+      {s.reach.map((r) => (
+        <div className="row-meta" key={r.claim}>
+          <b>{REACH_WORDS[r.kind].replace(/^./, (x) => x.toUpperCase())}</b>: {quoted(r.quote)}{" "}
+          <Src id={r.claim} label="text" />
+        </div>
+      ))}
       {s.splitFrom && <div className="row-meta">Split out of an older section, so it is not counted as added.</div>}
       {s.splitInto.length > 0 && (
         <div className="row-meta">Split into {count(s.splitInto.length, "section")} in a later version.</div>

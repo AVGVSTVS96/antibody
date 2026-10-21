@@ -63,8 +63,8 @@ export function IndexPage() {
           <div className="hero-copy">
             <h1>See what rides along in a bill, and who is behind it.</h1>
             <p className="lead">
-              Which parts of a law made the news, which costly parts didn’t, who lobbied on it, and which members traded
-              stock in companies tied to it. Every number links to its public record.
+              Which parts of a law made the news, which costly or far-reaching parts didn’t, who lobbied on it, and
+              which members traded stock in companies tied to it. Every number links to its public record.
             </p>
             <form className="bigfind" onSubmit={submit}>
               <span className="bf-field">
@@ -131,12 +131,13 @@ export function IndexPage() {
             <article>
               <h3>Loud and quiet sections</h3>
               <p>
-                Loud sections are the top tenth of a bill by news attention. A quiet and costly one has big stakes (a
-                CBO figure of $10 billion or more for that section on every baseline CBO printed, or 21 lobbying
-                reports) and under 1 in 100 of the bill’s news articles discussed it. Being added late or off-topic
-                ranks it higher but isn’t needed. The sub-scores sit next to every label, never just a verdict.{" "}
-                {testable} of {curated.length} laws here had enough news, enough sections and a measured cost to test at
-                all.
+                Loud sections are the top tenth of a bill by news attention. A quiet one with big stakes has a CBO
+                figure of $10 billion or more for that section on every baseline CBO printed, 21 lobbying firms, or
+                legal reach in its text (it limits courts, overrides state law, opens lawsuits, skips public review or
+                blocks a rule), and under 1 in 100 of the bill’s news articles discussed it. Being added late or
+                off-topic ranks it higher but isn’t needed. The sub-scores sit next to every label, never just a
+                verdict. {testable} of {curated.length} laws here had enough news, enough sections and a measured cost
+                to test at all.
               </p>
             </article>
             <article>
@@ -191,7 +192,7 @@ function Key({ entry }: { entry: Entry }) {
         </li>
         <li>
           <i className="sq flare" />
-          Quiet and costly: big stakes, almost no news
+          Quiet, big stakes: costly or far-reaching, almost no news
         </li>
         <li>
           <i className="sq quiet" />
@@ -210,7 +211,7 @@ function Rows({ bills, feature }: { bills: Entry[]; feature?: string }) {
         <span className="c-fp">One square per section</span>
         <span className="c-law">Law</span>
         <span className="c-loud">Loud</span>
-        <span className="c-quiet">Quiet and costly</span>
+        <span className="c-quiet">Quiet, big stakes</span>
         <span className="c-lobby">Lobbying reports</span>
         <span className="c-traded">Members traded</span>
       </div>
@@ -272,7 +273,7 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
                   className="c-quiet"
                   title={
                     t?.tested && !s.buried
-                      ? `Tested on the ${t.costMeasured} of ${s.sections} sections CBO gave a figure, plus any named by ${BIG_STAKES.firms} lobbying firms`
+                      ? `Tested on the ${t.costMeasured} of ${s.sections} sections CBO gave a figure, plus any named by ${BIG_STAKES.firms} lobbying firms and any with legal reach`
                       : undefined
                   }
                 >
@@ -283,7 +284,7 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
                   ) : (
                     <b className={`n ${s.buried ? "flare" : "zero"}`}>{s.buried}</b>
                   )}
-                  <i>Quiet and costly</i>
+                  <i>Quiet, big stakes</i>
                 </span>
               </>
             )}

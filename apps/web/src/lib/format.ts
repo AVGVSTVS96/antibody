@@ -130,3 +130,6 @@ export function plainName(label: string, max = 22): string {
   }
   return `${strip(out).slice(0, max)}…`;
 }
+
+/** A quote from a bill's text in curly quotes, with an ellipsis where it was cut mid-sentence. */
+export const quoted = (q: string) => `“${q}${/[.;:”"]$/.test(q) ? "" : "…"}”`;

@@ -1,4 +1,4 @@
-import { articlesOf, BIG_STAKES, billStats, headlineDeficit, isLate } from "@antibody/core";
+import { articlesOf, BIG_STAKES, bigStakes, billStats, headlineDeficit, isLate, REACH_WORDS } from "@antibody/core";
 import { count, day, musd, usd } from "./format.ts";
 import type { BillModel, MemberView, SectionView } from "./model.ts";
 
@@ -125,7 +125,7 @@ export function introLine(m: BillModel): string {
   if (ranked) {
     const loud = m.headline.length;
     parts.push(
-      `${loud ? `Most of the news covered ${loud} of those sections` : "No section stood out in the news"}${m.buried.length ? `; ${m.buried.length === 1 ? "one costly section" : `${m.buried.length} costly sections`} got almost none.` : "."}`,
+      `${loud ? `Most of the news covered ${loud} of those sections` : "No section stood out in the news"}${m.buried.length ? `; ${flaggedWords(m)} got almost none.` : "."}`,
     );
   } else parts.push("Too few news articles to say which sections got attention.");
   return parts.join(" ");
@@ -147,6 +147,9 @@ export function answers(m: BillModel): Answer[] {
   const loud = m.headline[0];
   const quiet = m.buried[0];
   const test = billStats(b).buriedTest;
+  const big = m.sections.filter(
+    (v) => v.s.inFinal && v.s.score && (bigStakes(v.s.score.components) || v.s.score.components.reach.length),
+  ).length;
   const L = b.lobbying;
   const total = L.byPhase.bill + L.byPhase.enactmentQuarter + L.byPhase.law;
   const lateShare = total ? L.byPhase.law / total : 0;
@@ -175,16 +178,18 @@ export function answers(m: BillModel): Answer[] {
       ? `${count(firms, "lobbying firm")} named it; `
       : "";
   const heading = quiet ? trim(quiet.s.heading, 56) : "";
+  const reachOnly = quiet?.s.score && !bigStakes(quiet.s.score.components) ? quiet.s.score.components.reach : [];
   const named = heading.endsWith("…") ? heading : `${heading}.`;
   const second: Answer = quiet
     ? {
         tone: "quiet",
         label: "What slipped by",
-        big:
-          quiet.dollarsMusd != null
+        big: reachOnly.length
+          ? REACH_WORDS[reachOnly[0]!].replace(/^./, (x) => x.toUpperCase())
+          : quiet.dollarsMusd != null
             ? `${quiet.dollarsMusd < 0 ? "saves" : "costs"} ${usd(Math.abs(quiet.dollarsMusd) * 1e6)}`
             : count(m.buried.length, "section"),
-        text: `${quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(articlesOf(quiet.s) ?? 0, "article")} matched it${isLate(quiet.s) ? ", and it was added after the first text" : ""}.`,
+        text: `${reachOnly.length || quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(articlesOf(quiet.s) ?? 0, "article")} matched it${isLate(quiet.s) ? ", and it was added after the first text" : ""}.`,
         link: "Why it’s flagged",
         target: "news",
       }
@@ -201,9 +206,9 @@ export function answers(m: BillModel): Answer[] {
           tone: "quiet",
           label: "What slipped by",
           big: "None found",
-          text: test.bigStakes
-            ? `${count(test.bigStakes, "section")} had stakes this big (a CBO figure of $10 billion or more on every baseline CBO printed, or ${BIG_STAKES.firms} lobbying firms), and each got at least 1 article in 100.`
-            : `No section has stakes this big: none has a CBO figure of $10 billion or more, or ${BIG_STAKES.firms} lobbying firms. CBO gave ${test.costMeasured} of ${m.sections.filter((v) => v.s.inFinal).length} sections its own figure.`,
+          text: big
+            ? `${count(big, "section")} had stakes this big (a CBO figure of $10 billion or more on every baseline CBO printed, ${BIG_STAKES.firms} lobbying firms, or legal reach in its text), and each got at least 1 article in 100.`
+            : `No section has stakes this big: none has a CBO figure of $10 billion or more, ${BIG_STAKES.firms} lobbying firms, or legal reach in its text. CBO gave ${test.costMeasured} of ${m.sections.filter((v) => v.s.inFinal).length} sections its own figure.`,
           link: "How we test it",
           target: "read",
         };
@@ -224,6 +229,19 @@ export function answers(m: BillModel): Answer[] {
     target: "trades",
   };
   return [first, second, third, fourth];
+}
+
+/** "one costly section", "3 costly sections", or, when some are flagged for their legal reach, "2 sections with big stakes". */
+function flaggedWords(m: BillModel): string {
+  const n = m.buried.length;
+  const costly = m.buried.every((v) => v.s.score && bigStakes(v.s.score.components));
+  return costly
+    ? n === 1
+      ? "one costly section"
+      : `${n} costly sections`
+    : n === 1
+      ? "one section with big stakes"
+      : `${n} sections with big stakes`;
 }
 
 export function trim(s: string, max: number): string {
