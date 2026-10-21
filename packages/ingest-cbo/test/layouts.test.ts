@@ -215,3 +215,22 @@ test.skipIf(!parsers)(
     expect(reconcile(parsed.sheets)).toMatchObject({ failing: [], checks: 24 });
   },
 );
+
+// Inflation Reduction Act, CBO publication 58455, Table 1 page 14 and Table 2 page 17 (PL117-169_9-7-22.pdf)
+test.skipIf(!parsers)(
+  "an 'and' in the section-number column joins two sections into one row; an 'and' that wraps a title does not",
+  async () => {
+    const sections = rowsOf(await parse("ira-wrapped-titles.json")).filter(
+      (r) => r.line_kind === "section" && r.measure_kind !== "budget_authority",
+    );
+    const joined = sections.find((r) => r.sections.includes("13904"))!;
+    expect(joined.sections).toEqual(["13903", "13904"]);
+    expect(joined.section_title).toBe("Extension of Limitation on Excess Business Losses of Noncorporate Taxpayers");
+    expect(joined.values["2022-2031"]).toBe(52759);
+    const forest = sections.filter((r) => r.sections.some((n) => n.startsWith("2300")));
+    expect(forest.map((r) => [r.sections, r.section_title])).toEqual([
+      [["23001"], "National Forest System Restoration and Fuels Reduction Projects"],
+      [["23002"], "Competitive Grants for Non-Federal Forest Landowners"],
+    ]);
+  },
+);

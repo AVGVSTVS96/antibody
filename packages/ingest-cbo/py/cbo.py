@@ -517,6 +517,7 @@ def parse_tables(pages):
     unit = {"division": None, "title": None}
     ctx = {"Subtitle": None, "Chapter": None, "Subchapter": None, "Part": None}
     current = None
+    wrap_x0 = None
     if not any(TABLE_HEAD.match(t) for page in pages for t, *_ in page):
         table = "1"
     for pno, lines in enumerate(pages, 1):
@@ -600,10 +601,18 @@ def parse_tables(pages):
                 current = new_line(lines_seq, "section", sec[1], pno, ctx, sec[0], unit, x0, marks)
             elif sec and current and current.get("joining"):
                 current["section_raw"] += f" and {sec[0]}"
-                current["section_title"] += f" and {sec[1]}"
+                if (at := current.pop("and_at", None)) is None:
+                    current["section_title"] += f" and {sec[1]}"
+                else:
+                    title = current["section_title"]
+                    current["section_title"] = f"{title[:at]} {title[at + len(' and ') :]} {sec[1]}"
                 current["joining"] = False
             elif label == "and" and current and current["kind"] == "section":
                 current["joining"] = True
+                continue
+            elif label.startswith("and ") and not nums and current and current["kind"] == "section" and not current["has_rows"] and wrap_x0 and x0 < wrap_x0 - 3:
+                current["joining"], current["and_at"] = True, len(current["section_title"])
+                current["section_title"] += f" {label}"
                 continue
             elif label.startswith(("Total Changes in", "Net Effect on the Deficit")) or re.fullmatch(r"Total (?:Direct|Discretionary) Spending|Total Revenues", label):
                 current = new_line(lines_seq, "total", label, pno, {}, None, unit, x0)
@@ -640,6 +649,7 @@ def parse_tables(pages):
                     current["component"] = label
                 else:
                     current["section_title"] += f" {label}"
+                    wrap_x0 = x0 if current["kind"] == "section" else wrap_x0
                 continue
             elif current and nums:
                 if measure_start and label == "Authority":
@@ -650,6 +660,7 @@ def parse_tables(pages):
                 if measure_kind(label) == "other" and current["kind"] in LEAF and not current["has_rows"]:
                     current["section_title"] += f" {label}"
                     label = implied_measure(block)
+                    wrap_x0 = x0 if current["kind"] == "section" else wrap_x0
                 rows.append(emit(table, title, block, current, label, years, nums, pno, lines_seq, scale))
                 continue
             else:
