@@ -41,6 +41,7 @@
   "119-hr-3633": {"terms": ["\"CLARITY Act\"", "\"Digital Asset Market Clarity Act\"", "\"market structure bill\""], "window": ["2025-05-20", "2026-10-20"]},
   "119-sjres-18": {"terms": ["\"S.J.Res. 18\"", "\"S.J. Res. 18\"", "\"overdraft rule\""], "window": ["2025-02-10", "2025-06-10"]},
   "119-hjres-25": {"terms": ["\"H.J.Res. 25\"", "\"H.J. Res. 25\"", "\"DeFi broker rule\"", "\"DeFi broker\""], "window": ["2025-01-15", "2025-05-10"]},
-  "119-hconres-86": {"terms": ["\"H.Con.Res. 86\"", "\"H. Con. Res. 86\"", "\"war powers resolution\""], "window": ["2026-03-01", "2026-10-20"]}
+  "119-hconres-86": {"terms": ["\"H.Con.Res. 86\"", "\"H. Con. Res. 86\"", "\"war powers resolution\""], "window": ["2026-03-01", "2026-10-20"]},
+  "117-hr-7776": {"terms": ["\"James M. Inhofe National Defense Authorization Act\"", "\"National Defense Authorization Act for Fiscal Year 2023\"", "\"NDAA\""], "window": ["2022-06-01", "2023-01-15"]}
  }
 }
