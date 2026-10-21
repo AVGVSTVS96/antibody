@@ -101,6 +101,8 @@ const SPELLINGS: Record<string, string[]> = {
   sjres: ["S.J.Res. #", "S.J. Res. #", "S.J.Res.#", "SJRES #"],
   hconres: ["H.Con.Res. #", "H. Con. Res. #", "HCONRES #"],
   sconres: ["S.Con.Res. #", "S. Con. Res. #", "SCONRES #"],
+  hres: ["H.Res. #", "H. Res. #", "H.Res.#", "HRES #"],
+  sres: ["S.Res. #", "S. Res. #", "S.Res.#", "SRES #"],
 };
 
 /** The lda.gov full-text query for filings that name the bill by number, in every spelling filers use. */

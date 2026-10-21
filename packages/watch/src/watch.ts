@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { type BillId, billDisplay, billstatusUrl, congressGovUrl } from "@antibody/core";
 import { paths, readRows, writeRows } from "@antibody/core/node";
 import { type BillStatus, parseBillStatus, type TextVersion } from "./billstatus.ts";
-import { flaggedOf, links, reasons } from "./digest.ts";
+import { flaggedOf, links, reasons, withRiders } from "./digest.ts";
 import { discover, type SourceReport } from "./discover.ts";
 import {
   type BillEvent,
@@ -18,6 +18,7 @@ import {
 import { cachedText, get, pool } from "./http.ts";
 import { lobbyingFilings } from "./lda.ts";
 import { type NewsCount, newsCount } from "./news.ts";
+import { isSpecialRule, type Rider, ruleRiders } from "./rules.ts";
 import { type Facts, type SubScores, score, subScores } from "./score.ts";
 import { publishBundle, type Site } from "./site.ts";
 import { newSections, textShape, wordsFromBytes } from "./text.ts";
@@ -38,6 +39,8 @@ export interface Evidence {
   firstVote: BillEvent | null;
   clock: VoteClock | null;
   news: NewsCount | null;
+  /** For a House rule: its sections that do more than set up debate (null when not read). */
+  riders: Rider[] | null;
   xray: XrayFacts | null;
 }
 
@@ -130,6 +133,7 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
       firstVote,
       clock,
       news: null,
+      riders: null,
       xray: null,
     },
   };
@@ -266,6 +270,7 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   log(`${candidates.length} moved with new events (${alreadyReported} already reported)`);
 
   await measureSize(candidates, signal);
+  await readRiders(candidates, join(dir, "cache", "text"), signal);
   const shortlist = rank(candidates).slice(0, cfg.enrich);
   log(`enriching the top ${shortlist.length}: bill text, news, lobbying, x-ray tables`);
   for (const c of shortlist) problems.push(...(await enrich(c, join(dir, "cache"), signal)));
@@ -293,6 +298,23 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
     site,
     problems,
   };
+}
+
+/** Reads the newest text of every House rule among the candidates for riders (rules are a few kilobytes each). */
+export async function readRiders(candidates: Candidate[], cache: string, signal?: AbortSignal) {
+  await pool(
+    candidates.filter((c) => isSpecialRule(c.status)),
+    6,
+    async (c) => {
+      const v = c.evidence.newest;
+      if (!v) return;
+      try {
+        c.evidence.riders = ruleRiders(
+          await cachedText(v.xmlUrl, join(cache, `${v.xmlUrl.split("/").pop()}`), { signal }),
+        );
+      } catch {}
+    },
+  );
 }
 
 /** Words from each newest text's Content-Length, for every candidate (one HEAD request each). */
@@ -382,7 +404,7 @@ export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
           url: e.url,
           detail: { step: e.step, date: e.date, text: e.text, tally: e.tally },
         });
-  for (const c of flagged)
+  for (const c of [...flagged, ...withRiders(r.candidates)])
     rows.set(`${c.status.id}/hot/${r.date}`, {
       id: `${c.status.id}/hot/${r.date}`,
       bill_id: c.status.id,
@@ -393,10 +415,12 @@ export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
         display: billDisplay(c.status.id),
         title: c.status.shortTitle ?? c.status.title,
         sponsorParty: c.status.sponsor?.party || null,
-        reason: reasons(c)
-          .slice(0, 2)
-          .map((x) => x.text)
-          .join("; "),
+        reason: c.evidence.riders?.length
+          ? `A House rule that also: ${[...new Set(c.evidence.riders.map((x) => x.label.toLowerCase()))].join("; ")}`
+          : reasons(c)
+              .slice(0, 2)
+              .map((x) => x.text)
+              .join("; "),
         score: c.score,
         sub: c.sub,
         facts: c.facts,

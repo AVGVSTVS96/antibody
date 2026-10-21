@@ -13,6 +13,7 @@ import {
   enrich,
   measureSize,
   rank,
+  readRiders,
   settings,
   toXray,
   type WatchResult,
@@ -96,6 +97,7 @@ export async function sweep(congress: number, log: (m: string) => void, signal?:
   log(`${statuses.length} bills in the ${congress}th Congress, ${candidates.length} with floor or committee action`);
 
   await measureSize(candidates, signal);
+  await readRiders(candidates, join(dir, "cache", "text"), signal);
   const shortlist = rank(candidates).slice(0, cfg.enrich);
   log(`enriching the top ${shortlist.length}: bill text, news, lobbying, x-ray tables`);
   for (const c of shortlist) problems.push(...(await enrich(c, join(dir, "cache"), signal)));

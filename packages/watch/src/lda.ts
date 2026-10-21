@@ -23,6 +23,8 @@ const TYPE_RE: Record<string, string> = {
   sjres: String.raw`S\.?\s?J\.?\s?Res`,
   hconres: String.raw`H\.?\s?Con\.?\s?Res`,
   sconres: String.raw`S\.?\s?Con\.?\s?Res`,
+  hres: String.raw`H\.?\s?Res`,
+  sres: String.raw`S\.?\s?Res`,
 };
 
 /**

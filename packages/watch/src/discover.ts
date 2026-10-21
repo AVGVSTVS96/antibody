@@ -3,8 +3,11 @@ import { XMLParser } from "fast-xml-parser";
 import { type CboEstimate, parsePackage } from "./billstatus.ts";
 import { getText } from "./http.ts";
 
-/** Types the watcher follows. Simple resolutions (H.Res., S.Res.) never become law and are left out. */
-export const WATCHED_TYPES = ["hr", "s", "hjres", "sjres", "hconres", "sconres"] as const;
+/**
+ * Types the watcher follows. Simple resolutions never become law, but the House's rules (H.Res.) are where riders
+ * that stop a law's clock or deem a bill passed ride, and censures and Senate resolutions are fights of their own.
+ */
+export const WATCHED_TYPES = ["hr", "s", "hjres", "sjres", "hconres", "sconres", "hres", "sres"] as const;
 
 export interface SourceReport {
   name: string;

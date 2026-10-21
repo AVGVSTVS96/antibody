@@ -1,6 +1,7 @@
 import { type BillId, billDisplay, billstatusUrl, congressGovUrl } from "@antibody/core";
 import { auditParties, type MovedBill, type PartyAudit } from "./audit.ts";
 import { type BillEvent, STEPS } from "./events.ts";
+import { isSpecialRule } from "./rules.ts";
 import { FLAG_CUTOFF, MAX_FLAGGED, RULE_TEXT, RULES_VERSION, type Signal, WEIGHTS } from "./score.ts";
 import { type Deploy, SITE_URL } from "./site.ts";
 import type { Candidate, WatchResult } from "./watch.ts";
@@ -11,16 +12,40 @@ export interface Reason {
   url: string;
 }
 
-export const flaggedOf = (cs: Candidate[]) => cs.filter((c) => c.score >= FLAG_CUTOFF).slice(0, MAX_FLAGGED);
+/**
+ * Bills at the cutoff, best first. A House rule is never flagged on its score: its votes are party-line and a day
+ * after it is filed by design, so it is listed only for its riders (`withRiders`).
+ */
+export const flaggedOf = (cs: Candidate[]) =>
+  cs.filter((c) => !isSpecialRule(c.status) && c.score >= FLAG_CUTOFF).slice(0, MAX_FLAGGED);
+
+/** House rules with a section that does more than set up debate, newest first. */
+export const withRiders = (cs: Candidate[]) =>
+  cs
+    .filter((c) => c.evidence.riders?.length)
+    .sort(
+      (a, b) =>
+        (b.events[0]?.date ?? "").localeCompare(a.events[0]?.date ?? "") || a.status.id.localeCompare(b.status.id),
+    );
+
+/** What happened to a rule on the floor: its strongest step, with the vote. */
+const ruleOutcome = (c: Candidate) => {
+  const top = c.events.find((e) => e.step === c.facts.step);
+  return top
+    ? `${STEPS[top.step].label} on ${fmtDate(top.date)}${top.tally ? ` (${top.tally.yeas}-${top.tally.nays})` : ""}`
+    : "no floor action";
+};
 
 export const movedBills = (cs: Candidate[]): MovedBill[] => {
   const flagged = new Set(flaggedOf(cs));
-  return cs.map((c) => ({
-    bill: c.status.id,
-    party: c.status.sponsor?.party || "unknown",
-    score: c.score,
-    flagged: flagged.has(c),
-  }));
+  return cs
+    .filter((c) => !isSpecialRule(c.status))
+    .map((c) => ({
+      bill: c.status.id,
+      party: c.status.sponsor?.party || "unknown",
+      score: c.score,
+      flagged: flagged.has(c),
+    }));
 };
 export const DETAILED = 5;
 
@@ -188,6 +213,14 @@ export function digestJson(r: WatchResult, earlier: MovedBill[][] = []) {
     belowCutoff: r.candidates.length - flagged.length,
     highestBelow: best && { display: billDisplay(best.status.id), score: best.score },
     movedBills: moved,
+    ruleRiders: withRiders(r.candidates).map((c) => ({
+      bill: c.status.id,
+      display: billDisplay(c.status.id),
+      title: c.status.title,
+      outcome: ruleOutcome(c),
+      riders: c.evidence.riders!,
+      links: links(c),
+    })),
     partyAudit: auditParties([...earlier, moved]),
     movedBySponsorParty: byParty(r.candidates),
     flaggedBySponsorParty: byParty(flagged),
@@ -325,6 +358,23 @@ export function digestMarkdown(d: Digest): string {
       L.push(
         `| ${b.rank} | [${b.display}](${b.links.congress}) ${(b.shortTitle ?? b.title).slice(0, 60)} | ${b.score} | ${SIGNALS.map((k) => cell(b.subScores[k])).join(" | ")} | ${b.reasons[0]?.text ?? ""} |`,
       );
+  }
+
+  if (d.ruleRiders.length) {
+    L.push("", "## Riders in House rules", "");
+    L.push(
+      "A rule sets up debate on other measures. These rules also carry a section that does something else; each is found by its wording, the same patterns for every rule.",
+    );
+    for (const r of d.ruleRiders) {
+      L.push(
+        "",
+        `### ${r.display} · ${r.outcome}`,
+        "",
+        `${r.title.slice(0, 200)} ([text](${r.links.text ?? r.links.congress}), [actions](${r.links.actions}))`,
+        "",
+      );
+      for (const x of r.riders) L.push(`- **${x.label}** (Sec. ${x.section}): "${x.quote}"`);
+    }
   }
 
   L.push("", "## How bills are ranked", "");

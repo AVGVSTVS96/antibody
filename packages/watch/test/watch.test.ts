@@ -249,7 +249,7 @@ test("party audit: a bill counts once across days, and equal flag rates show no 
 
 test("only bills at the cutoff are flagged", async () => {
   const { flaggedOf } = await import("../src/digest.ts");
-  const mk = (score: number) => ({ score }) as never;
+  const mk = (score: number) => ({ score, status: { id: "119-hr-1", title: "A bill" } }) as never;
   expect(flaggedOf([mk(40), mk(25), mk(24.9), mk(19)]).length).toBe(2);
   expect(flaggedOf([mk(5)]).length).toBe(0);
 });
@@ -347,4 +347,61 @@ test("a sweep starts at the first day of its Congress", async () => {
   const { congressStart } = await import("../src/sweep.ts");
   expect(congressStart(119)).toBe("2025-01-03");
   expect(congressStart(117)).toBe("2021-01-03");
+});
+
+const rule = (n: number) => Bun.file(join(import.meta.dir, `fixtures/rules/BILLS-119hres${n}.xml`)).text();
+
+test("rule riders: sections of a House rule that do more than set up debate, by their wording", async () => {
+  const { ruleRiders } = await import("../src/rules.ts");
+  const kinds = async (n: number) => (await ruleRiders(await rule(n))).map((r) => `${r.kind}@${r.section}`);
+  // H.Res.211 brought up the March 2025 CR and stopped the National Emergencies Act clock on the Canada tariffs.
+  expect(await kinds(211)).toEqual(["clock@4"]);
+  expect((await ruleRiders(await rule(211)))[0]!.quote).toStartWith(
+    "Each day for the remainder of the first session of the 119th Congress shall not constitute a calendar day",
+  );
+  // H.Res.590 counted the House as concurring in the Senate's rescissions bill.
+  expect(await kinds(590)).toEqual(["deem@1"]);
+  expect(await kinds(707)).toEqual(["engross@7", "amend@8", "amend@9", "amend@10", "clock@11"]);
+  expect(await kinds(1224)).toEqual(["engross@8", "engross@11"]);
+  expect(await kinds(294)).toEqual(["deem@5", "table@6"]);
+  expect(await kinds(282)).toEqual(["table@5", "discharge@5"]);
+  expect(await kinds(1274)).toEqual(["amend@1"]);
+  // A rule that only brings up a bill carries none.
+  expect(await kinds(873)).toEqual([]);
+});
+
+test("a House rule is listed for its riders, never flagged or x-rayed on its score", async () => {
+  const { isSpecialRule } = await import("../src/rules.ts");
+  const { withRiders, flaggedOf } = await import("../src/digest.ts");
+  const ruleStatus = () => {
+    const s = status();
+    s.id = "119-hres-211";
+    s.title = "Providing for consideration of the joint resolution (H.J. Res. 25) and for other purposes.";
+    return s;
+  };
+  expect(isSpecialRule(ruleStatus())).toBe(true);
+  expect(isSpecialRule({ id: "119-hres-189", title: "Censuring Representative Al Green of Texas." })).toBe(false);
+  const c = candidate(ruleStatus(), "2026-09-01")!;
+  c.score = 99;
+  expect(flaggedOf([c])).toEqual([]);
+  expect(toXray([c], 3)).toEqual([]);
+  expect(withRiders([c])).toEqual([]);
+  c.evidence.riders = [{ kind: "clock", label: "Stops the clock", section: "4", quote: "Each day …" }];
+  expect(withRiders([c])).toEqual([c]);
+  const r: WatchResult = {
+    date: "2026-10-10",
+    since: "2026-10-09",
+    actionsSince: "2026-09-01",
+    generatedAt: "2026-10-10T12:00:00.000Z",
+    sources: [],
+    candidates: [c],
+    alreadyReported: 0,
+    xrayed: [],
+    site: { published: [], deploy: { status: "disabled", reason: "test" } },
+    problems: [],
+  };
+  const d = digestJson(r);
+  expect(d.movedBills).toEqual([]);
+  expect(digestMarkdown(d)).toContain("## Riders in House rules");
+  expect(digestMarkdown(d)).toContain('- **Stops the clock** (Sec. 4): "Each day …"');
 });
