@@ -29,10 +29,13 @@ const SIDE_NAMES = Object.keys(SIDES) as Side[];
 type Group = Row<"outlets">["group"];
 const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group] as [string, Group]));
 
-/** Percent rank within `reference`: the share of the other values strictly below v, so uncovered sections all rank 0. */
+/**
+ * Percent rank within `reference`: the share of the other values strictly below v, so uncovered sections all rank 0.
+ * A dropped section is ranked against the final ones, so it can be above all of them: that is 1.
+ */
 export function percentile(v: number, reference: number[]): number {
   if (reference.length < 2) return 0.5;
-  return reference.filter((r) => r < v).length / (reference.length - 1);
+  return Math.min(1, reference.filter((r) => r < v).length / (reference.length - 1));
 }
 
 const hash = (s: string) => createHash("sha1").update(s).digest("hex");

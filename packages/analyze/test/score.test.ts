@@ -149,6 +149,8 @@ test("percentile ranks every uncovered section at the bottom, ties included", ()
   expect(percentile(0, [0, 0, 0, 1])).toBe(0);
   expect(percentile(1, [0, 0, 0, 1])).toBe(1);
   expect(percentile(0, [0, 1, 2])).toBe(0);
+  // A dropped section with more press than every final one (the FY24 NDAA's x-ray stopped on 1.5).
+  expect(percentile(3, [0, 1, 2])).toBe(1);
 });
 
 test("boilerplate headings get no off-topic value", () => {
