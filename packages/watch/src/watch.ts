@@ -7,9 +7,9 @@ import { flaggedOf, links, reasons, withRiders } from "./digest.ts";
 import { discover, type SourceReport } from "./discover.ts";
 import {
   type BillEvent,
+  beforeFloor,
   billEvents,
   closedRule,
-  passedVersion,
   STEPS,
   type Tally,
   type VoteClock,
@@ -26,8 +26,8 @@ import { runXray, type XrayFacts, type XrayRun, xrayFacts } from "./xray.ts";
 
 export interface Evidence {
   newest: TextVersion | null;
-  /** The first-passed text, when the newest text came after it: what "late" is measured against. */
-  passed: TextVersion | null;
+  /** The last text before the first chamber's floor, when the newest text came after it: what "late" is measured against. */
+  before: TextVersion | null;
   newSectionSamples: string[];
   lateFrom: "x-ray" | "text-diff" | null;
   lobbyingFrom: "x-ray" | "lda-checked" | null;
@@ -103,7 +103,7 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
     (best, e) => (!best || margin(e.tally!) < margin(best.tally!) ? e : best),
     null,
   );
-  const passed = passedVersion(s);
+  const before = beforeFloor(s);
   const clock = voteClock(s, events);
   const firstVote = events.filter((e) => e.tally).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
   return {
@@ -122,7 +122,7 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
     },
     evidence: {
       newest: s.versions[0] ?? null,
-      passed: passed && passed !== s.versions[0] ? passed : null,
+      before: before && before !== s.versions[0] ? before : null,
       newSectionSamples: [],
       lateFrom: null,
       lobbyingFrom: null,
@@ -364,15 +364,15 @@ export async function xrayAndPublish(
 }
 
 async function textFacts(c: Candidate, cache: string, signal?: AbortSignal) {
-  const { newest, passed } = c.evidence;
+  const { newest, before } = c.evidence;
   if (!newest) return;
   const read = async (v: TextVersion) =>
     textShape(await cachedText(v.xmlUrl, join(cache, `${v.xmlUrl.split("/").pop()}`), { signal }));
   const now = await read(newest);
   c.facts.words = now.words;
   c.facts.wordsCounted = true;
-  if (passed) {
-    const added = newSections(await read(passed), now);
+  if (before) {
+    const added = newSections(await read(before), now);
     c.facts.lateSections = added.length;
     c.evidence.lateFrom = "text-diff";
     c.evidence.newSectionSamples = added.slice(0, 3);

@@ -109,7 +109,7 @@ export function reasons(c: Candidate): Reason[] {
           }
         : {
             signal: "late",
-            text: `${f.lateSections} section${f.lateSections > 1 ? "s" : ""} in the ${ev.newest!.name} text have headings not in the ${ev.passed!.name} text the first chamber passed${ev.newSectionSamples[0] ? `, e.g. Sec. ${ev.newSectionSamples[0]}` : ""}`,
+            text: `${f.lateSections} section${f.lateSections > 1 ? "s" : ""} in the ${ev.newest!.name} text have headings not in the ${ev.before!.name} text, the last before the first floor vote${ev.newSectionSamples[0] ? `, e.g. Sec. ${ev.newSectionSamples[0]}` : ""}`,
             url: ev.newest!.xmlUrl,
           },
     );

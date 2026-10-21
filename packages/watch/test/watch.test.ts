@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Action, parseBillStatus, parsePackage } from "../src/billstatus.ts";
 import { deficitEffect, digestJson, digestMarkdown, money, reasons } from "../src/digest.ts";
-import { billEvents, classify, closedRule, closedRuleBills, tally, voteClock } from "../src/events.ts";
+import { beforeFloor, billEvents, classify, closedRule, closedRuleBills, tally, voteClock } from "../src/events.ts";
 import { lobbyingQuery } from "../src/lda.ts";
 import { type Facts, score, subScores } from "../src/score.ts";
 import { newSections, textShape } from "../src/text.ts";
@@ -91,7 +91,7 @@ test("candidate: strongest step, closest vote and haste over the bill's whole re
     closedRule: true,
   });
   expect(c.evidence.newest?.code).toBe("enr");
-  expect(c.evidence.passed?.code).toBe("eh");
+  expect(c.evidence.before?.code).toBe("ih");
   expect(candidate(status(), "2026-12-01")).toBeNull();
 });
 
@@ -404,4 +404,16 @@ test("a House rule is listed for its riders, never flagged or x-rayed on its sco
   expect(d.movedBills).toEqual([]);
   expect(digestMarkdown(d)).toContain("## Riders in House rules");
   expect(digestMarkdown(d)).toContain('- **Stops the clock** (Sec. 4): "Each day …"');
+});
+
+test("late is measured from the last text before the floor, so a section added on the way to passage counts", async () => {
+  // H.R.7008, the House stock-trading bill: the photo-ID section is in the text the House passed, not the reported one.
+  const fixture = (code: string) => Bun.file(join(import.meta.dir, `fixtures/BILLS-119hr7008${code}.xml`)).text();
+  expect(newSections(textShape(await fixture("rh")), textShape(await fixture("eh")))).toEqual([
+    "3. Requiring voters to provide photo identification",
+  ]);
+  const v = (code: string, date: string | null) => ({ code, name: code, date, xmlUrl: `https://x/${code}.xml` });
+  const s = { ...status(), versions: [v("eh", "2026-07-22"), v("rh", "2026-01-20"), v("ih", "2026-01-12")] };
+  expect(beforeFloor(s)?.code).toBe("rh");
+  expect(beforeFloor({ ...s, versions: [v("rh", "2026-01-20"), v("ih", "2026-01-12")] })).toBeNull();
 });

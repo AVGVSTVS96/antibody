@@ -137,10 +137,23 @@ export function billEvents(s: BillStatus, since: string, published: Map<string, 
 
 const INTRODUCED = new Set(["ih", "is", "iph", "ips"]);
 
-/** The text the first chamber passed (engrossed in the chamber the bill started in): the baseline for "late". */
+/** The text the first chamber passed (engrossed in the chamber the bill started in). */
 export function passedVersion(s: BillStatus): TextVersion | null {
   const code = s.id.split("-")[1]!.startsWith("h") ? "eh" : "es";
   return s.versions.find((v) => v.code === code) ?? null;
+}
+
+/**
+ * The last text before the first chamber's floor: the newest dated version older than the first-passed one (the
+ * reported or introduced text). "Late" is measured against it, as the x-ray's lineage does, so a section a rule or a
+ * floor substitute added on the way to passage counts. Null until a chamber has passed the bill.
+ */
+export function beforeFloor(s: BillStatus): TextVersion | null {
+  const passed = passedVersion(s);
+  if (!passed?.date) return null;
+  return (
+    s.versions.filter((v) => v.date && v.date < passed.date!).sort((a, b) => b.date!.localeCompare(a.date!))[0] ?? null
+  );
 }
 
 const voteKey = (e: BillEvent) => `${e.date}/${e.tally?.yeas}-${e.tally?.nays}`;

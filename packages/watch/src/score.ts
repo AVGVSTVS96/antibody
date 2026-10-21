@@ -68,7 +68,7 @@ export const RULE_TEXT: Record<Signal, string> = {
   dollars: "Largest CBO whole-bill deficit effect, current-law baseline, log scale: $10M = 0, $1T = 1.",
   lobbying:
     "LD-2 lobbying filings that cite the bill's number (each read and checked, not the search count), log scale: 0 = 0, 10 = 0.35, 100 = 0.67, 1,000+ = 1.",
-  late: "Sections first seen after the first chamber passed the bill (the x-ray's lineage, else headings in the newest text missing from the first-passed text): sqrt(n)/5, capped at 1 (25+ sections = 1).",
+  late: "Sections first seen on the floor or later (the x-ray's lineage, else headings in the newest text missing from the last text before the first chamber passed it, so a section a rule or floor substitute added counts): sqrt(n)/5, capped at 1 (25+ sections = 1).",
   rushed:
     "Days from the text becoming public (introduction or a substitute amendment) to the floor vote: 0 days = 1, 7 = 0.49, 60+ = 0; at least 0.5 under a closed rule.",
   buried: "Sections the x-ray labeled buried: n/5, capped at 1.",
