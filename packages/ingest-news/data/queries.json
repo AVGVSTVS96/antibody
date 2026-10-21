@@ -28,6 +28,11 @@
   "119-hjres-88": {"terms": ["\"H.J.Res. 88\"", "\"H.J. Res. 88\"", "\"California waiver\"", "\"California's waiver\"", "\"Advanced Clean Cars II\""], "window": ["2025-04-20", "2025-07-15"]},
   "119-hr-5334": {"terms": ["\"Sanctioning Russia and Iran Act\"", "\"Sanctioning Russia Act\"", "\"Russia sanctions bill\""], "window": ["2026-01-01", "2026-10-20"]},
   "117-hr-2471": {"terms": ["\"Consolidated Appropriations Act, 2022\"", "\"omnibus spending bill\"", "\"omnibus spending package\""], "window": ["2022-03-01", "2022-04-15"]},
-  "118-hr-2670": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2024\"", "\"NDAA\""], "window": ["2023-06-15", "2024-01-15"]}
+  "118-hr-2670": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2024\"", "\"NDAA\""], "window": ["2023-06-15", "2024-01-15"]},
+  "119-hjres-140": {"terms": ["\"Boundary Waters\"", "\"H.J.Res. 140\"", "\"H.J. Res. 140\""], "window": ["2026-01-01", "2026-05-31"]},
+  "119-hr-8800": {"terms": ["\"National Defense Authorization Act for Fiscal Year 2027\"", "\"NDAA\""], "window": ["2026-05-01", "2026-10-20"]},
+  "119-s-1383": {"terms": ["\"SAVE America Act\""], "window": ["2025-04-01", "2026-10-20"]},
+  "119-hr-1834": {"terms": ["\"Breaking the Gridlock Act\"", "\"H.R. 1834\"", "\"enhanced premium tax credits\"", "\"ACA subsidies\""], "window": ["2025-11-15", "2026-06-30"]},
+  "119-hr-7147": {"terms": ["\"Homeland Security and Further Additional Continuing Appropriations Act\"", "\"H.R. 7147\"", "\"DHS funding bill\"", "\"DHS shutdown\""], "window": ["2026-01-15", "2026-05-15"]}
  }
 }
