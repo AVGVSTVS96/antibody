@@ -1,4 +1,4 @@
-import { mkdir, readdir, rm } from "node:fs/promises";
+import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { type BillId, type Bundle, BundleIndex, billDisplay, billStats, type Row } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
@@ -131,21 +131,15 @@ function watcherProvenance(b: Bundle, events: Row<"watch_events">[]): Provenance
   return { origin: "watcher", note: watcherNote(b), addedOn: first ?? b.generatedAt.slice(0, 10) };
 }
 
-/** How many watcher bills the library keeps; the newest by `addedOn` stay, older bundles are deleted from the published folder. */
-export const WATCHER_KEEP = 60;
-
-const bundleFiles = (id: string) => [`${id}.json`, claimsFile(id)];
-
 /**
  * Rebuilds `index.json` from every bundle in `dir`: the ids in `order` first (the curated list, in that order),
- * then the watcher's bills newest added first. Watcher bills beyond `keep` are dropped from the index and their
- * files deleted; curated bills are never touched. Also lists the watcher's latest picks.
+ * then the watcher's bills newest added first. Every published page stays: antibody is per bill, and taking a page
+ * down is a person's call. Also lists the watcher's latest picks.
  */
 export async function writeIndex(
   dir = paths.published,
   order: string[] = [],
   events?: Row<"watch_events">[],
-  keep = WATCHER_KEEP,
 ): Promise<BundleIndex> {
   const watched = events ?? (await readRows("watch_events"));
   const files = (await readdir(dir).catch(() => [] as string[])).filter(
@@ -165,13 +159,10 @@ export async function writeIndex(
       (y.entry.latestActionOn ?? "").localeCompare(x.entry.latestActionOn ?? "") ||
       x.entry.id.localeCompare(y.entry.id),
   );
-  const cut = entries.filter((e) => e.entry.origin === "watcher").slice(keep);
-  for (const { entry } of cut) for (const f of bundleFiles(entry.id)) await rm(join(dir, f), { force: true });
-  const kept = entries.filter((e) => !cut.includes(e));
   const index = BundleIndex.parse({
     generatedAt: new Date().toISOString(),
-    bills: kept.map((e) => e.entry),
-    watch: await watchPicks(new Map(kept.map((e) => [e.b.bill.id, e.b])), watched),
+    bills: entries.map((e) => e.entry),
+    watch: await watchPicks(new Map(entries.map((e) => [e.b.bill.id, e.b])), watched),
   });
   await mkdir(dir, { recursive: true });
   await Bun.write(join(dir, "index.json"), `${JSON.stringify(index, null, 1)}\n`);
