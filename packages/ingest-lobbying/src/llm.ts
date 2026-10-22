@@ -22,20 +22,28 @@ export async function askJson<T>(prompt: string, model = "opus", signal?: AbortS
   const file = Bun.file(join(CACHE, `${createHash("sha1").update(`${model}\n${prompt}`).digest("hex")}.json`));
   if (await file.exists()) return { ...(await file.json()), cached: true };
   const t0 = performance.now();
-  const proc = Bun.spawn(["claude", "-p", "--model", model, "--output-format", "json"], {
-    stdin: new Blob([prompt]),
-    stdout: "pipe",
-    stderr: "pipe",
-    signal,
-  });
-  const out = await new Response(proc.stdout).text();
-  if ((await proc.exited) !== 0) throw new Error(`claude -p failed: ${await new Response(proc.stderr).text()}`);
-  const body = JSON.parse(out) as { result: string; total_cost_usd?: number };
-  const answer = {
-    value: parseJson<T>(body.result),
-    costUsd: body.total_cost_usd ?? 0,
-    ms: Math.round(performance.now() - t0),
-  };
-  await Bun.write(file, JSON.stringify(answer));
-  return { ...answer, cached: false };
+  let costUsd = 0;
+  // A reply cut off mid-JSON can't be read; the model is asked again, at most 3 times in all.
+  for (let attempt = 1; ; attempt++) {
+    const proc = Bun.spawn(["claude", "-p", "--model", model, "--output-format", "json"], {
+      stdin: new Blob([prompt]),
+      stdout: "pipe",
+      stderr: "pipe",
+      signal,
+    });
+    const out = await new Response(proc.stdout).text();
+    if ((await proc.exited) !== 0) throw new Error(`claude -p failed: ${await new Response(proc.stderr).text()}`);
+    const body = JSON.parse(out) as { result: string; total_cost_usd?: number };
+    costUsd += body.total_cost_usd ?? 0;
+    let value: T;
+    try {
+      value = parseJson<T>(body.result);
+    } catch (e) {
+      if (attempt >= 3) throw e;
+      continue;
+    }
+    const answer = { value, costUsd, ms: Math.round(performance.now() - t0) };
+    await Bun.write(file, JSON.stringify(answer));
+    return { ...answer, cached: false };
+  }
 }
