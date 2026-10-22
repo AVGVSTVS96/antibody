@@ -15,7 +15,7 @@ interface Pattern {
   re: RegExp;
 }
 
-const STATE = `State(?:,? or (?:a |any )?(?:political subdivision(?: of a State| thereof)?|unit of local government|local government))?,?`;
+const STATE = `State(?:,? or (?:a |any )?(?:(?:political )?subdivision(?: of a State| thereof)?|unit of local government|local government))?,?`;
 const BLOCK = `(?:propose|issue|finalize|promulgate|implement|administer|enforce|apply)`;
 /** "the final rule", "any rule", "any new administrative directive or regulation": a rule, at most four words on. */
 const RULE = String.raw`\b(?:the|any|a|such|new)(?: [^\s.;]+){0,4}? (?:rules?|regulations?)\b`;
@@ -49,6 +49,12 @@ export const PATTERNS: Pattern[] = [
     id: "no-injunction",
     kind: "courts",
     re: /\b(?:(?:shall|may) not (?:issue|grant|enter) (?:a |an |any )?(?:temporary restraining order|preliminary injunction|injunction)|no (?:temporary restraining order|preliminary injunction|injunction) (?:shall|may) (?:issue|be issued|be granted))\b/i,
+  },
+  {
+    // SPEED Act §3: "the only remedy the court may order … is to remand, without vacatur or injunction".
+    id: "limits-remedy",
+    kind: "courts",
+    re: /\bthe only remedy (?:that )?(?:the|a) court may (?:order|grant|award)\b|\bwithout vacatur or injunction\b/i,
   },
   // states
   {

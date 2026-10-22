@@ -161,3 +161,18 @@ test("reach-v2: a bar on review worded as 'No … shall be subject to judicial r
     ),
   ).toEqual(["lawsuit/standing-to-sue"]);
 });
+
+test("reach-v2: a State or subdivision barred from setting a standard, and a court limited to remand", () => {
+  // Farm bill §12006, the Prop 12 override.
+  expect(
+    kinds(
+      "Producers of covered livestock have a Federal right to raise and market their covered livestock in interstate commerce and therefore no State or subdivision thereof may enact or enforce, directly or indirectly, a condition or standard on the production of covered livestock other than for covered livestock physically raised in such State.",
+    ),
+  ).toEqual(["states/no-state-may"]);
+  // SPEED Act §3.
+  expect(
+    kinds(
+      "If a court holds that a final agency action does not comply with the requirements of this Act, the only remedy the court may order, notwithstanding chapter 7 of title 5, United States Code, is to remand, without vacatur or injunction, the final agency action to the agency.",
+    ),
+  ).toEqual(["courts/limits-remedy"]);
+});
