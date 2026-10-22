@@ -43,6 +43,18 @@
   "119-hjres-25": {"terms": ["\"H.J.Res. 25\"", "\"H.J. Res. 25\"", "\"DeFi broker rule\"", "\"DeFi broker\""], "window": ["2025-01-15", "2025-05-10"]},
   "119-hconres-86": {"terms": ["\"H.Con.Res. 86\"", "\"H. Con. Res. 86\"", "\"war powers resolution\""], "window": ["2026-03-01", "2026-10-20"]},
   "117-hr-7776": {"terms": ["\"James M. Inhofe National Defense Authorization Act\"", "\"National Defense Authorization Act for Fiscal Year 2023\"", "\"NDAA\""], "window": ["2022-06-01", "2023-01-15"]},
-  "119-hr-6938": {"terms": ["\"Commerce, Justice, Science\"", "\"minibus\"", "\"three-bill\" spending", "\"Energy and Water\" appropriations", "\"H.R. 6938\""], "window": ["2026-01-01", "2026-01-31"]}
+  "119-hr-6938": {"terms": ["\"Commerce, Justice, Science\"", "\"minibus\"", "\"three-bill\" spending", "\"Energy and Water\" appropriations", "\"H.R. 6938\""], "window": ["2026-01-01", "2026-01-31"]},
+  "119-hr-7567": {"terms": ["\"farm bill\"", "\"Farm, Food, and National Security Act\""], "window": ["2026-02-01", "2026-06-15"]},
+  "119-hr-7757": {"terms": ["\"KIDS Act\"", "\"Kids Online Safety Act\"", "\"kids online safety\"", "\"Kids Internet and Digital Safety Act\""], "window": ["2026-02-20", "2026-08-15"]},
+  "119-hr-2913": {"terms": ["\"Ukraine Support Act\"", "\"Ukraine aid\"", "\"Ukraine discharge petition\""], "window": ["2026-03-01", "2026-07-15"]},
+  "119-hr-3838": {"terms": ["\"National Defense Authorization Act\"", "\"NDAA\""], "window": ["2025-06-01", "2025-10-15"]},
+  "119-s-2296": {"terms": ["\"National Defense Authorization Act\"", "\"NDAA\""], "window": ["2025-07-01", "2025-10-31"]},
+  "119-hr-3944": {"terms": ["\"MilCon-VA\"", "\"Military Construction and Veterans Affairs\"", "\"minibus\""], "window": ["2025-06-01", "2025-11-15"]},
+  "119-hr-4754": {"terms": ["\"Interior appropriations\"", "\"Interior-Environment\"", "\"Section 453\"", "\"H.R. 4754\""], "window": ["2025-07-15", "2026-01-31"]},
+  "119-hconres-14": {"terms": ["\"budget resolution\"", "\"H.Con.Res. 14\""], "window": ["2025-02-01", "2025-04-30"]},
+  "119-sconres-33": {"terms": ["\"budget resolution\"", "\"reconciliation 2.0\""], "window": ["2026-04-01", "2026-05-15"]},
+  "119-hconres-113": {"terms": ["\"budget resolution\"", "\"reconciliation 3.0\""], "window": ["2026-07-01", "2026-08-31"]},
+  "118-hr-10445": {"terms": ["\"continuing resolution\"", "\"stopgap bill\"", "\"stopgap spending bill\"", "\"Further Continuing Appropriations and Disaster Relief\""], "window": ["2024-12-15", "2024-12-22"]},
+  "119-s-1318": {"terms": ["\"FISA\"", "\"Section 702\""], "window": ["2026-04-01", "2026-05-31"]}
  }
 }
