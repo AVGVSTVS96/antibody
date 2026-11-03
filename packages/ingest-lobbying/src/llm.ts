@@ -26,6 +26,7 @@ export async function askJson<T>(prompt: string, model = "opus", signal?: AbortS
   // A reply cut off mid-JSON can't be read; the model is asked again, at most 3 times in all.
   for (let attempt = 1; ; attempt++) {
     const proc = Bun.spawn(["claude", "-p", "--model", model, "--output-format", "json"], {
+      env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "antibody" },
       stdin: new Blob([prompt]),
       stdout: "pipe",
       stderr: "pipe",

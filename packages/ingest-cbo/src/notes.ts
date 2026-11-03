@@ -87,6 +87,7 @@ async function ask(text: string, cacheFile: string, refresh: boolean): Promise<A
   const cache = Bun.file(cacheFile);
   if (!refresh && (await cache.exists())) return cache.json();
   const proc = Bun.spawn(["claude", "-p", "--model", "sonnet", "--output-format", "json"], {
+    env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "antibody" },
     stdin: new TextEncoder().encode(text),
     stdout: "pipe",
     stderr: "pipe",

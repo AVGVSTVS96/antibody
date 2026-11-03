@@ -28,7 +28,14 @@ export async function claude(
       "--system-prompt",
       opts.system,
     ],
-    { stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe", cwd: emptyDir, signal: opts.signal },
+    {
+      env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "antibody" },
+      stdin: new Blob([prompt]),
+      stdout: "pipe",
+      stderr: "pipe",
+      cwd: emptyDir,
+      signal: opts.signal,
+    },
   );
   const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
   if ((await proc.exited) !== 0) throw new Error(`claude -p failed: ${err.slice(0, 300) || out.slice(0, 300)}`);

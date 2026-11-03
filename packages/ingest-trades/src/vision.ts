@@ -145,7 +145,13 @@ async function ask(image: string, system: string, text: string): Promise<{ answe
       "--system-prompt",
       system,
     ],
-    { cwd: emptyDir, stdin: new Blob([`${JSON.stringify(message)}\n`]), stdout: "pipe", stderr: "pipe" },
+    {
+      cwd: emptyDir,
+      env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "antibody" },
+      stdin: new Blob([`${JSON.stringify(message)}\n`]),
+      stdout: "pipe",
+      stderr: "pipe",
+    },
   );
   const out = await new Response(proc.stdout).text();
   await proc.exited;

@@ -99,7 +99,12 @@ async function ask(prompt: string, cacheKey: string): Promise<Answer & { fresh: 
         "--json-schema",
         JSON.stringify(SCHEMA),
       ],
-      { stdin: new Blob([prompt]), stdout: "pipe", stderr: "pipe" },
+      {
+        env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "antibody" },
+        stdin: new Blob([prompt]),
+        stdout: "pipe",
+        stderr: "pipe",
+      },
     );
     const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
     if ((await proc.exited) === 0) {
