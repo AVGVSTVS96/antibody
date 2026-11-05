@@ -142,6 +142,34 @@ export const SectionStep = z.object({
   largestInserts: z.array(z.string()),
 });
 
+/**
+ * One part of a long final section (parts-v1): its own subsection, paragraph or lower subdivision, scored on its own
+ * so a provision buried in a giant section is seen. A part has no dollars or lobbying of its own.
+ */
+export const Part = z.object({
+  /** `<section id><enum>`, e.g. `119-s-1582@pcs:sec:4(a)(12)`. */
+  id: z.string(),
+  /** `4(a)(12)` */
+  num: z.string(),
+  heading: z.string(),
+  /** Headings of the pieces it sits in, outermost first. */
+  trail: z.array(z.string()),
+  /** The words of a split piece outside its subdivisions, not a subdivision. */
+  leadIn: z.boolean(),
+  words: z.number().int(),
+  preview: z.string(),
+  /** By parts-v1: the earliest version with at least half its wording in the section. */
+  firstVersion: z.string(),
+  /** Added at or after the first chamber-passed text (a fact of the lineage reading); `score.components.late` is what the page shows. */
+  late: z.boolean(),
+  textUrl: z.url(),
+  attention: SectionAttention.nullable(),
+  score: Score.nullable(),
+  reach: z.array(Reach).default([]),
+  claims: z.array(ClaimId),
+});
+export type Part = z.infer<typeof Part>;
+
 export const Section = z.object({
   /** Lineage id `<billId>@<first version>:<path>`; its node id is `section:<id>`. */
   id: z.string(),
@@ -169,6 +197,8 @@ export const Section = z.object({
   score: Score.nullable(),
   /** Reach tags, removed sections included, so a page can say what a dropped provision did. */
   reach: z.array(Reach).default([]),
+  /** A long final section's parts (parts-v1), in text order; empty when the section is read whole. */
+  parts: z.array(Part).default([]),
   claims: z.array(ClaimId),
 });
 export type Section = z.infer<typeof Section>;
@@ -323,6 +353,8 @@ export const BillStats = z.object({
   sections: z.number().int(),
   headline: z.number().int(),
   buried: z.number().int(),
+  /** Parts of long sections (parts-v1) labeled buried inside a section that is not: riders the section-level test misses. */
+  buriedParts: z.number().int().default(0),
   /** Null when the bill began as a shell, so "added late" cannot be told. */
   late: z.number().int().nullable(),
   /** The last roll call members' votes are drawn for, so the card can say how it ended. */
@@ -595,6 +627,9 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
     sections: final.length,
     headline: final.filter((s) => s.score?.label === "headline").length,
     buried: final.filter((s) => s.score?.label === "buried").length,
+    buriedParts: final
+      .filter((s) => s.score?.label !== "buried")
+      .reduce((n, s) => n + (s.parts ?? []).filter((p) => p.score?.label === "buried").length, 0),
     late: b.bill.lateUnavailable ? null : final.filter(isLate).length,
     tally: finalVote(b),
     lobbyingReports: b.lobbying.reports,

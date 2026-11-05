@@ -495,6 +495,8 @@ export const TABLES = {
     bill_id: billId,
     /** null = the "bill as a whole" bucket, which also feeds the outside-the-text lane. */
     section_id: z.string().nullable(),
+    /** The part of a long section the row is about (`section_parts`); null for the section as a whole. */
+    part_id: z.string().nullable().default(null),
     hits: z.number().int(),
     hits_by_group: json,
     trade_legal_hits: z.number().int(),
@@ -506,6 +508,8 @@ export const TABLES = {
   attention_checks: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
+    /** The part of a long section the row is about (`section_parts`); null for the section as a whole. */
+    part_id: z.string().nullable().default(null),
     /** News passages put to the model for this section (one per article, the closest in meaning). */
     passages: z.number().int(),
     /** Articles from counted outlets the model said describe the section that the section matcher had not matched to it. */
@@ -515,13 +519,49 @@ export const TABLES = {
     ...inference,
   }),
   /**
+   * The parts a long section is read in (parts-v1 in docs/rules.md): its own labeled subsections, paragraphs and so on,
+   * split while a piece is over 1,000 words, so a provision buried in a giant section is scored on its own. Read from
+   * the text the section was last seen in, dropped sections included (only final sections' parts are scored).
+   * A fact: the part's enum, heading and words are the final text's; `first_version` and `late` come from the
+   * section's earlier texts by the published rule, as `sections.late` comes from the lineage.
+   */
+  section_parts: table("@antibody/analyze", {
+    bill_id: billId,
+    section_id: z.string(),
+    /** `4(a)(12)`: the section number and the part's enums. */
+    num: z.string(),
+    /** Position among the section's parts, in text order. */
+    ord: z.number().int(),
+    /** `(a)(12)`; empty for the opening words of the section itself. */
+    enum: z.string(),
+    heading: z.string(),
+    /** Headings of the pieces the part sits in, outermost first (the section's own heading left out). */
+    trail: z.array(z.string()),
+    /** `subsection:a/paragraph:12` inside the section. */
+    path: z.string(),
+    /** The words of a split piece outside its subdivisions (its lead-in or closing text), not a subdivision. */
+    lead_in: z.boolean(),
+    words: z.number().int(),
+    preview: z.string(),
+    /** The earliest version with at least half of the part's wording in the section (or the one it was split from). */
+    first_version: z.string(),
+    /** first_version is the first chamber-passed text or later (withheld when the bill's late flags are). */
+    late: z.boolean(),
+    /** The version the part is read from: the final text, or the last one a dropped section was in. */
+    version: z.string(),
+    ...fact,
+  }),
+  /**
    * Wording in a section's text that reaches past its price (reach-v2 in docs/rules.md): it limits courts, overrides
    * state law, opens lawsuits, skips public review or blocks an agency rule. A fact: the sentence quoted from the
-   * version text the section was last seen in, removed sections included. One row per section and kind.
+   * version text the section was last seen in, removed sections included. One row per section and kind, and one per
+   * part of a long final section (`part_id`) and kind, so a rider's sentence is pinned to the part it sits in.
    */
   section_reach: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
+    /** The part of a long section the row is about (`section_parts`); null for the section as a whole. */
+    part_id: z.string().nullable().default(null),
     kind: ReachKind,
     /** The published pattern that matched. */
     pattern: z.string(),
@@ -534,6 +574,8 @@ export const TABLES = {
   section_scores: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
+    /** The part of a long section the row is about (`section_parts`); null for the section as a whole. */
+    part_id: z.string().nullable().default(null),
     label: z.enum(["headline", "buried", "normal"]),
     buried: z.number().nullable(),
     dollars_musd: z.number().nullable(),

@@ -78,6 +78,7 @@ test("billStats counts the index card numbers", () => {
     sections: 1,
     headline: 0,
     buried: 0,
+    buriedParts: 0,
     late: 1,
     tally: null,
     lobbyingReports: 757,
