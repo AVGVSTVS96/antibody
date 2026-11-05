@@ -130,17 +130,38 @@ Judge every article by the same standard, whatever its point of view. Reply with
 const articleBlock = (a: ArticleIn, n: number) =>
   `ARTICLE ${n}\nTitle: ${a.title}\n${a.text ? lead(a.text, ARTICLE_WORDS) : "(only the headline could be read)"}`;
 
+/**
+ * The sections and the parts of long sections (parts-v1) in bill order, each part right after its section. Whether
+ * the menu is shown whole depends on the sections alone, so splitting a long section never takes a bill off it.
+ */
+export function withParts(sections: Row<"sections">[], parts: (Row<"sections"> & { parent: string })[]) {
+  const of = Map.groupBy(parts, (p) => p.parent);
+  return sections.flatMap((s) => [s, ...(of.get(s.id) ?? [])]);
+}
+
 export async function matchArticles(
   bill: BillId,
   title: string,
-  sections: Row<"sections">[],
+  sectionsOnly: Row<"sections">[],
   articles: ArticleIn[],
-  opts: { names?: string[]; refresh?: boolean; model?: string; log?: (m: string) => void; signal?: AbortSignal } = {},
+  opts: {
+    names?: string[];
+    refresh?: boolean;
+    model?: string;
+    log?: (m: string) => void;
+    signal?: AbortSignal;
+    /** Parts of long sections, offered on their own (each with the id of its section). */
+    parts?: (Row<"sections"> & { parent: string })[];
+  } = {},
 ): Promise<MatchRun> {
   const model = opts.model ?? MATCH_MODEL;
+  const parts = opts.parts ?? [];
+  const sections = withParts(sectionsOnly, parts);
+  const parentOf = new Map(parts.map((p) => [p.id, p.parent]));
   const byId = new Map(sections.map((x) => [x.id, x]));
+  const whole = sectionsOnly.length <= WHOLE_MENU;
   const menuHash = createHash("sha1")
-    .update(`${sections.length <= WHOLE_MENU ? 0 : `${SHORTLIST}+${LEXICAL}`}\n${menu(sections).text}`)
+    .update(`${whole ? 0 : `${SHORTLIST}+${LEXICAL}`}\n${menu(sections).text}`)
     .digest("hex")
     .slice(0, 12);
   const file = Bun.file(join(paths.raw("analyze"), "match", `${bill}.${model}.json`));
@@ -153,7 +174,7 @@ export async function matchArticles(
   for (let i = 0; i < todo.length; i += BATCH) batches.push(todo.slice(i, i + BATCH));
   if (batches.length) opts.log?.(`matching ${todo.length} articles in ${batches.length} calls (${model})`);
   const sys = system(bill, title);
-  const everything = sections.length <= WHOLE_MENU;
+  const everything = whole;
   const short =
     todo.length && !everything ? await shortlist(bill, opts.names ?? [], sections, todo) : new Map<string, string[]>();
 
@@ -162,7 +183,9 @@ export async function matchArticles(
     const prompt = batch
       .map((a, i) => {
         const m = menu(
-          everything ? sections : (short.get(a.id) ?? []).flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])),
+          everything
+            ? sections
+            : withSections(short.get(a.id) ?? [], parentOf).flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])),
         );
         menus.push(m.ids);
         return `${articleBlock(a, i + 1)}\n\nSECTIONS THIS ARTICLE MIGHT BE ABOUT\n${m.text}`;
@@ -203,6 +226,17 @@ export async function matchArticles(
   const missing = articles.filter((a) => !run.matches[a.id]).length;
   if (missing) throw new Error(`${missing} of ${articles.length} articles could not be matched; re-run to finish`);
   return run;
+}
+
+/** A shortlisted part brings its section along (just before it), so the matcher can tell the two apart. */
+function withSections(ids: string[], parentOf: Map<string, string>): string[] {
+  const out: string[] = [];
+  for (const id of ids) {
+    const parent = parentOf.get(id);
+    if (parent && !out.includes(parent)) out.push(parent);
+    if (!out.includes(id)) out.push(id);
+  }
+  return out;
 }
 
 export const EMBED_MATCHER = "section-matcher-embed-v1";

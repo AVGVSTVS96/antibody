@@ -67,18 +67,25 @@ export interface XrayFacts {
 }
 
 export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
-  const [sections, estimates, lines, refs, scores, attention] = await Promise.all([
+  const [sections, estimates, lines, refs, scores, attention, parts] = await Promise.all([
     readRows("sections", bill),
     readRows("cbo_estimates", bill),
     readRows("cbo_lines", bill),
     readRows("lda_bill_refs", bill),
     readRows("section_scores", bill),
     readRows("attention", bill),
+    readRows("section_parts", bill),
   ]);
   const byId = new Map(sections.map((s) => [s.id, s]));
+  const partById = new Map(parts.map((p) => [p.id, p]));
   const section = (id: string): Section => {
     const s = byId.get(id);
     return { id, num: s?.num ?? id.split(":").pop() ?? id, heading: s?.heading ?? "", url: s?.text_url ?? "" };
+  };
+  /** A part of a long section (parts-v1) reads as its own provision: "4(a)(12)", its heading, the final text. */
+  const scored = (s: (typeof scores)[number]): Section => {
+    const p = s.part_id ? partById.get(s.part_id) : undefined;
+    return p ? { id: p.id, num: p.num, heading: p.heading, url: p.source_url } : section(s.section_id);
   };
 
   const currentLaw = new Map(estimates.filter((e) => e.baseline === "current-law").map((e) => [e.id, e]));
@@ -103,7 +110,7 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
 
   return {
     lateSections: scores.length
-      ? scores.filter((s) => s.late).map((s) => section(s.section_id))
+      ? scores.filter((s) => s.late && !s.part_id).map((s) => section(s.section_id))
       : sections.length
         ? sections.filter((s) => s.late && s.in_final).map((s) => section(s.id))
         : null,
@@ -115,7 +122,7 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
           .filter((s) => s.label === "buried")
           .sort((a, b) => (b.buried ?? 0) - (a.buried ?? 0))
           .map((s) => ({
-            ...section(s.section_id),
+            ...scored(s),
             dollarsMusd: s.dollars_musd,
             attentionPct: s.attention_pct,
             lobbyingFirms: s.lobbying_firms,

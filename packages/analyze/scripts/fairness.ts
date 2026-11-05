@@ -20,7 +20,8 @@ for (const arg of Bun.argv.slice(2)) {
   const [b] = await readRows("bills", bill);
   const sections = await readRows("sections", bill);
   const articles = await readRows("articles", bill);
-  const scores = await readRows("section_scores", bill);
+  // Sections only: parts of long sections (parts-v1) are audited with their sections, not counted twice.
+  const scores = (await readRows("section_scores", bill)).filter((s) => !s.part_id);
   const file = Bun.file(
     join(paths.raw("analyze"), "match", `${bill}.${process.env.ANTIBODY_MATCH_MODEL ?? "sonnet"}.json`),
   );

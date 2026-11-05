@@ -9,7 +9,9 @@ export const ATTENTION_RULE =
   "(left, center and right weighted equally, from the published outlet list), ranked against the bill's other final sections " +
   "that are more than its name (a short title or table of contents); sections tied with it count half, and a bill's only " +
   "such section ranks at the top once any article discusses it; " +
-  "a bill with fewer than 20 relevant articles or 30 section mentions shows raw counts and no rank";
+  "a bill with fewer than 20 relevant articles or 30 section mentions shows raw counts and no rank. " +
+  "A part of a long section (parts-v1) is offered to the matcher on its own and ranked against the same sections; " +
+  "an article that discusses a part discusses its section too";
 
 /** Below this many sampled, relevant articles a bill's percentiles are not shown. */
 export const MIN_ARTICLES = 20;
@@ -37,10 +39,10 @@ const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group] as [string, Group
  * tied at the top of a small bill both rank near 1. An uncovered section ranks 0, and a bill's only section ranks 1
  * once any article discusses it. A dropped section is ranked against the final ones, so it can be above all of them.
  */
-export function percentile(v: number, reference: number[]): number {
+export function percentile(v: number, reference: number[], inReference = true): number {
   if (v <= 0) return 0;
   const others = [...reference];
-  const self = others.indexOf(v);
+  const self = inReference ? others.indexOf(v) : -1;
   if (self >= 0) others.splice(self, 1);
   if (!others.length) return 1;
   const below = others.filter((r) => r < v).length;
@@ -66,7 +68,12 @@ export function attention(
   sections: Row<"sections">[],
   articles: Row<"articles">[],
   run: MatchRun,
+  parts: Pick<Row<"section_parts">, "id" | "section_id">[] = [],
 ): AttentionResult {
+  const partsOf = Map.groupBy(parts, (p) => p.section_id);
+  /** An article tied to a part of a section discusses the section. */
+  const about = (m: Match, id: string) =>
+    m.sections.includes(id) || (partsOf.get(id)?.some((p) => m.sections.includes(p.id)) ?? false);
   const read = articles.filter((a) => (a.text_chars ?? 0) >= MIN_TEXT_CHARS && run.matches[a.id]);
   const match = (a: Row<"articles">) => run.matches[a.id] as Match;
   const relevant = read.filter((a) => match(a).about !== "unrelated");
@@ -129,11 +136,13 @@ export function attention(
   };
 
   const final = sections.filter((s) => s.in_final);
-  const mentions = final.reduce((n, s) => n + hitsFor((m) => m.sections.includes(s.id)).counted.length, 0);
+  const inFinal = new Map(sections.map((s) => [s.id, s.in_final]));
+  const mentions = final.reduce((n, s) => n + hitsFor((m) => about(m, s.id)).counted.length, 0);
   const thin = counted.length < MIN_ARTICLES || mentions < MIN_SECTION_HITS;
-  const share = new Map(
-    sections.map((s) => [s.id, balanced(hitsFor((m) => m.sections.includes(s.id)).counted)] as [string, number]),
-  );
+  const share = new Map([
+    ...sections.map((s) => [s.id, balanced(hitsFor((m) => about(m, s.id)).counted)] as [string, number]),
+    ...parts.map((p) => [p.id, balanced(hitsFor((m) => m.sections.includes(p.id)).counted)] as [string, number]),
+  ]);
   const reference = final.filter((s) => !NAMES_BILL.test(s.heading.trim())).map((s) => share.get(s.id)!);
 
   const evidenceBase = {
@@ -149,25 +158,39 @@ export function attention(
     relevant_trade_legal: trade.length,
   };
 
-  const rows: Row<"attention">[] = sections.map((s) => {
-    const h = hitsFor((m) => m.sections.includes(s.id));
+  const row = (
+    id: string,
+    sectionId: string,
+    partId: string | null,
+    inFinal: boolean,
+    own: boolean,
+  ): Row<"attention"> => {
+    const h = hitsFor((m) => (own ? m.sections.includes(id) : about(m, id)));
     return {
-      id: `${bill}:${s.id}`,
+      id: `${bill}:${id}`,
       bill_id: bill,
-      section_id: s.id,
+      section_id: sectionId,
+      part_id: partId,
       hits: h.counted.length,
       hits_by_group: byGroup(h.counted),
       trade_legal_hits: h.trade.length,
-      pct: thin ? null : Number(percentile(share.get(s.id)!, reference).toFixed(4)),
+      pct: thin ? null : Number(percentile(share.get(id)!, reference, !partId).toFixed(4)),
       example_article_ids: examples(h.counted),
       rule: ATTENTION_RULE,
       confidence: thin ? 0.4 : 0.75,
       rests_on: h.counted.length
         ? h.counted.map((a) => `articles/${a.id}`)
-        : [`sections/${s.id}`, ...counted.slice(0, 1).map((a) => `articles/${a.id}`)],
-      evidence: { ...evidenceBase, balanced_share: Number(share.get(s.id)!.toFixed(5)), in_final: s.in_final },
+        : [
+            partId ? `section_parts/${partId}` : `sections/${sectionId}`,
+            ...counted.slice(0, 1).map((a) => `articles/${a.id}`),
+          ],
+      evidence: { ...evidenceBase, balanced_share: Number(share.get(id)!.toFixed(5)), in_final: inFinal },
     };
-  });
+  };
+  const rows: Row<"attention">[] = [
+    ...sections.map((s) => row(s.id, s.id, null, s.in_final, false)),
+    ...parts.map((p) => row(p.id, p.section_id, p.id, inFinal.get(p.section_id) ?? false, true)),
+  ];
 
   const general = hitsFor((m) => m.whole || m.outside !== null);
   const outside: Record<string, number> = {};
@@ -179,6 +202,7 @@ export function attention(
     id: `${bill}:general`,
     bill_id: bill,
     section_id: null,
+    part_id: null,
     hits: general.counted.length,
     hits_by_group: byGroup(general.counted),
     trade_legal_hits: general.trade.length,

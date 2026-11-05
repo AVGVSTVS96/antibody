@@ -246,17 +246,18 @@ export function scoreRows(
   checks: Row<"attention_checks">[] = [],
   counterparts: Row<"counterparts">[] = [],
   reachRows: Row<"section_reach">[] = [],
+  parts: Row<"section_parts">[] = [],
 ): Row<"section_scores">[] {
-  const reachOf = Map.groupBy(reachRows, (r) => r.section_id);
-  const att = new Map(attention.filter((a) => a.section_id).map((a) => [a.section_id!, a]));
-  const checked = new Map(checks.map((c) => [c.section_id, c]));
+  const reachOf = Map.groupBy(reachRows, (r) => r.part_id ?? r.section_id);
+  const att = new Map(attention.filter((a) => a.section_id).map((a) => [a.part_id ?? a.section_id!, a]));
+  const checked = new Map(checks.map((c) => [c.part_id ?? c.section_id, c]));
   const final = sections.filter((s) => s.in_final);
   const cleared = clearedLate(sections, counterparts);
   const lateOf = (s: Row<"sections">) => s.late && !cleared.has(s.id);
   const lateShare = final.length ? final.filter(lateOf).length / final.length : 0;
   const pays = payFors(final, dollars);
   const titles = new Set(final.map((s) => s.path.split("/")[0]).filter((p) => /^(title|division):/.test(p!))).size;
-  return final.map((s) => {
+  const sectionRows = final.map((s) => {
     const a = att.get(s.id);
     const check = checked.get(s.id);
     const share =
@@ -294,6 +295,7 @@ export function scoreRows(
       id: `${bill}:${s.id}`,
       bill_id: bill,
       section_id: s.id,
+      part_id: null,
       label: label(c, a?.hits ?? 0),
       buried: buried(c),
       dollars_musd: c.dollarsMusd,
@@ -327,4 +329,77 @@ export function scoreRows(
       },
     };
   });
+  const finalIds = new Set(final.map((s) => s.id));
+  const partRows = parts
+    .filter((p) => finalIds.has(p.section_id))
+    .map((p): Row<"section_scores"> => {
+      const a = att.get(p.id);
+      const check = checked.get(p.id);
+      const share =
+        check?.share ??
+        (a && a.pct !== null ? Number((a.evidence as { balanced_share: number }).balanced_share) : null);
+      const pair = cleared.get(p.section_id);
+      const tags = reachOf.get(p.id) ?? [];
+      const c: Components = {
+        namesBill: false,
+        offsets: null,
+        dollarsMusd: null,
+        dollarsSplit: null,
+        attentionPct: a?.pct ?? null,
+        attentionShare: share,
+        sections: final.length,
+        late: p.late && !pair,
+        lateShare,
+        titles,
+        offTopic: null,
+        lobbyingFirms: 0,
+        reach: tags.map((t) => t.kind),
+      };
+      return {
+        id: `${bill}:${p.id}`,
+        bill_id: bill,
+        section_id: p.section_id,
+        part_id: p.id,
+        label: label(c, a?.hits ?? 0),
+        buried: buried(c),
+        dollars_musd: null,
+        dollars_split: null,
+        attention_pct: c.attentionPct,
+        attention_share: share,
+        attention_checked: check ? check.article_ids.length : null,
+        late: c.late,
+        late_cleared_by: p.late && pair ? pair.removed_section_id : null,
+        off_topic: null,
+        lobbying_reports: 0,
+        lobbying_firms: 0,
+        offsets_section_id: null,
+        reach: c.reach!,
+        rule: SCORE_RULE,
+        confidence: 0.7,
+        rests_on: [
+          `section_parts/${p.id}`,
+          `sections/${p.section_id}`,
+          ...(a ? [`attention/${a.id}`] : []),
+          ...(check ? [`attention_checks/${check.id}`] : []),
+          ...(pair ? [`counterparts/${pair.id}`] : []),
+          ...tags.map((t) => `section_reach/${t.id}`),
+        ],
+        evidence: {
+          version: SCORE.version,
+          part_of: p.section_id,
+          late_share: Number(lateShare.toFixed(4)),
+          late_in_lineage: p.late,
+          titles,
+          stakes: Number(stakes(c).toFixed(4)),
+          quiet: quiet(c) === null ? null : Number(quiet(c)!.toFixed(4)),
+          dollars_measure: null,
+          dollars_baseline: null,
+          dollars_by_baseline: [],
+          cbo_estimate: null,
+          lobbying_filings: [],
+          attention_hits: (a?.hits ?? 0) + (check?.article_ids.length ?? 0),
+        },
+      };
+    });
+  return [...sectionRows, ...partRows];
 }
