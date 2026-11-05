@@ -163,6 +163,17 @@ export const TEMPLATES: Record<string, Template> = {
     return { text: parts.join("") };
   },
 
+  section_parts: (r, _f, n) => {
+    const late = r.late ? ", after a chamber had passed the bill, so it was added late" : "";
+    const first =
+      r.first_version === r.version
+        ? ` It is new in that text${late}.`
+        : ` It first appears in the ${n.version(r.first_version)} text (the earliest with at least half its wording)${late}.`;
+    return {
+      text: `Section ${r.num} (${r.heading ? quote(r.heading, 80) : r.lead_in ? "its opening words" : "no heading"}) is ${count(r.words, "word")} of ${sec(n, r.section_id)} in the ${n.version(r.version)} text.${first}`,
+    };
+  },
+
   sponsorships: (r, _f, n) => ({
     text: `${who(n, r.bioguide)} ${r.role === "sponsor" ? "sponsored" : "cosponsored"} ${n.bill}${r.date ? ` on ${day(r.date)}` : ""}${r.withdrawn_on ? `, and withdrew on ${day(r.withdrawn_on)}` : ""}.`,
   }),
@@ -362,7 +373,7 @@ export const TEMPLATES: Record<string, Template> = {
   }),
 
   attention: (r, _f, n) => {
-    const subject = r.section_id ? sec(n, r.section_id) : `${n.bill} as a whole`;
+    const subject = r.section_id ? sec(n, r.part_id ?? r.section_id) : `${n.bill} as a whole`;
     const trade = r.trade_legal_hits ? ` Trade and legal press: ${count(r.trade_legal_hits, "more article")}.` : "";
     if (!r.hits)
       return {
@@ -386,7 +397,7 @@ export const TEMPLATES: Record<string, Template> = {
   },
 
   attention_checks: (r, _f, n) => ({
-    text: `${sec(n, r.section_id).replace(/^s/, "S")}: a second look put the ${r.passages} news passages closest to it to a model, which said ${r.article_ids.length ? `${count(r.article_ids.length, "article")} the section matcher had missed describe what it does` : "none beyond the articles already matched describe what it does"}. With those added, ${(r.share * 100).toFixed(1)}% of the bill's relevant articles discuss it.`,
+    text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/, "S")}: a second look put the ${r.passages} news passages closest to it to a model, which said ${r.article_ids.length ? `${count(r.article_ids.length, "article")} the section matcher had missed describe what it does` : "none beyond the articles already matched describe what it does"}. With those added, ${(r.share * 100).toFixed(1)}% of the bill's relevant articles discuss it.`,
     sourceUrl: `${DOCS}#quiet-check-v1`,
     sourceLocator: 'how the check works; the articles it found are under "rests on"',
   }),
@@ -396,7 +407,7 @@ export const TEMPLATES: Record<string, Template> = {
   }),
 
   section_reach: (r, _f, n) => ({
-    text: `${sec(n, r.section_id).replace(/^s/, "S")}, in the ${n.version(r.version)} text, reads: ${quote(r.quote, 600)}`,
+    text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/, "S")}, in the ${n.version(r.version)} text, reads: ${quote(r.quote, 600)}`,
     quote: r.quote,
     sourceLocator: `${r.source_locator}; it is tagged "${REACH_WORDS[r.kind as keyof typeof REACH_WORDS]}" by the published reach-v2 patterns`,
   }),
@@ -442,7 +453,7 @@ export const TEMPLATES: Record<string, Template> = {
       ? ` CBO prints exactly the opposite figure for ${sec(n, r.offsets_section_id)}, so this is read as the section's pay-for and is not flagged on its own.`
       : "";
     return {
-      text: `${sec(n, r.section_id).replace(/^s/, "S")} is scored ${r.label}${score}: ${bits.join(", ")}.${pays}`,
+      text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/, "S")}${r.part_id ? `, a part of ${sec(n, r.section_id)} scored on its own (parts-v1),` : ""} is scored ${r.label}${score}: ${bits.join(", ")}.${pays}`,
     };
   },
 };

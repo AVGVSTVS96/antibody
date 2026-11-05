@@ -361,3 +361,76 @@ test("a lobbying total cites the first filing it adds and lists every one under 
   expect(total.restsOn.every((id) => id.startsWith("lda_filings/"))).toBe(true);
   expect(total.sourceLocator).toContain("rests on");
 });
+
+test("a long section's notable parts ride in its bundle entry, each with its own claims; ordinary parts stay out", async () => {
+  const rows = structuredClone(GENIUS_ROWS);
+  const sec4 = rows.sections!.find((s) => s.num === "4")!;
+  const url = "https://www.govinfo.gov/content/pkg/BILLS-119s1582enr/xml/BILLS-119s1582enr.xml";
+  const part = (en: string, ord: number, heading: string, first: string, late: boolean) => ({
+    id: `${sec4.id}${en}`,
+    bill_id: "119-s-1582",
+    section_id: sec4.id,
+    num: `4${en}`,
+    ord,
+    enum: en,
+    heading,
+    trail: ["Standards for the issuance of payment stablecoins"],
+    path: `subsection:a/paragraph:${en.match(/\((\d+)\)$/)![1]}`,
+    lead_in: false,
+    words: 600,
+    preview: "A public company that is not predominantly engaged in one or more financial activities",
+    first_version: first,
+    late,
+    version: "enr",
+    source_url: url,
+    source_locator: "sec. 4, subsection (a), paragraph (12)",
+  });
+  rows.section_parts = [
+    part("(a)(1)", 0, "In general", "pcs", false),
+    part("(a)(12)", 11, "Non-financial services public companies", "es", true),
+  ];
+  const score = (partId: string | null, late: boolean) => ({
+    id: `119-s-1582:${partId ?? sec4.id}`,
+    bill_id: "119-s-1582",
+    section_id: sec4.id,
+    part_id: partId,
+    label: "normal",
+    buried: null,
+    dollars_musd: null,
+    dollars_split: null,
+    attention_pct: null,
+    late,
+    off_topic: null,
+    lobbying_reports: 0,
+    rule: "buried-v5: test",
+    confidence: 0.7,
+    rests_on: [`sections/${sec4.id}`, ...(partId ? [`section_parts/${partId}`] : [])],
+    evidence: {},
+  });
+  rows.section_scores = [score(null, false), score(`${sec4.id}(a)(1)`, false), score(`${sec4.id}(a)(12)`, true)];
+  const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
+  expect(checkBundle(bundle)).toEqual([]);
+  const s4 = bundle.sections.find((s) => s.num === "4")!;
+  expect(s4.parts.map((p) => [p.num, p.heading, p.late, p.score?.components.late])).toEqual([
+    ["4(a)(12)", "Non-financial services public companies", true, true],
+  ]);
+  const p = s4.parts[0]!;
+  expect(bundle.claims[p.claims[0]!]!.text).toBe(
+    'Section 4(a)(12) ("Non-financial services public companies") is 600 words of section 4 ("Requirements for issuing payment stablecoins") in the "Enrolled Bill" text. It first appears in the "Engrossed in Senate" text (the earliest with at least half its wording), after a chamber had passed the bill, so it was added late.',
+  );
+  expect(bundle.claims[p.score!.claim]!.text).toStartWith(
+    'Section 4(a)(12) ("Non-financial services public companies"), a part of section 4 ("Requirements for issuing payment stablecoins") scored on its own (parts-v1), is scored normal',
+  );
+  expect(s4.score?.claim).toBe(`section_scores/119-s-1582:${sec4.id}`);
+  expect(bundle.rules.find((r) => r.id === "parts-v1")!.url).toContain("docs/rules.md#parts-v1");
+});
+
+test("the parts rule the page publishes states the thresholds the splitter uses", async () => {
+  const { PARTS } = await import("../../ingest-bills/src/parts.ts");
+  const { RULES } = await import("../src/rules.ts");
+  const text = RULES["parts-v1"]!.text;
+  expect(text).toContain(`longer than ${PARTS.splitOver} words`);
+  expect(text).toContain(`longer than ${PARTS.pieceOver.toLocaleString("en-US")} words`);
+  expect(text).toContain(`at least half its wording`);
+  expect(PARTS.carried).toBe(0.5);
+});

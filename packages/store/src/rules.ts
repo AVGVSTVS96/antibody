@@ -98,6 +98,10 @@ export const RULES: Record<string, { version: string; text: string }> = {
     version: "1",
     text: "An earlier bill with the same short title and sponsor whose sections match this bill's first text is its predecessor.",
   },
+  "parts-v1": {
+    version: "1",
+    text: "A section longer than 500 words (about two printed pages) is read in parts: its own subsections, paragraphs and lower subdivisions, each split again while it is longer than 1,000 words, so a provision buried in a giant section is scored on its own. A part first appears in the earliest version with at least half its wording in the section, and is added late when that is the first text a chamber passed or later. A part has no dollars or lobbying of its own (CBO and lobbying reports name whole sections); its stakes come from its own text's reach, and an article about a part counts for its section too. The page shows a part when it is labeled headline or buried, was added late into a section that was not, or has reach.",
+  },
   "substitute-adds": {
     version: "1",
     text: "A section first seen in the text right after an agreed substitute came in with that substitute.",

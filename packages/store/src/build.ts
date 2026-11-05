@@ -17,6 +17,7 @@ import {
   type NodeId,
   nodeId,
   OutletGroup,
+  type Part,
   ReachKind,
   type Section,
 } from "@antibody/core";
@@ -88,6 +89,8 @@ class Builder {
   private members = new Map<string, AnyRow>();
   private memberIds = new Set<string>();
   private sections = new Map<string, Section>();
+  /** Parts of long sections by id (parts-v1); each also sits in its section's `parts`. */
+  private parts = new Map<string, Part>();
   private versionNames = new Map<string, string>();
   private filings = new Map<string, AnyRow>();
   private labels = {
@@ -124,7 +127,7 @@ class Builder {
       const m = b ? this.members.get(b) : undefined;
       return m ? { name: m.name, party: m.party, state: m.state, chamber: m.chamber } : null;
     },
-    section: (id) => (id ? (this.sections.get(id) ?? null) : null),
+    section: (id) => (id ? (this.sections.get(id) ?? this.parts.get(id) ?? null) : null),
     version: (code) => (code ? (this.versionNames.get(code) ?? code) : "unknown"),
     company: (id) => this.labels.company.get(id) ?? `the company with SEC CIK ${id}`,
     pac: (id) => this.labels.pac.get(id) ?? `FEC committee ${id}`,
@@ -387,6 +390,7 @@ class Builder {
         attention: null,
         score: null,
         reach: [],
+        parts: [],
         claims: [],
       });
     for (const s of rows) {
@@ -405,12 +409,65 @@ class Builder {
       const claim = await this.cite("cbo_notes", n);
       if (claim) this.sections.get(n.section_id)?.claims.push(claim);
     }
+    const notable = await this.notableParts(rows);
+    for (const p of await this.select("section_parts", "bill_id = $b", { b: this.bill }, "section_id, ord")) {
+      const section = this.sections.get(p.section_id);
+      if (!section || !notable.has(p.id)) continue;
+      const part: Part = {
+        id: p.id,
+        num: p.num,
+        heading: p.heading?.trim() || (p.lead_in ? "Opening words" : firstWords(p.preview)),
+        trail: p.trail ?? [],
+        leadIn: p.lead_in,
+        words: p.words,
+        preview: p.preview,
+        firstVersion: p.first_version,
+        late: p.late,
+        textUrl: p.source_url,
+        attention: null,
+        score: null,
+        reach: [],
+        claims: [],
+      };
+      this.parts.set(p.id, part);
+      this.rulesUsed.add("parts-v1");
+      section.parts.push(part);
+      const claim = await this.cite("section_parts", p);
+      if (claim) part.claims.push(claim);
+    }
     const kinds = ReachKind.options;
     const tags = await this.select("section_reach", "bill_id = $b", { b: this.bill });
     for (const r of tags.sort((x, y) => kinds.indexOf(x.kind) - kinds.indexOf(y.kind))) {
-      const claim = await this.cite("section_reach", r);
-      if (claim) this.sections.get(r.section_id)?.reach.push({ kind: r.kind, quote: r.quote, claim });
+      const owner = r.part_id ? this.parts.get(r.part_id) : this.sections.get(r.section_id);
+      const claim = owner && (await this.cite("section_reach", r));
+      if (claim) owner.reach.push({ kind: r.kind, quote: r.quote, claim });
     }
+  }
+
+  /**
+   * The parts of long sections (parts-v1) worth a row of their own on the page: labeled headline or buried, added late
+   * into a section that was not, or with reach of their own. The rest stay in the tables and are not shipped, so a
+   * big bill's bundle does not carry thousands of ordinary paragraphs.
+   */
+  private async notableParts(sections: AnyRow[]): Promise<Set<string>> {
+    const b = { b: this.bill };
+    const sectionLate = new Map(sections.map((s) => [s.id, !!s.late]));
+    const scores = await query<AnyRow>(
+      this.db,
+      "SELECT section_id, part_id, label, late FROM section_scores WHERE bill_id = $b ORDER BY id",
+      b,
+    ).catch(() => [] as AnyRow[]);
+    for (const s of scores) if (!s.part_id) sectionLate.set(s.section_id, !!s.late);
+    const keep = new Set<string>();
+    for (const s of scores)
+      if (s.part_id && (s.label !== "normal" || (s.late && !sectionLate.get(s.section_id)))) keep.add(s.part_id);
+    for (const r of await query<AnyRow>(
+      this.db,
+      "SELECT part_id FROM section_reach WHERE bill_id = $b AND part_id IS NOT NULL ORDER BY id",
+      b,
+    ).catch(() => [] as AnyRow[]))
+      keep.add(r.part_id);
+    return keep;
   }
 
   /**
@@ -1151,7 +1208,10 @@ class Builder {
     let general: Section["attention"] = null;
     for (const r of rows) {
       if (r.section_id == null) general = await shape(r);
-      else if (this.sections.has(r.section_id)) this.sections.get(r.section_id)!.attention = await shape(r);
+      else if (r.part_id) {
+        const part = this.parts.get(r.part_id);
+        if (part) part.attention = await shape(r);
+      } else if (this.sections.has(r.section_id)) this.sections.get(r.section_id)!.attention = await shape(r);
     }
     const dates = articles
       .map((a) => a.published_on)
@@ -1169,7 +1229,7 @@ class Builder {
 
   private async buildScores() {
     for (const s of await this.select("section_scores", "bill_id = $b", { b: this.bill })) {
-      const section = this.sections.get(s.section_id);
+      const section = s.part_id ? this.parts.get(s.part_id) : this.sections.get(s.section_id);
       const claim = section && (await this.cite("section_scores", s));
       if (!section || !claim) continue;
       section.score = {
