@@ -1517,6 +1517,13 @@ a.cname:hover {
 .secs tr.removed td {
   color: var(--ink-3);
 }
+.secs tr.part td {
+  font-size: 14px;
+}
+.secs tr.part .ttl {
+  font-weight: 500;
+  padding-left: 28px;
+}
 .secs tr.grp td {
   padding: 22px 12px 8px;
   border-bottom: 1px solid var(--rule);

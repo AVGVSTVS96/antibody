@@ -1,4 +1,4 @@
-import { articlesOf, buriedWords, isLate, REACH_WORDS } from "@antibody/core";
+import { articlesOf, buriedWords, isLate, type Part, REACH_WORDS } from "@antibody/core";
 import { Fragment, useMemo, useState } from "react";
 import { baselineWords, count, day, musd, quoted, rank } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
@@ -21,12 +21,16 @@ const FILTERS: [Filter, string][] = [
 const TOP = 25;
 const PAGE = 50;
 
+/** A part of a long section shown on its own row (parts-v1): its own label, or added late into a section that was not. */
+const partBuried = (v: SectionView) => (v.s.parts ?? []).some((p) => p.score?.label === "buried");
+const partLate = (v: SectionView) => !isLate(v.s) && (v.s.parts ?? []).some((p) => p.score?.components.late ?? p.late);
+
 const keep: Record<Exclude<Filter, "top">, (v: SectionView) => boolean> = {
   all: () => true,
   headline: (v) => v.kind === "headline",
-  buried: (v) => v.kind === "buried",
+  buried: (v) => v.kind === "buried" || partBuried(v),
   reach: (v) => v.s.reach.length > 0,
-  late: (v) => isLate(v.s),
+  late: (v) => isLate(v.s) || partLate(v),
   money: (v) => v.s.dollars.length > 0,
   removed: (v) => !v.s.inFinal,
 };
@@ -52,8 +56,8 @@ const matches = (f: Filter, v: SectionView, top: Set<string>) => (f === "top" ? 
 
 /** What a reader should see first: buried candidates, headline sections, then late and lobbied ones, by news rank. */
 const priority = (v: SectionView) =>
-  (v.kind === "buried" ? 4 : v.kind === "headline" ? 3 : 0) +
-  (isLate(v.s) ? 2 : 0) +
+  (v.kind === "buried" || partBuried(v) ? 4 : v.kind === "headline" ? 3 : 0) +
+  (isLate(v.s) || partLate(v) ? 2 : 0) +
   (v.s.attention?.pct ?? 0) +
   Math.min(1, v.lobbied / 20);
 
@@ -273,6 +277,16 @@ export function XrayList({ m }: { m: BillModel }) {
                       </td>
                     </tr>
                   )}
+                  {(s.parts ?? []).map((p) => (
+                    <PartRows
+                      key={p.id}
+                      p={p}
+                      v={v}
+                      sort={sort}
+                      open={open === p.id}
+                      toggle={() => setOpen(open === p.id ? null : p.id)}
+                    />
+                  ))}
                 </Fragment>
               );
             })}
@@ -302,6 +316,105 @@ function SortBtn({ s, cur, set, children }: { s: Sort; cur: Sort; set: (s: Sort)
       {children}
       {cur === s && s !== "num" ? " ↓" : ""}
     </button>
+  );
+}
+
+/**
+ * A part of a long section on its own row, right under its section: its own label, reach and news, so a rider written
+ * into a big section is not hidden by the section's heading. CBO and lobbying name whole sections, so it has neither.
+ */
+function PartRows({
+  p,
+  v,
+  sort,
+  open,
+  toggle,
+}: {
+  p: Part;
+  v: SectionView;
+  sort: Sort;
+  open: boolean;
+  toggle: () => void;
+}) {
+  const kind = p.score?.label;
+  const late = p.score?.components.late ?? p.late;
+  const lateInOld = late && !isLate(v.s);
+  const hits = p.attention ? p.attention.hits + (p.score?.components.attentionChecked ?? 0) : null;
+  return (
+    <>
+      <tr
+        className={`row part ${!v.s.inFinal ? "removed" : kind === "headline" || kind === "buried" ? kind : ""}`}
+        onClick={toggle}
+        aria-expanded={open}
+      >
+        <td className="n">§{p.num}</td>
+        <td className="ttl">
+          <span className="dim">↳ </span>
+          {p.heading} {kind === "headline" && <span className="pill loud">loud</span>}
+          {kind === "buried" && p.score && <span className="pill quiet">{buriedWords(p.score)}</span>}
+          {p.reach
+            .filter((r) => !(kind === "buried" && p.score && buriedWords(p.score).includes(REACH_WORDS[r.kind])))
+            .map((r) => (
+              <span key={r.kind} className="pill reach">
+                {REACH_WORDS[r.kind]}
+              </span>
+            ))}
+          {lateInOld && <span className="pill reach">added late inside §{v.s.num}</span>}
+        </td>
+        <td className="when">
+          <span className={`stagecode${late ? " late" : ""}`}>
+            {sort === "num" ? (late ? "late" : "") : p.firstVersion}
+          </span>
+        </td>
+        <td className="loud">
+          {p.attention?.pct == null ? (
+            <span className="miss">{hits == null ? "—" : count(hits, "article")}</span>
+          ) : (
+            <div className="att" title={`${count(hits ?? 0, "article")} matched this part`}>
+              <div className="bar">
+                <i style={{ width: `${p.attention.pct * 100}%` }} />
+              </div>
+              <span>
+                {rank(p.attention.pct)} <span className="dim">· {hits}</span>
+              </span>
+            </div>
+          )}
+        </td>
+        <td className="cbo" data-l="CBO 10-yr $">
+          <span className="miss" title="CBO prices whole sections, not their parts">
+            —
+          </span>
+        </td>
+        <td className="bur" data-l="Quiet score">
+          {p.score?.buried != null ? (
+            <span className="num">{p.score.buried.toFixed(2)}</span>
+          ) : (
+            <span className="dim">—</span>
+          )}
+        </td>
+      </tr>
+      {open && (
+        <tr className="detail">
+          <td colSpan={6}>
+            <div className="row-meta">
+              Part of §{v.s.num} {v.s.heading}
+              {p.trail.length ? `, under ${p.trail.join(" › ")}` : ""}. {count(p.words, "word")}; read in parts because
+              the section runs to {count(v.s.words, "word")}.
+            </div>
+            <div className="quote" style={{ marginTop: 8 }}>
+              {p.preview}…
+            </div>
+            {p.reach.map((r) => (
+              <div className="row-meta" key={r.claim}>
+                <b>{REACH_WORDS[r.kind].replace(/^./, (x) => x.toUpperCase())}</b>: {quoted(r.quote)}{" "}
+                <Src id={r.claim} label="text" />
+              </div>
+            ))}
+            <Sources ids={[...p.claims, p.attention?.claim, p.score?.claim]} max={4} />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
