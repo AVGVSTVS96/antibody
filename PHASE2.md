@@ -77,3 +77,14 @@ Still open:
 - The enrich shortlist (top 25 by the cheap score) breaks ties alphabetically among enrolled bills.
 - Lobbying checks read at most 8 pages (200 filings) a year per bill; a busier bill shows "N of M read".
 - news fetch (trafilatura in threads) crashed once with a native "double free"; a rerun succeeded.
+
+## Section parts (t-648): done and still open
+
+Done: parts-v1 (docs/rules.md). A section over 500 words is read in its own subsections and paragraphs (split again while a piece is over 1,000 words), final and dropped sections alike, into `section_parts` by the new `parts` stage. Each part gets its first version from the section's earlier texts, so a rider written into an old section is "added late" on its own: in the GENIUS Act, §4 (5,811 words) reads as "changed" whole, but its interest ban §4(a)(11) and Big Tech bar §4(a)(12), the two provisions the press reported, first appear in the Senate-passed text. Parts get their own reach quote, their own line in the news matcher's menu (an article about a part counts for its section too), the quiet check, and a buried-v5 score with no dollars or lobbying of their own. Bundles ship the notable ones (headline, buried, late inside a section that was not, or with reach) under their section, and the X-ray list shows them as indented rows. The House AI moratorium in H.R.1 §43201(c) is checked by a server-only test against the GovInfo downloads.
+
+Still open:
+- Re-run `parts`, `attention`, `reach`, `quiet-check` and `scores` on every published bill, then rebuild and deploy. The matcher menu changes for any bill with a section over 500 words, so those bills' articles are matched again (a model cost).
+- Lobbying issue lines that cite a subsection ("Sec. 4(a)(11)") still count for the whole section; `sectionNums` drops the designator, so parts have no lobbying stakes.
+- A section that inserts a long new section of law in one quoted block is not split inside the quoted block.
+- The section parser has no case for appropriations paragraphs that sit directly under a title (`appropriations-major` and its kin, outside any `<section>`); if a bill's text has them, they are not read as sections or parts. Not checked against a real appropriations text from here.
+- 43201(c) and the shutdown-bill riders could not be checked from this cloud session (GovInfo and congress.gov are blocked here); the H.R.1 test runs where data/bills/raw has the files.
