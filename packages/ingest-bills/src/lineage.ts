@@ -208,7 +208,8 @@ export function wholesaleReason(lineages: Lineage[], versions: ParsedVersion[]):
   return null;
 }
 
-const PASSED = new Set(["eh", "es", "ath", "ats", "eah", "eas", "enr", "plaw"]);
+/** Version codes of a text a chamber has passed. */
+export const PASSED = new Set(["eh", "es", "ath", "ats", "eah", "eas", "enr", "plaw"]);
 
 /** A split keeping at least this share of its parent's wording is a move, not new text. */
 export const PURE_SPLIT = 0.9;

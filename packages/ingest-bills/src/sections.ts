@@ -23,7 +23,8 @@ const LABELS = new Set(["enum", "num", "header", "heading"]);
 
 const deleted = (e: Element) => e.attribs.changed === "deleted";
 
-function sectionText(section: Element): string {
+/** A provision's own text, its label and heading left out (they are read apart). */
+export function sectionText(section: Element): string {
   const out: string[] = [];
   const rec = (n: ChildNode) => {
     if (n.type === "text") out.push(n.data);
@@ -62,7 +63,12 @@ function bodies(root: Element): Element[] {
   return [child(root, "main") ?? root];
 }
 
-const label = (e: Element) => child(e, "enum") ?? child(e, "num");
+export const label = (e: Element) => child(e, "enum") ?? child(e, "num");
+export const headerOf = (e: Element) => {
+  const head = child(e, "header") ?? child(e, "heading");
+  return head ? norm(textOf(head)) : "";
+};
+export { deleted };
 
 export function hashSection(heading: string, text: string): string {
   return new Bun.CryptoHasher("sha1")
@@ -73,6 +79,24 @@ export function hashSection(heading: string, text: string): string {
 
 /** The sections of the first body that has any. */
 export function parseSections(xml: string): Sec[] {
+  return sectionElements(xml).map(({ el, path }) => {
+    const heading = headerOf(el);
+    const text = sectionText(el);
+    return {
+      path,
+      heading,
+      text,
+      xmlId: el.attribs.id ?? null,
+      hash: hashSection(heading, text),
+      words: words(text),
+      sh: shingles(text),
+      cites: citations(text),
+    };
+  });
+}
+
+/** The section elements of the first body that has any, with their paths (`title:VII/subtitle:A/sec:70114`). */
+export function sectionElements(xml: string): { el: Element; path: string }[] {
   for (const b of bodies(parseXml(xml))) {
     const secs = sectionsOf(b);
     if (secs.length) return secs;
@@ -80,8 +104,8 @@ export function parseSections(xml: string): Sec[] {
   return [];
 }
 
-function sectionsOf(root: Element): Sec[] {
-  const out: Sec[] = [];
+function sectionsOf(root: Element): { el: Element; path: string }[] {
+  const out: { el: Element; path: string }[] = [];
   const walk = (e: Element, trail: string[]) => {
     for (const c of kids(e)) {
       const name = local(c);
@@ -89,21 +113,8 @@ function sectionsOf(root: Element): Sec[] {
       const enumEl = label(c);
       const num = enumEl ? normEnum(textOf(enumEl)) : "?";
       if (CONTAINERS.has(name)) walk(c, [...trail, `${name}:${num}`]);
-      else if (name === "section") {
-        const head = child(c, "header") ?? child(c, "heading");
-        const heading = head ? norm(textOf(head)) : "";
-        const text = sectionText(c);
-        out.push({
-          path: [...trail, `sec:${num}`].join("/"),
-          heading,
-          text,
-          xmlId: c.attribs.id ?? null,
-          hash: hashSection(heading, text),
-          words: words(text),
-          sh: shingles(text),
-          cites: citations(text),
-        });
-      } else walk(c, trail);
+      else if (name === "section") out.push({ el: c, path: [...trail, `sec:${num}`].join("/") });
+      else walk(c, trail);
     }
   };
   walk(root, []);
