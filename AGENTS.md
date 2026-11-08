@@ -5,14 +5,15 @@ Nonpartisan X-ray of US federal bills: headline vs. buried provisions, lobbying,
 - Every claim carries its source URL (a primary record: congress.gov, GovInfo, CBO, FEC, lda.gov, House Clerk, Senate eFD, SEC EDGAR). Facts and inferences are stored and shown apart; an inference names its rule and what it rests on.
 - The same thresholds, wording and colors apply to every party and member.
 - Raw downloads go in `data/` (gitignored, on disk, shared by every worktree). Heavy jobs (bulk downloads, OCR/vision, big parses, DuckDB loads) run memory-capped: `heavy()` / `python()` from `@antibody/core/node` wrap `systemd-run --user --scope -p MemoryMax=4G -p CPUWeight=20`, so they use idle CPU without starving the rest of the server.
-- Stack: TypeScript on Bun 1.4, TypeScript 7, Biome, DuckDB (`@duckdb/node-api`), React 19 + Vite 8. Python only where its library is clearly best (PDF, openpyxl): it lives in the package's `py/` with its own `pyproject.toml`, runs through `python()` with `-I`, and talks JSON/JSONL.
-- Commits are signed, small and often. `bun run ci` = Biome + tsc + bun test; GitHub Actions runs the same plus the web build.
+- Stack: TypeScript on Bun 1.4, TypeScript 7, oxlint + oxfmt, DuckDB (`@duckdb/node-api`), React 19 + Vite 8. Python only where its library is clearly best (PDF, openpyxl): it lives in the package's `py/` with its own `pyproject.toml`, runs through `python()` with `-I`, and talks JSON/JSONL.
+- Commits are signed, small and often. `bun run check` = oxlint + oxfmt + tsc per package + bun test + the web build; lefthook runs it before each commit and GitHub Actions on push. `bun run fix` applies lint fixes and formats.
 - To run tests as CI does (no downloads), use `bun run test:nodata`: it points `ANTIBODY_DATA` at an empty folder. Moving `data/` is slow and risky, since /tmp is RAM and data/ is 27G.
 
 ## Layout
 
 ```
 packages/core        @antibody/core   the contract: Claim, Node/Edge kinds, TABLES (DuckDB rows), Bundle, Stage
+                     @antibody/core/node  Node-only helpers (paths, rows, heavy/python); lint keeps it out of apps/web/src
 packages/ingest-*    one source each, writes its own tables
 packages/resolve     companies, entity resolution, tied stock
 packages/analyze     attention per section, headline vs buried scores
@@ -32,24 +33,6 @@ apps/web             the site (Vercel), renders apps/web/public/bundles/*.json
 
 Changing the contract: additive changes (a new column, table or edge prop) go straight into core with a test; renames or removals get a note in the commit message so other parts can follow.
 
-## Where each spike's code goes
+## Deploy
 
-| spike | home | owns tables |
-|---|---|---|
-| `spikes/bills` (sections.py, amendments.py) | `packages/ingest-bills` | bills, versions, sections, sponsorships, bill_committees, amendments, amendment_sections, counterparts |
-| `spikes/cbo` (parse_xlsx/pdf/table1, reconcile, map_sections) | `packages/ingest-cbo` | cbo_estimates, cbo_lines, cbo_notes |
-| `spikes/lobbying` (lda.ts, extract.ts, staff.ts, pull.ts) | `packages/ingest-lobbying` | lda_filings, lda_clients, lda_bill_refs, lda_topic_refs, lda_lobbyists, lda_spend |
-| `spikes/trades` (fetch-house/senate, parse_house*, parse-senate, ocr_pages) | `packages/ingest-trades` | ptr_documents, trades |
-| `spikes/entities` members.py | `packages/ingest-members` | members, committees, committee_members, roll_calls, member_votes |
-| `spikes/entities` load_fec.py | `packages/ingest-fec` | pacs, contributions |
-| `spikes/attention` gnews.py, fetch.py | `packages/ingest-news` | outlets, articles |
-| `spikes/entities` resolve*.py, llm_review.py, mentions.py | `packages/resolve` | companies, resolutions, benefits |
-| `spikes/attention` sections.py, match.py, score.py (late.py is replaced by `sections.late`) | `packages/analyze` | attention, section_scores |
-| `spikes/entities` graph.py, `spikes/report/export.py` | `packages/store` | builds graph, claims, bundles |
-| `spikes/report/page/antibody.html` (design reference) | `apps/web` | — |
-
-The six fixes in `spikes/decisions.json` live in the contract: `sections.split_into` + `late` from the lineage (fixes 1, 2), `cbo_lines.split` + `rests_on` (3, 4), `ptr_documents.read_status` → the "paper filings not yet read" gap (5), stub-URL validation + `trades.owner` (6).
-
-## Phase 1
-
-All parts are merged into main and the site is live; see `PHASE1.md` for what works, the URL, the ranked gaps and what each part left open. Published bundles (`apps/web/public/bundles/*.json`) are build output, gitignored; `bun run deploy` uploads them. The Vercel project has no Git connection, because a build from the repo alone would ship without bundles; deploy with `bun run deploy`, or `vercel deploy --prebuilt` without `--prod` for a preview. The project's root directory is `apps/web`, so run the Vercel CLI from the repo root (`.vercel/project.json` there is copied from `apps/web/.vercel`; both are gitignored). `antibody watch` does its own publish and production deploy at the end of each run (curated bundles untouched); `--no-deploy` or `ANTIBODY_WATCH_DEPLOY=0` skips the deploy.
+Published bundles (`apps/web/public/bundles/*.json`) are build output, gitignored; `bun run deploy` uploads them. The Vercel project has no Git connection, because a build from the repo alone would ship without bundles; deploy with `bun run deploy`, or `vercel deploy --prebuilt` without `--prod` for a preview. The project's root directory is `apps/web`, so run the Vercel CLI from the repo root (`.vercel/project.json` there is copied from `apps/web/.vercel`; both are gitignored). `antibody watch` does its own publish and production deploy at the end of each run (curated bundles untouched); `--no-deploy` or `ANTIBODY_WATCH_DEPLOY=0` skips the deploy.

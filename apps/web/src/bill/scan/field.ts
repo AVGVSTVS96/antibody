@@ -26,11 +26,10 @@ export class Field {
   private reduced = false;
   private raf = 0;
   private painter: Painter | null = null;
+  private readonly scenes: Scenes;
 
-  constructor(
-    private readonly scenes: Scenes,
-    view: MapView,
-  ) {
+  constructor(scenes: Scenes, view: MapView) {
+    this.scenes = scenes;
     const n = scenes.marks.length;
     this.cur = new Float64Array(n * CHANNELS);
     this.vel = new Float64Array(n * CHANNELS);

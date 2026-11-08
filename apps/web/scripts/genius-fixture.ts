@@ -10,11 +10,11 @@ import type { Claim, Edge, Node } from "@antibody/core";
 import { DATA, ROOT } from "@antibody/core/node";
 import { DuckDBInstance } from "@duckdb/node-api";
 
-const SPIKES = join(ROOT, "spikes");
-const read = (p: string) => JSON.parse(readFileSync(join(SPIKES, p), "utf-8"));
+const SOURCE = join(import.meta.dir, "../fixtures/genius-source");
+const read = (p: string) => JSON.parse(readFileSync(join(SOURCE, p), "utf-8"));
 
-const G = read("report/out/genius.json");
-const L = read("bills/out/genius-s1582.sections.json");
+const G = read("genius.json");
+const L = read("genius-s1582.sections.json");
 
 const BILL = "119-s-1582";
 const claims: Record<string, Claim> = {};
@@ -200,7 +200,7 @@ const sections = G.sections.map(
       const aClaim = infer(
         `attention/${lin.id}`,
         `§${s.num} matched ${s.attention_hits} news units, percentile ${Math.round(s.attention_pct * 100)} of 17 scored sections.`,
-        "https://github.com/AVGVSTVS96/antibody/blob/main/spikes/attention/RESULTS.md",
+        "https://github.com/AVGVSTVS96/antibody/blob/a879985/spikes/attention/RESULTS.md",
         ATTN_RULE,
         [secClaim, ...examples.map((e) => e.claim)],
         0.5,
@@ -947,7 +947,7 @@ const lobbyShareClaim = infer(
   0.4,
 );
 
-const RULES_URL = "https://github.com/AVGVSTVS96/antibody/blob/main/spikes/REPORT.md";
+const RULES_URL = "https://github.com/AVGVSTVS96/antibody/blob/a879985/spikes/REPORT.md";
 
 const bundle = {
   schema: 1,
@@ -1011,7 +1011,7 @@ const bundle = {
       claim: infer(
         `attention/${BILL}#general`,
         `${G.attention.general_bucket_hits} news units matched the bill as a whole better than any one section.`,
-        "https://github.com/AVGVSTVS96/antibody/blob/main/spikes/attention/RESULTS.md",
+        "https://github.com/AVGVSTVS96/antibody/blob/a879985/spikes/attention/RESULTS.md",
         ATTN_RULE,
         [billClaim],
         0.5,

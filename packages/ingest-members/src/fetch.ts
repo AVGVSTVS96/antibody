@@ -27,10 +27,12 @@ export async function cached(url: string, file: string, refresh = false): Promis
 }
 
 export class FetchError extends Error {
-  constructor(
-    readonly status: number,
-    readonly url: string,
-  ) {
+  readonly status: number;
+  readonly url: string;
+
+  constructor(status: number, url: string) {
     super(`${status} ${url}`);
+    this.status = status;
+    this.url = url;
   }
 }

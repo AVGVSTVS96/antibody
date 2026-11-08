@@ -20,7 +20,7 @@ const PER = {
 };
 
 const old = new Set(
-  (await Bun.file(join(ROOT, "spikes/entities/eval_labeled.psv")).text())
+  (await Bun.file(join(import.meta.dir, "../eval/phase0-labeled.psv")).text())
     .split("\n")
     .map((l) => l.split("|")[2]?.toUpperCase()),
 );

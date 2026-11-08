@@ -5,7 +5,7 @@ import react from "ultracite/oxlint/react";
 
 export default defineConfig({
   extends: [core, react, antiSlop],
-  ignorePatterns: [...(core.ignorePatterns ?? []), "spikes/**", "apps/web/public/**"],
+  ignorePatterns: [...(core.ignorePatterns ?? []), "apps/web/public/**"],
   jsPlugins: [{ name: "no-comments", specifier: "./tools/oxlint/no-comments.ts" }],
   options: { reportUnusedDisableDirectives: "error", typeAware: true },
   rules: {
@@ -32,7 +32,7 @@ export default defineConfig({
   },
   overrides: [
     {
-      files: ["apps/web/**"],
+      files: ["apps/web/src/**"],
       rules: {
         "no-restricted-imports": [
           "error",
@@ -42,6 +42,11 @@ export default defineConfig({
                 name: "react",
                 importNames: ["useEffect", "useLayoutEffect", "useInsertionEffect"],
                 message: "Derive in render, act in the event handler, or subscribe with useSyncExternalStore.",
+              },
+              {
+                name: "@antibody/core/node",
+                message:
+                  "The site runs in the browser: import @antibody/core. core/node is for the CLI, packages and scripts.",
               },
             ],
           },

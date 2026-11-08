@@ -1,5 +1,5 @@
 import type { BundleIndex } from "@antibody/core";
-import { parseBillId } from "@antibody/core/ids";
+import { parseBillId } from "@antibody/core";
 import { Component, lazy, Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { loadIndex } from "./lib/data.ts";

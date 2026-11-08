@@ -9,4 +9,4 @@ bun install
 bun run antibody xray S.1582
 ```
 
-Status: Phase 1, building v1. See [PLAN.md](PLAN.md) and the [Phase 0 report](spikes/REPORT.md).
+Status: Phase 1, building v1. See [docs/PLAN.md](docs/PLAN.md) and the [Phase 0 report](https://github.com/AVGVSTVS96/antibody/blob/a879985/spikes/REPORT.md).

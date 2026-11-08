@@ -4,7 +4,6 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./ids": "./src/ids.ts",
     "./node": "./src/node.ts"
   },
   "dependencies": {

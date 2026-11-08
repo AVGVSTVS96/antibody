@@ -118,13 +118,16 @@ class Builder {
   /** Trades in a tied company's options, bonds and other securities: listed in the gaps, not counted as stock trades. */
   private readonly nonStock = { option: 0, bond: 0, other: 0 };
   private readonly display: string;
+  private readonly db: Db;
+  private readonly bill: BillId;
+  private readonly now: Date;
+  private readonly curatedName: string | null;
 
-  constructor(
-    private readonly db: Db,
-    private readonly bill: BillId,
-    private readonly now: Date,
-    private readonly curatedName: string | null,
-  ) {
+  constructor(db: Db, bill: BillId, now: Date, curatedName: string | null) {
+    this.db = db;
+    this.bill = bill;
+    this.now = now;
+    this.curatedName = curatedName;
     this.display = billDisplay(bill);
   }
 

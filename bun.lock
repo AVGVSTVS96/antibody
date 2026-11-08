@@ -127,6 +127,9 @@
         "@antibody/resolve": "workspace:*",
         "@duckdb/node-api": "catalog:",
       },
+      "devDependencies": {
+        "@antibody/ingest-bills": "workspace:*",
+      },
     },
     "packages/watch": {
       "name": "@antibody/watch",

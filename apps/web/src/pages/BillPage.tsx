@@ -1,5 +1,5 @@
 import type { Bundle, BundleIndex, Claim } from "@antibody/core";
-import { congressGovUrl, parseBillId } from "@antibody/core/ids";
+import { congressGovUrl, parseBillId } from "@antibody/core";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { Built } from "../bill/Built.tsx";
 import { Cost } from "../bill/Cost.tsx";

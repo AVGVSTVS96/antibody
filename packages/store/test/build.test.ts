@@ -461,7 +461,7 @@ test("a long section's notable parts ride in its bundle entry, each with its own
 });
 
 test("the parts rule the page publishes states the thresholds the splitter uses", async () => {
-  const { PARTS } = await import("../../ingest-bills/src/parts.ts");
+  const { PARTS } = await import("@antibody/ingest-bills");
   const { RULES } = await import("../src/rules.ts");
   const text = RULES["parts-v1"]!.text;
   expect(text).toContain(`longer than ${PARTS.splitOver} words`);

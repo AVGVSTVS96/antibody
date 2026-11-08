@@ -1,6 +1,6 @@
 import type { BundleIndex } from "@antibody/core";
-import { billDisplay, congressGovUrl, parseBillId } from "@antibody/core/ids";
-import type { BillId } from "@antibody/core/ids";
+import { billDisplay, congressGovUrl, parseBillId } from "@antibody/core";
+import type { BillId } from "@antibody/core";
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { loadIndex } from "../lib/data.ts";

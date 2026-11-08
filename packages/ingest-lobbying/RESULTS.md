@@ -43,7 +43,7 @@ Topic-only, Sonnet 5.5: OBBBA 536 lines in 416 filings kept (558 this-bill, 18 o
 
 ## Precision, checked by reading
 
-- Spike round (before this work): 90/90 high+medium correct on GENIUS, OBBBA, IRA (`spikes/lobbying/RESULTS.md`).
+- Spike round (before this work): 90/90 high+medium correct on GENIUS, OBBBA, IRA ([spikes/lobbying/RESULTS.md](https://github.com/AVGVSTVS96/antibody/blob/a879985/spikes/lobbying/RESULTS.md)).
 - This round: reading 20 random SAVE Act lines turned up two real error classes, both fixed with tests: other bills titled "SAVE Act" (Save Healthcare Workers Act, EGG SAVE Act) matched by name, and the SAVE America Act joining as an alias. Name matches now drop to low when another bill's number labels the same title ("H.R.3849/S.1803, STABLE GENIUS Act"); a number that comes after the name starts a new entry and does not count ("implement GENIUS Act. H.R.3633 - ...").
 - Sections: 10 random OBBBA and IRA lines with sections read in full, all correct. The dropped ones had "Sec.8(b)(2)" under S.394, "Section 16(a)" of the Exchange Act, "Section 199A" of the tax code.
 - Topic-only: 16 random OBBBA lines read; all are reconciliation/tax/Medicaid/SNAP lines in the 2025 pending quarters. The inference is that "reconciliation" in those quarters means H.R.1 and not an earlier FY2025 attempt; that is why they carry confidence <= 0.8 and the rule name.
