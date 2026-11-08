@@ -9,7 +9,8 @@
     "@antibody/core": "workspace:*",
     "@antibody/ingest-news": "workspace:*",
     "@antibody/store": "workspace:*",
-    "fast-xml-parser": "catalog:"
+    "fast-xml-parser": "catalog:",
+    "zod": "catalog:"
   },
   "scripts": {
     "typecheck": "tsc"

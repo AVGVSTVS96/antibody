@@ -6,7 +6,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@antibody/core": "workspace:*"
+    "@antibody/core": "workspace:*",
+    "zod": "catalog:"
   },
   "scripts": {
     "typecheck": "tsc"

@@ -8,7 +8,8 @@
   "dependencies": {
     "@antibody/core": "workspace:*",
     "@antibody/ingest-bills": "workspace:*",
-    "@antibody/ingest-news": "workspace:*"
+    "@antibody/ingest-news": "workspace:*",
+    "zod": "catalog:"
   },
   "scripts": {
     "typecheck": "tsc"
