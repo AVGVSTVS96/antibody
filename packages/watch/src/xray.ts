@@ -16,6 +16,7 @@ export async function runXray(bill: BillId, logDir: string, signal?: AbortSignal
   const log = join(logDir, `${bill}.log`);
   const minutes = Number(process.env.ANTIBODY_WATCH_XRAY_MINUTES ?? 60);
   const t0 = performance.now();
+
   const proc = Bun.spawn(["bun", join(ROOT, "apps/cli/src/main.ts"), "xray", bill], {
     cwd: ROOT,
     stdout: Bun.file(log),
@@ -24,12 +25,21 @@ export async function runXray(bill: BillId, logDir: string, signal?: AbortSignal
       ? AbortSignal.any([signal, AbortSignal.timeout(minutes * 60_000)])
       : AbortSignal.timeout(minutes * 60_000),
   });
+
   const stderr = await new Response(proc.stderr).text();
   const code = await proc.exited;
   const seconds = Math.round((performance.now() - t0) / 100) / 10;
-  if (stderr) await Bun.write(`${log}.err`, stderr);
-  if (code === 0) return { ok: true, error: null, seconds, log };
+
+  if (stderr) {
+    await Bun.write(`${log}.err`, stderr);
+  }
+
+  if (code === 0) {
+    return { ok: true, error: null, seconds, log };
+  }
+
   const lastLine = stderr.trim().split("\n").filter(Boolean).pop() ?? `exit ${code ?? "killed"}`;
+
   return {
     ok: false,
     error: proc.signalCode ? `stopped after ${minutes} min (${proc.signalCode})` : lastLine,
@@ -76,29 +86,37 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
     readRows("attention", bill),
     readRows("section_parts", bill),
   ]);
+
   const byId = new Map(sections.map((s) => [s.id, s]));
   const partById = new Map(parts.map((p) => [p.id, p]));
+
   const section = (id: string): Section => {
     const s = byId.get(id);
+
     return { id, num: s?.num ?? id.split(":").pop() ?? id, heading: s?.heading ?? "", url: s?.text_url ?? "" };
   };
+
   /** A part of a long section (parts-v1) reads as its own provision: "4(a)(12)", its heading, the final text. */
   const scored = (s: (typeof scores)[number]): Section => {
     const p = s.part_id ? partById.get(s.part_id) : undefined;
+
     return p ? { id: p.id, num: p.num, heading: p.heading, url: p.source_url } : section(s.section_id);
   };
 
   const currentLaw = new Map(estimates.filter((e) => e.baseline === "current-law").map((e) => [e.id, e]));
   const latest = [...currentLaw.values()].sort((a, b) => (b.published_on ?? "").localeCompare(a.published_on ?? ""))[0];
   let deficit: XrayFacts["deficit"] = null;
+
   if (latest) {
     const own = lines.filter((l) => l.estimate_id === latest.id && l.measure === "deficit");
     const whole = own.filter((l) => l.line_kind === "whole-bill");
     const pick = whole.length ? whole : own.filter((l) => l.line_kind !== "whole-bill");
+
     if (pick.length) {
       const musd = whole.length
         ? whole.reduce((m, l) => (Math.abs(l.total_musd) > Math.abs(m) ? l.total_musd : m), 0)
         : pick.reduce((sum, l) => sum + l.total_musd, 0);
+
       deficit = { musd, period: pick[0]!.period, url: latest.url, baselineLabel: latest.baseline_label };
     }
   }

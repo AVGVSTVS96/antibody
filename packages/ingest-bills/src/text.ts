@@ -4,16 +4,17 @@ const QUOTES: Record<string, string> = { "“": '"', "”": '"', "‘": "'", "�
 /** Straight quotes, plain dashes and single spaces: how text is stored and shown. */
 export function norm(s: string): string {
   return s
-    .replace(/[“”‘’—–`]/g, (c) => QUOTES[c]!)
-    .replace(SPACES, " ")
+    .replaceAll(/[“”‘’—–`]/g, (c) => QUOTES[c]!)
+    .replaceAll(SPACES, " ")
     .replaceAll("''", '"')
-    .replace(/\s+/g, " ")
+    .replaceAll(/\s+/g, " ")
     .trim();
 }
 
 /** Lowercase alphanumeric tokens: what hashing, shingles and word diffs compare. */
 export function canon(s: string): string {
-  const spaced = s.replace(/[¼-¾⅐-⅞]/g, (c) => ` ${c.normalize("NFKC")}`);
+  const spaced = s.replaceAll(/[¼-¾⅐-⅞]/g, (c) => ` ${c.normalize("NFKC")}`);
+
   return (
     spaced
       .normalize("NFKC")
@@ -33,7 +34,7 @@ export function normEnum(s: string): string {
   return norm(s)
     .replace(/^["' ]+/, "")
     .replace(/^(SECTION|SEC\.|TITLE|SUBTITLE|PART|SUBPART|CHAPTER|SUBCHAPTER|DIVISION)\s*/i, "")
-    .replace(/^[ .\-—]+|[ .\-—]+$/g, "");
+    .replaceAll(/^[ .\-—]+|[ .\-—]+$/g, "");
 }
 
 export function words(s: string): number {
@@ -43,9 +44,17 @@ export function words(s: string): number {
 /** Every 5-word run of the canonical text (or the whole text when shorter). */
 export function shingles(text: string, k = 5): Set<string> {
   const w = canon(text).split(" ").filter(Boolean);
-  if (w.length < k) return new Set(w.length ? [w.join(" ")] : []);
+
+  if (w.length < k) {
+    return new Set(w.length ? [w.join(" ")] : []);
+  }
+
   const out = new Set<string>();
-  for (let i = 0; i + k <= w.length; i++) out.add(w.slice(i, i + k).join(" "));
+
+  for (let i = 0; i + k <= w.length; i++) {
+    out.add(w.slice(i, i + k).join(" "));
+  }
+
   return out;
 }
 
@@ -70,16 +79,23 @@ const CITES: [RegExp, (g: string[]) => string][] = [
 
 /** Provisions of law a section amends or cites (USC, IRC, Public Law, named Acts); definition cross-references are left out. */
 export function citations(text: string): Set<string> {
-  const t = text.replace(/(?:has|have|had) the meanings? given[^.;]*/g, "");
+  const t = text.replaceAll(/(?:has|have|had) the meanings? given[^.;]*/g, "");
   const out = new Set<string>();
-  for (const [rx, fmt] of CITES)
+
+  for (const [rx, fmt] of CITES) {
     for (const m of t.matchAll(rx)) out.add(fmt(m.slice(1).map((g) => g.replaceAll("–", "-").toLowerCase())));
+  }
+
   return out;
 }
 
 export function intersect<T>(a: Set<T>, b: Set<T>): number {
   const [small, big] = a.size <= b.size ? [a, b] : [b, a];
   let n = 0;
-  for (const x of small) if (big.has(x)) n++;
+
+  for (const x of small) {
+    if (big.has(x)) n++;
+  }
+
   return n;
 }

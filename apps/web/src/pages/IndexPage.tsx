@@ -1,4 +1,5 @@
-import { BIG_STAKES, type BundleIndex } from "@antibody/core";
+import { BIG_STAKES } from "@antibody/core";
+import type { BundleIndex } from "@antibody/core";
 import { use, useEffect, useState } from "react";
 import { loadIndex, prefetchBundle } from "../lib/data.ts";
 import { count, day } from "../lib/format.ts";
@@ -21,7 +22,10 @@ export function IndexPage() {
 
   useEffect(() => {
     document.title = "antibody · X-ray any bill in Congress";
-    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView();
+
+    if (location.hash) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView();
+    }
   }, []);
 
   const curated = index.bills
@@ -31,22 +35,44 @@ export function IndexPage() {
         Number(b.id === START_HERE) - Number(a.id === START_HERE) ||
         (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""),
     );
+
   const watched = index.bills
     .filter((b) => b.origin === "watcher")
     .sort((a, b) => (b.addedOn ?? "").localeCompare(a.addedOn ?? "") || b.id.localeCompare(a.id));
+
   const key = index.bills.find((b) => b.id === "117-hr-5376" && b.stats?.fingerprint) ?? curated[0];
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const raw = q.trim();
-    if (!raw) return;
+
+    if (!raw) {
+      return;
+    }
+
     const hits = matchBills(index.bills, raw);
     const id = missingBill(raw);
     const exact = id ? index.bills.find((b) => b.id === id) : undefined;
     const hit = exact ?? (hits.length === 1 ? hits[0] : undefined);
-    if (hit) return navigate(billHref(hit.id));
-    if (hits.length) return setNotice(<>{count(hits.length, "bill")} match. Pick one below, or be more specific.</>);
-    if (!id) return setNotice(<>No bill matches “{raw}”. Try a number like S.1582, H.R. 1, or a congress.gov link.</>);
+
+    if (hit) {
+      navigate(billHref(hit.id));
+
+      return;
+    }
+
+    if (hits.length) {
+      setNotice(<>{count(hits.length, "bill")} match. Pick one below, or be more specific.</>);
+
+      return;
+    }
+
+    if (!id) {
+      setNotice(<>No bill matches “{raw}”. Try a number like S.1582, H.R. 1, or a congress.gov link.</>);
+
+      return;
+    }
+
     setNotice(<NotXrayed id={id} />);
   }
 
@@ -180,6 +206,7 @@ export function IndexPage() {
 
 function Key({ entry }: { entry: Entry }) {
   const s = entry.stats!;
+
   return (
     <aside className="key" aria-label="How to read a fingerprint">
       <p className="key-t">Every bill gets a fingerprint</p>
@@ -208,6 +235,7 @@ function Key({ entry }: { entry: Entry }) {
 
 function Rows({ bills, feature }: { bills: Entry[]; feature?: string }) {
   const phone = useMedia("(max-width: 760px)");
+
   return (
     <>
       <div className="laws-h" aria-hidden="true">
@@ -234,14 +262,19 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
   const unranked = !!t && !t.tested && !short && !!t.why?.startsWith("too few");
   const cannotFire = !!t && !t.tested && !short && !unranked;
   const note = s && fingerprintNote(s.fingerprint, phone);
+
   return (
     <li>
       <a
         className="lawrow"
         href={billHref(b.id)}
         onClick={onLink}
-        onPointerEnter={() => prefetchBundle(b.id)}
-        onFocus={() => prefetchBundle(b.id)}
+        onPointerEnter={() => {
+          prefetchBundle(b.id);
+        }}
+        onFocus={() => {
+          prefetchBundle(b.id);
+        }}
       >
         <span className="c-fp">
           {s && <Fingerprint kinds={s.fingerprint} label={b.display} />}
@@ -308,7 +341,8 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
 
 function Picks({ index }: { index: BundleIndex }) {
   const picks = index.watch.slice(0, 12);
-  if (!picks.length)
+
+  if (!picks.length) {
     return (
       <section className="wpicks">
         <div className="wrap">
@@ -319,6 +353,8 @@ function Picks({ index }: { index: BundleIndex }) {
         </div>
       </section>
     );
+  }
+
   return (
     <section className="wpicks" aria-labelledby="picksh">
       <div className="wrap">
@@ -330,6 +366,7 @@ function Picks({ index }: { index: BundleIndex }) {
           {picks.map((w) => {
             const [lead = "Moved this week", ...rest] = picksNote(w);
             const xrayed = !!w.file;
+
             return (
               <li key={w.billId} className="wpick">
                 <span className={`wpick-k${lead.startsWith("Became law") ? " law" : ""}`}>{lead}</span>
@@ -344,7 +381,9 @@ function Picks({ index }: { index: BundleIndex }) {
                     className="link"
                     href={billHref(w.billId)}
                     onClick={onLink}
-                    onPointerEnter={() => prefetchBundle(w.billId)}
+                    onPointerEnter={() => {
+                      prefetchBundle(w.billId);
+                    }}
                   >
                     Open the x-ray
                   </a>

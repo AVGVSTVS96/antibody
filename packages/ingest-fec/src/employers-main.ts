@@ -7,7 +7,9 @@ const cycle = Number(Bun.argv[2]);
 const { byFec } = await memberLookup();
 const committees = await memberCommittees(cycle, byFec);
 const { rows, stats } = await aggregateEmployers(cycle, committees, EMPLOYER_MIN_USD);
+
 await writeRows("employer_contributions", `indiv-${cycle}`, rows);
+
 console.log(
   JSON.stringify({
     cycle,

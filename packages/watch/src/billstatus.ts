@@ -1,4 +1,5 @@
-import { BILL_TYPES, type BillId, type BillType, billId } from "@antibody/core";
+import { BILL_TYPES, billId } from "@antibody/core";
+import type { BillId, BillType } from "@antibody/core";
 import { XMLParser } from "fast-xml-parser";
 
 export interface RecordedVote {
@@ -60,6 +61,7 @@ export interface BillStatus {
 }
 
 const ARRAYS = new Set(["item", "amendment", "recordedVote"]);
+
 const parser = new XMLParser({
   ignoreAttributes: true,
   parseTagValue: false,
@@ -69,6 +71,7 @@ const parser = new XMLParser({
 
 // biome-ignore lint/suspicious/noExplicitAny: parsed XML is untyped until read into BillStatus
 type X = any;
+
 const items = (node: X): X[] => node?.item ?? [];
 const str = (v: X): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
 const day = (v: X): string | null => str(v)?.slice(0, 10) ?? null;
@@ -79,13 +82,21 @@ const PACKAGE = new RegExp(`BILLS-(\\d+)(${TYPES_LONGEST_FIRST})(\\d+)([a-z]+)\\
 /** `BILLS-119hr1eas` → {bill: 119-hr-1, code: eas} */
 export function parsePackage(name: string): { bill: BillId; code: string } | null {
   const m = name.match(PACKAGE);
-  if (!m) return null;
+
+  if (!m) {
+    return null;
+  }
+
   return { bill: billId({ congress: +m[1]!, type: m[2] as BillType, number: +m[3]! }), code: m[4]! };
 }
 
 export function parseBillStatus(xml: string): BillStatus {
   const bill: X = parser.parse(xml).billStatus?.bill;
-  if (!bill) throw new Error("not a BILLSTATUS document");
+
+  if (!bill) {
+    throw new Error("not a BILLSTATUS document");
+  }
+
   const id = billId({
     congress: +bill.congress,
     type: String(bill.type).toLowerCase() as BillType,
@@ -99,6 +110,7 @@ export function parseBillStatus(xml: string): BillStatus {
   // When the final text has short titles only for its parts, earlier ones can name the shell bill it rode on
   // (H.R.815's "RELIEVE Act"), so only a popular title (H.R.1's "One Big Beautiful Bill Act") names it.
   const popular = str(titles.find((t: X) => t.titleType === "Popular Titles")?.title);
+
   const shortTitle =
     final.length && final.every((t: X) => /portions/i.test(t.titleType ?? ""))
       ? popular
@@ -120,13 +132,19 @@ export function parseBillStatus(xml: string): BillStatus {
   }));
 
   const versions: TextVersion[] = [];
+
   for (const v of items(bill.textVersions)) {
     const urls: string[] = items(v.formats).map((f: X) => str(f.url) ?? "");
     const xmlUrl = urls.find((u) => /\/xml\/BILLS-.*\.xml$/.test(u)) ?? urls.find((u) => /BILLS-.*\.xml$/.test(u));
     const pkg = xmlUrl && parsePackage(xmlUrl);
-    if (!xmlUrl || !pkg) continue;
+
+    if (!xmlUrl || !pkg) {
+      continue;
+    }
+
     versions.push({ code: pkg.code, name: str(v.type) ?? pkg.code, date: day(v.date), xmlUrl });
   }
+
   versions.sort((a, b) => (b.date ?? "9999").localeCompare(a.date ?? "9999"));
 
   const cbo: CboEstimate[] = items(bill.cboCostEstimates).map((c: X) => ({

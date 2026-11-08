@@ -24,12 +24,23 @@ export function Switch({ view, onChange, empty, equal = false }: Props) {
   useLayoutEffect(() => {
     const place = () => {
       const el = box.current?.querySelector<HTMLElement>(`[data-view="${view}"]`);
-      if (el) setPill({ x: el.offsetLeft, w: el.offsetWidth });
+
+      if (el) {
+        setPill({ x: el.offsetLeft, w: el.offsetWidth });
+      }
     };
+
     place();
     const ro = new ResizeObserver(place);
-    if (box.current) ro.observe(box.current);
-    const raf = requestAnimationFrame(() => setReady(true));
+
+    if (box.current) {
+      ro.observe(box.current);
+    }
+
+    const raf = requestAnimationFrame(() => {
+      setReady(true);
+    });
+
     return () => {
       ro.disconnect();
       cancelAnimationFrame(raf);
@@ -44,7 +55,15 @@ export function Switch({ view, onChange, empty, equal = false }: Props) {
       )}
       {VIEWS.map((v) => (
         <label key={v.id} data-view={v.id} data-empty={empty[v.id] ? "" : undefined} title={empty[v.id] ?? undefined}>
-          <input type="radio" name={name} className="sc-sr" checked={view === v.id} onChange={() => onChange(v.id)} />
+          <input
+            type="radio"
+            name={name}
+            className="sc-sr"
+            checked={view === v.id}
+            onChange={() => {
+              onChange(v.id);
+            }}
+          />
           <span>{v.label}</span>
         </label>
       ))}

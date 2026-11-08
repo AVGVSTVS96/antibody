@@ -1,5 +1,6 @@
 import { wordDiff } from "./diff.ts";
-import { containedIn, type Method, match } from "./match.ts";
+import { containedIn, match } from "./match.ts";
+import type { Method } from "./match.ts";
 import type { Sec } from "./sections.ts";
 
 export interface ParsedVersion {
@@ -67,16 +68,21 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
 
     const dormant = lineages.flatMap((l, k) => (l.removedIn ? [k] : []));
     const revived = new Map<number, { lineage: number; score: number }>();
+
     if (dormant.length && leftovers.length) {
       const back = match(
         dormant.map((k) => lineages[k]!.last),
         leftovers.map((j) => secs[j]!),
         { fuzzyFloor: 0.6, headingFloor: 1.1, rewriteFloor: 1.1, citeFloor: 1.1 },
       );
-      for (const [jj, p] of back) revived.set(leftovers[jj]!, { lineage: dormant[p.old]!, score: p.score });
+
+      for (const [jj, p] of back) {
+        revived.set(leftovers[jj]!, { lineage: dormant[p.old]!, score: p.score });
+      }
     }
 
     const fresh = leftovers.filter((j) => !revived.has(j));
+
     const split = new Map(
       [
         ...containedIn(
@@ -85,8 +91,10 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
         ),
       ].map(([k, hit]) => [fresh[k]!, hit]),
     );
+
     const usedPrev = new Set([...pairs.values()].map((p) => p.old));
     const gone = prev.map((_, i) => i).filter((i) => !usedPrev.has(i));
+
     const merged = new Map(
       [
         ...containedIn(
@@ -110,32 +118,45 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
         largestInserts: [],
         movedFrom: null,
       };
+
       let idx: number;
       const pair = pairs.get(j);
       const back = revived.get(j);
+
       if (pair) {
         idx = current.get(pair.old)!;
         const before = prev[pair.old]!;
         Object.assign(step, { match: pair.method, similarity: pair.score });
+
         if (s.hash !== before.hash) {
           lineages[idx]!.changedIn.push(v.code);
           Object.assign(step, wordDiff(before.text, s.text));
         }
-        if (s.path !== before.path) step.movedFrom = before.path;
+
+        if (s.path !== before.path) {
+          step.movedFrom = before.path;
+        }
       } else if (back) {
         idx = back.lineage;
         const l = lineages[idx]!;
         l.removedIn = null;
         l.revivedIn.push(v.code);
         Object.assign(step, { match: "revived", similarity: back.score });
-        if (s.hash !== l.last.hash) Object.assign(step, wordDiff(l.last.text, s.text));
+
+        if (s.hash !== l.last.hash) {
+          Object.assign(step, wordDiff(l.last.text, s.text));
+        }
       } else {
         idx = lineages.length;
         const from = split.get(j);
         const parent = from ? lineages[current.get(from.whole)!]! : null;
         const base = `${bill}@${v.code}:${s.path}`;
         let id = base;
-        for (let n = 2; taken.has(id); n++) id = `${base}~${n}`;
+
+        for (let n = 2; taken.has(id); n++) {
+          id = `${base}~${n}`;
+        }
+
         taken.add(id);
         lineages.push({
           id,
@@ -152,6 +173,7 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
         });
         parent?.splitInto.push(id);
       }
+
       const l = lineages[idx]!;
       l.history[v.code] = step;
       l.last = s;
@@ -160,13 +182,22 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
     });
 
     const alive = new Set(next.values());
-    for (const idx of new Set(current.values())) if (!alive.has(idx)) lineages[idx]!.removedIn = v.code;
-    for (const [i, hit] of merged)
+
+    for (const idx of new Set(current.values())) {
+      if (!alive.has(idx)) lineages[idx]!.removedIn = v.code;
+    }
+
+    for (const [i, hit] of merged) {
       lineages[current.get(i)!]!.mergedInto = { id: lineages[next.get(hit.whole)!]!.id, share: hit.share };
+    }
 
     if (vi) {
       const matched: Partial<Record<Method, number>> = {};
-      for (const p of pairs.values()) matched[p.method as Method] = (matched[p.method as Method] ?? 0) + 1;
+
+      for (const p of pairs.values()) {
+        matched[p.method as Method] = (matched[p.method as Method] ?? 0) + 1;
+      }
+
       steps.push({
         from: versions[vi - 1]!.code,
         to: v.code,
@@ -180,10 +211,14 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
         removedMergedIntoNew: merged.size,
       });
     }
+
     current = next;
   });
 
-  for (const l of lineages) if (!l.removedIn) l.mergedInto = null;
+  for (const l of lineages) {
+    if (!l.removedIn) l.mergedInto = null;
+  }
+
   return { lineages, steps };
 }
 
@@ -199,12 +234,18 @@ export function wholesaleReason(lineages: Lineage[], versions: ParsedVersion[]):
   const own = versions.filter((v) => !v.predecessor);
   const first = own[0];
   const finalWords = words(own.at(-1));
-  if (first && finalWords && words(first) < WHOLESALE.shellShare * finalWords)
+
+  if (first && finalWords && words(first) < WHOLESALE.shellShare * finalWords) {
     return `The bill began as a short shell (${words(first).toLocaleString("en-US")} words, against ${finalWords.toLocaleString("en-US")} in the final text), so its real text arrived late as a whole and "added late" says nothing about any one section.`;
+  }
+
   const final = lineages.filter((l) => !l.removedIn);
   const late = final.filter((l) => isLate(l, versions)).length;
-  if (final.length && late / final.length >= WHOLESALE.lateShare)
+
+  if (final.length && late / final.length >= WHOLESALE.lateShare) {
     return `${Math.round((100 * late) / final.length)}% of the final sections first appear after a chamber had passed the bill (its text was rewritten wholesale), so "added late" says nothing about any one section.`;
+  }
+
   return null;
 }
 
@@ -223,6 +264,10 @@ export function isLate(l: Lineage, versions: ParsedVersion[]): boolean {
   const first = codes.indexOf(l.firstVersion);
   const ownStart = versions.findIndex((v) => !v.predecessor);
   const passed = codes.findIndex((c) => PASSED.has(c));
-  if (passed < 0 || first <= ownStart || first < passed) return false;
+
+  if (passed === -1 || first <= ownStart || first < passed) {
+    return false;
+  }
+
   return !(l.splitFrom && l.splitFrom.share >= PURE_SPLIT);
 }

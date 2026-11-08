@@ -11,13 +11,35 @@ export const monthYear = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]
 /** Dollars short enough for a headline number: $515K, $5.4K, $2.3M. */
 export function money(n: number): string {
   const trim = (x: number, unit: string) => `$${x.toFixed(1).replace(/\.0$/, "")}${unit}`;
-  if (n >= 1e13) return `$${Math.round(n / 1e12)}T`;
-  if (n >= 1e12) return trim(n / 1e12, "T");
-  if (n >= 1e9) return trim(n / 1e9, "B");
-  if (n >= 1e7) return `$${Math.round(n / 1e6)}M`;
-  if (n >= 1e6) return trim(n / 1e6, "M");
-  if (n >= 1e4) return `$${Math.round(n / 1e3)}K`;
-  if (n >= 1e3) return trim(n / 1e3, "K");
+
+  if (n >= 1e13) {
+    return `$${Math.round(n / 1e12)}T`;
+  }
+
+  if (n >= 1e12) {
+    return trim(n / 1e12, "T");
+  }
+
+  if (n >= 1e9) {
+    return trim(n / 1e9, "B");
+  }
+
+  if (n >= 1e7) {
+    return `$${Math.round(n / 1e6)}M`;
+  }
+
+  if (n >= 1e6) {
+    return trim(n / 1e6, "M");
+  }
+
+  if (n >= 1e4) {
+    return `$${Math.round(n / 1e3)}K`;
+  }
+
+  if (n >= 1e3) {
+    return trim(n / 1e3, "K");
+  }
+
   return `$${Math.round(n)}`;
 }
 
@@ -27,15 +49,18 @@ export const coName = (a: Actor) => plainName(a.label, 34);
 
 export const memberName = (v: MemberView) => {
   const p = v.node.props;
+
   return `${v.node.label.replace(/\s*\(.*\)$/, "")}, ${p.party}-${p.state}`;
 };
 
 export const lastName = (v: MemberView) => {
   const name = v.node.label.replace(/^(Sen|Rep)\.\s+/, "").replace(/\s*\(.*\)$/, "");
+
   const words = name
     .split(" ")
     .map((w) => w.replace(/,$/, ""))
     .filter((w) => !/^[A-Z]\.$/.test(w) && !/^(Jr|Sr|II|III)\.?$/.test(w));
+
   return words.at(-1) ?? name;
 };
 
@@ -74,6 +99,7 @@ export function tradesCard(m: BillModel, a: Actor, ties: Tie[]): TradesCard {
       const v = m.memberById.get(t.member)!;
       const edge = v.trades.find((e) => m.actorOf(e.dst) === a.id);
       const owners = [...new Set(edge?.props.events.map((e) => e.owner) ?? [])].filter((o) => o !== "self");
+
       return {
         id: v.node.id,
         name: memberName(v),
@@ -84,12 +110,15 @@ export function tradesCard(m: BillModel, a: Actor, ties: Tie[]): TradesCard {
       };
     })
     .sort((x, y) => y.trades - x.trades || x.name.localeCompare(y.name));
+
   const dates = ties.flatMap((t) =>
     (m.memberById.get(t.member)?.trades ?? [])
       .filter((e) => m.actorOf(e.dst) === a.id)
       .flatMap((e) => e.props.events.map((ev) => ev.date)),
   );
+
   dates.sort();
+
   return {
     kind: "trades",
     id: a.id,
@@ -124,7 +153,7 @@ export interface PacCard {
 }
 
 const BUCKETS: [number, string][] = [
-  [10000, "$10,000 or more"],
+  [10_000, "$10,000 or more"],
   [5000, "$5,000 to $9,999"],
   [2500, "$2,500 to $4,999"],
   [1000, "$1,000 to $2,499"],
@@ -133,16 +162,28 @@ const BUCKETS: [number, string][] = [
 
 function partiesPhrase(m: BillModel, ties: Tie[]): string {
   const set = new Set(ties.map((t) => m.memberById.get(t.member)?.node.props.party).filter((p) => p != null));
-  if (set.size >= 3) return ", in every party";
-  if (set.size === 2) return ", in both parties";
+
+  if (set.size >= 3) {
+    return ", in every party";
+  }
+
+  if (set.size === 2) {
+    return ", in both parties";
+  }
+
   const only = [...set][0];
+
   return only ? `, all ${PARTY_NAME[only]}` : "";
 }
 
 export function pacCard(m: BillModel, a: Actor, ties: Tie[]): PacCard {
   const total = ties.reduce((s, t) => s + t.weight, 0);
   const counts = BUCKETS.map(() => 0);
-  for (const t of ties) counts[BUCKETS.findIndex(([floor]) => t.weight >= floor)]!++;
+
+  for (const t of ties) {
+    counts[BUCKETS.findIndex(([floor]) => t.weight >= floor)]!++;
+  }
+
   return {
     kind: "pac",
     id: a.id,
@@ -191,7 +232,9 @@ export function groupCard(group: SectionGroup): GroupCard {
       claim: v.figure?.estimate.claim ?? v.s.dollars[0]?.claim ?? null,
     }))
     .sort((a, b) => Math.abs(b.musd) - Math.abs(a.musd));
+
   const scored = group.sections.filter((v) => v.s.attention);
+
   return {
     kind: "sections",
     id: group.id,
@@ -241,8 +284,10 @@ export function memberCard(m: BillModel, v: MemberView, view: RingView, ties: Ti
       claim: t.claims[0] ?? null,
     }))
     .sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+
   const dates = v.trades.flatMap((e) => e.props.events.map((ev) => ev.date)).sort();
   const p = v.node.props;
+
   return {
     kind: "member",
     view,

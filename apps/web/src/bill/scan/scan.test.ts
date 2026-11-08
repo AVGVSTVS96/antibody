@@ -22,7 +22,7 @@ test("slots leave the bottom open and the first slot of fromTop sits at 12 o'clo
 });
 
 test("placeByWant keeps the order of the wants and spreads evenly", () => {
-  const wants = [3.0, 0.2, 5.5, 1.1, 2.0];
+  const wants = [3, 0.2, 5.5, 1.1, 2];
   const angles = placeByWant(wants, 0.3);
   expect(new Set(angles.map((a) => a.toFixed(6))).size).toBe(5);
   const byWant = wants.map((w, i) => [w, angles[i]!] as const).sort((a, b) => a[0] - b[0]);
@@ -40,21 +40,39 @@ test("the ring draws companies by members traded, capped, and always keeps a lin
   const all = selectRing(m, "trades").candidates.companies;
   expect(all).toBeGreaterThan(0);
   const outsider = [...scenes.allTies.trades.keys()].find((id) => !d.companies.some((a) => a.id === id));
-  if (outsider) expect(selectRing(m, "trades", [outsider]).companies.some((a) => a.id === outsider)).toBe(true);
-  for (const t of d.ties) expect(d.members.some((v) => v.node.id === t.member)).toBe(true);
+
+  if (outsider) {
+    expect(selectRing(m, "trades", [outsider]).companies.some((a) => a.id === outsider)).toBe(true);
+  }
+
+  for (const t of d.ties) {
+    expect(d.members.some((v) => v.node.id === t.member)).toBe(true);
+  }
 });
 
 test("every mark of the fixture has a target, a size that fits its ring and a place on the circle", () => {
   for (const view of ["trades", "pac"] as const) {
     const { layout } = scenes.ring[view];
     const angles = new Set<string>();
-    for (const s of [...layout.companies, ...layout.members]) angles.add(`${s.size > 0}${s.angle.toFixed(5)}`);
+
+    for (const s of [...layout.companies, ...layout.members]) {
+      angles.add(`${s.size > 0}${s.angle.toFixed(5)}`);
+    }
+
     expect(angles.size).toBeGreaterThan(0);
-    for (const s of layout.members) expect(s.size).toBeGreaterThan(0);
+
+    for (const s of layout.members) {
+      expect(s.size).toBeGreaterThan(0);
+    }
   }
+
   const t = scenes.targets.trades;
+
   for (let i = 0; i < scenes.marks.length; i++) {
-    if (!t.present[i]) continue;
+    if (!t.present[i]) {
+      continue;
+    }
+
     expect(t.t[i * CHANNELS + CH.alpha]).toBe(1);
     expect(Number.isFinite(t.t[i * CHANNELS + CH.angle]!)).toBe(true);
   }
@@ -77,7 +95,10 @@ test("ties branch off a shared track: the farthest member rides innermost and ev
   const set = tieSet(d, layout, company);
   expect(set.ties.length).toBe(d.byCompany.get(company)!.length);
   expect(set.ties.map((t) => t.order)).toEqual(set.ties.map((_, i) => i));
-  for (const t of set.ties) expect(t.d.startsWith("M")).toBe(true);
+
+  for (const t of set.ties) {
+    expect(t.d.startsWith("M")).toBe(true);
+  }
 });
 
 test("a straight route and an arc route both start at the company and end at the member", () => {

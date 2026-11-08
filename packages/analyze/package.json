@@ -2,6 +2,15 @@
   "name": "@antibody/analyze",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@antibody/core": "workspace:*", "@antibody/ingest-bills": "workspace:*", "@antibody/ingest-news": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@antibody/core": "workspace:*",
+    "@antibody/ingest-bills": "workspace:*",
+    "@antibody/ingest-news": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  }
 }

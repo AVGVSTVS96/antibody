@@ -2,6 +2,7 @@ import type { Sec } from "./sections.ts";
 import { canon, headingWords, intersect, normHeading } from "./text.ts";
 
 export type Method = "identical" | "xml-id" | "fuzzy" | "heading" | "rewritten" | "same-law";
+
 export interface Pair {
   old: number;
   method: Method;
@@ -32,22 +33,35 @@ export const DEFAULTS: MatchOptions = {
 /** Shingles found in more than `maxDf` sections are effective-date and conforming boilerplate; they say nothing about identity. */
 function cores(secs: Sec[], maxDf = 6): Map<Sec, Set<string>> {
   const df = new Map<string, number>();
-  for (const s of secs) for (const h of s.sh) df.set(h, (df.get(h) ?? 0) + 1);
+
+  for (const s of secs) {
+    for (const h of s.sh) df.set(h, (df.get(h) ?? 0) + 1);
+  }
+
   return new Map(secs.map((s) => [s, new Set([...s.sh].filter((h) => df.get(h)! <= maxDf))]));
 }
 
 export function similarity(a: Sec, b: Sec, core?: Map<Sec, Set<string>>): number {
   const sa = core?.get(a) ?? a.sh;
   const sb = core?.get(b) ?? b.sh;
-  if (!sa.size || !sb.size) return canon(a.text) === canon(b.text) ? 1 : 0;
+
+  if (!sa.size || !sb.size) {
+    return canon(a.text) === canon(b.text) ? 1 : 0;
+  }
+
   const inter = intersect(sa, sb);
+
   return (inter / Math.min(sa.size, sb.size)) * 0.5 + (inter / (sa.size + sb.size - inter)) * 0.5;
 }
 
 function push<K, V>(map: Map<K, V[]>, key: K, value: V) {
   const list = map.get(key);
-  if (list) list.push(value);
-  else map.set(key, [value]);
+
+  if (list) {
+    list.push(value);
+  } else {
+    map.set(key, [value]);
+  }
 }
 
 const round = (x: number) => Math.round(x * 1000) / 1000;
@@ -55,7 +69,11 @@ const byScore = (x: [number, number, number], y: [number, number, number]) => y[
 
 function topCounts(keys: Iterable<number>, n: number): [number, number][] {
   const counts = new Map<number, number>();
-  for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1);
+
+  for (const k of keys) {
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+
   return [...counts].sort((a, b) => b[1] - a[1]).slice(0, n);
 }
 
@@ -72,85 +90,145 @@ export function match(old: Sec[], next: Sec[], options: Partial<MatchOptions> = 
   const words = new Map([...old, ...next].map((s) => [s, headingWords(s.heading)]));
   const heads = new Map([...old, ...next].map((s) => [s, normHeading(s.heading)]));
   const sim = (i: number, j: number) => similarity(old[i]!, next[j]!, core);
+
   const take = (i: number, j: number, method: Method, score: number) => {
     pairs.set(j, { old: i, method, score: round(score) });
     usedOld.add(i);
   };
 
   const byHash = new Map<string, number[]>();
-  for (const [i, s] of old.entries()) push(byHash, s.hash, i);
+
+  for (const [i, s] of old.entries()) {
+    push(byHash, s.hash, i);
+  }
+
   next.forEach((s, j) => {
     const i = byHash.get(s.hash)?.find((i) => !usedOld.has(i));
-    if (i !== undefined) take(i, j, "identical", 1);
+
+    if (i !== undefined) {
+      take(i, j, "identical", 1);
+    }
   });
 
   const byId = new Map(old.flatMap((s, i) => (s.xmlId ? [[s.xmlId, i] as const] : [])));
   next.forEach((s, j) => {
     const i = s.xmlId ? byId.get(s.xmlId) : undefined;
-    if (!pairs.has(j) && i !== undefined && !usedOld.has(i)) take(i, j, "xml-id", sim(i, j));
+
+    if (!pairs.has(j) && i !== undefined && !usedOld.has(i)) {
+      take(i, j, "xml-id", sim(i, j));
+    }
   });
 
   const index = new Map<string, number[]>();
   old.forEach((s, i) => {
-    if (!usedOld.has(i)) for (const h of s.sh) push(index, h, i);
+    if (!usedOld.has(i)) {
+      for (const h of s.sh) push(index, h, i);
+    }
   });
   let scored: [number, number, number][] = [];
   next.forEach((s, j) => {
-    if (pairs.has(j)) return;
-    const hits = function* () {
-      for (const h of s.sh) for (const i of index.get(h) ?? []) if (!usedOld.has(i)) yield i;
+    if (pairs.has(j)) {
+      return;
+    }
+
+    const hits = function* hits() {
+      for (const h of s.sh) {
+        for (const i of index.get(h) ?? []) if (!usedOld.has(i)) yield i;
+      }
     };
-    for (const [i] of topCounts(hits(), 8)) scored.push([sim(i, j), i, j]);
+
+    for (const [i] of topCounts(hits(), 8)) {
+      scored.push([sim(i, j), i, j]);
+    }
+
     const heading = heads.get(s);
     old.forEach((os, i) => {
-      if (!usedOld.has(i) && os.heading && heads.get(os) === heading)
+      if (!usedOld.has(i) && os.heading && heads.get(os) === heading) {
         scored.push([Math.max(sim(i, j), o.headingFloor) + 0.3, i, j]);
+      }
     });
   });
+
   for (const [, i, j] of scored.sort(byScore)) {
-    if (pairs.has(j) || usedOld.has(i)) continue;
+    if (pairs.has(j) || usedOld.has(i)) {
+      continue;
+    }
+
     const sameHeading = heads.get(old[i]!) === heads.get(next[j]!);
     const s = sim(i, j);
-    if (s < 0.7 && !intersect(words.get(old[i]!)!, words.get(next[j]!)!)) continue;
-    if (s >= o.fuzzyFloor || (sameHeading && s >= o.headingFloor))
+
+    if (s < 0.7 && !intersect(words.get(old[i]!)!, words.get(next[j]!)!)) {
+      continue;
+    }
+
+    if (s >= o.fuzzyFloor || (sameHeading && s >= o.headingFloor)) {
       take(i, j, sameHeading && s < o.fuzzyFloor ? "heading" : "fuzzy", s);
+    }
   }
 
   scored = [];
   next.forEach((s, j) => {
-    if (pairs.has(j)) return;
+    if (pairs.has(j)) {
+      return;
+    }
+
     const hs = words.get(s)!;
     const cs = core.get(s)!;
     old.forEach((os, i) => {
-      if (usedOld.has(i)) return;
+      if (usedOld.has(i)) {
+        return;
+      }
+
       const ho = words.get(os)!;
       const shared = intersect(ho, hs);
       const hj = ho.size && hs.size ? shared / (ho.size + hs.size - shared) : 0;
       const co = core.get(os)!;
       const kept = co.size && cs.size ? intersect(co, cs) / Math.min(co.size, cs.size) : 0;
-      if ((hj >= 0.3 && kept >= 0.2) || hj >= 0.6) scored.push([hj * 0.5 + kept * 0.5, i, j]);
+
+      if ((hj >= 0.3 && kept >= 0.2) || hj >= 0.6) {
+        scored.push([hj * 0.5 + kept * 0.5, i, j]);
+      }
     });
   });
-  for (const [score, i, j] of scored.sort(byScore))
+
+  for (const [score, i, j] of scored.sort(byScore)) {
     if (!pairs.has(j) && !usedOld.has(i) && score >= o.rewriteFloor) take(i, j, "rewritten", sim(i, j));
+  }
 
   if (o.citeFloor <= 1) {
     const df = new Map<string, number>();
-    for (const s of [...old, ...next]) for (const c of s.cites) df.set(c, (df.get(c) ?? 0) + 1);
+
+    for (const s of [...old, ...next]) {
+      for (const c of s.cites) df.set(c, (df.get(c) ?? 0) + 1);
+    }
+
     scored = [];
     next.forEach((s, j) => {
-      if (pairs.has(j) || !s.cites.size) return;
+      if (pairs.has(j) || !s.cites.size) {
+        return;
+      }
+
       old.forEach((os, i) => {
-        if (usedOld.has(i) || !os.cites.size) return;
+        if (usedOld.has(i) || !os.cites.size) {
+          return;
+        }
+
         const shared = [...os.cites].filter((c) => s.cites.has(c));
-        if (!shared.length || Math.min(...shared.map((c) => df.get(c)!)) > 4) return;
+
+        if (!shared.length || Math.min(...shared.map((c) => df.get(c)!)) > 4) {
+          return;
+        }
+
         scored.push([shared.length / (os.cites.size + s.cites.size - shared.length), i, j]);
       });
     });
-    for (const [score, i, j] of scored.sort(byScore))
+
+    for (const [score, i, j] of scored.sort(byScore)) {
       if (!pairs.has(j) && !usedOld.has(i) && score >= o.citeFloor && sim(i, j) >= o.sameLawSimilarity)
         take(i, j, "same-law", sim(i, j));
+    }
   }
+
   return pairs;
 }
 
@@ -158,16 +236,28 @@ export function match(old: Sec[], next: Sec[], options: Partial<MatchOptions> = 
 export function containedIn(parts: Sec[], wholes: Sec[], floor = 0.5): Map<number, { whole: number; share: number }> {
   const index = new Map<string, number[]>();
   wholes.forEach((s, w) => {
-    for (const h of s.sh) push(index, h, w);
+    for (const h of s.sh) {
+      push(index, h, w);
+    }
   });
   const out = new Map<number, { whole: number; share: number }>();
   parts.forEach((s, p) => {
-    if (s.sh.size < 5) return;
-    const hits = function* () {
-      for (const h of s.sh) yield* new Set(index.get(h) ?? []);
+    if (s.sh.size < 5) {
+      return;
+    }
+
+    const hits = function* hits() {
+      for (const h of s.sh) {
+        yield* new Set(index.get(h) ?? []);
+      }
     };
+
     const [top] = topCounts(hits(), 1);
-    if (top && top[1] / s.sh.size >= floor) out.set(p, { whole: top[0], share: round(top[1] / s.sh.size) });
+
+    if (top && top[1] / s.sh.size >= floor) {
+      out.set(p, { whole: top[0], share: round(top[1] / s.sh.size) });
+    }
   });
+
   return out;
 }

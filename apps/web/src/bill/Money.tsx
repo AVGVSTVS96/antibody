@@ -9,9 +9,11 @@ export function Money({ m }: { m: BillModel }) {
   const { b } = m;
   const L = b.lobbying;
   const { rows, total } = phases(m);
+
   const clients = m.actors
     .filter((a) => a.lobbied.length)
     .sort((x, y) => y.reports - x.reports || x.label.localeCompare(y.label));
+
   const top = clients.slice(0, 6);
   const peak = Math.max(1, ...top.map((a) => a.reports));
   const pac = pacByParty(m);
@@ -19,6 +21,7 @@ export function Money({ m }: { m: BillModel }) {
   const [all, setAll] = useState(false);
   const moving = rows[0]!;
   const filled = rows.filter((r) => r.n > 0);
+
   return (
     <Section id="money" title="Who paid to be heard">
       <p className="lead narrow">
@@ -96,7 +99,7 @@ export function Money({ m }: { m: BillModel }) {
                 onClick={() => {
                   setAll((v) => !v);
                   requestAnimationFrame(() =>
-                    document.getElementById("all-clients")?.scrollIntoView({ block: "nearest" }),
+                    document.querySelector("#all-clients")?.scrollIntoView({ block: "nearest" }),
                   );
                 }}
               >

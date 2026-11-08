@@ -55,11 +55,16 @@ const BASELINE_ORDER: Baseline[] = ["current-law", "current-policy"];
  */
 export function figureChains<E extends FigureEstimate>(estimates: E[]): E[][] {
   const chains = new Map<Baseline, E[]>();
-  for (const e of estimates.filter((e) => e.perSection).sort(newest))
+
+  for (const e of estimates.filter((e) => e.perSection).sort(newest)) {
     chains.set(e.baseline, [...(chains.get(e.baseline) ?? []), e]);
+  }
+
   const latest = [...chains.values()].map((c) => c[0]!).sort(newest)[0];
+
   return BASELINE_ORDER.flatMap((b) => {
     const chain = chains.get(b);
+
     return chain && (chain[0]!.versionScored ?? null) === (latest?.versionScored ?? null) ? [chain] : [];
   });
 }
@@ -73,6 +78,7 @@ function fromChain<C>(lines: FigureLine<C>[], chain: FigureEstimate[]): Baseline
     const mine = lines.filter((l) => l.estimateId === est.id);
     const by = (m: FigureLine["measure"]) => mine.filter((l) => l.measure === m);
     const total = (xs: FigureLine<C>[]) => xs.reduce((a, l) => a + l.amountMusd, 0);
+
     const [used, musd, measure] = by("deficit").length
       ? ([by("deficit"), total(by("deficit")), "deficit"] as const)
       : by("outlays").length || by("revenues").length
@@ -82,7 +88,11 @@ function fromChain<C>(lines: FigureLine<C>[], chain: FigureEstimate[]): Baseline
             "outlays - revenues",
           ] as const)
         : ([by("budget_authority"), total(by("budget_authority")), "budget_authority"] as const);
-    if (!used.length) continue;
+
+    if (!used.length) {
+      continue;
+    }
+
     return {
       musd,
       baseline: est.baseline,
@@ -93,6 +103,7 @@ function fromChain<C>(lines: FigureLine<C>[], chain: FigureEstimate[]): Baseline
       fromLatest: i === 0,
     };
   }
+
   return null;
 }
 
@@ -108,5 +119,6 @@ export function sectionFigure<C>(lines: FigureLine<C>[], estimates: FigureEstima
   const pool = current.length ? current : found;
   const exact = pool.filter((f) => f.split === "exact");
   const counted = [...(exact.length ? exact : pool)].sort((a, b) => Math.abs(a.musd) - Math.abs(b.musd))[0];
+
   return counted ? { ...counted, byBaseline: pool } : null;
 }

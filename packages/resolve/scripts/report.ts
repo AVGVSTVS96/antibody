@@ -9,9 +9,13 @@ import type { Resolved } from "../src/resolve.ts";
 const outcomes = (await Bun.file(
   join(paths.raw("entities"), "resolve", "dev-outcomes.json"),
 ).json()) as Resolved["outcomes"];
+
 const methods = ["ticker", "name_exact", "fuzzy", "llm_same", "llm_subsidiary", "llm_parent"];
+
 console.log(`| source | distinct names | resolved | ${methods.join(" | ")} | records resolved |`);
+
 console.log(`|${"---|".repeat(methods.length + 4)}`);
+
 for (const source of ["client", "pac", "trade"]) {
   const rows = outcomes.filter((o) => o.mention.source === source);
   const hit = rows.filter((o) => o.match);

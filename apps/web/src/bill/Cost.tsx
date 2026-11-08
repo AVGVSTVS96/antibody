@@ -1,10 +1,12 @@
 import { articlesOf, BIG_STAKES, buriedWords, isLate, REACH_WORDS } from "@antibody/core";
-import { Fragment, type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { dots, quietZone, sectionName } from "../lib/derive.ts";
 import { baselineWords, count, day, deficitWords, quoted, usd } from "../lib/format.ts";
 import { useWidth } from "../lib/hooks.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
-import { frameFor, notes, type Placed, place, scales } from "../lib/scatter.ts";
+import { frameFor, notes, place, scales } from "../lib/scatter.ts";
+import type { Placed } from "../lib/scatter.ts";
 import { Inf, Src } from "../ui/claims.tsx";
 import { Section } from "./Section.tsx";
 
@@ -76,8 +78,10 @@ export function Cost({ m }: { m: BillModel }) {
 function HowMeasured({ m }: { m: BillModel }) {
   const A = m.b.attention;
   const scored = m.sections.filter((v) => v.s.attention?.pct != null).length;
+
   const via =
     A.via.map((v) => (v === "mediacloud" ? "Media Cloud" : "Google News")).join(" + ") || "no news source yet";
+
   return (
     <div>
       <p>
@@ -133,10 +137,12 @@ function Scatter({
   const zone = useMemo(() => quietZone(m, points), [m, points]);
   const zx = zone ? s.x(zone.hits) : null;
   const zy = zone ? s.y(zone.musd) : null;
+
   const labels = useMemo(
     () => notes(placed, f, zx != null && zy != null ? { x: zx, y: zy } : null),
     [placed, f, zx, zy],
   );
+
   const [tip, setTip] = useState<Placed | null>(null);
   const warm = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -145,27 +151,47 @@ function Scatter({
 
   const show = (p: Placed) => {
     clearTimeout(timer.current);
-    if (Date.now() - warm.current < 400) setTip(p);
-    else timer.current = setTimeout(() => setTip(p), 300);
+
+    if (Date.now() - warm.current < 400) {
+      setTip(p);
+    } else {
+      timer.current = setTimeout(() => {
+        setTip(p);
+      }, 300);
+    }
   };
+
   const hide = () => {
     clearTimeout(timer.current);
     setTip((t) => {
-      if (t) warm.current = Date.now();
+      if (t) {
+        warm.current = Date.now();
+      }
+
       return null;
     });
   };
+
   const ordered = useMemo(() => [...placed].sort((a, b) => a.cx - b.cx || a.cy - b.cy), [placed]);
+
   const onKey = (e: KeyboardEvent) => {
-    if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) return;
+    if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) {
+      return;
+    }
+
     e.preventDefault();
+
     const at = Math.max(
       0,
       ordered.findIndex((p) => p.v.s.id === pick),
     );
+
     const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
     const next = ordered[Math.min(ordered.length - 1, Math.max(0, at + step))];
-    if (next) onPick(next.v.s.id);
+
+    if (next) {
+      onPick(next.v.s.id);
+    }
   };
 
   const tipPos = tip && {
@@ -243,7 +269,9 @@ function Scatter({
             {placed.map((p) => {
               const colour =
                 p.kind === "headline" ? "var(--iris)" : p.kind === "buried" ? "var(--flare)" : "var(--quiet-dot)";
+
               const on = pick === p.v.s.id;
+
               return (
                 <g key={p.v.s.id} className={`pt${on ? " on" : ""}`}>
                   {p.musd >= 0 ? (
@@ -275,9 +303,13 @@ function Scatter({
                     cy={p.cy}
                     r={Math.max(10, p.r + 4)}
                     fill="transparent"
-                    onPointerEnter={() => show(p)}
+                    onPointerEnter={() => {
+                      show(p);
+                    }}
                     onPointerLeave={hide}
-                    onClick={() => onPick(p.v.s.id)}
+                    onClick={() => {
+                      onPick(p.v.s.id);
+                    }}
                     style={{ cursor: "pointer" }}
                   />
                 </g>
@@ -286,6 +318,7 @@ function Scatter({
           </g>
           {labels.map((n) => {
             const colour = n.tone === "flare" ? "var(--flare-ink)" : n.tone === "iris" ? "var(--iris)" : "var(--ink)";
+
             return (
               <g key={n.p.v.s.id} className="note" pointerEvents="none">
                 {n.lead && (
@@ -333,16 +366,26 @@ function Scatter({
 function Coverage({ m }: { m: BillModel }) {
   const final = m.sections.filter((v) => v.s.inFinal);
   const bins = new Map<number, { n: number; loud: number; flagged: number }>();
+
   for (const v of final) {
     const k = Math.min(articlesOf(v.s) ?? 0, 20);
     const b = bins.get(k) ?? { n: 0, loud: 0, flagged: 0 };
     b.n++;
-    if (v.kind === "headline") b.loud++;
-    if (v.kind === "buried") b.flagged++;
+
+    if (v.kind === "headline") {
+      b.loud++;
+    }
+
+    if (v.kind === "buried") {
+      b.flagged++;
+    }
+
     bins.set(k, b);
   }
+
   const top = Math.max(1, ...[...bins.values()].map((b) => b.n));
   const keys = Array.from({ length: Math.max(...bins.keys(), 4) + 1 }, (_, i) => i);
+
   return (
     <figure className="cover" aria-label="Sections by number of news articles">
       <figcaption>
@@ -352,6 +395,7 @@ function Coverage({ m }: { m: BillModel }) {
       <div className="cover-bars">
         {keys.map((k) => {
           const b = bins.get(k);
+
           return (
             <div key={k} className="cb" title={`${b?.n ?? 0} sections with ${k}${k === 20 ? " or more" : ""} articles`}>
               <span className="stack" style={{ height: `${((b?.n ?? 0) / top) * 100}%` }}>
@@ -392,12 +436,14 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
   const paidBy = m.sections.find((x) => x.s.score?.offsets === v.s.id);
   const same = !!v.figure?.byBaseline.every((b) => b.musd === v.figure!.musd);
   const costly = v.dollarsMusd != null || (c?.lobbyingFirms ?? 0) >= BIG_STAKES.firms;
+
   const why = [
     costly ? "big" : null,
     "quiet",
     ...(costly ? [] : (c?.reach ?? []).map((k) => `its text ${REACH_WORDS[k]}`)),
     c?.late ? "arrived late" : c?.offTopic != null && c.offTopic >= 0.5 ? "unlike the rest of the bill" : null,
   ].filter(Boolean);
+
   return (
     <aside className={`facts ${tone}`} aria-live="polite">
       <div className="facts-h">
@@ -415,7 +461,9 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
       <dl>
         {row(
           "Cost",
-          v.dollarsMusd != null ? (
+          v.dollarsMusd == null ? (
+            "No CBO figure"
+          ) : (
             <>
               {deficitWords(v.dollarsMusd).replace(/^./, (x) => x.toUpperCase())}
               {v.figure && (
@@ -429,8 +477,6 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
               )}
               {v.figure?.split === "even_split" && " (an even split of a CBO group line)"}
             </>
-          ) : (
-            "No CBO figure"
           ),
           v.figure && <Src id={v.figure.claims[0]!} label="CBO" />,
         )}

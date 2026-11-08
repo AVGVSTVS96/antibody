@@ -8,5 +8,8 @@
   "dependencies": {
     "@antibody/core": "workspace:*",
     "@antibody/ingest-bills": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc"
   }
 }

@@ -1,4 +1,5 @@
-import { type Era, eraLine, eras } from "../lib/derive.ts";
+import { eraLine, eras } from "../lib/derive.ts";
+import type { Era } from "../lib/derive.ts";
 import { count, day } from "../lib/format.ts";
 import type { BillModel } from "../lib/model.ts";
 import { Section } from "./Section.tsx";
@@ -12,7 +13,11 @@ export function Built({ m }: { m: BillModel }) {
   const late = groups.filter((g) => g.late);
   const lateN = late.reduce((a, g) => a + g.sections.length, 0);
   const earlyN = early.reduce((a, g) => a + g.sections.length, 0);
-  if (!final.length) return null;
+
+  if (!final.length) {
+    return null;
+  }
+
   return (
     <Section id="built" title="How the law was built">
       <p className="lead narrow">
@@ -21,7 +26,7 @@ export function Built({ m }: { m: BillModel }) {
         appears.
         {!unknown &&
           lateN > 0 &&
-          ` ${lateN > final.length / 2 ? "Over half" : `${count(lateN, "section")}`} arrived after the first text.`}
+          ` ${lateN > final.length / 2 ? "Over half" : count(lateN, "section")} arrived after the first text.`}
       </p>
       {unknown ? (
         <div className="eras">

@@ -1,5 +1,6 @@
 import { join } from "node:path";
-import { CURRENT_CONGRESS, type Row } from "@antibody/core";
+import { CURRENT_CONGRESS } from "@antibody/core";
+import type { Row } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 import { cached } from "./fetch.ts";
 
@@ -16,6 +17,7 @@ interface Committee {
   congresses?: number[];
   subcommittees?: { name: string; thomas_id: string }[];
 }
+
 interface Seat {
   bioguide?: string;
   name: string;
@@ -33,9 +35,12 @@ export const congressSpan = (congress: number) => ({
 });
 
 function officialPage(c: Committee, sub?: string): string | null {
-  if (c.type === "house" && c.house_committee_id)
+  if (c.type === "house" && c.house_committee_id) {
     return `https://clerk.house.gov/committees/${c.house_committee_id}${sub ?? "00"}`;
+  }
+
   const senateId = c.senate_committee_id ?? (c.type === "senate" ? c.thomas_id : null);
+
   return senateId ? `https://www.senate.gov/general/committee_membership/committee_memberships_${senateId}.htm` : null;
 }
 
@@ -45,6 +50,7 @@ const CHAMBER = { house: "House", senate: "Senate", joint: "Joint" } as const;
 function listRows(list: Committee[], file: string, blob: string, current: boolean): Row<"committees">[] {
   return list.flatMap((c) => {
     const page = current ? officialPage(c) : null;
+
     const parent: Row<"committees"> = {
       id: c.thomas_id,
       name: c.name,
@@ -54,10 +60,12 @@ function listRows(list: Committee[], file: string, blob: string, current: boolea
       source_url: page ?? blob,
       source_locator: `congress-legislators ${file}, thomas_id ${c.thomas_id}`,
     };
+
     return [
       parent,
       ...(c.subcommittees ?? []).map((sub) => {
         const subPage = current ? officialPage(c, sub.thomas_id) : null;
+
         return {
           ...parent,
           id: `${c.thomas_id}${sub.thomas_id}`,
@@ -75,12 +83,16 @@ function listRows(list: Committee[], file: string, blob: string, current: boolea
 /** Current committees first, then historical ones and the abolished subcommittees of committees that still exist. */
 export async function committeeRows(refresh: boolean): Promise<Row<"committees">[]> {
   const rows = new Map<string, Row<"committees">>();
+
   for (const file of ["committees-current", "committees-historical"]) {
     const text = await cached(`${MIRROR}/${file}.json`, join(paths.raw("members"), `${file}.json`), refresh);
     const blob = `https://github.com/${REPO}/blob/main/${file}.yaml`;
-    for (const row of listRows(JSON.parse(text), `${file}.yaml`, blob, file === "committees-current"))
+
+    for (const row of listRows(JSON.parse(text), `${file}.yaml`, blob, file === "committees-current")) {
       if (!rows.has(row.id)) rows.set(row.id, row);
+    }
   }
+
   return [...rows.values()];
 }
 
@@ -92,11 +104,16 @@ interface Commit {
 async function commitsBefore(until: string): Promise<Commit[]> {
   const url = `https://api.github.com/repos/${REPO}/commits?path=committee-membership-current.yaml&until=${until}T00:00:00Z&per_page=10`;
   const token = process.env.GITHUB_TOKEN;
+
   const res = await fetch(url, {
     headers: { accept: "application/vnd.github+json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
   });
-  if (!res.ok) throw new Error(`${res.status} ${url}`);
-  return res.json() as Promise<Commit[]>;
+
+  if (!res.ok) {
+    throw new Error(`${res.status} ${url}`);
+  }
+
+  return await (res.json() as Promise<Commit[]>);
 }
 
 /**
@@ -105,13 +122,18 @@ async function commitsBefore(until: string): Promise<Commit[]> {
  */
 async function snapshot(congress: number) {
   const until = congress >= CURRENT_CONGRESS ? new Date().toISOString().slice(0, 10) : congressSpan(congress).end;
+
   for (const commit of await commitsBefore(until)) {
     const file = join(paths.raw("members"), "membership", `${commit.sha}.yaml`);
     const raw = `https://raw.githubusercontent.com/${REPO}/${commit.sha}/committee-membership-current.yaml`;
     const roster = Bun.YAML.parse(await cached(raw, file)) as Record<string, Seat[]>;
     const seats = Object.values(roster).reduce((n, s) => n + (s?.length ?? 0), 0);
-    if (seats > 1000) return { sha: commit.sha, date: commit.commit.committer.date.slice(0, 10), roster };
+
+    if (seats > 1000) {
+      return { sha: commit.sha, date: commit.commit.committer.date.slice(0, 10), roster };
+    }
   }
+
   throw new Error(`no full committee roster for the ${congress}th Congress in the last 10 commits before ${until}`);
 }
 
@@ -125,9 +147,11 @@ export async function committeeMemberRows(congress: number) {
   const committees = new Map((await readRows("committees")).map((c) => [c.id, c]));
   const blob = `https://github.com/${REPO}/blob/${sha}/committee-membership-current.yaml`;
   const seats = new Map<string, Row<"committee_members">>();
-  for (const [committee, list] of Object.entries(roster))
+
+  for (const [committee, list] of Object.entries(roster)) {
     for (const s of list ?? []) {
       const id = `${congress}:${committee}:${s.bioguide}`;
+
       if (!s.bioguide || seats.has(id)) continue;
       seats.set(id, {
         id,
@@ -139,17 +163,23 @@ export async function committeeMemberRows(congress: number) {
         source_locator: `${committee}, ${s.name}${s.rank ? `, rank ${s.rank}` : ""}; roster as of ${date} (congress-legislators ${sha.slice(0, 7)})`,
       });
     }
+  }
+
   const missing = Object.keys(roster).filter((id) => !committees.has(id));
   let added: Row<"committees">[] = [];
+
   if (missing.length) {
     const raw = `https://raw.githubusercontent.com/${REPO}/${sha}/committees-current.yaml`;
+
     const list = Bun.YAML.parse(
       await cached(raw, join(paths.raw("members"), "committees", `${sha}.yaml`)),
     ) as Committee[];
+
     const pinned = `https://github.com/${REPO}/blob/${sha}/committees-current.yaml`;
     added = listRows(list, `committees-current.yaml at ${sha.slice(0, 7)}`, pinned, false).filter((c) =>
       missing.includes(c.id),
     );
   }
+
   return { seats: [...seats.values()], committees: added };
 }

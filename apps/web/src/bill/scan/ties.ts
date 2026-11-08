@@ -32,11 +32,16 @@ export const TIE_STEP = 2.6;
 export function tiePath(a0: number, rStart: number, a1: number, rEnd: number, rb: number): string {
   const d = wrapPi(a1 - a0);
   const arc = Math.abs(d) * rb;
-  if (arc < 1.2) return `M${fmt(pt(a0, rStart))}L${fmt(pt(a1, rEnd))}`;
+
+  if (arc < 1.2) {
+    return `M${fmt(pt(a0, rStart))}L${fmt(pt(a1, rEnd))}`;
+  }
+
   const dir = d > 0 ? 1 : -1;
   const p = Math.max(0.5, Math.min(CORNER, arc / 2 - 0.5, rEnd - rb - 0.5, rb - rStart - 0.5));
   const da = (p / rb) * dir;
   const sweep = dir > 0 ? 1 : 0;
+
   return [
     `M${fmt(pt(a0, rStart))}`,
     `L${fmt(pt(a0, rb - p))}`,
@@ -54,22 +59,33 @@ export function tiePath(a0: number, rStart: number, a1: number, rEnd: number, rb
 export function tieSet(data: RingData, layout: RingLayout, companyId: string): TieSet {
   const co = layout.company.get(companyId);
   const ties = data.byCompany.get(companyId) ?? [];
-  if (!co) return { company: companyId, ties: [], spoke: null };
+
+  if (!co) {
+    return { company: companyId, ties: [], spoke: null };
+  }
+
   const rStart = R.company + co.size / 2 + 3;
   const rMember = data.view === "trades" ? R.member : R.memberDots;
   const peak = Math.max(...ties.map((t) => t.weight), 1);
 
   const placed = ties.flatMap((t) => {
     const mem = layout.member.get(t.member);
+
     return mem ? [{ t, mem, d: wrapPi(mem.angle - co.angle) }] : [];
   });
+
   const byDistance = [...placed].sort((a, b) => Math.abs(a.d) - Math.abs(b.d));
   const track = new Map<string, number>();
+
   for (const dir of [1, -1]) {
     const side = placed.filter((p) => (p.d >= 0 ? 1 : -1) === dir).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
     const step = Math.min(TIE_STEP, (R.trackEnd - R.track) / Math.max(side.length - 1, 1));
-    for (const [i, p] of side.entries()) track.set(p.t.member, R.track + i * step);
+
+    for (const [i, p] of side.entries()) {
+      track.set(p.t.member, R.track + i * step);
+    }
   }
+
   const shapes = byDistance.map<TieShape>((p, order) => ({
     member: p.t.member,
     d: tiePath(co.angle, rStart, p.mem.angle, rMember - p.mem.size - 1.5, track.get(p.t.member)!),
@@ -79,13 +95,19 @@ export function tieSet(data: RingData, layout: RingLayout, companyId: string): T
     claims: p.t.claims,
     weight: p.t.weight,
   }));
+
   return { company: companyId, ties: shapes, spoke: null };
 }
 
 export function spokeOf(layout: RingLayout, companyId: string, inference: boolean, order: number): Spoke | null {
   const co = layout.company.get(companyId);
-  if (!co) return null;
+
+  if (!co) {
+    return null;
+  }
+
   const a = co.angle;
+
   return {
     d: `M${fmt(pt(a, R.core + 2))}L${fmt(pt(a, R.company - co.size / 2 - 3))}`,
     order,

@@ -5,6 +5,7 @@ import { cached } from "./fetch.ts";
 
 const MIRROR = "https://unitedstates.github.io/congress-legislators";
 const FILES = ["legislators-current", "legislators-historical"] as const;
+
 /** GovInfo BILLSTATUS starts with the 108th Congress; keep everyone who served from the 103rd on. */
 const SINCE = "1993-01-03";
 
@@ -18,6 +19,7 @@ interface Term {
   caucus?: string;
   party_affiliations?: { start: string; end: string; party: string; caucus?: string }[];
 }
+
 interface Person {
   id: { bioguide: string; lis?: string; fec?: string[] };
   name: { first: string; last: string; official_full?: string; nickname?: string };
@@ -25,6 +27,7 @@ interface Person {
 }
 
 export type MemberRow = Row<"members">;
+
 type MemberTerm = MemberRow["terms"][number];
 
 const PARTY: Record<string, "R" | "D"> = { Republican: "R", Democrat: "D" };
@@ -38,7 +41,9 @@ function expandTerms(terms: Term[]): MemberTerm[] {
       state: t.state,
       district: t.type === "rep" ? (t.district ?? null) : null,
     };
+
     const spans = t.party_affiliations ?? [{ start: t.start, end: t.end, party: t.party ?? "", caucus: t.caucus }];
+
     return spans.map((a) => ({ ...base, start: a.start, end: a.end, party: a.party, caucus: a.caucus ?? null }));
   });
 }
@@ -46,6 +51,7 @@ function expandTerms(terms: Term[]): MemberTerm[] {
 export function memberRow(p: Person, file: string): MemberRow {
   const terms = expandTerms(p.terms);
   const last = terms.at(-1)!;
+
   return {
     id: p.id.bioguide,
     name: p.name.official_full ?? `${p.name.nickname ?? p.name.first} ${p.name.last}`,
@@ -64,11 +70,15 @@ export function memberRow(p: Person, file: string): MemberRow {
 /** Everyone who served since 1993, from the unitedstates/congress-legislators data (bioguide ↔ FEC ↔ LIS ids, terms). */
 export async function fetchMembers(refresh: boolean): Promise<MemberRow[]> {
   const rows = new Map<string, MemberRow>();
+
   for (const file of FILES) {
     const text = await cached(`${MIRROR}/${file}.json`, join(paths.raw("members"), `${file}.json`), refresh);
-    for (const p of JSON.parse(text) as Person[])
+
+    for (const p of JSON.parse(text) as Person[]) {
       if (p.terms.at(-1)!.end >= SINCE && !rows.has(p.id.bioguide)) rows.set(p.id.bioguide, memberRow(p, file));
+    }
   }
+
   return [...rows.values()];
 }
 
@@ -85,7 +95,11 @@ export interface Lookup {
 
 export async function memberLookup(): Promise<Lookup> {
   const members = await readRows("members");
-  if (!members.length) throw new Error("no members rows yet: run the members stage first");
+
+  if (!members.length) {
+    throw new Error("no members rows yet: run the members stage first");
+  }
+
   return {
     byBioguide: new Map(members.map((m) => [m.id, m])),
     byLis: new Map(members.flatMap((m) => (m.lis_id ? [[m.lis_id, m.id] as const] : []))),

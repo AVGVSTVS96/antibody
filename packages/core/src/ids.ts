@@ -1,6 +1,7 @@
 export const CURRENT_CONGRESS = 119;
 
 export const BILL_TYPES = ["hr", "s", "hjres", "sjres", "hconres", "sconres", "hres", "sres"] as const;
+
 export type BillType = (typeof BILL_TYPES)[number];
 
 /** Canonical bill id: `<congress>-<type>-<number>`, e.g. `119-s-1582`. */
@@ -42,25 +43,42 @@ const fromCongressGovType = Object.fromEntries(Object.entries(CONGRESS_GOV_TYPE)
  */
 export function parseBillId(input: string, congress = CURRENT_CONGRESS): BillId {
   const s = input.trim();
-  const url = s.match(/congress\.gov\/bill\/(\d+)\w*-congress\/([a-z-]+)\/(\d+)/i);
-  if (url) return billId({ congress: +url[1]!, type: fromCongressGovType[url[2]!.toLowerCase()]!, number: +url[3]! });
-  const pkg = s.match(/^(?:BILLS|BILLSTATUS)-(\d+)([a-z]+?)(\d+)/i);
-  if (pkg) return billId({ congress: +pkg[1]!, type: toType(pkg[2]!), number: +pkg[3]! });
-  const canon = s.match(/^(\d+)-([a-z]+)-(\d+)$/i);
-  if (canon) return billId({ congress: +canon[1]!, type: toType(canon[2]!), number: +canon[3]! });
-  const human = s.match(
-    /^([a-z.\s]+?)\s*(\d+)\s*(?:\((\d+)(?:st|nd|rd|th)?\)|,?\s*(\d+)(?:st|nd|rd|th)\s*congress)?$/i,
-  );
+  const url = /congress\.gov\/bill\/(\d+)\w*-congress\/([a-z-]+)\/(\d+)/i.exec(s);
+
+  if (url) {
+    return billId({ congress: +url[1]!, type: fromCongressGovType[url[2]!.toLowerCase()]!, number: +url[3]! });
+  }
+
+  const pkg = /^(?:BILLS|BILLSTATUS)-(\d+)([a-z]+?)(\d+)/i.exec(s);
+
+  if (pkg) {
+    return billId({ congress: +pkg[1]!, type: toType(pkg[2]!), number: +pkg[3]! });
+  }
+
+  const canon = /^(\d+)-([a-z]+)-(\d+)$/i.exec(s);
+
+  if (canon) {
+    return billId({ congress: +canon[1]!, type: toType(canon[2]!), number: +canon[3]! });
+  }
+
+  const human = /^([a-z.\s]+?)\s*(\d+)\s*(?:\((\d+)(?:st|nd|rd|th)?\)|,?\s*(\d+)(?:st|nd|rd|th)\s*congress)?$/i.exec(s);
+
   if (human) {
     const c = human[3] ?? human[4];
+
     return billId({ congress: c ? +c : congress, type: toType(human[1]!), number: +human[2]! });
   }
+
   throw new Error(`not a bill id: ${input}`);
 }
 
 function toType(raw: string): BillType {
-  const t = raw.toLowerCase().replace(/[^a-z]/g, "");
-  if ((BILL_TYPES as readonly string[]).includes(t)) return t as BillType;
+  const t = raw.toLowerCase().replaceAll(/[^a-z]/g, "");
+
+  if ((BILL_TYPES as readonly string[]).includes(t)) {
+    return t as BillType;
+  }
+
   throw new Error(`unknown bill type: ${raw}`);
 }
 
@@ -70,27 +88,34 @@ export function billId({ congress, type, number }: BillRef): BillId {
 
 export function billRef(id: BillId): BillRef {
   const [congress, type, number] = id.split("-");
+
   return { congress: +congress!, type: type as BillType, number: +number! };
 }
 
 /** `S.1582`, `H.R.1`, `H.J.Res.12` */
 export function billDisplay(id: BillId): string {
   const { type, number } = billRef(id);
+
   return `${DISPLAY[type]}${number}`;
 }
 
 export function congressGovUrl(id: BillId): string {
   const { congress, type, number } = billRef(id);
+
   return `https://www.congress.gov/bill/${congress}${ordinal(congress)}-congress/${CONGRESS_GOV_TYPE[type]}/${number}`;
 }
 
 export function billstatusUrl(id: BillId): string {
   const { congress, type, number } = billRef(id);
+
   return `https://www.govinfo.gov/bulkdata/BILLSTATUS/${congress}/${type}/BILLSTATUS-${congress}${type}${number}.xml`;
 }
 
 export function ordinal(n: number): string {
-  if (n % 100 >= 11 && n % 100 <= 13) return "th";
+  if (n % 100 >= 11 && n % 100 <= 13) {
+    return "th";
+  }
+
   return ["th", "st", "nd", "rd"][n % 10] ?? "th";
 }
 
@@ -108,5 +133,6 @@ const SPELLINGS: Record<string, string[]> = {
 /** The lda.gov full-text query for filings that name the bill by number, in every spelling filers use. */
 export function lobbyingQuery(id: BillId): string {
   const { type, number } = billRef(id);
+
   return (SPELLINGS[type] ?? []).map((s) => `"${s.replace("#", String(number))}"`).join(" OR ");
 }

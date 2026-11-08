@@ -1,15 +1,17 @@
 import type { BundleIndex } from "@antibody/core";
 import { parseBillId } from "@antibody/core/ids";
-import { Component, lazy, type ReactNode, Suspense, useEffect, useState } from "react";
+import { Component, lazy, Suspense, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { loadIndex } from "./lib/data.ts";
 import { useRoute } from "./lib/router.ts";
 import { IndexPage } from "./pages/IndexPage.tsx";
 import { Footer, Top } from "./ui/Top.tsx";
 
-const BillPage = lazy(() => import("./pages/BillPage.tsx"));
+const BillPage = lazy(async () => import("./pages/BillPage.tsx"));
 
 export function App() {
   const route = useRoute();
+
   return (
     <Catch key={route.page === "bill" ? route.id : "index"}>
       <Suspense fallback={route.page === "bill" ? <BillSkeleton id={route.id} /> : <Loading />}>
@@ -24,17 +26,21 @@ function BillSkeleton({ id }: { id: string }) {
   useEffect(() => {
     let live = true;
     let want = id;
+
     try {
       want = parseBillId(id);
     } catch {}
+
     loadIndex()
       .then((i) => live && setEntry(i.bills.find((b) => b.id === want) ?? null))
       .catch(() => {});
+
     return () => {
       live = false;
     };
   }, [id]);
   const name = entry?.shortTitle ?? entry?.title;
+
   return (
     <>
       <Top crumb={name ?? entry?.display} find />
@@ -59,7 +65,10 @@ class Catch extends Component<{ children: ReactNode }, { error: Error | null }> 
     return { error };
   }
   override render() {
-    if (!this.state.error) return this.props.children;
+    if (!this.state.error) {
+      return this.props.children;
+    }
+
     return (
       <>
         <Top />

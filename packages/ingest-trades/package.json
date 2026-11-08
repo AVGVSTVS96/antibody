@@ -2,6 +2,14 @@
   "name": "@antibody/ingest-trades",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@antibody/core": "workspace:*", "zod": "4.6.7" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@antibody/core": "workspace:*",
+    "zod": "catalog:"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  }
 }

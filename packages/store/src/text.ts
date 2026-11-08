@@ -17,28 +17,44 @@ const MONTHS = [
 
 /** `2025-07-18` → `July 18, 2025` */
 export function day(iso: string | null | undefined): string {
-  if (!iso) return "an unknown date";
+  if (!iso) {
+    return "an unknown date";
+  }
+
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+
   return `${MONTHS[m! - 1]} ${d}, ${y}`;
 }
 
 /** $ millions as CBO prints them → `$120 million`, `$1.2 billion`, `$944 billion`. Unsigned; callers word the sign. */
 export function musd(m: number): string {
   const a = Math.abs(m);
-  if (a >= 1_000_000) return `$${trim(a / 1_000_000)} trillion`;
-  if (a >= 1_000) return `$${trim(a / 1_000)} billion`;
-  if (a >= 1) return `$${trim(a)} million`;
+
+  if (a >= 1_000_000) {
+    return `$${trim(a / 1_000_000)} trillion`;
+  }
+
+  if (a >= 1000) {
+    return `$${trim(a / 1_000)} billion`;
+  }
+
+  if (a >= 1) {
+    return `$${trim(a)} million`;
+  }
+
   return `$${Math.round(a * 1_000_000).toLocaleString("en-US")}`;
 }
 
 /** Dollars → `$5,000`, `$18.7 million`. */
 export function usd(n: number): string {
   const a = Math.abs(n);
+
   return a >= 1_000_000 ? musd(a / 1_000_000) : `$${Math.round(a).toLocaleString("en-US")}`;
 }
 
 function trim(x: number): string {
   const digits = x >= 100 ? 0 : x >= 10 ? 1 : 2;
+
   return Number(x.toFixed(digits)).toLocaleString("en-US");
 }
 
@@ -47,6 +63,7 @@ export const count = (n: number, one: string, many = `${one}s`) =>
 
 export function ordinal(n: number): string {
   const s = n % 100 >= 11 && n % 100 <= 13 ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th");
+
   return `${n}${s}`;
 }
 
@@ -126,9 +143,19 @@ export const memberLabel = (m: MemberLike) =>
 export function quarter(period: string): string {
   const p = period.toLowerCase();
   const q = ["first", "second", "third", "fourth"].findIndex((w) => p.startsWith(w));
-  if (q >= 0) return `Q${q + 1}`;
-  if (p.startsWith("mid")) return "the mid-year period";
-  if (p.startsWith("year")) return "the year-end period";
+
+  if (q !== -1) {
+    return `Q${q + 1}`;
+  }
+
+  if (p.startsWith("mid")) {
+    return "the mid-year period";
+  }
+
+  if (p.startsWith("year")) {
+    return "the year-end period";
+  }
+
   return period;
 }
 

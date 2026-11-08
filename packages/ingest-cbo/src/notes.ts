@@ -1,11 +1,13 @@
 import { join } from "node:path";
-import { parseJson, type Row, type StageContext } from "@antibody/core";
+import { parseJson } from "@antibody/core";
+import type { Row, StageContext } from "@antibody/core";
 import { paths, readRows, writeRows } from "@antibody/core/node";
 import { localFile } from "./fetch.ts";
 import { parse } from "./xray.ts";
 
 export const MODEL = "claude-sonnet-5-5";
 const LEGACY_MODEL = "claude-opus-5-5";
+
 export const RULE =
   "cbo-prose-to-section: a model (named in the evidence) linked this sentence of CBO's estimate to the bill section whose provision it describes; the quote is checked word for word against the cited PDF page";
 
@@ -30,11 +32,11 @@ interface Section {
 export function norm(s: string): string {
   return s
     .normalize("NFKC")
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"')
-    .replace(/[‐-―−]/g, "-")
-    .replace(/-\s+/g, "-")
-    .replace(/\s+/g, " ")
+    .replaceAll(/[‘’]/g, "'")
+    .replaceAll(/[“”]/g, '"')
+    .replaceAll(/[‐-―−]/g, "-")
+    .replaceAll(/-\s+/g, "-")
+    .replaceAll(/\s+/g, " ")
     .trim()
     .toLowerCase();
 }
@@ -44,10 +46,12 @@ export function verify(links: Link[], pages: string[], sections: Section[]): (Li
   const byNum = new Map(sections.map((s) => [s.num, s]));
   const pageText = pages.map(norm);
   const seen = new Set<string>();
+
   return links.flatMap((l) => {
     const s = byNum.get(String(l.section).replace(/^sec(tion)?\.?\s*/i, ""));
     const text = pageText[l.page - 1];
     const key = `${s?.id}|${norm(l.quote)}`;
+
     if (
       !s ||
       !text ||
@@ -55,9 +59,12 @@ export function verify(links: Link[], pages: string[], sections: Section[]): (Li
       norm(l.quote).length < 20 ||
       !text.includes(norm(l.quote)) ||
       seen.has(key)
-    )
+    ) {
       return [];
+    }
+
     seen.add(key);
+
     return [{ ...l, section: s.num, sectionId: s.id }];
   });
 }
@@ -85,30 +92,46 @@ interface Answer {
 
 async function ask(text: string, cacheFile: string, refresh: boolean): Promise<Answer> {
   const cache = Bun.file(cacheFile);
-  if (!refresh && (await cache.exists())) return cache.json();
+
+  if (!refresh && (await cache.exists())) {
+    return await cache.json();
+  }
+
   const proc = Bun.spawn(["claude", "-p", "--model", "sonnet", "--output-format", "json"], {
     env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "antibody" },
     stdin: new TextEncoder().encode(text),
     stdout: "pipe",
     stderr: "pipe",
   });
+
   const out = await new Response(proc.stdout).text();
-  if ((await proc.exited) !== 0) throw new Error(`claude -p failed: ${await new Response(proc.stderr).text()}`);
+
+  if ((await proc.exited) !== 0) {
+    throw new Error(`claude -p failed: ${await new Response(proc.stderr).text()}`);
+  }
+
   const reply = JSON.parse(out) as { result: string; total_cost_usd?: number };
+
   const result = {
     links: parseJson<{ links: Link[] }>(reply.result).links,
     costUsd: reply.total_cost_usd ?? 0,
     model: MODEL,
   };
+
   await Bun.write(cacheFile, JSON.stringify(result));
+
   return result;
 }
 
 function scoredSections(rows: Row<"sections">[], code: string | null): Section[] {
-  if (!code) return [];
+  if (!code) {
+    return [];
+  }
+
   return rows.flatMap((s) => {
     const step = s.history[code] as { path?: string; heading?: string } | undefined;
     const num = step?.path?.split("/").at(-1)?.replace(/^sec:/, "");
+
     return num ? [{ num, heading: step?.heading ?? s.heading, id: s.id }] : [];
   });
 }
@@ -121,25 +144,35 @@ export async function notes(ctx: StageContext) {
   const bill = ctx.bill!;
   const [estimates, sections] = await Promise.all([readRows("cbo_estimates", bill), readRows("sections", bill)]);
   const rows: Row<"cbo_notes">[] = [];
+
   for (const e of estimates.filter((e) => !e.per_section && e.pdf_url)) {
     const scored = scoredSections(sections, e.version_code);
+
     if (!scored.length) {
       ctx.log(`${e.id}: no sections for version ${e.version_code ?? "?"} yet, skipped`);
       continue;
     }
+
     const glance = await parse<{ pages: string[] }>("glance", localFile(e.pdf_url!));
-    if (!glance) continue;
+
+    if (!glance) {
+      continue;
+    }
+
     const t0 = performance.now();
+
     const answer = await ask(
       prompt(glance.pages, scored),
       join(paths.raw("cbo"), "notes", `${e.id}.json`),
       ctx.refresh,
     );
+
     const kept = verify(answer.links, glance.pages, scored);
     ctx.log(
       `${e.id}: ${answer.links.length} links proposed, ${kept.length} kept (quote on its page, section exists, model confidence ≥ 0.5) · $${answer.costUsd.toFixed(2)} · ${((performance.now() - t0) / 1000).toFixed(0)}s`,
     );
-    for (const [i, l] of kept.entries())
+
+    for (const [i, l] of kept.entries()) {
       rows.push({
         id: `${e.id}:n${i + 1}`,
         estimate_id: e.id,
@@ -157,6 +190,8 @@ export async function notes(ctx: StageContext) {
           quote_checked_on_page: l.page,
         },
       });
+    }
   }
+
   await writeRows("cbo_notes", bill, rows);
 }

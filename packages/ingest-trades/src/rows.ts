@@ -3,11 +3,15 @@ import type { Row } from "@antibody/core";
 import type { HouseFiling, ParsedDoc } from "./house.ts";
 import { memberMatcher } from "./members.ts";
 import { amountRange, isoDate, owner, tradeType } from "./normalize.ts";
-import { collapseRestated, type Filed } from "./restated.ts";
-import { imageDir, pagePath, parseSenatePtr, type SenateReport } from "./senate.ts";
-import { cachedPages, cachedRead, type FIELDS, type PageResult, type VisionRow } from "./vision.ts";
+import { collapseRestated } from "./restated.ts";
+import type { Filed } from "./restated.ts";
+import { imageDir, pagePath, parseSenatePtr } from "./senate.ts";
+import type { SenateReport } from "./senate.ts";
+import { cachedPages, cachedRead } from "./vision.ts";
+import type { FIELDS, PageResult, VisionRow } from "./vision.ts";
 
 type Doc = Row<"ptr_documents">;
+
 type Trade = Row<"trades">;
 
 export interface Built {
@@ -19,10 +23,11 @@ export interface Built {
 
 const houseDocId = (docId: string) => `h-${docId}`;
 const senateDocId = (uuid: string) => `s-${uuid}`;
-const clean = (s: string) => s.replace(/\s+/g, " ").trim();
+const clean = (s: string) => s.replaceAll(/\s+/g, " ").trim();
 
 function amounts(amount: string) {
   const { min, max } = amountRange(amount);
+
   return { amount: clean(amount), amount_min: min, amount_max: max };
 }
 
@@ -34,14 +39,20 @@ export function settle(r: VisionRow, index: number, page: PageResult) {
   const checks = page.recheck?.cells.filter((c) => c.row === index) ?? [];
   const values: Record<(typeof FIELDS)[number], string | null> = { ...r };
   const agreed = checks.every((c) => c.readable && c.value === (r[c.field] ?? ""));
+
   for (const c of checks) {
     const first = r[c.field] ?? "";
-    if (c.readable && (first === "" || first.includes("_"))) values[c.field] = c.value;
+
+    if (c.readable && (first === "" || first.includes("_"))) {
+      values[c.field] = c.value;
+    }
   }
+
   const uncertain = r.uncertain.length > 0;
+
   return {
     values,
-    confidence: !uncertain ? 0.9 : agreed && checks.length >= r.uncertain.length ? 0.75 : 0.5,
+    confidence: uncertain ? (agreed && checks.length >= r.uncertain.length ? 0.75 : 0.5) : 0.9,
     flagged: uncertain,
     checks,
   };
@@ -55,16 +66,22 @@ function visionTrades(
   dropped: Built["dropped"],
 ): Trade[] {
   const out: Trade[] = [];
+
   for (const page of pages) {
     for (const [i, r] of page.read.rows.entries()) {
       const { values, confidence, flagged, checks } = settle(r, i, page);
       const own = owner(values.owner);
       const type = tradeType(values.type ?? "");
-      if (!type && !values.date?.trim() && !values.amount?.trim()) continue;
-      if (!own || !type) {
-        dropped.push({ document: docId, row: r, why: !own ? `owner "${values.owner}"` : `type "${values.type}"` });
+
+      if (!type && !values.date?.trim() && !values.amount?.trim()) {
         continue;
       }
+
+      if (!own || !type) {
+        dropped.push({ document: docId, row: r, why: own ? `type "${values.type}"` : `owner "${values.owner}"` });
+        continue;
+      }
+
       const src = sourceFor(page.page);
       const incomplete = !isoDate(values.date) || amountRange(values.amount ?? "").min === null;
       out.push({
@@ -95,15 +112,21 @@ function visionTrades(
       });
     }
   }
+
   return out;
 }
 
 async function visionPages(doc: string) {
   const pages: PageResult[] = [];
+
   for (const n of (await cachedPages(doc)).sort((a, b) => a - b)) {
     const read = await cachedRead(doc, n);
-    if (read) pages.push(read);
+
+    if (read) {
+      pages.push(read);
+    }
   }
+
   return pages;
 }
 
@@ -124,19 +147,23 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
     const pages = doc?.pages ?? null;
     let read = 0;
     let lost = false;
+
     if (!f.scanned && doc && !doc.error) {
       read = pages ?? 1;
       const perPage = new Map<number, number>();
+
       for (const [k, t] of doc.trades.entries()) {
         const row = (perPage.get(t.page) ?? 0) + 1;
         perPage.set(t.page, row);
         const own = owner(t.owner);
         const type = tradeType(t.type);
+
         if (!own || !type) {
-          built.dropped.push({ document: id, row: t, why: !own ? `owner "${t.owner}"` : `type "${t.type}"` });
+          built.dropped.push({ document: id, row: t, why: own ? `type "${t.type}"` : `owner "${t.owner}"` });
           lost = true;
           continue;
         }
+
         built.trades.push({
           id: `${id}-${k + 1}`,
           document_id: id,
@@ -167,7 +194,11 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       );
       lost = built.dropped.length > before;
     }
-    if (doc?.trades.some((t) => t.details?.filing_status === "Amended")) amended.add(id);
+
+    if (doc?.trades.some((t) => t.details?.filing_status === "Amended")) {
+      amended.add(id);
+    }
+
     built.documents.push({
       id,
       chamber: "House",
@@ -188,26 +219,36 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
     const id = senateDocId(r.id);
     const filed = isoDate(r.filed);
     const last = r.office.includes(",") ? r.office.split(",")[0]! : r.last;
-    const filer_name = clean(`${r.first} ${r.last}`).replace(/\b([A-Z])([A-Z]+)\b/g, (_, a, b) => a + b.toLowerCase());
+
+    const filer_name = clean(`${r.first} ${r.last}`).replaceAll(
+      /\b([A-Z])([A-Z]+)\b/g,
+      (_, a, b) => a + b.toLowerCase(),
+    );
+
     const base = { bioguide: match.senate(last, r.first, filed), filer_name, chamber: "Senate" as const };
     let pages: number | null = null;
     let read = 0;
     let lost = false;
+
     if (r.kind === "ptr") {
       const html = await Bun.file(pagePath(r.id))
         .text()
         .catch(() => null);
+
       if (html) {
         pages = 1;
         read = 1;
+
         for (const t of parseSenatePtr(html)) {
           const own = owner(t.owner);
           const type = tradeType(t.type);
+
           if (!own || !type) {
-            built.dropped.push({ document: id, row: t, why: !own ? `owner "${t.owner}"` : `type "${t.type}"` });
+            built.dropped.push({ document: id, row: t, why: own ? `type "${t.type}"` : `owner "${t.owner}"` });
             lost = true;
             continue;
           }
+
           built.trades.push({
             id: `${id}-${t.n}`,
             document_id: id,
@@ -245,7 +286,11 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       built.trades.push(...visionTrades(id, base, vp, (p) => ({ url: r.url, where: `image ${p}` }), built.dropped));
       lost = built.dropped.length > before;
     }
-    if (/\(Amendment/i.test(r.title)) amended.add(id);
+
+    if (/\(Amendment/i.test(r.title)) {
+      amended.add(id);
+    }
+
     built.documents.push({
       id,
       chamber: "Senate",
@@ -261,9 +306,12 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       source_locator: null,
     });
   }
+
   const docs = new Map<string, Filed>(
     built.documents.map((d) => [d.id, { filedOn: d.filed_on ?? "", amended: amended.has(d.id) }]),
   );
+
   built.trades = collapseRestated(built.trades, docs);
+
   return built;
 }

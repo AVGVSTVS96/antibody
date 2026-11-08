@@ -24,29 +24,43 @@ const old = new Set(
     .split("\n")
     .map((l) => l.split("|")[2]?.toUpperCase()),
 );
+
 const outcomes = (await Bun.file(
   join(paths.raw("entities"), "resolve", "dev-outcomes.json"),
 ).json()) as Resolved["outcomes"];
+
 const edgar = new Map((await loadEdgar()).map((c) => [c.cik, c]));
 
 const hash = (s: string) =>
   Number.parseInt(new Bun.CryptoHasher("sha1").update(`antibody-p1:${s}`).digest("hex").slice(0, 8), 16);
+
 const strata = new Map<string, Resolved["outcomes"]>();
+
 for (const o of outcomes) {
-  if (old.has(o.mention.name.toUpperCase())) continue;
+  if (old.has(o.mention.name.toUpperCase())) {
+    continue;
+  }
+
   const k = o.match?.method ?? o.outcome.kind;
-  if (!(k in PER)) continue;
+
+  if (!(k in PER)) {
+    continue;
+  }
+
   strata.set(k, [...(strata.get(k) ?? []), o]);
 }
+
 const clean = (s: unknown) =>
   String(s ?? "")
-    .replace(/[|\n]/g, " ")
+    .replaceAll(/[|\n]/g, " ")
     .slice(0, 160);
+
 for (const [k, n] of Object.entries(PER)) {
   const pick = (strata.get(k) ?? []).sort((a, b) => hash(a.mention.src) - hash(b.mention.src)).slice(0, n);
+
   for (const o of pick) {
     const c = o.match ? edgar.get(o.match.cik) : undefined;
-    const e = (o.match?.evidence ?? {}) as Record<string, unknown>;
+    const e = o.match?.evidence ?? {};
     const why = o.outcome.kind === "rejected" || o.outcome.kind === "none" ? o.outcome.why : e.reason;
     console.log(
       [

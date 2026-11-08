@@ -30,6 +30,7 @@ export const RIDER_KINDS = {
     re: /(?:Section \d+ of )?House Resolution \d+[^.]{0,80}(?:is amended|shall have no force or effect)/i,
   },
 } as const;
+
 export type RiderKind = keyof typeof RIDER_KINDS;
 
 export interface Rider {
@@ -48,19 +49,20 @@ export const isSpecialRule = (s: Pick<BillStatus, "id" | "title">) =>
 
 const strip = (s: string) =>
   s
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/\s+([.,;)])/g, "$1")
+    .replaceAll(/<[^>]+>/g, " ")
+    .replaceAll(/\s+/g, " ")
+    .replaceAll(/\s+([.,;)])/g, "$1")
     .trim();
 
 /** The sentence around a match, cut to about 150 characters either side. */
 function sentence(text: string, index: number, length: number): string {
   const dot = text.lastIndexOf(". ", index);
-  const from = dot < 0 ? 0 : dot + 2;
+  const from = dot === -1 ? 0 : dot + 2;
   const start = Math.max(from, index - 150);
   const stop = text.indexOf(". ", index + length);
-  const to = stop < 0 ? text.length : stop + 1;
+  const to = stop === -1 ? text.length : stop + 1;
   const end = Math.min(to, index + length + 150);
+
   return `${start > from ? "…" : ""}${text.slice(start, end).trim()}${end < to ? "…" : ""}`;
 }
 
@@ -69,12 +71,17 @@ export function ruleRiders(xml: string): Rider[] {
   const out: Rider[] = [];
   const sections = [...xml.matchAll(/<section\b[^>]*>([\s\S]*?)<\/section>/g)].map((m) => m[1]!);
   sections.forEach((body, i) => {
-    const num = body.match(/<enum>\s*([^<]*?)\.?\s*<\/enum>/)?.[1] ?? String(i + 1);
+    const num = /<enum>\s*([^<]*?)\.?\s*<\/enum>/.exec(body)?.[1] ?? String(i + 1);
     const text = strip(body);
+
     for (const [kind, { label, re }] of Object.entries(RIDER_KINDS) as [RiderKind, (typeof RIDER_KINDS)[RiderKind]][]) {
       const m = text.match(re);
-      if (m) out.push({ kind, label, section: num, quote: sentence(text, m.index!, m[0].length) });
+
+      if (m) {
+        out.push({ kind, label, section: num, quote: sentence(text, m.index!, m[0].length) });
+      }
     }
   });
+
   return out;
 }

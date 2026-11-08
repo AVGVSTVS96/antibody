@@ -5,14 +5,18 @@ import { reconcile } from "../src/lines.ts";
 import type { Parsed, ParsedRow } from "../src/parsed.ts";
 
 const PKG = resolve(import.meta.dir, "..");
+
 const parse = async (name: string) =>
   JSON.parse(await python(PKG, "cbo.py", ["pages", resolve(import.meta.dir, "fixtures", name)])) as Parsed;
 
 const rowsOf = (p: Parsed) => p.sheets.flatMap((s) => s.rows);
+
 const lineOf = (rows: ParsedRow[], pick: (r: ParsedRow) => boolean) => {
   const first = rows.find(pick)!;
+
   return rows.filter((r) => r.line === first.line && r.sheet === first.sheet);
 };
+
 const total = (rows: ParsedRow[], measure: string, year: string) =>
   rows.find((r) => r.measure_kind === measure)!.values[year];
 
@@ -25,7 +29,7 @@ test.skipIf(!parsers)(
     const rows = rowsOf(await parse("chips-table2.json"));
     const sections = rows.filter((r) => r.line_kind === "section" && r.measure_kind === "outlays");
     expect(sections.map((r) => [r.division, r.sections, r.values["2022-2031"]])).toEqual([
-      ["A", ["102"], 50544],
+      ["A", ["102"], 50_544],
       ["A", ["106"], 1400],
       ["B", ["10108", "10761"], 3050],
       ["B", ["10862"], 80],
@@ -49,7 +53,7 @@ test.skipIf(!parsers)(
       sections: ["107"],
       section_title: "Advanced Manufacturing Investment Credit",
     });
-    expect(revenue.values["2022-2031"]).toBe(-24251);
+    expect(revenue.values["2022-2031"]).toBe(-24_251);
     expect(reconcile(parsed.sheets)).toMatchObject({ failing: [] });
   },
 );
@@ -73,14 +77,16 @@ test.skipIf(!parsers)(
   "a title printed with its numbers on the same line is a title row; sub-rows and subtotals are not extra rows",
   async () => {
     const rows = rowsOf(await parse("iija-table2.json"));
+
     const titles = rows.filter(
       (r) => r.line_kind === "title" && r.block === "revenues" && r.measure_kind === "revenues",
     );
+
     expect(titles.map((r) => [r.division, r.title_no, r.section_title, r.values["2021-2031"]])).toContainEqual([
       "H",
       "VI",
       "Other Provisions",
-      37406,
+      37_406,
     ]);
     const titleSix = lineOf(rows, (r) => r.division === "H" && r.title_no === "VI" && r.block === "revenues");
     expect(titleSix.map((r) => r.measure_kind)).toEqual(["revenues", "on_budget_revenues", "off_budget_revenues"]);
@@ -96,16 +102,18 @@ test.skipIf(!parsers)(
     expect(check.failing).toEqual([]);
     expect(check.checks).toBeGreaterThan(100);
     const bill = rowsOf(parsed).filter((r) => r.line_kind === "total" && r.block === "direct_spending");
-    expect(total(bill, "outlays", "2021-2031")).toBe(-109619);
+    expect(total(bill, "outlays", "2021-2031")).toBe(-109_619);
   },
 );
 
 test.skipIf(!parsers)("a division total that does not match its rows fails that block", async () => {
   const parsed = await parse("iija-table2.json");
+
   const division = rowsOf(parsed).find(
     (r) => r.line_kind === "subtotal" && r.section_title === "DIVISION I Total" && r.measure_kind === "outlays",
   )!;
-  division.values["2021-2031"] = -100000;
+
+  division.values["2021-2031"] = -100_000;
   expect(reconcile(parsed.sheets).failing).toContain("Table 2|direct_spending|outlays");
 });
 
@@ -127,14 +135,18 @@ test.skipIf(!parsers)(
   "a title heading wrapped over two lines takes the numbers printed on its second line",
   async () => {
     const rows = rowsOf(await parse("caa-divisions.json"));
+
     const title = rows.find(
       (r) => r.line_kind === "title" && r.division === "T" && r.title_no === "I" && r.measure_kind === "revenues",
     )!;
+
     expect(title.section_title).toBe("Expanding Coverage and Increasing Retirement Savings");
-    expect(title.values["2023-2032"]).toBe(-27020);
+    expect(title.values["2023-2032"]).toBe(-27_020);
+
     const division = rowsOf(await parse("caa-divisions.json")).filter(
       (r) => r.division === "O" && r.line_kind === "title",
     );
+
     expect(division.map((r) => r.section_title)).toContain("Extension of FCC Auction Authority");
   },
 );
@@ -173,13 +185,13 @@ test.skipIf(!parsers)(
     expect(sheet.unit).toBe("billions");
     const programs = sheet.rows.filter((r) => r.line_kind === "program" && r.measure_kind === "outlays");
     expect(programs.map((r) => [r.section_title, r.values["2022-2031"]])).toEqual([
-      ["Compensation", 151700],
+      ["Compensation", 151_700],
       ["Other Mandatory Benefits", 1200],
       ["Leases", 4200],
       ["Direct Appropriation", 500],
       ["Camp Lejeune Claims", 6100],
-      ["Discretionary Spending Classified as Direct Spending", 113000],
-      ["Current-Law Discretionary Spending Reclassified as Direct Spending", 390300],
+      ["Discretionary Spending Classified as Direct Spending", 113_000],
+      ["Current-Law Discretionary Spending Reclassified as Direct Spending", 390_300],
     ]);
     expect(
       total(
@@ -187,7 +199,7 @@ test.skipIf(!parsers)(
         "outlays",
         "2022-2031",
       ),
-    ).toBe(667000);
+    ).toBe(667_000);
     expect(reconcile(parsed.sheets).failing).toEqual([]);
     expect(rowsOf(parsed).find((r) => r.section_title === "Camp Lejeune Claims")?.marks).toEqual(["e"]);
     expect(sheet.notes?.e).toStartWith(
@@ -223,10 +235,11 @@ test.skipIf(!parsers)(
     const sections = rowsOf(await parse("ira-wrapped-titles.json")).filter(
       (r) => r.line_kind === "section" && r.measure_kind !== "budget_authority",
     );
+
     const joined = sections.find((r) => r.sections.includes("13904"))!;
     expect(joined.sections).toEqual(["13903", "13904"]);
     expect(joined.section_title).toBe("Extension of Limitation on Excess Business Losses of Noncorporate Taxpayers");
-    expect(joined.values["2022-2031"]).toBe(52759);
+    expect(joined.values["2022-2031"]).toBe(52_759);
     const forest = sections.filter((r) => r.sections.some((n) => n.startsWith("2300")));
     expect(forest.map((r) => [r.sections, r.section_title])).toEqual([
       [["23001"], "National Forest System Restoration and Fuels Reduction Projects"],

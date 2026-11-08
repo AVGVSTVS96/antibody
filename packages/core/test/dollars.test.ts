@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { type FigureEstimate, type FigureLine, figureEstimates, sectionFigure } from "../src/dollars.ts";
+import { figureEstimates, sectionFigure } from "../src/dollars.ts";
+import type { FigureEstimate, FigureLine } from "../src/dollars.ts";
 
 const est = (id: string, baseline: FigureEstimate["baseline"], over: Partial<FigureEstimate> = {}): FigureEstimate => ({
   id,
@@ -9,6 +10,7 @@ const est = (id: string, baseline: FigureEstimate["baseline"], over: Partial<Fig
   versionScored: "Public Law 119-21",
   ...over,
 });
+
 const line = (estimateId: string, amountMusd: number, over: Partial<FigureLine> = {}): FigureLine => ({
   estimateId,
   measure: "deficit",
@@ -30,8 +32,8 @@ test("a section CBO printed against two baselines counts at the smaller figure, 
 });
 
 test("the smaller figure counts whichever baseline it is on", () => {
-  expect(sectionFigure([line("law", 5_000), line("policy", 40_000)], pair)).toMatchObject({
-    musd: 5_000,
+  expect(sectionFigure([line("law", 5000), line("policy", 40_000)], pair)).toMatchObject({
+    musd: 5000,
     baseline: "current-law",
   });
 });
@@ -59,6 +61,7 @@ test("estimates of different text are not read together", () => {
     est("law-enacted", "current-law"),
     est("policy-senate", "current-policy", { publishedOn: "2025-06-29", versionScored: "As posted on June 27, 2025" }),
   ];
+
   const f = sectionFigure([line("law-enacted", 100_000), line("policy-senate", 500)], senate)!;
   expect(f).toMatchObject({ musd: 100_000, baseline: "current-law" });
   expect(f.byBaseline).toHaveLength(1);
@@ -67,8 +70,8 @@ test("estimates of different text are not read together", () => {
 
 test("a section dropped before the final text keeps the figure of the last estimate that listed it", () => {
   const chain = [est("old", "current-law", { publishedOn: "2025-06-04" }), est("law", "current-law")];
-  const f = sectionFigure([line("old", 7_000)], chain)!;
-  expect(f).toMatchObject({ musd: 7_000, estimateId: "old", fromLatest: false });
+  const f = sectionFigure([line("old", 7000)], chain)!;
+  expect(f).toMatchObject({ musd: 7000, estimateId: "old", fromLatest: false });
 });
 
 test("only per-section estimates supply figures", () => {

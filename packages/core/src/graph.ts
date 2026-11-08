@@ -13,6 +13,7 @@ export const NodeKind = z.enum([
   "committee",
   "pac",
 ]);
+
 export type NodeKind = z.infer<typeof NodeKind>;
 
 /**
@@ -22,12 +23,14 @@ export type NodeKind = z.infer<typeof NodeKind>;
  * pac:C00431312 (FEC committee id)
  */
 export type NodeId = `${NodeKind}:${string}`;
+
 export const NodeId = z.string().regex(new RegExp(`^(${NodeKind.options.join("|")}):.+$`)) as z.ZodType<NodeId>;
 
 export const nodeId = <K extends NodeKind>(kind: K, key: string | number): `${K}:${string}` => `${kind}:${key}`;
 export const billNode = (id: BillId) => nodeId("bill", id);
 
 export const Owner = z.enum(["self", "spouse", "joint", "dependent"]);
+
 export type Owner = z.infer<typeof Owner>;
 
 export const TradeEvent = z.object({
@@ -44,6 +47,7 @@ export const TradeEvent = z.object({
   nameMatch: z.boolean().optional(),
   claim: ClaimId,
 });
+
 export type TradeEvent = z.infer<typeof TradeEvent>;
 
 const Phases = z.object({ bill: z.number(), enactmentQuarter: z.number(), law: z.number() });
@@ -102,6 +106,7 @@ export const EDGE_PROPS = {
 } as const;
 
 export const EdgeKind = z.enum(Object.keys(EDGE_PROPS) as [keyof typeof EDGE_PROPS, ...(keyof typeof EDGE_PROPS)[]]);
+
 export type EdgeKind = z.infer<typeof EdgeKind>;
 
 const edgeOf = <K extends EdgeKind>(kind: K) =>
@@ -132,5 +137,7 @@ export const Edge = z.discriminatedUnion("kind", [
   edgeOf("resolves_to"),
   edgeOf("benefits"),
 ]);
+
 export type Edge = z.infer<typeof Edge>;
+
 export type EdgeOf<K extends EdgeKind> = Extract<Edge, { kind: K }>;

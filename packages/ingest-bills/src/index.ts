@@ -28,5 +28,7 @@ export const stages: Stage[] = [
 ];
 
 export { ingestBill } from "./ingest.ts";
+
 export { PARTS, PARTS_TEXT, type Piece, type SectionPart, sectionParts, splitSection } from "./parts.ts";
+
 export { type SectionText, sectionTexts } from "./texts.ts";

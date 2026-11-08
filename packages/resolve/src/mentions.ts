@@ -33,6 +33,7 @@ export function pacMentions(pacs: Row<"pacs">[]): Mention[] {
     .filter((p) => p.designation !== "D" && !NOT_SPONSORED.has(p.type ?? ""))
     .map((p) => {
       const org = p.connected_org && !/^(NONE|N\/?A|NULL)$/i.test(p.connected_org.trim()) ? p.connected_org : null;
+
       return {
         src: `pac:${p.id}`,
         source: "pac" as const,
@@ -52,8 +53,14 @@ export const EMPLOYER_REVIEW_USD = 25_000;
  * that carried the most money.
  */
 export function employerMentions(rows: Row<"employer_contributions">[]): Mention[] {
-  type Employer = { usd: number; spellings: Map<string, number>; ids: string[] };
+  interface Employer {
+    usd: number;
+    spellings: Map<string, number>;
+    ids: string[];
+  }
+
   const by = new Map<string, Employer>();
+
   for (const r of rows) {
     const e: Employer = by.get(r.employer_key) ?? { usd: 0, spellings: new Map(), ids: [] };
     e.usd += r.amount_usd;
@@ -61,8 +68,10 @@ export function employerMentions(rows: Row<"employer_contributions">[]): Mention
     e.ids.push(r.id);
     by.set(r.employer_key, e);
   }
+
   return [...by].map(([key, e]) => {
     const names = [...e.spellings].sort((a, b) => b[1] - a[1]).map(([n]) => n);
+
     return {
       src: `employer:${key}`,
       source: "employer" as const,
@@ -102,13 +111,23 @@ export const uniqueBySrc = (mentions: Mention[]) => [...new Map(mentions.map((m)
  */
 export function dedupe(mentions: Mention[]): { unique: Mention[]; fanOut: Map<Mention, Mention[]> } {
   const groups = new Map<string, Mention[]>();
+
   for (const m of mentions) {
     const k = `${m.source}\u0000${m.name}\u0000${m.ticker ?? ""}\u0000${m.context ?? ""}`;
     const g = groups.get(k);
-    if (g) g.push(m);
-    else groups.set(k, [m]);
+
+    if (g) {
+      g.push(m);
+    } else {
+      groups.set(k, [m]);
+    }
   }
+
   const fanOut = new Map<Mention, Mention[]>();
-  for (const g of groups.values()) fanOut.set(g[0]!, g);
+
+  for (const g of groups.values()) {
+    fanOut.set(g[0]!, g);
+  }
+
   return { unique: [...fanOut.keys()], fanOut };
 }

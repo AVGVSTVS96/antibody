@@ -22,7 +22,13 @@ export function Top({ crumb, find = false }: { crumb?: ReactNode; find?: boolean
         </div>
         <div className="nav-r">
           {find && <Find />}
-          <button type="button" className="navlink" onClick={() => navigate("/#read")}>
+          <button
+            type="button"
+            className="navlink"
+            onClick={() => {
+              navigate("/#read");
+            }}
+          >
             How we read bills
           </button>
           <ThemeButton />

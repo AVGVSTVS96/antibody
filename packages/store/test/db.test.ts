@@ -6,7 +6,8 @@ import { TABLES } from "@antibody/core";
 import { loadTables, openDb, query } from "../src/db.ts";
 
 const dir = await mkdtemp(join(tmpdir(), "antibody-store-"));
-afterAll(() => rm(dir, { recursive: true, force: true }));
+
+afterAll(async () => rm(dir, { recursive: true, force: true }));
 
 test("every contract table creates in DuckDB and loads JSONL shards", async () => {
   const trade = {
@@ -23,8 +24,8 @@ test("every contract table creates in DuckDB and loads JSONL shards", async () =
     traded_on: "2025-09-11",
     notified_on: null,
     amount: "$15,001 - $50,000",
-    amount_min: 15001,
-    amount_max: 50000,
+    amount_min: 15_001,
+    amount_max: 50_000,
     page: 1,
     read_by: "text",
     confidence: 1,
@@ -33,6 +34,7 @@ test("every contract table creates in DuckDB and loads JSONL shards", async () =
     source_url: "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032256.pdf",
     source_locator: "page 1",
   };
+
   TABLES.trades.schema.parse(trade);
   await Bun.write(join(dir, "trades", "2025.jsonl"), `${JSON.stringify(trade)}\n`);
 
@@ -54,6 +56,7 @@ test("a repeated id is skipped and a table that breaks its constraints stays emp
     source_url: "https://www.fec.gov/data/committee/C00364778/",
     source_locator: null,
   };
+
   TABLES.pacs.schema.parse(row);
   await Bun.write(join(dir, "pacs", "a.jsonl"), `${JSON.stringify(row)}\n${JSON.stringify(row)}\n`);
   const seen: string[] = [];
@@ -95,6 +98,7 @@ test("a shard written before an additive column existed loads with the column's 
     rests_on: ["sections/s1"],
     evidence: {},
   };
+
   await Bun.write(join(dir, "section_scores", "old.jsonl"), `${JSON.stringify(row)}\n`);
   const db = await openDb(":memory:");
   expect((await loadTables(db, (t) => join(dir, t))).section_scores).toBe(1);

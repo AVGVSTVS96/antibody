@@ -6,10 +6,12 @@ const MAX_ROWS = 10;
 export function fingerprintCells(kinds: string, cols: number) {
   const per = Math.max(1, Math.ceil(kinds.length / (cols * MAX_ROWS)));
   const cells: string[] = [];
+
   for (let i = 0; i < kinds.length; i += per) {
-    const group = kinds.slice(i, i + per);
-    cells.push(group.includes("b") ? "b" : group.includes("h") ? "h" : "n");
+    const group = new Set(kinds.slice(i, i + per));
+    cells.push(group.has("b") ? "b" : group.has("h") ? "h" : "n");
   }
+
   return { cells, per };
 }
 
@@ -20,19 +22,23 @@ export function Fingerprint({ kinds, label, big = false }: { kinds: string; labe
   const { cells, per } = fingerprintCells(kinds, cols);
   const rows = Math.max(1, Math.ceil(cells.length / cols));
   const h = rows * pitch - (pitch - size);
+
   const path = (want: string) =>
     cells
       .map((c, i) =>
         c === want ? `M${(i % cols) * pitch} ${Math.floor(i / cols) * pitch}h${size}v${size}h-${size}z` : "",
       )
       .join("");
+
   const grey = cells
     .map((c, i) =>
       c === "n" ? `M${(i % cols) * pitch} ${Math.floor(i / cols) * pitch}h${size}v${size}h-${size}z` : "",
     )
     .join("");
+
   const loud = path("h");
   const flagged = path("b");
+
   return (
     <svg
       className="fp"
@@ -51,5 +57,6 @@ export function Fingerprint({ kinds, label, big = false }: { kinds: string; labe
 
 export const fingerprintNote = (kinds: string, phone: boolean) => {
   const { per } = fingerprintCells(kinds, phone ? 44 : 52);
+
   return per > 1 ? `One square is ${per} sections` : null;
 };

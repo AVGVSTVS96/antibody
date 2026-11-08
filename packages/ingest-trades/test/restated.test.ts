@@ -2,32 +2,31 @@ import { describe, expect, test } from "bun:test";
 import type { Row } from "@antibody/core";
 import { collapseRestated } from "../src/restated.ts";
 
-const trade = (id: string, document_id: string, amount: string, over: Partial<Row<"trades">> = {}) =>
-  ({
-    id,
-    document_id,
-    bioguide: "X000001",
-    filer_name: "A Member",
-    chamber: "House",
-    owner: "self",
-    asset: "Acme Corp (ACME) [ST]",
-    asset_type: "ST",
-    ticker: "ACME",
-    type: "sale",
-    traded_on: "2024-03-01",
-    notified_on: null,
-    amount,
-    amount_min: null,
-    amount_max: null,
-    page: 1,
-    read_by: "text",
-    confidence: 1,
-    needs_second_read: false,
-    raw: {},
-    source_url: "https://example.gov/x.pdf",
-    source_locator: null,
-    ...over,
-  }) as Row<"trades">;
+const trade = (id: string, document_id: string, amount: string, over: Partial<Row<"trades">> = {}) => ({
+  id,
+  document_id,
+  bioguide: "X000001",
+  filer_name: "A Member",
+  chamber: "House",
+  owner: "self",
+  asset: "Acme Corp (ACME) [ST]",
+  asset_type: "ST",
+  ticker: "ACME",
+  type: "sale",
+  traded_on: "2024-03-01",
+  notified_on: null,
+  amount,
+  amount_min: null,
+  amount_max: null,
+  page: 1,
+  read_by: "text",
+  confidence: 1,
+  needs_second_read: false,
+  raw: {},
+  source_url: "https://example.gov/x.pdf",
+  source_locator: null,
+  ...over,
+});
 
 const docs = new Map([
   ["h-1", { filedOn: "2024-03-10", amended: false }],
@@ -63,6 +62,7 @@ describe("collapseRestated", () => {
       [trade("a", "h-1", "$1,001 - $15,000"), trade("b", "h-2", "$1,001 - $15,000", { owner: "spouse" })],
       docs,
     );
+
     expect(out).toHaveLength(2);
   });
 });

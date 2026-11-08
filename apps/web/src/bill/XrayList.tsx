@@ -1,10 +1,12 @@
-import { articlesOf, buriedWords, isLate, type Part, REACH_WORDS } from "@antibody/core";
+import { articlesOf, buriedWords, isLate, REACH_WORDS } from "@antibody/core";
+import type { Part } from "@antibody/core";
 import { Fragment, useMemo, useState } from "react";
 import { baselineWords, count, day, musd, quoted, rank } from "../lib/format.ts";
 import type { BillModel, SectionView } from "../lib/model.ts";
 import { Inf, Sources, Src } from "../ui/claims.tsx";
 
 type Filter = "top" | "all" | "headline" | "buried" | "reach" | "late" | "money" | "removed";
+
 type Sort = "num" | "attention" | "dollars" | "buried";
 
 const FILTERS: [Filter, string][] = [
@@ -73,14 +75,17 @@ export function XrayList({ m }: { m: BillModel }) {
       ),
     [m],
   );
+
   const [filter, setFilter] = useState<Filter>(m.sections.length > 30 ? "top" : "all");
   const [limit, setLimit] = useState(PAGE);
   const [sort, setSort] = useState<Sort>("num");
   const [open, setOpen] = useState<string | null>(null);
+
   const all = useMemo(
     () => m.sections.filter((v) => matches(filter, v, topIds)).sort(sorter[sort]),
     [m, filter, sort, topIds],
   );
+
   const rows = filter === "top" ? all : all.slice(0, limit);
   const firstIn = (code: string) => m.sections.filter((v) => v.s.firstVersion === code).length;
 
@@ -92,6 +97,7 @@ export function XrayList({ m }: { m: BillModel }) {
           {m.versions.map((v, i) => {
             const prev = m.versions[i - 1];
             const added = firstIn(v.code);
+
             return (
               <div className={`tl${v.predecessor ? " pred" : ""}`} key={v.code}>
                 <div className="d">{day(v.date)}</div>
@@ -121,12 +127,15 @@ export function XrayList({ m }: { m: BillModel }) {
       <fieldset className="filters" aria-label="Filter sections">
         {FILTERS.map(([f, label]) => {
           const n = m.sections.filter((v) => matches(f, v, topIds)).length;
+
           if (
             (f !== "all" && f !== "top" && !n) ||
             (f === "top" && m.sections.length <= TOP) ||
             (f === "late" && m.b.bill.lateUnavailable)
-          )
+          ) {
             return null;
+          }
+
           return (
             <button
               key={f}
@@ -189,8 +198,9 @@ export function XrayList({ m }: { m: BillModel }) {
             {rows.map((v, i) => {
               const s = v.s;
               const isOpen = open === s.id;
-              const cls = !s.inFinal ? "removed" : v.kind === "headline" || v.kind === "buried" ? v.kind : "";
+              const cls = s.inFinal ? (v.kind === "headline" || v.kind === "buried" ? v.kind : "") : "removed";
               const grouped = sort === "num" && (i === 0 || rows[i - 1]!.stage !== v.stage);
+
               return (
                 <Fragment key={s.id}>
                   {grouped && (
@@ -205,7 +215,13 @@ export function XrayList({ m }: { m: BillModel }) {
                       </td>
                     </tr>
                   )}
-                  <tr className={`row ${cls}`} onClick={() => setOpen(isOpen ? null : s.id)} aria-expanded={isOpen}>
+                  <tr
+                    className={`row ${cls}`}
+                    onClick={() => {
+                      setOpen(isOpen ? null : s.id);
+                    }}
+                    aria-expanded={isOpen}
+                  >
                     <td className="n">{m.secLabel(v)}</td>
                     <td className="ttl">
                       {s.heading} {v.kind === "headline" && <span className="pill loud">loud</span>}
@@ -263,10 +279,10 @@ export function XrayList({ m }: { m: BillModel }) {
                       )}
                     </td>
                     <td className="bur" data-l="Quiet score">
-                      {s.score?.buried != null ? (
-                        <span className="num">{s.score.buried.toFixed(2)}</span>
-                      ) : (
+                      {s.score?.buried == null ? (
                         <span className="dim">—</span>
+                      ) : (
+                        <span className="num">{s.score.buried.toFixed(2)}</span>
                       )}
                     </td>
                   </tr>
@@ -284,7 +300,9 @@ export function XrayList({ m }: { m: BillModel }) {
                       v={v}
                       sort={sort}
                       open={open === p.id}
-                      toggle={() => setOpen(open === p.id ? null : p.id)}
+                      toggle={() => {
+                        setOpen(open === p.id ? null : p.id);
+                      }}
                     />
                   ))}
                 </Fragment>
@@ -294,12 +312,24 @@ export function XrayList({ m }: { m: BillModel }) {
         </table>
       </div>
       {filter === "top" && m.sections.length > TOP && (
-        <button type="button" className="more" onClick={() => setFilter("all")}>
+        <button
+          type="button"
+          className="more"
+          onClick={() => {
+            setFilter("all");
+          }}
+        >
           Show all {count(m.sections.length, "section")}
         </button>
       )}
       {filter !== "top" && all.length > rows.length && (
-        <button type="button" className="more" onClick={() => setLimit(limit + PAGE)}>
+        <button
+          type="button"
+          className="more"
+          onClick={() => {
+            setLimit(limit + PAGE);
+          }}
+        >
           Show {Math.min(PAGE, all.length - rows.length)} more of {all.length - rows.length} left
         </button>
       )}
@@ -312,7 +342,13 @@ const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n
 
 function SortBtn({ s, cur, set, children }: { s: Sort; cur: Sort; set: (s: Sort) => void; children: React.ReactNode }) {
   return (
-    <button type="button" aria-pressed={cur === s} onClick={() => set(s)}>
+    <button
+      type="button"
+      aria-pressed={cur === s}
+      onClick={() => {
+        set(s);
+      }}
+    >
       {children}
       {cur === s && s !== "num" ? " ↓" : ""}
     </button>
@@ -340,10 +376,11 @@ function PartRows({
   const late = p.score?.components.late ?? p.late;
   const lateInOld = late && !isLate(v.s);
   const hits = p.attention ? p.attention.hits + (p.score?.components.attentionChecked ?? 0) : null;
+
   return (
     <>
       <tr
-        className={`row part ${!v.s.inFinal ? "removed" : kind === "headline" || kind === "buried" ? kind : ""}`}
+        className={`row part ${v.s.inFinal ? (kind === "headline" || kind === "buried" ? kind : "") : "removed"}`}
         onClick={toggle}
         aria-expanded={open}
       >
@@ -386,10 +423,10 @@ function PartRows({
           </span>
         </td>
         <td className="bur" data-l="Quiet score">
-          {p.score?.buried != null ? (
-            <span className="num">{p.score.buried.toFixed(2)}</span>
-          ) : (
+          {p.score?.buried == null ? (
             <span className="dim">—</span>
+          ) : (
+            <span className="num">{p.score.buried.toFixed(2)}</span>
           )}
         </td>
       </tr>
@@ -421,6 +458,7 @@ function PartRows({
 function SectionDetail({ m, v }: { m: BillModel; v: SectionView }) {
   const s = v.s;
   const counterpart = s.counterpart ? m.sectionById.get(s.counterpart.sectionId) : null;
+
   return (
     <div>
       <div className="quote" style={{ marginTop: 8 }}>
@@ -431,6 +469,7 @@ function SectionDetail({ m, v }: { m: BillModel; v: SectionView }) {
           .filter((x) => s.history[x.code])
           .map((x) => {
             const h = s.history[x.code]!;
+
             return (
               <div className="h" key={x.code}>
                 <div className="c">{x.name.replace(/ \(.*\)$/, "")}</div>

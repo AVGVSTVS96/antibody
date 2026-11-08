@@ -15,7 +15,11 @@ import type { ReachKind } from "../src/tables.ts";
 
 test("the fixture is a valid, sound bundle", () => {
   const parsed = Bundle.safeParse(fixture);
-  if (!parsed.success) throw new Error(parsed.error.message);
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
   expect(checkBundle(parsed.data)).toEqual([]);
 });
 
@@ -32,6 +36,7 @@ test("checkBundle catches a dangling claim and edge", () => {
 test("checkBundle catches a pay-for that names a section the bundle does not have", () => {
   const b = structuredClone(Bundle.parse(fixture));
   const [s] = b.sections;
+
   const score = {
     label: "normal",
     buried: null,
@@ -46,6 +51,7 @@ test("checkBundle catches a pay-for that names a section the bundle does not hav
     },
     claim: Object.keys(b.claims)[0]!,
   };
+
   s!.score = Bundle.shape.sections.element.shape.score.parse(score);
   expect(checkBundle(b)).toEqual([`section ${s!.id}: offsets unknown section no-such-section`]);
   s!.score!.offsets = s!.id;
@@ -68,6 +74,7 @@ test("an index without stats or watch picks still parses", () => {
       },
     ],
   });
+
   expect(index.watch).toEqual([]);
   expect(index.bills[0]!.stats).toBeNull();
   expect(index.bills[0]).toMatchObject({ origin: "curated", note: null, addedOn: null });
@@ -112,11 +119,11 @@ test("the headline deficit comes from the latest published estimate, longest per
     { ...est, id: "new", publishedOn: "2025-07-21" },
   ];
   b.dollars.wholeBill = [
-    { ...base, estimateId: "old", period: "2025-2034", amountMusd: 2416229 },
+    { ...base, estimateId: "old", period: "2025-2034", amountMusd: 2_416_229 },
     { ...base, estimateId: "new", period: "2025-2029", amountMusd: 1 },
-    { ...base, estimateId: "new", period: "2025-2034", amountMusd: 3394444 },
+    { ...base, estimateId: "new", period: "2025-2034", amountMusd: 3_394_444 },
   ];
-  expect(headlineDeficit(b, "current-law")?.amountMusd).toBe(3394444);
+  expect(headlineDeficit(b, "current-law")?.amountMusd).toBe(3_394_444);
   expect(headlineDeficit(b, "current-policy")).toBeUndefined();
 });
 
@@ -157,6 +164,7 @@ function bill(n: number, over: (i: number) => object = () => ({})) {
     score: null,
     ...over(i),
   }));
+
   return b;
 }
 

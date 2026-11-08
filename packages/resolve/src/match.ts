@@ -63,22 +63,36 @@ export class CompanyIndex {
   constructor(companies: Company[]) {
     for (const c of companies) {
       this.byCik.set(c.cik, c);
-      for (const t of c.tickers) this.byTicker.set(normTicker(t), c);
+
+      for (const t of c.tickers) {
+        this.byTicker.set(normTicker(t), c);
+      }
+
       const n = norm(c.name);
-      if (!n) continue;
+
+      if (!n) {
+        continue;
+      }
+
       const list = this.byNorm.get(n) ?? [];
       list.push(c);
       this.byNorm.set(n, list);
     }
-    for (const n of this.byNorm.keys())
+
+    for (const n of this.byNorm.keys()) {
       for (const t of new Set(tokens(n))) {
         const list = this.byToken.get(t) ?? [];
         list.push(n);
         this.byToken.set(t, list);
       }
+    }
+
     const total = this.byNorm.size;
     this.maxIdf = Math.log(total + 1);
-    for (const [t, list] of this.byToken) this.idf.set(t, Math.log((total + 1) / list.length));
+
+    for (const [t, list] of this.byToken) {
+      this.idf.set(t, Math.log((total + 1) / list.length));
+    }
   }
 
   exact(normalized: string): Company[] {
@@ -91,9 +105,13 @@ export class CompanyIndex {
     const weight = (t: string) => this.idf.get(t) ?? this.maxIdf;
     const total = ts.reduce((s, t) => s + weight(t), 0);
     const overlap = new Map<string, number>();
-    for (const t of ts)
+
+    for (const t of ts) {
       for (const n of this.byToken.get(t) ?? []) overlap.set(n, (overlap.get(n) ?? 0) + weight(t) / total);
+    }
+
     const pool = [...overlap].sort((a, b) => b[1] - a[1]).slice(0, 40);
+
     const scored = pool.flatMap(([n]) =>
       this.byNorm.get(n)!.map((c) => ({
         cik: c.cik,
@@ -103,11 +121,15 @@ export class CompanyIndex {
         set: round(tokenSet(normalized, n)),
       })),
     );
+
     const bySort = [...scored].sort((a, b) => b.sort - a.sort);
     const bySet = [...scored].sort((a, b) => b.set - a.set);
     const picked = new Map<string, Candidate>();
-    for (let i = 0; picked.size < limit && i < scored.length; i++)
+
+    for (let i = 0; picked.size < limit && i < scored.length; i++) {
       for (const c of [bySort[i], bySet[i]]) if (c && picked.size < limit) picked.set(c.cik, c);
+    }
+
     return [...picked.values()];
   }
 }
@@ -118,7 +140,11 @@ const round = (x: number) => Math.round(x * 10) / 10;
 function namesAgree(a: string, b: string): boolean {
   const na = norm(a);
   const nb = norm(b);
-  if (!na || !nb) return true;
+
+  if (!na || !nb) {
+    return true;
+  }
+
   return tokenSet(na, nb) >= 60 || tokens(na)[0] === tokens(nb)[0];
 }
 
@@ -135,28 +161,41 @@ export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
 
   if (ticker) {
     const c = index.byTicker.get(normTicker(ticker));
-    if (c && namesAgree(raw, c.name))
+
+    if (c && namesAgree(raw, c.name)) {
       return match(m, c.cik, "ticker", 0.99, { ticker, edgarName: c.name, filedName: raw });
+    }
+
     if (c) {
       const cands = [toCandidate(c, normalized), ...index.candidates(normalized).filter((x) => x.cik !== c.cik)];
+
       return queue(m, normalized, cands, false, `ticker ${ticker} is ${c.name}, which doesn't match the filed name`);
     }
   }
-  if (!normalized)
+
+  if (!normalized) {
     return { kind: "none", why: "nothing left after removing legal and filler words", normalized, best: null };
+  }
 
   const alias = m.source === "trade" ? undefined : aliasFor(normalized);
-  if (alias && index.byCik.has(alias.cik)) return match(m, alias.cik, "alias", 0.95, { normalized, reason: alias.why });
+
+  if (alias && index.byCik.has(alias.cik)) {
+    return match(m, alias.cik, "alias", 0.95, { normalized, reason: alias.why });
+  }
 
   const exact = index.exact(normalized);
   const single = tokens(normalized).length === 1;
-  if (exact.length === 1 && !single)
+
+  if (exact.length === 1 && !single) {
     return match(m, exact[0]!.cik, "name_exact", 0.95, { normalized, edgarName: exact[0]!.name });
+  }
 
   const cands = index.candidates(normalized);
+
   if (exact.length) {
     const others = cands.filter((c) => !exact.some((e) => e.cik === c.cik));
     const why = exact.length > 1 ? `${exact.length} SEC companies share this name` : "one-word name";
+
     return queue(m, normalized, [...exact.map((e) => toCandidate(e, normalized)), ...others], canPropose(m), why);
   }
 
@@ -164,20 +203,31 @@ export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
   const best = bySort[0] ?? null;
   const margin = best ? best.sort - (bySort[1]?.sort ?? 0) : 0;
   const sameHead = best ? tokens(norm(best.name))[0] === tokens(normalized)[0] : false;
-  if (best && !single && best.sort >= 94 && margin >= 4 && sameHead && typoClose(normalized, norm(best.name)))
+
+  if (best && !single && best.sort >= 94 && margin >= 4 && sameHead && typoClose(normalized, norm(best.name))) {
     return match(m, best.cik, "fuzzy", 0.9, { normalized, score: best.sort, margin, candidates: cands });
+  }
 
   const bestSet = Math.max(0, ...cands.map((c) => c.set));
   const plausible = sameHead && best !== null && (best.sort >= 75 || bestSet >= 90);
-  if (m.source !== "trade" && NON_COMPANY.test(raw.toUpperCase()) && bestSet < 85)
+
+  if (m.source !== "trade" && NON_COMPANY.test(raw.toUpperCase()) && bestSet < 85) {
     return {
       kind: "none",
       why: "reads as an association, government or school, and no SEC name is close",
       normalized,
       best,
     };
-  if (plausible) return queue(m, normalized, cands, canPropose(m), "a close SEC name needs a judgment call");
-  if (canPropose(m)) return queue(m, normalized, cands, true, "a business with no close SEC name: maybe a subsidiary");
+  }
+
+  if (plausible) {
+    return queue(m, normalized, cands, canPropose(m), "a close SEC name needs a judgment call");
+  }
+
+  if (canPropose(m)) {
+    return queue(m, normalized, cands, true, "a business with no close SEC name: maybe a subsidiary");
+  }
+
   return { kind: "none", why: "no close SEC name", normalized, best };
 }
 
@@ -190,6 +240,7 @@ function canPropose(m: Mention): boolean {
 
 function toCandidate(c: Company, normalized: string): Candidate {
   const n = norm(c.name);
+
   return {
     cik: c.cik,
     name: c.name,
@@ -217,7 +268,9 @@ function queue(
   mayProposeParent: boolean,
   why: string,
 ): Outcome {
-  if (mention.reviewable === false)
+  if (mention.reviewable === false) {
     return { kind: "none", why: `not reviewed (${why})`, normalized, best: candidates[0] ?? null };
+  }
+
   return { kind: "queue", queued: { mention, normalized, candidates, mayProposeParent, why } };
 }

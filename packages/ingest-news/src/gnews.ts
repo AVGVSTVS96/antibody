@@ -13,24 +13,25 @@ const PAUSE_MS = 1500;
 
 const decode = (s: string) =>
   s
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+    .replaceAll(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
     .trim();
 
 export function parseRss(xml: string): GnewsItem[] {
   return [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(([, item]) => {
-    const tag = (t: string) => decode(item!.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`))?.[1] ?? "");
+    const tag = (t: string) => decode(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`).exec(item!)?.[1] ?? "");
     const date = tag("pubDate");
+
     return {
       title: tag("title").replace(/ - [^-]+$/, ""),
       link: tag("link"),
       published: date ? new Date(date).toISOString().slice(0, 10) : null,
       sourceName: tag("source"),
-      sourceUrl: decode(item!.match(/<source url="([^"]+)"/)?.[1] ?? ""),
+      sourceUrl: decode(/<source url="([^"]+)"/.exec(item!)?.[1] ?? ""),
     };
   });
 }
@@ -43,13 +44,19 @@ const addDays = (d: string, n: number) => new Date(Date.parse(d) + n * 86_400_00
  */
 export async function gnews(query: string, w: Window, signal?: AbortSignal): Promise<GnewsItem[]> {
   const seen = new Map<string, GnewsItem>();
+
   for (let day = w.start; day < w.end; day = addDays(day, STEP_DAYS)) {
     const next = addDays(day, STEP_DAYS) < w.end ? addDays(day, STEP_DAYS) : w.end;
     const q = `${query} after:${day} before:${next}`;
     const url = `https://news.google.com/rss/search?${new URLSearchParams({ q, hl: "en-US", gl: "US", ceid: "US:en" })}`;
     const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0" }, signal });
-    if (res.ok) for (const it of parseRss(await res.text())) if (!seen.has(it.link)) seen.set(it.link, it);
+
+    if (res.ok) {
+      for (const it of parseRss(await res.text())) if (!seen.has(it.link)) seen.set(it.link, it);
+    }
+
     await Bun.sleep(PAUSE_MS);
   }
+
   return [...seen.values()];
 }

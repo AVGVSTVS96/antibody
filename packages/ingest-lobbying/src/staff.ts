@@ -28,18 +28,34 @@ const titleCase = (w: string) => (w === w.toUpperCase() && w.length > 2 ? w[0] +
  */
 export function namedMembers(position: string): string[] {
   const out = new Set<string>();
+
   for (const m of position.matchAll(PREFIX)) {
-    const rest = position.slice(m.index! + m[0].length).split(/[,;(/\d–—]|\s-\s|\s{2,}/)[0]!;
+    const rest = position.slice(m.index + m[0].length).split(/[,;(/\d–—]|\s-\s|\s{2,}/)[0]!;
     const words: string[] = [];
+
     for (const w of rest.trim().split(/\s+/)) {
-      if (!/^[A-Z][A-Za-z'’.-]*$/.test(w) || words.length === 4) break;
+      if (!/^[A-Z][A-Za-z'’.-]*$/.test(w) || words.length === 4) {
+        break;
+      }
+
       words.push(w);
     }
-    while (words.length > 1 && /^(LD|LA|LC|COS|PSM)$/i.test(words.at(-1)!)) words.pop();
-    if (!words.length || words.some((w) => NOT_A_NAME.has(w.replace(/[.,]$/, "")))) continue;
-    if (words.length === 1 && words[0]!.length < 3) continue;
+
+    while (words.length > 1 && /^(LD|LA|LC|COS|PSM)$/i.test(words.at(-1)!)) {
+      words.pop();
+    }
+
+    if (!words.length || words.some((w) => NOT_A_NAME.has(w.replace(/[.,]$/, "")))) {
+      continue;
+    }
+
+    if (words.length === 1 && words[0]!.length < 3) {
+      continue;
+    }
+
     const role = ROLE[m[1]!.toLowerCase()] ?? titleCase(m[1]!);
     out.add(`${role} ${words.map(titleCase).join(" ")}`);
   }
+
   return [...out];
 }

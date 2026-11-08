@@ -9,10 +9,12 @@ export type Ref = {
 };
 
 const congressOf = (year: number) => Math.floor((year - 1789) / 2) + 1;
+
 const quarterStart: Record<string, string> = {
   first_quarter: "01-01", second_quarter: "04-01", third_quarter: "07-01", fourth_quarter: "10-01",
   mid_year: "01-01", year_end: "07-01",
 };
+
 const quarterEnd: Record<string, string> = {
   first_quarter: "03-31", second_quarter: "06-30", third_quarter: "09-30", fourth_quarter: "12-31",
   mid_year: "06-30", year_end: "12-31",
@@ -67,10 +69,12 @@ export function findRefs(text: string, filingYear: number, period: string, billK
   const periodEnd = `${filingYear}-${quarterEnd[period] ?? "12-31"}`;
 
   const all = [...text.matchAll(numberRe)];
+
   for (const [i, m] of all.entries()) {
     const chamber = m[1]!.toUpperCase().startsWith("H") ? "hr" : "s";
     const num = Number(m[2]);
     const hit = t.numbers.find((n) => n.chamber === chamber && n.num === num);
+
     if (!hit) continue;
     const window = clause(text, m.index!, m.index! + m[0].length, all[i - 1], all[i + 1]);
     const rival = window.match(t.rivals);
@@ -81,6 +85,7 @@ export function findRefs(text: string, filingYear: number, period: string, billK
     let confidence: Ref["confidence"];
     let why: string;
     const split = /^\s\d{1,4}\b/.test(text.slice(m.index! + m[0].length)) && !named;
+
     if (split) { confidence = "low"; why = "digits right after the number look like a split bill number"; }
     else if (!sameCongress) { confidence = "low"; why = explicitCongress ? `text says ${explicitCongress[0]}, bill is ${targetCongress(billKey)}th` : `filing is from the ${congress}th Congress, bill is ${targetCongress(billKey)}th`; }
     else if (rival && !named) { confidence = "low"; why = `nearby text names another bill: "${rival[0]}"`; }
@@ -88,14 +93,17 @@ export function findRefs(text: string, filingYear: number, period: string, billK
     else if (named) { confidence = "high"; why = "number sits next to the bill's name or public law"; }
     else if (t.support?.test(window)) { confidence = "high"; why = `number matches, same Congress, and the clause says "${window.match(t.support)![0]}"`; }
     else { confidence = chamber === "hr" && num === 1 ? "medium" : "high"; why = "number matches, same Congress, after introduction"; }
+
     refs.push({ bill: billKey, how: "number", text: m[0], confidence, why });
   }
 
   for (const r of t.names) {
     const m = text.match(r);
+
     if (!m) continue;
     let confidence: Ref["confidence"] = "high";
     let why = "bill named";
+
     if (billKey === "ira" && /^Build Back Better$/i.test(m[0]) && periodStart < "2021-07-01") {
       confidence = "low";
       why = "\"Build Back Better\" before H.R.5376 existed means the agenda, not the bill";
@@ -103,20 +111,28 @@ export function findRefs(text: string, filingYear: number, period: string, billK
       why = "H.R.5376 was titled the Build Back Better Act until Aug 2022";
       confidence = "medium";
     }
-    if (billKey === "obbba" && /^OBB/.test(m[0])) { why = "acronym"; if (m[0] !== "OBBBA") confidence = "medium"; }
+
+    if (billKey === "obbba" && /^OBB/.test(m[0])) { why = "acronym";
+
+ if (m[0] !== "OBBBA") confidence = "medium"; }
+
     refs.push({ bill: billKey, how: "name", text: m[0], confidence, why });
     break;
   }
 
   for (const m of text.matchAll(lawRe)) {
     const law = `${m[1]}-${m[2]}`;
+
     if (t.laws.includes(law)) refs.push({ bill: billKey, how: "public-law", text: m[0], confidence: "high", why: "public law number" });
   }
+
   if (!refs.some((r) => r.how === "public-law"))
     for (const law of t.laws) {
       const m = text.match(new RegExp(`(?<![\\d-])${law}(?![\\d-])`));
+
       if (m) refs.push({ bill: billKey, how: "public-law", text: m[0], confidence: "medium", why: "bare public law number" });
     }
+
   return refs;
 }
 
@@ -125,6 +141,7 @@ function clause(text: string, start: number, end: number, prev?: RegExpMatchArra
   const to = Math.min(end + 90, next ? next.index! : text.length);
   const before = text.slice(from, start).split(/[;\n]/).pop()!;
   const after = text.slice(end, to).split(/[;\n]/)[0]!;
+
   return before + text.slice(start, end) + after;
 }
 
@@ -134,8 +151,11 @@ function targetCongress(billKey: string) {
 
 export function bestConfidence(refs: Ref[]): Ref["confidence"] | null {
   if (refs.some((r) => r.confidence === "high")) return "high";
+
   if (refs.some((r) => r.confidence === "medium")) return "medium";
+
   if (refs.length) return "low";
+
   return null;
 }
 

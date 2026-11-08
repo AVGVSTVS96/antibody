@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { BillId, Row } from "@antibody/core";
-import { OUTLET_LIST, OUTLETS, SIDES, type Side, sideOf } from "@antibody/ingest-news";
+import { OUTLET_LIST, OUTLETS, SIDES, sideOf } from "@antibody/ingest-news";
+import type { Side } from "@antibody/ingest-news";
 import type { Match, MatchRun } from "./match.ts";
 import { NAMES_BILL } from "./score.ts";
 
@@ -15,23 +16,27 @@ export const ATTENTION_RULE =
 
 /** Below this many sampled, relevant articles a bill's percentiles are not shown. */
 export const MIN_ARTICLES = 20;
+
 /**
  * An article with less text than this (a paywall stub, a failed fetch, a headline) is not counted: a matcher cannot
  * tell which sections it covers, and outlets differ in how much of their text a script can read, so counting them
  * would shrink one side's attention for reasons that have nothing to do with the bill.
  */
 export const MIN_TEXT_CHARS = 1000;
+
 /**
  * Below this many section mentions in total, a section's rank is mostly chance (a handful of articles spread over
  * hundreds of sections), so the bill gets raw counts and no percentiles.
  */
 export const MIN_SECTION_HITS = 30;
+
 /** A side with fewer relevant, readable articles than this is left out of the equal weighting and named as a gap. */
 export const MIN_SIDE_ARTICLES = 10;
 const EXAMPLES = 3;
 const SIDE_NAMES = Object.keys(SIDES) as Side[];
 
 type Group = Row<"outlets">["group"];
+
 const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group] as [string, Group]));
 
 /**
@@ -40,13 +45,24 @@ const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group] as [string, Group
  * once any article discusses it. A dropped section is ranked against the final ones, so it can be above all of them.
  */
 export function percentile(v: number, reference: number[], inReference = true): number {
-  if (v <= 0) return 0;
+  if (v <= 0) {
+    return 0;
+  }
+
   const others = [...reference];
   const self = inReference ? others.indexOf(v) : -1;
-  if (self >= 0) others.splice(self, 1);
-  if (!others.length) return 1;
+
+  if (self >= 0) {
+    others.splice(self, 1);
+  }
+
+  if (!others.length) {
+    return 1;
+  }
+
   const below = others.filter((r) => r < v).length;
   const tied = others.filter((r) => r === v).length;
+
   return Math.min(1, (below + tied / 2) / others.length);
 }
 
@@ -71,9 +87,11 @@ export function attention(
   parts: Pick<Row<"section_parts">, "id" | "section_id">[] = [],
 ): AttentionResult {
   const partsOf = Map.groupBy(parts, (p) => p.section_id);
+
   /** An article tied to a part of a section discusses the section. */
   const about = (m: Match, id: string) =>
     m.sections.includes(id) || (partsOf.get(id)?.some((p) => m.sections.includes(p.id)) ?? false);
+
   const read = articles.filter((a) => (a.text_chars ?? 0) >= MIN_TEXT_CHARS && run.matches[a.id]);
   const match = (a: Row<"articles">) => run.matches[a.id] as Match;
   const relevant = read.filter((a) => match(a).about !== "unrelated");
@@ -85,24 +103,35 @@ export function attention(
     Side,
     number
   >;
+
   const found = Object.fromEntries(
     SIDE_NAMES.map((s) => [s, articles.filter((a) => a.outlet_id && sideOf(groupOf.get(a.outlet_id)!) === s).length]),
   );
+
   const sampled = Object.fromEntries(
     SIDE_NAMES.map((s) => [s, read.filter((a) => a.outlet_id && sideOf(groupOf.get(a.outlet_id)!) === s).length]),
   );
+
   const fetched = Object.fromEntries(
     SIDE_NAMES.map((s) => [
       s,
       articles.filter((a) => a.text_chars !== null && a.outlet_id && sideOf(groupOf.get(a.outlet_id)!) === s).length,
     ]),
   );
+
   const activeSides = SIDE_NAMES.filter((s) => perSide[s] >= MIN_SIDE_ARTICLES);
 
   const balanced = (hitters: Row<"articles">[]) => {
-    if (!activeSides.length) return 0;
+    if (!activeSides.length) {
+      return 0;
+    }
+
     let sum = 0;
-    for (const s of activeSides) sum += hitters.filter((a) => side(a) === s).length / perSide[s];
+
+    for (const s of activeSides) {
+      sum += hitters.filter((a) => side(a) === s).length / perSide[s];
+    }
+
     return sum / activeSides.length;
   };
 
@@ -120,18 +149,24 @@ export function attention(
             ((b.text_chars ?? 0) > 0 ? 1 : 0) - ((a.text_chars ?? 0) > 0 ? 1 : 0) || (hash(a.id) < hash(b.id) ? -1 : 1),
         ),
     );
+
     const out: string[] = [];
-    for (let i = 0; out.length < EXAMPLES && bySide.some((l) => l[i]); i++)
+
+    for (let i = 0; out.length < EXAMPLES && bySide.some((l) => l[i]); i++) {
       for (const l of bySide) if (l[i] && out.length < EXAMPLES) out.push(l[i]!.id);
+    }
+
     return out;
   };
 
   const byGroup = (hitters: Row<"articles">[]) => {
     const g: Partial<Record<Group, number>> = {};
+
     for (const a of hitters) {
       const k = groupOf.get(a.outlet_id!)!;
       g[k] = (g[k] ?? 0) + 1;
     }
+
     return g;
   };
 
@@ -139,10 +174,12 @@ export function attention(
   const inFinal = new Map(sections.map((s) => [s.id, s.in_final]));
   const mentions = final.reduce((n, s) => n + hitsFor((m) => about(m, s.id)).counted.length, 0);
   const thin = counted.length < MIN_ARTICLES || mentions < MIN_SECTION_HITS;
+
   const share = new Map([
     ...sections.map((s) => [s.id, balanced(hitsFor((m) => about(m, s.id)).counted)] as [string, number]),
     ...parts.map((p) => [p.id, balanced(hitsFor((m) => m.sections.includes(p.id)).counted)] as [string, number]),
   ]);
+
   const reference = final.filter((s) => !NAMES_BILL.test(s.heading.trim())).map((s) => share.get(s.id)!);
 
   const evidenceBase = {
@@ -166,6 +203,7 @@ export function attention(
     own: boolean,
   ): Row<"attention"> => {
     const h = hitsFor((m) => (own ? m.sections.includes(id) : about(m, id)));
+
     return {
       id: `${bill}:${id}`,
       bill_id: bill,
@@ -187,6 +225,7 @@ export function attention(
       evidence: { ...evidenceBase, balanced_share: Number(share.get(id)!.toFixed(5)), in_final: inFinal },
     };
   };
+
   const rows: Row<"attention">[] = [
     ...sections.map((s) => row(s.id, s.id, null, s.in_final, false)),
     ...parts.map((p) => row(p.id, p.section_id, p.id, inFinal.get(p.section_id) ?? false, true)),
@@ -194,10 +233,15 @@ export function attention(
 
   const general = hitsFor((m) => m.whole || m.outside !== null);
   const outside: Record<string, number> = {};
+
   for (const a of general.counted) {
     const o = match(a).outside;
-    if (o) outside[o] = (outside[o] ?? 0) + 1;
+
+    if (o) {
+      outside[o] = (outside[o] ?? 0) + 1;
+    }
   }
+
   rows.push({
     id: `${bill}:general`,
     bill_id: bill,
@@ -219,9 +263,12 @@ export function attention(
         .map(([topic, n]) => ({ topic, articles: n })),
     },
   });
+
   const shareOf = (ids: Iterable<string>) => {
     const wanted = new Set(ids);
+
     return balanced(counted.filter((a) => wanted.has(a.id)));
   };
+
   return { rows, share, relevant: counted.length, counted, shareOf };
 }

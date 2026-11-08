@@ -5,6 +5,7 @@ import type { Glance, Parsed, ParsedRow } from "../src/parsed.ts";
 
 const years = ["2025", "2025-2034"];
 const v = (a: number, b: number) => ({ "2025": a, "2025-2034": b });
+
 const row = (r: Partial<ParsedRow> & Pick<ParsedRow, "measure_kind" | "values" | "range">): ParsedRow => ({
   sheet: "Title I",
   block: "direct_spending",
@@ -82,6 +83,7 @@ const src = {
   pdfUrl: null,
   pdfArchiveUrl: null,
 };
+
 const ids = (n: string) => `119-hr-9@ih:sec:${n}`;
 
 test("section rows add up to CBO's printed totals", () => {
@@ -90,7 +92,10 @@ test("section rows add up to CBO's printed totals", () => {
 
 test("every line is a valid cbo_lines row", () => {
   const { lines } = buildLines(src, parsed, null, ids);
-  for (const l of lines) expect(TABLES.cbo_lines.schema.safeParse(l).error).toBeUndefined();
+
+  for (const l of lines) {
+    expect(TABLES.cbo_lines.schema.safeParse(l).error).toBeUndefined();
+  }
 });
 
 test("a grouped CBO line stays a fact; its even split per section is marked and rests on it, sign kept", () => {
@@ -145,6 +150,7 @@ test("whole-bill figures come from the summary; the At a Glance box adds discret
     baseline_month: null,
     budget_enforcement_baseline: false,
   };
+
   const pdf = { ...src, pdfUrl: "https://www.cbo.gov/system/files/2025-07/hr9.pdf", pdfArchiveUrl: null };
   const whole = buildLines(pdf, parsed, glance, ids).lines.filter((l) => l.line_kind === "whole-bill");
   expect(whole.map((l) => [l.measure, l.spending, l.period, l.total_musd, l.source_url])).toEqual([

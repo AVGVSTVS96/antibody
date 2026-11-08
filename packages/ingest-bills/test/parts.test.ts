@@ -9,8 +9,10 @@ import { textVersions } from "../src/versions.ts";
 
 const words = (seed: string, n: number) => Array.from({ length: n }, (_, i) => `${seed}${i}`).join(" ");
 const bill = (body: string) => `<?xml version="1.0"?><bill><legis-body>${body}</legis-body></bill>`;
+
 const sub = (tag: string, en: string, head: string, inner: string) =>
   `<${tag}><enum>${en}</enum>${head ? `<header>${head}</header>` : ""}${inner}</${tag}>`;
+
 const el = (xml: string) => sectionElements(xml)[0]!.el;
 
 describe("splitSection", () => {
@@ -31,9 +33,11 @@ describe("splitSection", () => {
         `<text>No issuer shall pay interest. ${words("b", 30)}</text>`,
       )}${sub("paragraph", "(3)", "Reserves", `<text>${words("c", 400)}</text>`)}`,
     );
+
     const xml = bill(
       `<section><enum>4.</enum><header>Requirements</header>${big}${sub("subsection", "(b)", "Rulemaking", `<text>${words("d", 200)}</text>`)}</section>`,
     );
+
     const parts = splitSection(el(xml));
     expect(parts.map((p) => [p.enum, p.heading, p.trail, p.path, p.leadIn])).toEqual([
       ["(a)(1)", "In general", ["Standards"], "subsection:a/paragraph:1", false],
@@ -46,6 +50,7 @@ describe("splitSection", () => {
 
   test("a split piece's own words of 40 or more are a part of their own; USLM num and heading read the same", () => {
     const lead = words("lead", PARTS.leadInMin);
+
     const xml = `<?xml version="1.0"?><bill><main><section><num>Sec. 9.</num><heading>Law</heading><chapeau>${lead}</chapeau>${sub(
       "subsection",
       "(a)",
@@ -57,6 +62,7 @@ describe("splitSection", () => {
       "",
       `<content>${words("y", 600)}</content>`,
     ).replace(/<enum>\(b\)<\/enum>/, '<num value="b">(b)</num>')}</section></main></bill>`;
+
     const parts = splitSection(el(xml));
     expect(parts.map((p) => [p.enum, p.heading, p.leadIn, p.words])).toEqual([
       ["", "", true, PARTS.leadInMin],
@@ -67,9 +73,11 @@ describe("splitSection", () => {
 
   test("text quoted into other law stays inside the piece that inserts it", () => {
     const inserted = `<quoted-block>${sub("subsection", "(x)", "Inserted", `<text>${words("q", 1500)}</text>`)}${sub("subsection", "(y)", "Also", `<text>${words("r", 10)}</text>`)}</quoted-block>`;
+
     const xml = bill(
       `<section><enum>5.</enum><header>Amendments</header>${sub("subsection", "(a)", "In general", `<text>Section 1 is amended by adding:</text>${inserted}`)}${sub("subsection", "(b)", "Date", `<text>${words("z", 20)}</text>`)}</section>`,
     );
+
     expect(splitSection(el(xml)).map((p) => [p.enum, p.words > 1500])).toEqual([
       ["(a)", true],
       ["(b)", false],
@@ -83,15 +91,18 @@ const fixture = (name: string) =>
 
 describe("GENIUS Act, read in parts", async () => {
   const status = parseBillStatus(fixture("BILLSTATUS-119s1582.xml"), "119-s-1582");
+
   const pred = {
     code: "s394-is",
     url: "https://www.govinfo.gov/content/pkg/BILLS-119s394is/xml/BILLS-119s394is.xml",
     file: "BILLS-119s394is.xml",
   };
+
   const refs = [pred, ...textVersions(status)];
   const versions = refs.map((r, i) => ({ code: r.code, predecessor: i === 0, secs: parseSections(fixture(r.file)) }));
   const { lineages } = trace("119-s-1582", versions);
   const final = versions.at(-1)!.code;
+
   const sections = lineages.map((l) => ({
     id: l.id,
     num: sectionNum(l.last.path),
@@ -101,12 +112,15 @@ describe("GENIUS Act, read in parts", async () => {
     split_from: l.splitFrom?.id ?? null,
     first_version: l.firstVersion,
   }));
+
   const files = new Map(refs.map((r) => [r.url, r.file]));
+
   const parts = await sectionParts(
     sections,
     refs.map((r, i) => ({ code: r.code, url: r.url, predecessor_rule: i === 0 ? "predecessor" : null })),
     { read: async (url) => fixture(files.get(url)!) },
   );
+
   const sec4 = lineages.find((l) => sectionNum(l.last.path) === "4")!;
   const part = (num: string) => parts.find((p) => p.num === num)!;
 
@@ -169,6 +183,7 @@ describe("GENIUS Act, read in parts", async () => {
       refs.map((r, i) => ({ code: r.code, url: r.url, predecessor_rule: i === 0 ? "predecessor" : null })),
       { read: async (url) => fixture(files.get(url)!), lateUnavailable: "rewritten wholesale" },
     );
+
     expect(withheld.some((p) => p.late)).toBe(false);
     expect(withheld.length).toBe(parts.length);
   });

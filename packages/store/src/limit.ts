@@ -15,30 +15,38 @@ const fmt = (n: number) => n.toLocaleString("en-US");
  */
 export function limitGraph(b: Bundle, limits = LIMITS): Bundle {
   const reports = new Map<NodeId, number>();
-  for (const e of b.edges)
+
+  for (const e of b.edges) {
     if (e.kind === "lobbied" && e.src.startsWith("client:") && e.dst.startsWith("bill:") && !e.props.topicOnly)
       reports.set(e.src, (reports.get(e.src) ?? 0) + e.props.reports);
+  }
+
   const resolved = new Set(b.edges.filter((e) => e.kind === "resolves_to").map((e) => e.src));
   const clients = b.nodes.filter((n) => n.kind === "client");
+
   const named = new Set(
     b.edges.filter((e) => e.kind === "lobbied" && e.src.startsWith("client:") && !e.props.topicOnly).map((e) => e.src),
   );
+
   const top = new Set(
     clients
       .toSorted((a, c) => (reports.get(c.id) ?? 0) - (reports.get(a.id) ?? 0) || a.id.localeCompare(c.id))
       .slice(0, limits.clients)
       .map((n) => n.id),
   );
+
   const dropped = new Set<NodeId>(clients.filter((n) => !top.has(n.id) && !resolved.has(n.id)).map((n) => n.id));
 
   const funded = b.edges.filter((e): e is Extract<Edge, { kind: "funded" }> => e.kind === "funded");
   const droppedFunding = new Set<string>();
   const byMember = Map.groupBy(funded, (e) => e.dst);
-  for (const es of byMember.values())
+
+  for (const es of byMember.values()) {
     for (const e of es
       .toSorted((a, c) => c.props.amountUsd - a.props.amountUsd || a.id.localeCompare(c.id))
       .slice(limits.fundersPerMember))
       droppedFunding.add(e.id);
+  }
 
   const gone = (e: Edge) => dropped.has(e.src) || dropped.has(e.dst) || droppedFunding.has(e.id);
   b.edges = b.edges.filter((e) => !gone(e));
@@ -48,7 +56,7 @@ export function limitGraph(b: Bundle, limits = LIMITS): Bundle {
   const orphan = (id: NodeId) => !touched.has(id) && /^(registrant|lobbyist|pac):/.test(id);
   b.nodes = b.nodes.filter((n) => !dropped.has(n.id) && !orphan(n.id));
 
-  if (dropped.size)
+  if (dropped.size) {
     b.gaps.push({
       id: "clients-limited",
       kind: "other",
@@ -56,7 +64,9 @@ export function limitGraph(b: Bundle, limits = LIMITS): Bundle {
       nodes: [],
       claim: null,
     });
-  if (droppedFunding.size)
+  }
+
+  if (droppedFunding.size) {
     b.gaps.push({
       id: "funders-limited",
       kind: "other",
@@ -64,5 +74,7 @@ export function limitGraph(b: Bundle, limits = LIMITS): Bundle {
       nodes: [],
       claim: null,
     });
+  }
+
   return b;
 }

@@ -18,11 +18,14 @@ export function Trades({ m }: { m: BillModel }) {
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState(40);
   const span = m.span;
+
   const widest = all.length
     ? [all.flatMap((t) => t.v.trades.flatMap((x) => x.props.events.map((e) => e.date))).sort()]
     : [];
+
   const dates = widest[0] ?? [];
   const range = dates.length ? `${monthShort(dates[0]!)} to ${monthShort(dates.at(-1)!)}` : "";
+
   return (
     <Section id="trades" title="Members who traded tied stock">
       <p className="lead narrow">
@@ -81,7 +84,14 @@ export function Trades({ m }: { m: BillModel }) {
           )}
           <footer>
             {all.length > 6 ? (
-              <button type="button" className="link" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+              <button
+                type="button"
+                className="link"
+                onClick={() => {
+                  setOpen((o) => !o);
+                }}
+                aria-expanded={open}
+              >
                 {open
                   ? "Hide the list"
                   : `All ${all.length} who traded a tied stock in the full window${range ? `, ${range}` : ""}`}
@@ -105,7 +115,13 @@ export function Trades({ m }: { m: BillModel }) {
           ))}
           {shown < all.length && (
             <li className="more">
-              <button type="button" className="link" onClick={() => setShown((s) => s + 60)}>
+              <button
+                type="button"
+                className="link"
+                onClick={() => {
+                  setShown((s) => s + 60);
+                }}
+              >
                 Show more ({all.length - shown} left)
               </button>
             </li>
@@ -131,6 +147,7 @@ function SeatGrid({ filled }: { filled: number }) {
   const cols = Math.max(10, Math.floor((w + 2) / pitch));
   const rows = Math.ceil(SEATS / cols);
   const step = w / cols;
+
   return (
     <div ref={ref} className="seat-grid">
       <svg
@@ -160,7 +177,11 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
   const box = useRef<HTMLDivElement>(null);
   const w = useWidth(box, 1200);
   const [hover, setHover] = useState<number | null>(null);
-  if (!months.length) return null;
+
+  if (!months.length) {
+    return null;
+  }
+
   const phone = w < 560;
   const L = phone ? 34 : 44;
   const R = 2;
@@ -171,6 +192,7 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
   const peak = months.reduce((a, x) => (x.n > a.n ? x : a), months[0]!);
   const idx = (iso: string) => months.findIndex((x) => x.key === iso.slice(0, 7));
   const firstPass = m.b.votes.filter(isPassage).sort((a, b) => a.date.localeCompare(b.date))[0];
+
   const marks = [
     span && { at: span[0], label: `First text, ${day(span[0]).replace(/, \d{4}$/, "")}` },
     firstPass && {
@@ -182,10 +204,12 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
       label: `${m.b.bill.law ? "Signed" : "Latest action"}, ${day(span[1]).replace(/, \d{4}$/, "")}`,
     },
   ].filter((x): x is { at: string; label: string } => !!x && idx(x.at) >= 0);
+
   const laid = layMarks(
     marks.map((k) => ({ ...k, x: X(idx(k.at)) + bw * (Number(k.at.slice(8, 10)) / 31) })),
     phone,
   );
+
   const rows = Math.max(1, ...laid.map((k) => k.row + 1));
   const T = Math.max(phone ? 64 : 44, 12 + rows * 16);
   const H = phone ? 252 : 240;
@@ -194,6 +218,7 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
   const yticks = Array.from({ length: 6 }, (_, i) => (top / 5) * i).filter((v, i, a) => a.indexOf(v) === i);
   const years = months.map((x, i) => ({ x, i })).filter(({ x, i }) => i === 0 || x.key.endsWith("-01"));
   const inSpan = peak.during;
+
   return (
     <div className="monthly" ref={box}>
       <header>
@@ -236,8 +261,12 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
             rx="1.5"
             fill={x.during || !span ? "var(--ink)" : "var(--quiet-dot)"}
             opacity={hover == null || hover === i ? 1 : 0.55}
-            onPointerEnter={() => setHover(i)}
-            onPointerLeave={() => setHover(null)}
+            onPointerEnter={() => {
+              setHover(i);
+            }}
+            onPointerLeave={() => {
+              setHover(null);
+            }}
           >
             <title>{`${monthName(x.key)}: ${count(x.n, "trade")}`}</title>
           </rect>

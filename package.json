@@ -1,26 +1,41 @@
 {
   "name": "antibody",
   "private": true,
+  "workspaces": {
+    "packages": [
+      "packages/*",
+      "apps/*"
+    ],
+    "catalog": {
+      "zod": "4.6.7",
+      "fast-xml-parser": "5.12.0",
+      "@duckdb/node-api": "1.5.6-r.1",
+      "react": "19.3.1",
+      "react-dom": "19.3.1",
+      "@types/react": "19.3.0",
+      "@types/react-dom": "19.3.0",
+      "typescript": "7.0.2"
+    }
+  },
   "type": "module",
-  "workspaces": [
-    "packages/*",
-    "apps/*"
-  ],
   "scripts": {
-    "prepare": "git config core.hooksPath .githooks",
+    "check": "oxlint && oxfmt --check && bun --filter '*' typecheck && bun test && bun --filter @antibody/web build",
+    "fix": "oxlint --fix; oxfmt",
+    "prepare": "lefthook install",
     "antibody": "bun apps/cli/src/main.ts",
-    "lint": "biome check .",
-    "format": "biome check --write .",
-    "typecheck": "tsc",
-    "test": "bun test",
     "test:nodata": "mkdir -p .nodata && ANTIBODY_DATA=$PWD/.nodata bun test",
-    "ci": "biome ci . && tsc && bun test",
     "deploy": "scripts/deploy.sh",
     "e2e": "bun apps/web/scripts/e2e.ts"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15",
-    "@types/bun": "1.4.3",
-    "typescript": "7.0.2"
-  }
+    "@oxlint/plugins": "1.92.0",
+    "@types/bun": "1.4.4",
+    "lefthook": "2.2.2",
+    "oxfmt": "0.77.0",
+    "oxlint": "1.92.0",
+    "oxlint-tsgolint": "7.0.2006",
+    "typescript": "catalog:",
+    "ultracite": "8.1.1"
+  },
+  "packageManager": "bun@1.4.3"
 }

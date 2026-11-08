@@ -1,4 +1,5 @@
-import { type BillId, billRef } from "@antibody/core";
+import { billRef } from "@antibody/core";
+import type { BillId } from "@antibody/core";
 
 /** One `<cboCostEstimates><item>` from BILLSTATUS: the publication and the bill version CBO says it scored. */
 export interface Listing {
@@ -13,10 +14,11 @@ export interface Listing {
 
 const BILL_TYPES: Record<string, string> = { HR: "hr", S: "s", HJRES: "hjres", SJRES: "sjres" };
 const SAME_TEXT = /identical bill|public law contains the text/i;
+
 const norm = (s: string) =>
   s
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replaceAll(/[^a-z0-9]+/g, " ")
     .trim();
 
 /**
@@ -26,33 +28,43 @@ const norm = (s: string) =>
  */
 export function companions(xml: string, bill: BillId): BillId[] {
   const own = billRef(bill);
+
   const short = new Set(
     [...xml.matchAll(/<titleType>([^<]*)<\/titleType>\s*<title>([^<]*)<\/title>/g)]
       .filter(([, kind]) => /short title/i.test(kind!) && !/portions/i.test(kind!))
       .map(([, , title]) => norm(decode(title!))),
   );
-  const related = xml.match(/<relatedBills>([\s\S]*?)<\/relatedBills>/)?.[1] ?? "";
+
+  const related = /<relatedBills>([\s\S]*?)<\/relatedBills>/.exec(xml)?.[1] ?? "";
+
   return related.split(/<\/relationshipDetails>\s*<\/item>/).flatMap((item) => {
     const [head = "", details = ""] = item.split("<relationshipDetails>");
-    const tag = (name: string) => decode(head.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1] ?? "");
+    const tag = (name: string) => decode(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(head)?.[1] ?? "");
     const type = BILL_TYPES[tag("type")];
     const id = `${tag("congress")}-${type}-${tag("number")}` as BillId;
     const relations = [...details.matchAll(/<type>([^<]*)<\/type>/g)].map((m) => m[1]!);
     const same = relations.some((r) => SAME_TEXT.test(r)) || short.has(norm(tag("title")));
+
     return type && +tag("congress") === own.congress && id !== bill && same ? [id] : [];
   });
 }
 
 /** BILLSTATUS can list one publication twice (once per action it relates to); each is kept once. */
 export function parseListings(xml: string): Listing[] {
-  const block = xml.match(/<cboCostEstimates>([\s\S]*?)<\/cboCostEstimates>/)?.[1] ?? "";
+  const block = /<cboCostEstimates>([\s\S]*?)<\/cboCostEstimates>/.exec(xml)?.[1] ?? "";
   const seen = new Set<string>();
+
   return [...block.matchAll(/<item>([\s\S]*?)<\/item>/g)].flatMap(([, item]) => {
-    const tag = (name: string) => decode(item!.match(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`))?.[1] ?? "");
+    const tag = (name: string) => decode(new RegExp(`<${name}>([\\s\\S]*?)</${name}>`).exec(item!)?.[1] ?? "");
     const url = tag("url").replace(/^http:/, "https:");
-    const pubId = url.match(/cbo\.gov\/publication\/(\d+)/)?.[1];
-    if (!pubId || seen.has(pubId)) return [];
+    const pubId = /cbo\.gov\/publication\/(\d+)/.exec(url)?.[1];
+
+    if (!pubId || seen.has(pubId)) {
+      return [];
+    }
+
     seen.add(pubId);
+
     return [{ url, pubId, title: tag("title"), description: tag("description"), pubDate: tag("pubDate") }];
   });
 }
@@ -61,11 +73,11 @@ const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"'
 
 function decode(s: string): string {
   return s
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(Number.parseInt(n, 16)))
-    .replace(/&(\w+);/g, (m, e) => ENTITIES[e] ?? m)
-    .replace(/\s+/g, " ")
+    .replaceAll(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replaceAll(/&#(\d+);/g, (_, n) => String.fromCodePoint(+n))
+    .replaceAll(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(Number.parseInt(n, 16)))
+    .replaceAll(/&(\w+);/g, (m, e) => ENTITIES[e] ?? m)
+    .replaceAll(/\s+/g, " ")
     .trim();
 }
 
@@ -78,12 +90,21 @@ export function versionCode(description: string, bill: BillId, known: string[] =
   const d = description.toLowerCase();
   const own = billRef(bill).type.startsWith("h") ? "h" : "s";
   let code: string | null = null;
-  if (/public law|enacted|signed into law/.test(d)) code = "enr";
-  else if (/passed by the house/.test(d)) code = own === "h" ? "eh" : "eah";
-  else if (/passed by the senate/.test(d)) code = own === "s" ? "es" : "eas";
-  else if (/reported by the senate|senate committee/.test(d) && /report/.test(d)) code = "rs";
-  else if (/reported by the house|house committee/.test(d) && /report/.test(d)) code = "rh";
-  else if (/as introduced/.test(d)) code = `i${own}`;
+
+  if (/public law|enacted|signed into law/.test(d)) {
+    code = "enr";
+  } else if (d.includes("passed by the house")) {
+    code = own === "h" ? "eh" : "eah";
+  } else if (d.includes("passed by the senate")) {
+    code = own === "s" ? "es" : "eas";
+  } else if (/reported by the senate|senate committee/.test(d) && d.includes("report")) {
+    code = "rs";
+  } else if (/reported by the house|house committee/.test(d) && d.includes("report")) {
+    code = "rh";
+  } else if (d.includes("as introduced")) {
+    code = `i${own}`;
+  }
+
   return code && known.length && !known.includes(code) ? null : code;
 }
 
@@ -99,12 +120,16 @@ const MONTH =
 export function baselineOf(listing: Listing, pdf: { month: string | null; enforcement: boolean } | null): Baseline {
   const text = `${listing.title} ${listing.description}`;
   const dynamic = /dynamic/i.test(listing.title) ? ", dynamic estimate" : "";
+
   if (
     /budget[- ]enforcement baseline|baseline used for budget enforcement|current[- ]policy baseline/i.test(text) ||
     (pdf?.enforcement && !MONTH.test(text))
-  )
+  ) {
     return { baseline: "current-policy", label: `Senate budget-enforcement baseline (current policy)${dynamic}` };
-  const month = text.match(MONTH)?.[1] ?? pdf?.month;
+  }
+
+  const month = MONTH.exec(text)?.[1] ?? pdf?.month;
+
   return {
     baseline: "current-law",
     label: `${month ? `CBO ${month} baseline (current law)` : "CBO current-law baseline"}${dynamic}`,

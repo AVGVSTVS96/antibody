@@ -35,7 +35,10 @@ test("sections carry their stage and score label", () => {
 
 test("every display edge cites claims that exist", () => {
   const m = buildModel(b);
-  for (const e of m.edges) for (const c of e.claims) expect(b.claims[c]).toBeDefined();
+
+  for (const e of m.edges) {
+    for (const c of e.claims) expect(b.claims[c]).toBeDefined();
+  }
 });
 
 test("short labels", () => {

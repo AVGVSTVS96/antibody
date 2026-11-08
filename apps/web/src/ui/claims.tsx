@@ -1,5 +1,6 @@
 import type { Claim } from "@antibody/core";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { sourceName } from "../lib/format.ts";
 
@@ -16,7 +17,7 @@ interface Ctx {
   keep: () => void;
 }
 
-const ClaimCtx = createContext<Ctx>({ loading: false, claim: () => undefined, open() {}, close() {}, keep() {} });
+const ClaimCtx = createContext<Ctx>({ loading: false, claim: () => {}, open() {}, close() {}, keep() {} });
 export const useClaims = () => useContext(ClaimCtx);
 
 const OPEN_DELAY = 220;
@@ -35,26 +36,49 @@ export function ClaimProvider({ claims, children }: { claims: Record<string, Cla
       claim: (id) => claims?.[id],
       open(id, el) {
         clearTimeout(timer.current);
-        const go = () => setOpen({ id, rect: el.getBoundingClientRect() });
-        if (shown.current) go();
-        else timer.current = setTimeout(go, OPEN_DELAY);
+
+        const go = () => {
+          setOpen({ id, rect: el.getBoundingClientRect() });
+        };
+
+        if (shown.current) {
+          go();
+        } else {
+          timer.current = setTimeout(go, OPEN_DELAY);
+        }
       },
       close(now = false) {
         clearTimeout(timer.current);
-        if (now) setOpen(null);
-        else timer.current = setTimeout(() => setOpen(null), CLOSE_GRACE);
+
+        if (now) {
+          setOpen(null);
+        } else {
+          timer.current = setTimeout(() => {
+            setOpen(null);
+          }, CLOSE_GRACE);
+        }
       },
-      keep: () => clearTimeout(timer.current),
+      keep: () => {
+        clearTimeout(timer.current);
+      },
     }),
     [claims],
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
+
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
-    const onScroll = () => setOpen(null);
+
+    const onScroll = () => {
+      setOpen(null);
+    };
+
     addEventListener("keydown", onKey);
     addEventListener("scroll", onScroll, { capture: true, passive: true });
+
     return () => {
       removeEventListener("keydown", onKey);
       removeEventListener("scroll", onScroll, { capture: true });
@@ -76,7 +100,11 @@ function ClaimPopover({ claim: c, rect, all }: { claim: Claim; rect: DOMRect; al
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+
+    if (!el) {
+      return;
+    }
+
     const w = el.offsetWidth;
     const h = el.offsetHeight;
     const left = Math.min(Math.max(12, rect.left), innerWidth - w - 12);
@@ -89,6 +117,7 @@ function ClaimPopover({ claim: c, rect, all }: { claim: Claim; rect: DOMRect; al
   }, [rect]);
 
   const rests = c.restsOn.map((id) => all[id]).filter((x): x is Claim => !!x);
+
   return createPortal(
     <div
       ref={ref}
@@ -96,7 +125,9 @@ function ClaimPopover({ claim: c, rect, all }: { claim: Claim; rect: DOMRect; al
       role="tooltip"
       style={pos ? { left: pos.left, top: pos.top, ["--origin" as string]: pos.origin } : { left: -9999, top: 0 }}
       onPointerEnter={keep}
-      onPointerLeave={() => close()}
+      onPointerLeave={() => {
+        close();
+      }}
     >
       <div className="head">
         <KindPill kind={c.kind} />
@@ -153,13 +184,22 @@ export const Inf = () => <span className="pill inf">inference</span>;
 export function Src({ id, label }: { id: string; label?: string }) {
   const { claim, open, close, loading } = useClaims();
   const c = claim(id);
-  const onEnter = useCallback((e: React.SyntheticEvent<HTMLAnchorElement>) => open(id, e.currentTarget), [id, open]);
-  if (!c)
+
+  const onEnter = useCallback(
+    (e: React.SyntheticEvent<HTMLAnchorElement>) => {
+      open(id, e.currentTarget);
+    },
+    [id, open],
+  );
+
+  if (!c) {
     return loading ? (
       <span className="src ghost" aria-hidden="true">
         {label ?? "source"}
       </span>
     ) : null;
+  }
+
   return (
     <a
       className={`src${c.kind === "inference" ? " inference" : ""}`}
@@ -167,9 +207,13 @@ export function Src({ id, label }: { id: string; label?: string }) {
       target="_blank"
       rel="noopener"
       onPointerEnter={onEnter}
-      onPointerLeave={() => close()}
+      onPointerLeave={() => {
+        close();
+      }}
       onFocus={onEnter}
-      onBlur={() => close(true)}
+      onBlur={() => {
+        close(true);
+      }}
       aria-label={`${c.kind}: ${c.text} Source: ${sourceName(c.sourceUrl)}`}
     >
       {label ?? sourceName(c.sourceUrl)}
@@ -180,6 +224,7 @@ export function Src({ id, label }: { id: string; label?: string }) {
 /** Chips for several claims, one per distinct record, so twenty trades on one filing show one chip. */
 export function Sources({ ids, max = 3 }: { ids: (string | null | undefined)[]; max?: number }) {
   const { claim, loading } = useClaims();
+
   if (loading) {
     return ids.some(Boolean) ? (
       <span className="chips">
@@ -189,17 +234,31 @@ export function Sources({ ids, max = 3 }: { ids: (string | null | undefined)[]; 
       </span>
     ) : null;
   }
+
   const seen = new Set<string>();
   const unique: string[] = [];
+
   for (const id of ids) {
     const c = id ? claim(id) : undefined;
-    if (!c) continue;
+
+    if (!c) {
+      continue;
+    }
+
     const key = `${c.kind}|${c.sourceUrl}`;
-    if (seen.has(key)) continue;
+
+    if (seen.has(key)) {
+      continue;
+    }
+
     seen.add(key);
     unique.push(c.id);
   }
-  if (!unique.length) return null;
+
+  if (!unique.length) {
+    return null;
+  }
+
   return (
     <span className="chips">
       {unique.slice(0, max).map((id) => (
@@ -222,8 +281,15 @@ export function ClaimLink({
 }) {
   const { claim, open, close } = useClaims();
   const c = id ? claim(id) : undefined;
-  if (!c || !id) return <span className={className}>{children}</span>;
-  const onEnter = (e: React.SyntheticEvent<HTMLAnchorElement>) => open(id, e.currentTarget);
+
+  if (!c || !id) {
+    return <span className={className}>{children}</span>;
+  }
+
+  const onEnter = (e: React.SyntheticEvent<HTMLAnchorElement>) => {
+    open(id, e.currentTarget);
+  };
+
   return (
     <a
       className={className}
@@ -231,9 +297,13 @@ export function ClaimLink({
       target="_blank"
       rel="noopener"
       onPointerEnter={onEnter}
-      onPointerLeave={() => close()}
+      onPointerLeave={() => {
+        close();
+      }}
       onFocus={onEnter}
-      onBlur={() => close(true)}
+      onBlur={() => {
+        close(true);
+      }}
     >
       {children}
     </a>

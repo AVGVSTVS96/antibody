@@ -3,6 +3,7 @@ import { count, day, musd, usd } from "./format.ts";
 import type { BillModel, MemberView, SectionView } from "./model.ts";
 
 type Version = BillModel["versions"][number];
+
 type Roll = BillModel["b"]["votes"][number];
 
 const PASSAGE = /(on passage|and pass\b|motion to concur|conference report)/i;
@@ -37,16 +38,21 @@ export function timeline(m: BillModel): Step[] {
   const rolls = b.votes.filter(isPassage).sort((x, y) => x.date.localeCompare(y.date) || x.number - y.number);
   const lawOn = b.bill.lawOn;
   const lastRoll = rolls.at(-1);
+
   const fold =
     !!lawOn &&
     !!lastRoll &&
     /concur/i.test(lastRoll.question) &&
     rolls.filter((r) => r.chamber === lastRoll.chamber).length > 1;
+
   const steps: (Step & { on: string })[] = [];
-  if (first)
+
+  if (first) {
     steps.push({ label: "First text", detail: `${day(first.date)}, ${first.name}`, signed: false, on: first.date! });
+  }
 
   const passedBy = new Set<string>();
+
   for (const r of fold ? rolls.slice(0, -1) : rolls) {
     const again = passedBy.has(r.chamber);
     passedBy.add(r.chamber);
@@ -62,26 +68,35 @@ export function timeline(m: BillModel): Step[] {
       on: r.date,
     });
   }
+
   for (const v of m.versions) {
     const chamber = ENGROSSED[v.code];
-    if (!chamber || !v.date || v.predecessor || passedBy.has(chamber)) continue;
+
+    if (!chamber || !v.date || v.predecessor || passedBy.has(chamber)) {
+      continue;
+    }
+
     passedBy.add(chamber);
     steps.push({ label: `${chamber} passes it`, detail: day(v.date), signed: false, on: v.date });
   }
+
   steps.sort((x, y) => x.on.localeCompare(y.on));
 
   const enr = m.versions.find((v) => v.code === "enr");
-  if (lawOn)
+
+  if (lawOn) {
     steps.push({
       label: "Signed into law",
       detail: `${day(lawOn)}${fold && lastRoll ? `, after the ${lastRoll.chamber} agreed ${tally(lastRoll)} on ${day(lastRoll.date).replace(/, \d{4}$/, "")}` : ""}`,
       signed: true,
       on: lawOn,
     });
-  else if (enr?.date)
+  } else if (enr?.date) {
     steps.push({ label: "Sent to the President", detail: day(enr.date), signed: false, on: enr.date });
-  else if (b.bill.latestAction)
+  } else if (b.bill.latestAction) {
     steps.push({ label: "Latest action", detail: b.bill.latestAction, signed: false, on: "9" });
+  }
+
   return steps.map(({ on: _on, ...s }) => s);
 }
 
@@ -97,17 +112,20 @@ export function introLine(m: BillModel): string {
   const law = !!b.bill.law;
   const parts = [`${count(finals, "section")} ${law ? "became law" : "in the latest text"}.`];
   const d = headlineDeficit(b, "current-law");
+
   if (d) {
     const years = d.period.split("-").map(Number);
     const span = years[1] && years[0] ? years[1] - years[0] + 1 : null;
     const size = spelled(d.amountMusd);
     const over = span ? ` over ${span === 10 ? "ten" : span} years` : "";
+
     const words =
       Math.abs(d.amountMusd) < 0.5
         ? "has no net effect on the deficit"
         : d.amountMusd < 0
           ? `cuts the deficit by ${size}${over}`
           : `adds ${size} to the deficit${over}`;
+
     const unscored = b.dollars.wholeBill.find(
       (w) =>
         w.measure === "nonscorable_revenues" &&
@@ -116,18 +134,27 @@ export function introLine(m: BillModel): string {
         w.period === d.period &&
         w.amountMusd !== 0,
     );
+
     parts.push(
       `CBO says the ${law ? "law" : "bill"} ${words}${unscored ? `, and expects ${spelled(unscored.amountMusd)} more in revenue that it does not score` : ""}.`,
     );
-  } else if (b.dollars.estimates.length) parts.push("CBO published an estimate, but its total isn’t read yet.");
-  else parts.push("CBO has no score for it.");
+  } else if (b.dollars.estimates.length) {
+    parts.push("CBO published an estimate, but its total isn’t read yet.");
+  } else {
+    parts.push("CBO has no score for it.");
+  }
+
   const ranked = m.sections.some((v) => v.s.attention?.pct != null);
+
   if (ranked) {
     const loud = m.headline.length;
     parts.push(
       `${loud ? `Most of the news covered ${loud} of those sections` : "No section stood out in the news"}${m.buried.length ? `; ${flaggedWords(m)} got almost none.` : "."}`,
     );
-  } else parts.push("Too few news articles to say which sections got attention.");
+  } else {
+    parts.push("Too few news articles to say which sections got attention.");
+  }
+
   return parts.join(" ");
 }
 
@@ -147,12 +174,15 @@ export function answers(m: BillModel): Answer[] {
   const loud = m.headline[0];
   const quiet = m.buried[0];
   const test = billStats(b).buriedTest;
+
   const big = m.sections.filter(
     (v) => v.s.inFinal && v.s.score && (bigStakes(v.s.score.components) || v.s.score.components.reach.length),
   ).length;
+
   const L = b.lobbying;
   const total = L.byPhase.bill + L.byPhase.enactmentQuarter + L.byPhase.law;
   const lateShare = total ? L.byPhase.law / total : 0;
+
   const first: Answer = loud
     ? {
         tone: "loud",
@@ -172,37 +202,33 @@ export function answers(m: BillModel): Answer[] {
         link: "See every section",
         target: "news",
       };
+
   const firms = quiet?.s.score?.components.lobbyingFirms ?? 0;
+
   const lobbied =
     firms >= BIG_STAKES.firms && Math.abs(quiet?.dollarsMusd ?? 0) < BIG_STAKES.dollarsMusd
       ? `${count(firms, "lobbying firm")} named it; `
       : "";
+
   const heading = quiet ? trim(quiet.s.heading, 56) : "";
   const reachOnly = quiet?.s.score && !bigStakes(quiet.s.score.components) ? quiet.s.score.components.reach : [];
   const named = heading.endsWith("…") ? heading : `${heading}.`;
+
   const second: Answer = quiet
     ? {
         tone: "quiet",
         label: "What slipped by",
         big: reachOnly.length
           ? REACH_WORDS[reachOnly[0]!].replace(/^./, (x) => x.toUpperCase())
-          : quiet.dollarsMusd != null
-            ? `${quiet.dollarsMusd < 0 ? "saves" : "costs"} ${usd(Math.abs(quiet.dollarsMusd) * 1e6)}`
-            : count(m.buried.length, "section"),
+          : quiet.dollarsMusd == null
+            ? count(m.buried.length, "section")
+            : `${quiet.dollarsMusd < 0 ? "saves" : "costs"} ${usd(Math.abs(quiet.dollarsMusd) * 1e6)}`,
         text: `${reachOnly.length || quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(articlesOf(quiet.s) ?? 0, "article")} matched it${isLate(quiet.s) ? ", and it was added after the first text" : ""}.`,
         link: "Why it’s flagged",
         target: "news",
       }
-    : !test.tested
+    : test.tested
       ? {
-          tone: "quiet",
-          label: "What slipped by",
-          big: "Can’t be tested",
-          text: `${(test.why ?? "The rule can’t fire on this bill").replace(/^./, (x) => x.toUpperCase())}.`,
-          link: "How we test it",
-          target: "read",
-        }
-      : {
           tone: "quiet",
           label: "What slipped by",
           big: "None found",
@@ -211,7 +237,16 @@ export function answers(m: BillModel): Answer[] {
             : `No section has stakes this big: none has a CBO figure of $10 billion or more, ${BIG_STAKES.firms} lobbying firms, or legal reach in its text. CBO gave ${test.costMeasured} of ${m.sections.filter((v) => v.s.inFinal).length} sections its own figure.`,
           link: "How we test it",
           target: "read",
+        }
+      : {
+          tone: "quiet",
+          label: "What slipped by",
+          big: "Can’t be tested",
+          text: `${(test.why ?? "The rule can’t fire on this bill").replace(/^./, (x) => x.toUpperCase())}.`,
+          link: "How we test it",
+          target: "read",
         };
+
   const third: Answer = {
     tone: "money",
     label: "Who paid to be heard",
@@ -220,6 +255,7 @@ export function answers(m: BillModel): Answer[] {
     link: "Follow the money",
     target: "money",
   };
+
   const fourth: Answer = {
     tone: "trade",
     label: "Who traded",
@@ -228,6 +264,7 @@ export function answers(m: BillModel): Answer[] {
     link: "See the trades",
     target: "trades",
   };
+
   return [first, second, third, fourth];
 }
 
@@ -235,6 +272,7 @@ export function answers(m: BillModel): Answer[] {
 function flaggedWords(m: BillModel): string {
   const n = m.buried.length;
   const costly = m.buried.every((v) => v.s.score && bigStakes(v.s.score.components));
+
   return costly
     ? n === 1
       ? "one costly section"
@@ -245,29 +283,46 @@ function flaggedWords(m: BillModel): string {
 }
 
 export function trim(s: string, max: number): string {
-  const clean = s.replace(/\s+/g, " ").replace(/\.$/, "");
+  const clean = s.replaceAll(/\s+/g, " ").replace(/\.$/, "");
   const sentence = clean.charAt(0).toUpperCase() + clean.slice(1);
-  if (sentence.length <= max)
+
+  if (sentence.length <= max) {
     return sentence.charAt(0).toLowerCase() === sentence.charAt(0) ? sentence : lowerFirst(sentence);
+  }
+
   let out = "";
+
   for (const w of sentence.split(" ")) {
-    if (out && out.length + w.length + 1 > max) break;
+    if (out && out.length + w.length + 1 > max) {
+      break;
+    }
+
     out = out ? `${out} ${w}` : w;
   }
+
   return `${lowerFirst(out)}…`;
 }
 
 const lowerFirst = (s: string) => (/^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 export const sectionName = (s: string, max = 34) => {
-  const clean = s.replace(/\s+/g, " ").replace(/\.$/, "");
+  const clean = s.replaceAll(/\s+/g, " ").replace(/\.$/, "");
   const cap = clean.charAt(0).toUpperCase() + clean.slice(1);
-  if (cap.length <= max) return cap;
+
+  if (cap.length <= max) {
+    return cap;
+  }
+
   let out = "";
+
   for (const w of cap.split(" ")) {
-    if (out && out.length + w.length + 1 > max) break;
+    if (out && out.length + w.length + 1 > max) {
+      break;
+    }
+
     out = out ? `${out} ${w}` : w;
   }
+
   return `${out}…`;
 };
 
@@ -293,15 +348,23 @@ export function dots(m: BillModel): Dot[] {
 
 /** A stable offset in [-1, 1) so dots at the same count spread the same way every render. */
 export function spread(id: string, salt = 0): number {
-  let h = 2166136261 ^ salt;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  let h = 2_166_136_261 ^ salt;
+
+  for (let i = 0; i < id.length; i++) {
+    h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  }
+
   return (((h >>> 0) % 2001) - 1000) / 1000;
 }
 
 export function quietZone(m: BillModel, points: Dot[]): { hits: number; musd: number } | null {
   const ranked = m.sections.some((v) => v.s.attention?.pct != null);
   const flagged = points.filter((p) => p.kind === "buried");
-  if (!ranked || !flagged.length) return null;
+
+  if (!ranked || !flagged.length) {
+    return null;
+  }
+
   return { hits: Math.max(2.5, ...flagged.map((p) => p.hits + 0.5)), musd: BIG_STAKES.dollarsMusd };
 }
 
@@ -319,21 +382,45 @@ const chamberOf = (name: string) => (/house/i.test(name) ? "House" : /senate/i.t
 
 function eraTitle(v: Version, first: boolean): string {
   const chamber = chamberOf(v.name);
-  if (v.predecessor) return "In an earlier bill’s text";
-  if (first) return `In the first ${chamber ? `${chamber} ` : ""}text`;
-  if (/^(eh|es|eas|eah)$/.test(v.code) && chamber) return `Added when the ${chamber} rewrote it`;
-  if (/^(rh|rs|rfh|rfs)$/.test(v.code) && chamber) return `Added in the ${chamber} committee text`;
-  if (/^(pcs|pch)$/.test(v.code) && chamber) return `Added when it reached the ${chamber} calendar`;
-  if (v.code === "enr") return "Added in the final text";
+
+  if (v.predecessor) {
+    return "In an earlier bill’s text";
+  }
+
+  if (first) {
+    return `In the first ${chamber ? `${chamber} ` : ""}text`;
+  }
+
+  if (/^(eh|es|eas|eah)$/.test(v.code) && chamber) {
+    return `Added when the ${chamber} rewrote it`;
+  }
+
+  if (/^(rh|rs|rfh|rfs)$/.test(v.code) && chamber) {
+    return `Added in the ${chamber} committee text`;
+  }
+
+  if (/^(pcs|pch)$/.test(v.code) && chamber) {
+    return `Added when it reached the ${chamber} calendar`;
+  }
+
+  if (v.code === "enr") {
+    return "Added in the final text";
+  }
+
   return `Added in “${v.name}”`;
 }
 
 export function eras(m: BillModel): Era[] {
   const final = m.sections.filter((v) => v.s.inFinal);
   const by = new Map<string, SectionView[]>();
-  for (const v of final) by.set(v.s.firstVersion, [...(by.get(v.s.firstVersion) ?? []), v]);
+
+  for (const v of final) {
+    by.set(v.s.firstVersion, [...(by.get(v.s.firstVersion) ?? []), v]);
+  }
+
   const lastVote = m.b.votes.filter(isPassage).sort((x, y) => y.date.localeCompare(x.date))[0];
   let seenFirst = false;
+
   return m.versions
     .filter((v) => by.has(v.code))
     .map((v) => {
@@ -343,8 +430,10 @@ export function eras(m: BillModel): Era[] {
       const loud = sections.filter((s) => s.kind === "headline").length;
       const flagged = sections.filter((s) => s.kind === "buried").length;
       const late = !m.b.bill.lateUnavailable && sections.filter((s) => isLate(s.s)).length > sections.length / 2;
+
       const days =
         lastVote && v.date ? Math.round((Date.parse(lastVote.date) - Date.parse(v.date)) / 86_400_000) : null;
+
       return {
         v,
         sections,
@@ -362,11 +451,25 @@ export function eras(m: BillModel): Era[] {
 
 export function eraLine(e: Era): string {
   const base = count(e.sections.length, "section");
-  if (e.note) return `${base}, ${e.note}`;
+
+  if (e.note) {
+    return `${base}, ${e.note}`;
+  }
+
   const flagged = e.flagged === 1 ? "the flagged one" : `${e.flagged} flagged`;
-  if (e.loud && e.flagged) return `${base}: ${e.loud} loud, plus ${flagged}`;
-  if (e.loud) return `${base}, ${e.loud} of them loud`;
-  if (e.flagged) return `${base}, including ${flagged}`;
+
+  if (e.loud && e.flagged) {
+    return `${base}: ${e.loud} loud, plus ${flagged}`;
+  }
+
+  if (e.loud) {
+    return `${base}, ${e.loud} of them loud`;
+  }
+
+  if (e.flagged) {
+    return `${base}, including ${flagged}`;
+  }
+
   return base;
 }
 
@@ -382,6 +485,7 @@ export function phases(m: BillModel): { rows: Phase[]; total: number } {
   const p = m.b.lobbying.byPhase;
   const total = p.bill + p.enactmentQuarter + p.law;
   const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+
   const rows: Phase[] = [
     { key: "bill", n: p.bill, pct: pct(p.bill), title: "While the bill moved", note: "" },
     {
@@ -393,6 +497,7 @@ export function phases(m: BillModel): { rows: Phase[]; total: number } {
     },
     { key: "law", n: p.law, pct: pct(p.law), title: "After it became law", note: "as agencies wrote the rules" },
   ];
+
   return { rows, total };
 }
 
@@ -410,6 +515,7 @@ export function pacByParty(m: BillModel): PacRow[] {
     .filter((p) => m.voters[p] > 0)
     .map((party) => {
       const got = m.members.filter((v) => v.node.props.party === party && beforeUsd(v) > 0);
+
       return { party, usd: got.reduce((a, v) => a + beforeUsd(v), 0), got: got.length, of: m.voters[party] };
     });
 }
@@ -420,6 +526,7 @@ export const memberLine = (label: string) => label.replace(/\s*\((.*)\)$/, ", $1
 
 export function passageDate(m: BillModel): string | null {
   const final = m.b.votes.filter(isPassage).sort((x, y) => y.date.localeCompare(x.date))[0];
+
   return final?.date ?? m.b.bill.lawOn ?? m.span?.[1] ?? null;
 }
 
@@ -432,6 +539,7 @@ export interface Trader {
 
 export function traders(m: BillModel): Trader[] {
   const cut = passageDate(m);
+
   return m.members
     .filter((v) => v.tradeCount)
     .map((v) => {
@@ -440,6 +548,7 @@ export function traders(m: BillModel): Trader[] {
       const dates = v.trades.flatMap((t) => t.props.events.map((e) => e.date));
       const before = at ? dates.filter((d) => d <= at).length : dates.length;
       const vote = v.vote?.props.vote;
+
       return { v, before, after: dates.length - before, vote: vote === "Yea" || vote === "Nay" ? vote : null };
     })
     .sort((a, b) => b.v.tradeCount - a.v.tradeCount || a.v.node.label.localeCompare(b.v.node.label));
@@ -454,18 +563,26 @@ export interface Month {
 export function monthly(m: BillModel): { months: Month[]; total: number } {
   const per = new Map<string, number>();
   let total = 0;
-  for (const v of m.members)
+
+  for (const v of m.members) {
     for (const t of v.trades)
       for (const e of t.props.events) {
         const k = e.date.slice(0, 7);
         per.set(k, (per.get(k) ?? 0) + 1);
         total++;
       }
+  }
+
   const keys = [...per.keys()].sort();
-  if (!keys.length) return { months: [], total: 0 };
+
+  if (!keys.length) {
+    return { months: [], total: 0 };
+  }
+
   const months: Month[] = [];
   const [y0, m0] = keys[0]!.split("-").map(Number) as [number, number];
   const [y1, m1] = keys.at(-1)!.split("-").map(Number) as [number, number];
+
   for (let i = 0; i <= (y1 - y0) * 12 + (m1 - m0); i++) {
     const y = y0 + Math.floor((m0 - 1 + i) / 12);
     const mo = ((m0 - 1 + i) % 12) + 1;
@@ -473,17 +590,20 @@ export function monthly(m: BillModel): { months: Month[]; total: number } {
     const s = m.span;
     months.push({ key, n: per.get(key) ?? 0, during: !!s && key >= s[0].slice(0, 7) && key <= s[1].slice(0, 7) });
   }
+
   return { months, total };
 }
 
 export const niceMax = (n: number) => {
   const step =
     n <= 20 ? 5 : n <= 60 ? 10 : n <= 150 ? 25 : n <= 400 ? 50 : 100 * 10 ** Math.max(0, Math.floor(Math.log10(n)) - 2);
+
   return Math.max(step, Math.ceil(n / step) * step);
 };
 
 export const monthName = (key: string) => {
   const [y, mo] = key.split("-").map(Number) as [number, number];
+
   return new Date(Date.UTC(y, mo - 1, 1)).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
@@ -498,13 +618,19 @@ const MARK_CHAR = 6.6;
 /** Puts each dated label on the first row where it clears the labels before it; on a phone each takes its own row. */
 export function layMarks(marks: { at: string; label: string; x: number }[], phone: boolean) {
   const taken: { row: number; x0: number; x1: number }[] = [];
+
   return marks.map((k, j) => {
     const end = j === marks.length - 1 && j > 0 && !phone;
     const width = k.label.length * MARK_CHAR;
     const x0 = end ? k.x - 5 - width : k.x + 5;
     let row = phone ? j : 0;
-    while (!phone && taken.some((t) => t.row === row && x0 < t.x1 + 8 && x0 + width > t.x0 - 8)) row++;
+
+    while (!phone && taken.some((t) => t.row === row && x0 < t.x1 + 8 && x0 + width > t.x0 - 8)) {
+      row++;
+    }
+
     taken.push({ row, x0, x1: x0 + width });
+
     return { ...k, row, end };
   });
 }

@@ -7,16 +7,17 @@ export interface TextShape {
 const SECTION = /<section\b[^>]*>\s*<enum>([^<]*)<\/enum>\s*<header\b[^>]*>([\s\S]*?)<\/header>/g;
 
 export function textShape(xml: string): TextShape {
-  const own = xml.replace(/<quoted-block\b[\s\S]*?<\/quoted-block>/g, " ");
+  const own = xml.replaceAll(/<quoted-block\b[\s\S]*?<\/quoted-block>/g, " ");
   const sections = [...own.matchAll(SECTION)].map((m) => `${m[1]!.trim()} ${strip(m[2]!)}`);
   const words = strip(xml).split(" ").filter(Boolean).length;
+
   return { words, sections };
 }
 
 const strip = (s: string) =>
   s
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
+    .replaceAll(/<[^>]+>/g, " ")
+    .replaceAll(/\s+/g, " ")
     .trim();
 
 const FILLER = new Set(["a", "an", "and", "for", "in", "of", "on", "or", "the", "to", "with"]);
@@ -33,7 +34,11 @@ const words = (section: string) =>
 /** Share of the shorter heading's words found in the other. */
 const overlap = (a: Set<string>, b: Set<string>) => {
   let shared = 0;
-  for (const w of a) if (b.has(w)) shared++;
+
+  for (const w of a) {
+    if (b.has(w)) shared++;
+  }
+
   return shared / (Math.min(a.size, b.size) || 1);
 };
 
@@ -43,8 +48,10 @@ const overlap = (a: Set<string>, b: Set<string>) => {
  */
 export function newSections(previous: TextShape, newest: TextShape): string[] {
   const before = previous.sections.map(words);
+
   return newest.sections.filter((s) => {
     const w = words(s);
+
     return !before.some((b) => overlap(w, b) >= 0.75);
   });
 }

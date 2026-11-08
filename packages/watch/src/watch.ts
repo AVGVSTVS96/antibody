@@ -1,29 +1,28 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type BillId, billDisplay, billstatusUrl, congressGovUrl } from "@antibody/core";
+import { billDisplay, billstatusUrl, congressGovUrl } from "@antibody/core";
+import type { BillId } from "@antibody/core";
 import { paths, readRows, writeRows } from "@antibody/core/node";
-import { type BillStatus, parseBillStatus, type TextVersion } from "./billstatus.ts";
+import { parseBillStatus } from "./billstatus.ts";
+import type { BillStatus, TextVersion } from "./billstatus.ts";
 import { flaggedOf, links, reasons, withRiders } from "./digest.ts";
-import { discover, type SourceReport } from "./discover.ts";
-import {
-  type BillEvent,
-  beforeFloor,
-  billEvents,
-  closedRule,
-  STEPS,
-  type Tally,
-  type VoteClock,
-  voteClock,
-  voteQuestion,
-} from "./events.ts";
+import { discover } from "./discover.ts";
+import type { SourceReport } from "./discover.ts";
+import { beforeFloor, billEvents, closedRule, STEPS, voteClock, voteQuestion } from "./events.ts";
+import type { BillEvent, Tally, VoteClock } from "./events.ts";
 import { cachedText, get, pool } from "./http.ts";
 import { lobbyingFilings } from "./lda.ts";
-import { type NewsCount, newsCount } from "./news.ts";
-import { isSpecialRule, type Rider, ruleRiders } from "./rules.ts";
-import { type Facts, type SubScores, score, subScores } from "./score.ts";
-import { publishBundle, type Site } from "./site.ts";
+import { newsCount } from "./news.ts";
+import type { NewsCount } from "./news.ts";
+import { isSpecialRule, ruleRiders } from "./rules.ts";
+import type { Rider } from "./rules.ts";
+import { score, subScores } from "./score.ts";
+import type { Facts, SubScores } from "./score.ts";
+import { publishBundle } from "./site.ts";
+import type { Site } from "./site.ts";
 import { newSections, textShape, wordsFromBytes } from "./text.ts";
-import { runXray, type XrayFacts, type XrayRun, xrayFacts } from "./xray.ts";
+import { runXray, xrayFacts } from "./xray.ts";
+import type { XrayFacts, XrayRun } from "./xray.ts";
 
 export interface Evidence {
   newest: TextVersion | null;
@@ -92,23 +91,28 @@ const daysBefore = (date: string, n: number) => new Date(Date.parse(date) - n * 
 /** From the day of the last digest (events seen then are skipped by id), at most 14 days back; 3 days on a first run. */
 export async function windowStart(dir: string, date: string): Promise<string> {
   const days = (await readdir(dir).catch(() => [] as string[]))
-    .map((f) => f.match(/^(\d{4}-\d{2}-\d{2})\.json$/)?.[1])
+    .map((f) => /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1])
     .filter((d): d is string => !!d && d < date)
     .sort();
+
   const last = days.pop();
+
   return last ? (last < daysBefore(date, 14) ? daysBefore(date, 14) : last) : daysBefore(date, 3);
 }
 
 /** Facts about the bill as a whole: its furthest step, closest vote and haste over its whole record, not one window. */
 function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: Facts; evidence: Evidence } {
   const voted = events.filter((e) => e.tally);
+
   const closest = voted.reduce<BillEvent | null>(
     (best, e) => (!best || margin(e.tally!) < margin(best.tally!) ? e : best),
     null,
   );
+
   const before = beforeFloor(s);
   const clock = voteClock(s, events);
   const firstVote = events.filter((e) => e.tally).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
+
   return {
     facts: {
       step: events.reduce((best, e) => (stepWeight(e) > stepWeight(best) ? e : best)).step,
@@ -151,11 +155,16 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
 export function candidate(s: BillStatus, since: string, published?: Map<string, string>, seen = new Set<string>()) {
   const events = billEvents(s, since, published);
   const unseen = events.filter((e) => !seen.has(e.id));
-  if (!unseen.length) return null;
+
+  if (!unseen.length) {
+    return null;
+  }
+
   const start = s.introducedOn && s.introducedOn < since ? s.introducedOn : since;
   const record = billEvents(s, start, published);
   const { facts, evidence } = baseFacts(s, record, start);
   const fresh = new Set(unseen.map((e) => e.id));
+
   const c: Candidate = {
     status: s,
     events: record,
@@ -166,7 +175,9 @@ export function candidate(s: BillStatus, since: string, published?: Map<string, 
     score: 0,
     xray: null,
   };
+
   rescore(c);
+
   return c;
 }
 
@@ -174,25 +185,30 @@ export function candidate(s: BillStatus, since: string, published?: Map<string, 
 export async function enrich(c: Candidate, cache: string, signal?: AbortSignal): Promise<string[]> {
   const id = c.status.id;
   const problems: string[] = [];
+
   try {
     c.evidence.news = await newsCount(c.status, today(), cache, signal);
     c.facts.newsStories = c.evidence.news.stories;
-  } catch (e) {
-    problems.push(`${billDisplay(id)} news count: ${(e as Error).message}`);
+  } catch (error) {
+    problems.push(`${billDisplay(id)} news count: ${(error as Error).message}`);
   }
-  await textFacts(c, join(cache, "text"), signal).catch((e) =>
-    problems.push(`${billDisplay(id)} text: ${(e as Error).message}`),
+
+  await textFacts(c, join(cache, "text"), signal).catch((error) =>
+    problems.push(`${billDisplay(id)} text: ${(error as Error).message}`),
   );
+
   try {
     const { confirmed, checked, searched, urls } = await lobbyingFilings(id, signal);
     c.facts.lobbyingFilings = confirmed;
     c.evidence.lobbyingFrom = "lda-checked";
     c.evidence.lobbyingChecked = { checked, searched };
     c.evidence.lobbyingUrls = urls;
-  } catch (e) {
-    problems.push(`${billDisplay(id)} lobbying check: ${(e as Error).message}`);
+  } catch (error) {
+    problems.push(`${billDisplay(id)} lobbying check: ${(error as Error).message}`);
   }
+
   applyXray(c, await xrayFacts(id));
+
   return problems;
 }
 
@@ -212,17 +228,26 @@ export const rank = (cs: Candidate[]) => cs.sort((a, b) => b.score - a.score || 
 /** Folds what the x-ray tables hold into the facts; table numbers replace the watcher's own estimates. */
 function applyXray(c: Candidate, x: XrayFacts) {
   c.evidence.xray = x;
+
   if (x.lateSections) {
     c.facts.lateSections = x.lateSections.length;
     c.evidence.lateFrom = "x-ray";
   }
-  if (x.deficit) c.facts.deficitMusd = x.deficit.musd;
+
+  if (x.deficit) {
+    c.facts.deficitMusd = x.deficit.musd;
+  }
+
   if (x.lobbying) {
     c.facts.lobbyingFilings = x.lobbying.filings;
     c.evidence.lobbyingFrom = "x-ray";
     c.evidence.lobbyingClients = x.lobbying.clients;
   }
-  if (x.buried) c.facts.buriedSections = x.buried.length;
+
+  if (x.buried) {
+    c.facts.buriedSections = x.buried.length;
+  }
+
   rescore(c);
 }
 
@@ -236,8 +261,15 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   log(`window ${since} → ${date} (actions from ${actionsSince})`);
 
   const found = await discover(since, signal);
-  for (const s of found.sources) if (!s.ok) problems.push(`${s.name}: ${s.error}`);
-  if (found.sources.every((s) => !s.ok)) throw new Error("every discovery source failed");
+
+  for (const s of found.sources) {
+    if (!s.ok) problems.push(`${s.name}: ${s.error}`);
+  }
+
+  if (found.sources.every((s) => !s.ok)) {
+    throw new Error("every discovery source failed");
+  }
+
   log(
     `${found.bills.size} bills touched (${found.sources.filter((s) => s.ok).length}/${found.sources.length} sources)`,
   );
@@ -245,41 +277,69 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   const seen = await reportedBefore(date);
   const failed: string[] = [];
   let unpublished = 0;
+
   const statuses = await pool([...found.bills], 6, async ([id, lastmod]) => {
-    const stamp = (lastmod ?? date).replace(/[^0-9T]/g, "");
+    const stamp = (lastmod ?? date).replaceAll(/[^0-9T]/g, "");
+
     try {
       return parseBillStatus(
         await cachedText(billstatusUrl(id), join(dir, "cache", "billstatus", `${id}@${stamp}.xml`), { signal }),
       );
-    } catch (e) {
-      const message = (e as Error).message;
-      if (message.startsWith("404 ")) unpublished++;
-      else failed.push(`${id}: ${message}`);
+    } catch (error) {
+      const message = (error as Error).message;
+
+      if (message.startsWith("404 ")) {
+        unpublished++;
+      } else {
+        failed.push(`${id}: ${message}`);
+      }
+
       return null;
     }
   });
-  if (unpublished) log(`${unpublished} new bills have text but no BILLSTATUS yet`);
-  if (failed.length)
+
+  if (unpublished) {
+    log(`${unpublished} new bills have text but no BILLSTATUS yet`);
+  }
+
+  if (failed.length) {
     problems.push(`BILLSTATUS unreadable for ${failed.length} bills: ${failed.slice(0, 5).join("; ")}`);
+  }
 
   let alreadyReported = 0;
   const candidates: Candidate[] = [];
+
   for (const s of statuses) {
-    if (!s) continue;
-    for (const c of found.cbo.get(s.id) ?? []) if (!s.cbo.some((x) => x.url === c.url)) s.cbo.push(c);
+    if (!s) {
+      continue;
+    }
+
+    for (const c of found.cbo.get(s.id) ?? []) {
+      if (!s.cbo.some((x) => x.url === c.url)) s.cbo.push(c);
+    }
+
     const c = candidate(s, actionsSince, found.published, seen);
-    if (c) candidates.push(c);
-    else if (billEvents(s, actionsSince, found.published).length) alreadyReported++;
+
+    if (c) {
+      candidates.push(c);
+    } else if (billEvents(s, actionsSince, found.published).length) {
+      alreadyReported++;
+    }
   }
+
   log(`${candidates.length} moved with new events (${alreadyReported} already reported)`);
 
   await measureSize(candidates, signal);
   await readRiders(candidates, join(dir, "cache", "text"), signal);
   const shortlist = rank(candidates).slice(0, cfg.enrich);
   log(`enriching the top ${shortlist.length}: bill text, news, lobbying, x-ray tables`);
-  for (const c of shortlist) problems.push(...(await enrich(c, join(dir, "cache"), signal)));
+
+  for (const c of shortlist) {
+    problems.push(...(await enrich(c, join(dir, "cache"), signal)));
+  }
 
   const site: Site = { published: [], deploy: { status: "pending" } };
+
   const xrayed = await xrayAndPublish(
     toXray(candidates, cfg.xrays),
     join(dir, "logs", date),
@@ -288,6 +348,7 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
     log,
     signal,
   );
+
   rank(candidates);
 
   return {
@@ -311,7 +372,11 @@ export async function readRiders(candidates: Candidate[], cache: string, signal?
     6,
     async (c) => {
       const v = c.evidence.newest;
-      if (!v) return;
+
+      if (!v) {
+        return;
+      }
+
       try {
         c.evidence.riders = ruleRiders(
           await cachedText(v.xmlUrl, join(cache, `${v.xmlUrl.split("/").pop()}`), { signal }),
@@ -325,11 +390,19 @@ export async function readRiders(candidates: Candidate[], cache: string, signal?
 export async function measureSize(candidates: Candidate[], signal?: AbortSignal) {
   await pool(candidates, 8, async (c) => {
     const url = c.evidence.newest?.xmlUrl;
-    if (!url || c.facts.words !== null) return;
+
+    if (!url || c.facts.words !== null) {
+      return;
+    }
+
     try {
       const res = await get(url, { method: "HEAD", signal });
       const bytes = Number(res.headers.get("content-length"));
-      if (bytes) c.facts.words = wordsFromBytes(bytes);
+
+      if (bytes) {
+        c.facts.words = wordsFromBytes(bytes);
+      }
+
       rescore(c);
     } catch {}
   });
@@ -345,42 +418,64 @@ export async function xrayAndPublish(
   signal?: AbortSignal,
 ): Promise<BillId[]> {
   const xrayed: BillId[] = [];
+
   for (const c of picks) {
     const id = c.status.id;
     log(`x-ray ${billDisplay(id)} (score ${c.score})`);
     c.xray = await runXray(id, logs, signal);
-    if (!c.xray.ok) problems.push(`x-ray ${billDisplay(id)} failed: ${c.xray.error} (log ${c.xray.log})`);
+
+    if (!c.xray.ok) {
+      problems.push(`x-ray ${billDisplay(id)} failed: ${c.xray.error} (log ${c.xray.log})`);
+    }
+
     let facts = await xrayFacts(id);
-    if (c.xray.ok && !facts.bundle)
+
+    if (c.xray.ok && !facts.bundle) {
       problems.push(`x-ray ${billDisplay(id)} finished but wrote no bundle (log ${c.xray.log})`);
+    }
+
     if (settings().publish && c.xray.ok && facts.bundle) {
       const problem = await publishBundle(id).catch(
-        (e: Error) => `${billDisplay(id)} bundle not published: ${e.message}`,
+        (error: Error) => `${billDisplay(id)} bundle not published: ${error.message}`,
       );
-      if (problem) problems.push(problem);
-      else site.published.push(id);
+
+      if (problem) {
+        problems.push(problem);
+      } else {
+        site.published.push(id);
+      }
+
       facts = await xrayFacts(id);
     }
+
     applyXray(c, facts);
     xrayed.push(id);
   }
+
   return xrayed;
 }
 
 async function textFacts(c: Candidate, cache: string, signal?: AbortSignal) {
   const { newest, before } = c.evidence;
-  if (!newest) return;
+
+  if (!newest) {
+    return;
+  }
+
   const read = async (v: TextVersion) =>
     textShape(await cachedText(v.xmlUrl, join(cache, `${v.xmlUrl.split("/").pop()}`), { signal }));
+
   const now = await read(newest);
   c.facts.words = now.words;
   c.facts.wordsCounted = true;
+
   if (before) {
     const added = newSections(await read(before), now);
     c.facts.lateSections = added.length;
     c.evidence.lateFrom = "text-diff";
     c.evidence.newSectionSamples = added.slice(0, 3);
   }
+
   rescore(c);
 }
 
@@ -389,7 +484,9 @@ async function reportedBefore(date: string): Promise<Set<string>> {
   const shards = (await readdir(paths.table("watch_events")).catch(() => [] as string[]))
     .filter((f) => f.endsWith(".jsonl") && f !== `${date}.jsonl`)
     .map((f) => f.slice(0, -".jsonl".length));
-  const rows = await Promise.all(shards.map((s) => readRows("watch_events", s)));
+
+  const rows = await Promise.all(shards.map(async (s) => readRows("watch_events", s)));
+
   return new Set(rows.flat().map((e) => e.id));
 }
 
@@ -397,7 +494,8 @@ async function reportedBefore(date: string): Promise<Set<string>> {
 export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
   const seenAt = r.generatedAt;
   const rows = new Map((await readRows("watch_events", r.date)).filter((e) => e.kind !== "hot").map((e) => [e.id, e]));
-  for (const c of r.candidates)
+
+  for (const c of r.candidates) {
     for (const e of c.events)
       if (c.fresh.has(e.id) && !rows.has(e.id))
         rows.set(e.id, {
@@ -408,7 +506,9 @@ export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
           url: e.url,
           detail: { step: e.step, date: e.date, text: e.text, tally: e.tally },
         });
-  for (const c of [...flagged, ...withRiders(r.candidates)])
+  }
+
+  for (const c of [...flagged, ...withRiders(r.candidates)]) {
     rows.set(`${c.status.id}/hot/${r.date}`, {
       id: `${c.status.id}/hot/${r.date}`,
       bill_id: c.status.id,
@@ -432,5 +532,7 @@ export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
         bundle: c.evidence.xray?.bundle ?? null,
       },
     });
+  }
+
   await writeRows("watch_events", r.date, [...rows.values()]);
 }

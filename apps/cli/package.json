@@ -2,7 +2,9 @@
   "name": "@antibody/cli",
   "private": true,
   "type": "module",
-  "bin": { "antibody": "./src/main.ts" },
+  "bin": {
+    "antibody": "./src/main.ts"
+  },
   "dependencies": {
     "@antibody/analyze": "workspace:*",
     "@antibody/core": "workspace:*",
@@ -16,5 +18,8 @@
     "@antibody/resolve": "workspace:*",
     "@antibody/store": "workspace:*",
     "@antibody/watch": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc"
   }
 }

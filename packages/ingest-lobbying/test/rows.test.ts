@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { type Row, TABLES } from "@antibody/core";
+import { TABLES } from "@antibody/core";
+import type { Row } from "@antibody/core";
 import { billNames, parseBillStatus } from "../src/billstatus.ts";
 import { clientKey, markSuperseded, phaseOf } from "../src/rows.ts";
 import { spendRows } from "../src/spend.ts";
@@ -50,6 +51,7 @@ test("a later amendment for the same registrant, client and period supersedes th
     filing("b", { type: "1A", posted_at: "2025-05-01T10:00:00-04:00" }),
     filing("c", { form: "LD-1", type: "RR" }),
   ]);
+
   expect(rows.map((r) => r.superseded)).toEqual([true, false, false]);
 });
 
@@ -63,6 +65,7 @@ test("spend counts in-house expenses over outside income per client-quarter, and
       filing("other", { client_key: "tether", lda_client_id: "c9", amount_usd: null, amount_kind: null }),
     ].map((f) => [f.id, f]),
   );
+
   const line = (id: string, filing_id: string) => ({
     id,
     filing_id,
@@ -70,6 +73,7 @@ test("spend counts in-house expenses over outside income per client-quarter, and
     quote: "S.1582",
     section_nums: [],
   });
+
   const rows = spendRows("119-s-1582", filings, [
     line("inhouse#0#119-s-1582", "inhouse"),
     line("inhouse#1#119-s-1582", "inhouse"),
@@ -78,7 +82,11 @@ test("spend counts in-house expenses over outside income per client-quarter, and
     line("old#0#119-s-1582", "old"),
     line("other#0#119-s-1582", "other"),
   ]);
-  for (const r of rows) expect(TABLES.lda_spend.schema.safeParse(r).success).toBe(true);
+
+  for (const r of rows) {
+    expect(TABLES.lda_spend.schema.safeParse(r).success).toBe(true);
+  }
+
   const visa = rows.find((r) => r.client_key === "visa")!;
   expect(visa.reports).toBe(3);
   expect(visa.quarters).toBe(2);
@@ -103,6 +111,7 @@ test("BILLSTATUS: current and portion titles, law and enactment date", () => {
     <laws><item><type>Public Law</type><number>117-169</number></item></laws>
     <actions><item><actionDate>2022-08-16</actionDate><text>Became Public Law No: 117-169.</text></item></actions>
   </bill></billStatus>`;
+
   const s = parseBillStatus("117-hr-5376", xml);
   expect(s.versions).toEqual([]);
   expect(s.introduced).toBe("2021-09-27");
@@ -128,6 +137,7 @@ test("a renamed vehicle's first title is an earlier name, dated by the version t
       <item><type>Reported in House</type><date>2021-07-01T04:00:00Z</date></item>
     </textVersions>
   </bill></billStatus>`;
+
   expect(billNames(parseBillStatus("117-hr-4346", xml))).toEqual([
     { title: "Chips and Science Act", kind: "current", since: "2021-07-01" },
     { title: "Legislative Branch Appropriations Act, 2022", kind: "earlier", since: "2021-07-01" },

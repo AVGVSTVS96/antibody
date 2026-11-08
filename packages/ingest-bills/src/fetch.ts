@@ -14,19 +14,32 @@ let writes = 0;
 export async function cached(url: string, file: string, refresh = false, dir = RAW): Promise<string> {
   const path = join(dir, file);
   const local = Bun.file(path);
-  if (!refresh && (await local.exists()) && local.size > 0) return local.text();
+
+  if (!refresh && (await local.exists()) && local.size > 0) {
+    return await local.text();
+  }
+
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, { headers: HEADERS });
+
     if (res.ok) {
       const text = await res.text();
       await mkdir(dir, { recursive: true });
       const tmp = `${path}.${process.pid}.${writes++}.tmp`;
       await Bun.write(tmp, text);
       await rename(tmp, path);
+
       return text;
     }
-    if (res.status === 404) throw new NotFound(`${res.status} ${url}`);
-    if (attempt >= 3) throw new Error(`${res.status} ${url}`);
+
+    if (res.status === 404) {
+      throw new NotFound(`${res.status} ${url}`);
+    }
+
+    if (attempt >= 3) {
+      throw new Error(`${res.status} ${url}`);
+    }
+
     await Bun.sleep(2000 * 2 ** attempt);
   }
 }

@@ -33,6 +33,7 @@ test("names are found only as capitalized whole names, one-word names only with 
 
 test("lobbied: one whole-bill row per company plus one per cited section; low refs and superseded filings don't count", () => {
   const bill = "119-s-1582" as const;
+
   const ref = (id: string, filing: string, match: Row<"lda_bill_refs">["match"], nums: string[] = []) =>
     ({
       id,
@@ -50,8 +51,10 @@ test("lobbied: one whole-bill row per company plus one per cited section; low re
       source_url: `https://lda.gov/filings/public/filing/${filing}/print/`,
       source_locator: null,
     }) satisfies Row<"lda_bill_refs">;
+
   const filing = (id: string, client: string, superseded = false) =>
     ({ id, client_key: client, superseded }) as Row<"lda_filings">;
+
   const res: Row<"resolutions"> = {
     id: "client:coinbase",
     src: "client:coinbase",
@@ -62,7 +65,9 @@ test("lobbied: one whole-bill row per company plus one per cited section; low re
     rests_on: ["lda_clients/coinbase", "companies/1679788"],
     evidence: { name: "COINBASE, INC." },
   };
+
   const section = { id: "119-s-1582@s394-is:sec:4", bill_id: bill, num: "4", in_final: true } as Row<"sections">;
+
   const rows = lobbiedBenefits(
     bill,
     [ref("r1", "f1", "high", ["4"]), ref("r2", "f2", "medium"), ref("r3", "f3", "low"), ref("r4", "f4", "high")],
@@ -75,6 +80,7 @@ test("lobbied: one whole-bill row per company plus one per cited section; low re
     new Map([[res.id, res]]),
     [section],
   );
+
   expect(rows.map((r) => [r.id, r.evidence.refs])).toEqual([
     ["119-s-1582:lobbied:1679788", 2],
     ["119-s-1582:lobbied:1679788:119-s-1582@s394-is:sec:4", 1],

@@ -25,6 +25,7 @@ export const textWidth = (s: string, size: number) => s.length * size * WIDTH;
 function boxOf(x: number, baseline: number, anchor: Label["anchor"], text: string, size: number): Box {
   const w = textWidth(text, size);
   const x0 = anchor === "start" ? x : anchor === "end" ? x - w : x - w / 2;
+
   return { x0, x1: x0 + w, y0: baseline - size * 0.82, y1: baseline + size * 0.28 };
 }
 
@@ -34,6 +35,7 @@ export function outside(id: string, text: string, angle: number, r: number, size
   const c = Math.cos(angle);
   const anchor = c > 0.2 ? "start" : c < -0.2 ? "end" : "middle";
   const dy = Math.abs(c) > 0.2 ? size * 0.33 : Math.sin(angle) < 0 ? -size * 0.33 : size * 1.1;
+
   return { id, text, x, y: y + dy, anchor, box: boxOf(x, y + dy, anchor, text, size) };
 }
 
@@ -43,6 +45,7 @@ export function inside(id: string, text: string, angle: number, r: number, size:
   const c = Math.cos(angle);
   const anchor = c > 0.3 ? "end" : c < -0.3 ? "start" : "middle";
   const dy = size * 0.33;
+
   return { id, text, x, y: y + dy, anchor, box: boxOf(x, y + dy, anchor, text, size) };
 }
 
@@ -56,12 +59,20 @@ const inView = (b: Box, pad = 4) =>
 export function fit(candidates: Label[], avoid: Box[], max: number, pad: number): Label[] {
   const kept: Label[] = [];
   const boxes = [...avoid];
+
   for (const c of candidates) {
-    if (kept.length >= max) break;
-    if (!inView(c.box) || boxes.some((b) => overlap(c.box, b, pad))) continue;
+    if (kept.length >= max) {
+      break;
+    }
+
+    if (!inView(c.box) || boxes.some((b) => overlap(c.box, b, pad))) {
+      continue;
+    }
+
     kept.push(c);
     boxes.push(c.box);
   }
+
   return kept;
 }
 
@@ -70,6 +81,7 @@ export const RING_NAME_Y = (r: number) => 360 + r + 4;
 export const ringNameBox = (text: string, r: number, size: number): Box => {
   const w = textWidth(text, size);
   const y = RING_NAME_Y(r);
+
   return { x0: 360 - w / 2, x1: 360 + w / 2, y0: y - size * 0.82, y1: y + size * 0.28 };
 };
 

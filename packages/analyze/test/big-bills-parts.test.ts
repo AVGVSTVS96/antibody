@@ -12,9 +12,10 @@ import { reach } from "../src/reach.ts";
 const RAW = join(paths.raw("bills"), "raw");
 const have = (...files: string[]) => files.every((f) => existsSync(join(RAW, f)));
 
-if (have("BILLSTATUS-119hr1.xml", "BILLS-119hr1rh.xml", "BILLS-119hr1pcs.xml", "PLAW-119publ21.xml"))
+if (have("BILLSTATUS-119hr1.xml", "BILLS-119hr1rh.xml", "BILLS-119hr1pcs.xml", "PLAW-119publ21.xml")) {
   describe("H.R.1, read in parts", async () => {
     const { rows } = await ingestBill("119-hr-1", { write: false, llm: false });
+
     const parts = await sectionParts(rows.sections!, rows.versions!, {
       lateUnavailable: rows.bills![0]!.late_unavailable,
     });
@@ -34,6 +35,7 @@ if (have("BILLSTATUS-119hr1.xml", "BILLS-119hr1rh.xml", "BILLS-119hr1pcs.xml", "
 
     test("every part is read from the last text its section was in and is no longer than its section", () => {
       const byId = new Map(rows.sections!.map((s) => [s.id, s]));
+
       for (const p of parts) {
         const s = byId.get(p.sectionId)!;
         expect(p.version).toBe(Object.keys(s.history).at(-1)!);
@@ -41,3 +43,4 @@ if (have("BILLSTATUS-119hr1.xml", "BILLS-119hr1rh.xml", "BILLS-119hr1pcs.xml", "
       }
     });
   });
+}

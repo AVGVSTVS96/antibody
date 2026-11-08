@@ -16,9 +16,14 @@ test("a multi-quintile outlet takes the midpoint, rounded toward center, the sam
 });
 
 test("the published list has every side, and trade/legal press is never on a side", () => {
-  for (const side of Object.keys(SIDES) as (keyof typeof SIDES)[])
+  for (const side of Object.keys(SIDES) as (keyof typeof SIDES)[]) {
     expect(COUNTED.filter((o) => sideOf(o.group) === side).length).toBeGreaterThan(0);
-  for (const o of TRADE_LEGAL) expect(sideOf(o.group)).toBeNull();
+  }
+
+  for (const o of TRADE_LEGAL) {
+    expect(sideOf(o.group)).toBeNull();
+  }
+
   expect(outletRows().every((r) => r.list_version === OUTLET_LIST.version)).toBe(true);
 });
 
@@ -46,6 +51,7 @@ test("the sample is a fixed number per side, picked by hash, so re-runs read the
     id: `a${i}`,
     stratum: (["left", "center", "right", "trade-legal"] as const)[i % 4]!,
   }));
+
   const a = sample(items).map((x) => x.id);
   const b = sample([...items].reverse()).map((x) => x.id);
   expect(new Set(a)).toEqual(new Set(b));

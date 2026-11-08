@@ -1,7 +1,9 @@
 import { join } from "node:path";
-import { type BillId, parseBillId } from "@antibody/core";
+import { parseBillId } from "@antibody/core";
+import type { BillId } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
-import { OUTLETS, type Side, sideOf } from "@antibody/ingest-news";
+import { OUTLETS, sideOf } from "@antibody/ingest-news";
+import type { Side } from "@antibody/ingest-news";
 import { MIN_TEXT_CHARS } from "../src/attention.ts";
 import { SCORE, stakes } from "../src/score.ts";
 
@@ -16,23 +18,27 @@ const byParty: Record<string, { bills: number; sections: number; headline: numbe
   {};
 
 for (const arg of Bun.argv.slice(2)) {
-  const bill = parseBillId(arg) as BillId;
+  const bill = parseBillId(arg);
   const [b] = await readRows("bills", bill);
   const sections = await readRows("sections", bill);
   const articles = await readRows("articles", bill);
   // Sections only: parts of long sections (parts-v1) are audited with their sections, not counted twice.
   const scores = (await readRows("section_scores", bill)).filter((s) => !s.part_id);
+
   const file = Bun.file(
     join(paths.raw("analyze"), "match", `${bill}.${process.env.ANTIBODY_MATCH_MODEL ?? "sonnet"}.json`),
   );
+
   const matches: Record<string, { about: string; sections: string[]; whole: boolean }> = (await file.exists())
     ? (await file.json()).matches
     : {};
+
   console.log(
     `\n## ${bill} ${b?.short_title ?? ""} (sponsor ${b?.sponsor_bioguide ?? "?"}, party ${party.get(b?.sponsor_bioguide ?? "") ?? "?"})`,
   );
 
   console.log("\nmatcher by side (articles read):");
+
   for (const side of ["left", "center", "right"] as const) {
     const read = articles.filter(
       (a) =>
@@ -41,6 +47,7 @@ for (const arg of Bun.argv.slice(2)) {
         sideOf(groupOf.get(a.outlet_id)!) === side &&
         matches[a.id],
     );
+
     const rel = read.filter((a) => matches[a.id]!.about !== "unrelated");
     const main = read.filter((a) => matches[a.id]!.about === "bill");
     const long = rel.filter((a) => (a.text_chars ?? 0) >= 5000);
@@ -79,27 +86,36 @@ for (const arg of Bun.argv.slice(2)) {
       stakes({ dollarsMusd: s.dollars_musd, dollarsSplit: s.dollars_split, lobbyingFirms: s.lobbying_firms }) >=
         SCORE.costlyMin,
   );
+
   const buriedN = count("buried");
+
   const byBaseline = (s: (typeof scores)[number]) =>
     (s.evidence as { dollars_by_baseline?: { musd: number }[] }).dollars_by_baseline ?? [];
+
   const twoBaselines = scores.filter((s) => byBaseline(s).length > 1);
+
   if (twoBaselines.length) {
     const bar = (musd: number) =>
       stakes({ dollarsMusd: musd, dollarsSplit: "exact", lobbyingFirms: 0 }) >= SCORE.costlyMin;
+
     console.log(
       `CBO printed ${twoBaselines.length} sections against two baselines: ${twoBaselines.filter((s) => byBaseline(s).some((b) => bar(b.musd))).length} are costly on at least one, ${twoBaselines.filter((s) => byBaseline(s).every((b) => bar(b.musd))).length} on every one (only those count)`,
     );
   }
+
   const measured = scores.some((s) => s.dollars_musd !== null && s.dollars_split !== "even_split") || costly.length > 0;
   console.log(
     `costly (stakes at least ${SCORE.costlyMin.toFixed(3)}): ${costly.length}; of them quiet (buried) ${pct(buriedN, costly.length)}, loud (headline) ${pct(costly.filter((s) => s.label === "headline").length, costly.length)}; late among buried ${pct(scores.filter((s) => s.label === "buried" && s.late).length, buriedN)} (late among all sections ${pct(late.length, final)})`,
   );
   const att = await readRows("attention", bill);
+
   const relevantBySide = (
     att.find((a) => a.section_id === null)?.evidence as { relevant_by_side?: Record<string, number> } | undefined
   )?.relevant_by_side;
+
   if (relevantBySide && costly.length) {
     const costlyIds = new Set(costly.map((s) => s.section_id));
+
     const quietOn = (side: Side) =>
       att
         .filter((a) => a.section_id && costlyIds.has(a.section_id))
@@ -107,13 +123,17 @@ for (const arg of Bun.argv.slice(2)) {
           const hits = Object.entries(a.hits_by_group as Record<string, number>)
             .filter(([g]) => sideOf(g as Parameters<typeof sideOf>[0]) === side)
             .reduce((n, [, h]) => n + h, 0);
+
           return hits / Math.max(relevantBySide[side] ?? 1, 1) < SCORE.quietShare;
         }).length;
+
     console.log(
       `costly sections that would be quiet counting one side's press alone: left ${pct(quietOn("left"), costly.length)}, center ${pct(quietOn("center"), costly.length)}, right ${pct(quietOn("right"), costly.length)} (balanced: ${pct(buriedN, costly.length)})`,
     );
   }
+
   const p = party.get(b?.sponsor_bioguide ?? "") ?? "?";
+
   if (measured && scores.some((s) => s.attention_pct !== null)) {
     byParty[p] ??= { bills: 0, sections: 0, headline: 0, costly: 0, buried: 0 };
     const t = byParty[p];
@@ -126,7 +146,9 @@ for (const arg of Bun.argv.slice(2)) {
 }
 
 console.log("\n## pooled by sponsor party, bills where the rule could run (news ranked and a cost measured)");
-for (const [p, t] of Object.entries(byParty))
+
+for (const [p, t] of Object.entries(byParty)) {
   console.log(
     `${p}: ${t.bills} bills, ${t.sections} sections; headline ${pct(t.headline, t.sections)} of sections; costly ${pct(t.costly, t.sections)} of sections; buried ${pct(t.buried, t.costly)} of costly sections`,
   );
+}

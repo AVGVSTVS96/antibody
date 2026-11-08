@@ -1,12 +1,16 @@
 import { resolve } from "node:path";
-import { type BillId, billDisplay, type Row, type StageContext } from "@antibody/core";
+import { billDisplay } from "@antibody/core";
+import type { BillId, Row, StageContext } from "@antibody/core";
 import { python, readRows, writeRows } from "@antibody/core/node";
-import { baselineOf, companions, type Listing, parseListings, versionCode } from "./estimates.ts";
-import { billstatus, type Fetched, publicationFiles } from "./fetch.ts";
+import { baselineOf, companions, parseListings, versionCode } from "./estimates.ts";
+import type { Listing } from "./estimates.ts";
+import { billstatus, publicationFiles } from "./fetch.ts";
+import type { Fetched } from "./fetch.ts";
 import { baseNum, buildLines } from "./lines.ts";
 import type { Glance, Parsed } from "./parsed.ts";
 import { scopeRows } from "./scope.ts";
-import { closestVersion, type Labelled, sectionIndex } from "./sections.ts";
+import { closestVersion, sectionIndex } from "./sections.ts";
+import type { Labelled } from "./sections.ts";
 
 const PKG = resolve(import.meta.dir, "..");
 
@@ -48,36 +52,55 @@ interface Read {
 async function read(files: Fetched[], bill: BillId): Promise<Read> {
   const token = bill.split("-").slice(1).join("");
   const pdfs = files.filter((f) => /\.pdf$/i.test(f.url));
-  const pdf = pdfs.find((f) => f.url.toLowerCase().replace(/[-_]/g, "").includes(token)) ?? pdfs[0] ?? null;
+  const pdf = pdfs.find((f) => f.url.toLowerCase().replaceAll(/[-_]/g, "").includes(token)) ?? pdfs[0] ?? null;
   const glance = pdf ? await parse<Glance>("glance", pdf.file) : null;
+
   const tagged = (p: Parsed, f: Fetched): Parsed => {
     const file = { url: f.url, archiveUrl: f.archiveUrl };
+
     return {
       ...p,
       sheets: p.sheets.map((s) => ({ ...s, file })),
       summary: p.summary ? { ...p.summary, file } : null,
     };
   };
+
   const sheets = files.filter((f) => /\.xlsx?$/i.test(f.url));
   const workbooks: { p: Parsed; f: Fetched }[] = [];
+
   for (const f of sheets.filter((f) => !/table1/i.test(f.url))) {
     const p = await parse<Parsed>("xlsx", f.file);
-    if (p && (p.sheets.length || p.summary?.rows.length)) workbooks.push({ p: tagged(p, f), f });
+
+    if (p && (p.sheets.length || p.summary?.rows.length)) {
+      workbooks.push({ p: tagged(p, f), f });
+    }
   }
+
   if (workbooks.some((w) => w.p.sheets.length)) {
     const lead = workbooks.find((w) => w.p.summary?.rows.length) ?? workbooks[0]!;
     const main = { format: "xlsx" as const, sheets: workbooks.flatMap((w) => w.p.sheets), summary: lead.p.summary };
+
     return { main: { ...main, from: lead.f }, pdf, glance };
   }
+
   const tables = pdf ? await parse<Parsed>("pdf", pdf.file) : null;
-  if (pdf && tables?.sheets.some((s) => s.rows.some((r) => ITEMS.has(r.line_kind))))
+
+  if (pdf && tables?.sheets.some((s) => s.rows.some((r) => ITEMS.has(r.line_kind)))) {
     return { main: { ...tagged(tables, pdf), from: pdf }, pdf, glance };
+  }
+
   for (const f of sheets.filter((f) => /table1/i.test(f.url))) {
     const p = await parse<Parsed>("table1", f.file);
-    if (p?.summary?.rows.length) return { main: { ...tagged(p, f), from: f }, pdf, glance };
+
+    if (p?.summary?.rows.length) {
+      return { main: { ...tagged(p, f), from: f }, pdf, glance };
+    }
   }
-  if (pdf && tables?.summary?.rows.length)
+
+  if (pdf && tables?.summary?.rows.length) {
     return { main: { ...tagged({ ...tables, sheets: [] }, pdf), from: pdf }, pdf, glance };
+  }
+
   return { main: null, pdf, glance };
 }
 
@@ -86,12 +109,16 @@ export async function xray(ctx: StageContext) {
   const opts = { refresh: ctx.refresh, signal: ctx.signal };
   const status = await billstatus(bill, opts);
   const listings = parseListings(status);
-  if (!listings.length)
+
+  if (!listings.length) {
     for (const other of companions(status, bill)) {
       const theirs = await billstatus(other, opts).catch(() => null);
       const seen = new Set(listings.map((l) => l.pubId));
+
       for (const l of theirs ? parseListings(theirs) : []) if (!seen.has(l.pubId)) listings.push({ ...l, via: other });
     }
+  }
+
   const [sections, versions] = await Promise.all([readRows("sections", bill), readRows("versions", bill)]);
   const known = versions.map((v) => v.code);
   const borrowed = [...new Set(listings.flatMap((l) => l.via ?? []))];
@@ -101,18 +128,26 @@ export async function xray(ctx: StageContext) {
 
   const estimates: Row<"cbo_estimates">[] = [];
   const lines: Row<"cbo_lines">[] = [];
+
   for (const l of listings) {
     const id = estimateId(bill, l);
     const scored = l.via ?? bill;
     const files = await publicationFiles(l, scored, opts);
     const { main, pdf, glance } = await read(files, scored);
-    if (main && glance) scopeRows(main.sheets, glance.pages);
+
+    if (main && glance) {
+      scopeRows(main.sheets, glance.pages);
+    }
+
     const code = l.via ? null : versionCode(l.description, bill, known);
+
     const { baseline, label } = baselineOf(
       l,
       glance ? { month: glance.baseline_month, enforcement: glance.budget_enforcement_baseline } : null,
     );
+
     const source = main?.from ?? pdf;
+
     const close = code
       ? null
       : closestVersion(
@@ -120,7 +155,9 @@ export async function xray(ctx: StageContext) {
           (main?.sheets ?? []).flatMap((s) => s.rows.flatMap((r) => r.sections.map(baseNum))),
           known,
         );
+
     const index = sectionIndex(sections, code ?? close?.code ?? null, labelled(main));
+
     const built = buildLines(
       {
         estimateId: id,
@@ -141,6 +178,7 @@ export async function xray(ctx: StageContext) {
       index.join,
       index.places,
     );
+
     lines.push(...built.lines);
     estimates.push({
       id,
@@ -176,6 +214,7 @@ export async function xray(ctx: StageContext) {
         .join(" · "),
     );
   }
+
   await writeRows("cbo_estimates", bill, estimates);
   await writeRows("cbo_lines", bill, lines);
 }

@@ -5,8 +5,11 @@ const pool = all.filter((m) => conf.split(",").includes(m.confidence));
 let s = Number(seed);
 const rand = () => ((s = (s * 1103515245 + 12345) % 2147483648) / 2147483648);
 const picked = new Set<number>();
+
 while (picked.size < Math.min(Number(n), pool.length)) picked.add(Math.floor(rand() * pool.length));
+
 let i = 0;
+
 for (const idx of picked) {
   const m = pool[idx];
   const a = m.activities[0];

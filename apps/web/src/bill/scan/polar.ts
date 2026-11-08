@@ -25,11 +25,13 @@ export const pt = (a: number, r: number): [number, number] => [C + r * Math.cos(
 
 export const wrapPi = (a: number) => {
   const x = (a + Math.PI) % TAU;
+
   return (x < 0 ? x + TAU : x) - Math.PI;
 };
 
 export const wrapTau = (a: number) => {
   const x = a % TAU;
+
   return x < 0 ? x + TAU : x;
 };
 

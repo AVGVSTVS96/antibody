@@ -8,6 +8,7 @@ import { z } from "zod";
 import { pool } from "./http.ts";
 
 const emptyDir = join(homedir(), ".cache", "claude-empty");
+
 mkdirSync(emptyDir, { recursive: true });
 
 export const VISION_MODEL = process.env.ANTIBODY_VISION_MODEL ?? "claude-sonnet-5-5";
@@ -31,6 +32,7 @@ const VisionRow = z.object({
     .transform((xs) => [...new Set(xs.flatMap((x) => FIELDS.filter((f) => x.trim().toLowerCase().startsWith(f))))]),
   note: z.string().nullable().optional(),
 });
+
 export type VisionRow = z.infer<typeof VisionRow>;
 
 const PageRead = z.object({
@@ -40,11 +42,13 @@ const PageRead = z.object({
   filer_name: z.string().nullable(),
   rows: z.array(VisionRow),
 });
+
 export type PageRead = z.infer<typeof PageRead>;
 
 const Recheck = z.object({
   cells: z.array(z.object({ row: z.number().int(), field: Field, value: z.string(), readable: z.boolean() })),
 });
+
 export type Recheck = z.infer<typeof Recheck>;
 
 export interface Call {
@@ -96,11 +100,13 @@ const imagePath = (doc: string, page: number) => join(visionRoot(), "img", doc, 
 
 export async function cachedRead(doc: string, page: number): Promise<PageResult | null> {
   const f = Bun.file(readPath(doc, page));
+
   return (await f.exists()) ? ((await f.json()) as PageResult) : null;
 }
 
 export async function cachedPages(doc: string): Promise<number[]> {
   const files = await readdir(join(visionRoot(), "reads", doc)).catch(() => [] as string[]);
+
   return files.filter((f) => f.endsWith(".json")).map((f) => Number(f.slice(0, -5)));
 }
 
@@ -108,14 +114,22 @@ export async function cachedPages(doc: string): Promise<number[]> {
 export async function prepare(doc: string, src: string, page?: number) {
   const dir = join(visionRoot(), "img", doc);
   await mkdir(dir, { recursive: true });
-  if (page !== undefined && (await exists(imagePath(doc, page)))) return;
-  if (page === undefined && (await readdir(dir)).length) return;
+
+  if (page !== undefined && (await exists(imagePath(doc, page)))) {
+    return;
+  }
+
+  if (page === undefined && (await readdir(dir)).length) {
+    return;
+  }
+
   const args = [src, dir, String(LONG_EDGE), ...(page === undefined ? [] : [String(page)])];
   await heavy(["uv", "run", "-q", "--project", PKG, "python", "-I", join(PKG, "py/prep_image.py"), ...args]);
 }
 
 async function ask(image: string, system: string, text: string): Promise<{ answer: unknown; call: Call }> {
   const data = Buffer.from(await Bun.file(image).arrayBuffer()).toString("base64");
+
   const message = {
     type: "user",
     message: {
@@ -126,6 +140,7 @@ async function ask(image: string, system: string, text: string): Promise<{ answe
       ],
     },
   };
+
   const proc = Bun.spawn(
     [
       "claude",
@@ -153,16 +168,24 @@ async function ask(image: string, system: string, text: string): Promise<{ answe
       stderr: "pipe",
     },
   );
+
   const out = await new Response(proc.stdout).text();
   await proc.exited;
+
   const result = out
     .split("\n")
     .filter(Boolean)
     .map((l) => JSON.parse(l))
     .find((m) => m.type === "result");
-  if (!result || result.is_error)
+
+  if (!result || result.is_error) {
     throw new Error(`claude -p failed: ${result?.result ?? (await new Response(proc.stderr).text())}`);
-  if (!/[[{]/.test(String(result.result))) throw new Error(`no JSON in answer: ${String(result.result).slice(0, 200)}`);
+  }
+
+  if (!/[[{]/.test(String(result.result))) {
+    throw new Error(`no JSON in answer: ${String(result.result).slice(0, 200)}`);
+  }
+
   return {
     answer: parseJson(String(result.result)),
     call: {
@@ -181,8 +204,8 @@ async function retry<T>(fn: () => Promise<T>, tries = 2): Promise<T> {
   for (let i = 1; ; i++) {
     try {
       return await fn();
-    } catch (e) {
-      if (i >= tries) throw e;
+    } catch (error) {
+      if (i >= tries) throw error;
     }
   }
 }
@@ -191,14 +214,18 @@ async function retry<T>(fn: () => Promise<T>, tries = 2): Promise<T> {
 export async function readPage(doc: string, page: number): Promise<PageResult> {
   let image = imagePath(doc, page);
   const calls: Call[] = [];
-  const transcribe = () =>
+
+  const transcribe = async () =>
     retry(async () => {
       const { answer, call } = await ask(image, READ_PROMPT, "Transcribe this page.");
       calls.push(call);
+
       return PageRead.parse(answer);
     });
+
   let read = await transcribe();
   let rotated: number | null = null;
+
   if (read.rotation) {
     rotated = read.rotation;
     const upright = image.replace(/\.png$/, `.r${rotated}.png`);
@@ -218,8 +245,10 @@ export async function readPage(doc: string, page: number): Promise<PageResult> {
     image = upright;
     read = await transcribe();
   }
+
   const cells = read.rows.flatMap((r, row) => r.uncertain.map((field) => ({ row, field, firstReading: r[field] })));
   let recheck: Recheck | null = null;
+
   if (cells.length) {
     const rows = read.rows.map((r, row) => ({ row, asset: r.asset, date: r.date }));
     recheck = await retry(async () => {
@@ -228,13 +257,17 @@ export async function readPage(doc: string, page: number): Promise<PageResult> {
         RECHECK_PROMPT,
         `Rows on this page (for locating): ${JSON.stringify(rows)}\nCells to check: ${JSON.stringify(cells)}`,
       );
+
       calls.push(call);
+
       return Recheck.parse(answer);
     });
   }
+
   const result: PageResult = { doc, page, model: VISION_MODEL, rotated, read, recheck, calls };
   await mkdir(join(visionRoot(), "reads", doc), { recursive: true });
   await Bun.write(readPath(doc, page), JSON.stringify(result, null, 1));
+
   return result;
 }
 
@@ -249,19 +282,25 @@ export async function readPages(jobs: VisionJob[], workers: number, log: (m: str
   const failed: { job: VisionJob; error: string }[] = [];
   const t0 = performance.now();
   await pool(jobs, workers, async (job) => {
-    if (await cachedRead(job.doc, job.page)) return;
+    if (await cachedRead(job.doc, job.page)) {
+      return;
+    }
+
     try {
       done.push(await readPage(job.doc, job.page));
-    } catch (e) {
-      failed.push({ job, error: String(e).slice(0, 300) });
+    } catch (error) {
+      failed.push({ job, error: String(error).slice(0, 300) });
     }
-    if ((done.length + failed.length) % 10 === 0)
+
+    if ((done.length + failed.length) % 10 === 0) {
       log(
         `  vision ${done.length + failed.length}/${jobs.length}, $${done
           .flatMap((d) => d.calls)
           .reduce((s, c) => s + c.costUsd, 0)
           .toFixed(2)}, ${((performance.now() - t0) / 1000).toFixed(0)}s`,
       );
+    }
   });
+
   return { done, failed };
 }

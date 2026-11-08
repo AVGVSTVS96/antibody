@@ -1,8 +1,10 @@
 import { expect, test } from "bun:test";
 import { TABLES } from "@antibody/core";
-import { type BillStatus, recordedVotes } from "../src/billstatus.ts";
+import { recordedVotes } from "../src/billstatus.ts";
+import type { BillStatus } from "../src/billstatus.ts";
 import { committeeId, congressSpan } from "../src/committees.ts";
-import { type Lookup, memberRow, termOn } from "../src/legislators.ts";
+import { memberRow, termOn } from "../src/legislators.ts";
+import type { Lookup } from "../src/legislators.ts";
 import { parseHouseRoll, parseSenateRoll, voteDate } from "../src/votes.ts";
 
 const sinema = memberRow(
@@ -67,6 +69,7 @@ test("House roll: Aye counts as Yea, unknown legislators are reported, not dropp
     "119-s-1582",
     lookup,
   );
+
   expect(roll).toMatchObject({ id: "house-119-1-200", question: "On Passage (S 1582)", yeas: 308, nays: 122 });
   expect(votes).toEqual([expect.objectContaining({ id: "house-119-1-200:C001123", vote: "Nay" })]);
   expect(unmatched).toEqual(["X000000:Aye"]);
@@ -85,6 +88,7 @@ test("Senate roll: LIS ids map to bioguide; a Vice President's tie-break is writ
     "117-hr-5376",
     lookup,
   );
+
   expect(roll.id).toBe("senate-117-2-325");
   expect(roll.result).toBe("Bill Passed (tie broken by the Vice President of the United States, voting Yea)");
   expect(votes[0]).toMatchObject({ bioguide: "S001191", vote: "Yea" });
@@ -99,9 +103,11 @@ test("recorded votes are found anywhere in BILLSTATUS, once each", () => {
     sessionNumber: "1",
     date: "2025-05-22T00:00:00Z",
   });
+
   const found = recordedVotes({
     actions: { item: [{ recordedVotes: { recordedVote: [rv(145)] } }, { recordedVotes: { recordedVote: [rv(145)] } }] },
     amendments: { amendment: [{ actions: { actions: { item: [{ recordedVotes: { recordedVote: [rv(144)] } }] } } }] },
   } as BillStatus);
+
   expect(found.map((v) => v.rollNumber).sort()).toEqual(["144", "145"]);
 });

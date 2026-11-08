@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { type BillId, billDisplay, parseJson, type Row } from "@antibody/core";
+import { billDisplay, parseJson } from "@antibody/core";
+import type { BillId, Row } from "@antibody/core";
 import { paths, python } from "@antibody/core/node";
 import { claude, pool } from "./llm.ts";
 
@@ -49,17 +50,33 @@ const GENERIC =
  */
 export function subjectOf(text: string, max = 8): string {
   const found: string[] = [];
+
   const add = (t: string | undefined) => {
-    const v = t?.replace(/\s+/g, " ").trim();
-    if (v && !GENERIC.test(v) && !found.some((f) => f.toLowerCase() === v.toLowerCase())) found.push(v);
+    const v = t?.replaceAll(/\s+/g, " ").trim();
+
+    if (v && !GENERIC.test(v) && !found.some((f) => f.toLowerCase() === v.toLowerCase())) {
+      found.push(v);
+    }
   };
-  for (const m of text.matchAll(/term ['‘’"“”]\s*([^'‘’"“”]{2,40}?)\s*['‘’"“”] means/g)) add(m[1]);
-  for (const m of text.matchAll(/entitled ['‘’"“”]+\s*([^'‘’"“”]{5,160}?)\s*['‘’"“”]/g)) add(m[1]);
-  for (const m of text.matchAll(/(?:^|\)\s|\.\s|-\s)([A-Z][A-Za-z'’ ,-]{2,40}?) \.-/g)) add(m[1]);
+
+  for (const m of text.matchAll(/term ['‘’"“”]\s*([^'‘’"“”]{2,40}?)\s*['‘’"“”] means/g)) {
+    add(m[1]);
+  }
+
+  for (const m of text.matchAll(/entitled ['‘’"“”]+\s*([^'‘’"“”]{5,160}?)\s*['‘’"“”]/g)) {
+    add(m[1]);
+  }
+
+  for (const m of text.matchAll(/(?:^|\)\s|\.\s|-\s)([A-Z][A-Za-z'’ ,-]{2,40}?) \.-/g)) {
+    add(m[1]);
+  }
+
   for (const m of text.matchAll(
     /\b((?:[A-Z][a-zA-Z]+ )(?:(?:[A-Z][a-zA-Z]+|of|and|the|for|on|to) ){0,6}Act(?: of \d{4})?)\b/g,
-  ))
+  )) {
     add(m[1]);
+  }
+
   return found.slice(0, max).join("; ");
 }
 
@@ -69,18 +86,23 @@ const line = (s: Row<"sections">, key: string) =>
 /** A menu of the given sections: "S1 | sec. 70301 | heading | first words" lines, and the key → section id map. */
 export function menu(sections: Row<"sections">[]) {
   const ids = new Map<string, string>();
+
   const lines = sections.map((s, i) => {
     const key = `S${i + 1}`;
     ids.set(key, s.id);
+
     return line(s, key);
   });
+
   return { text: lines.join("\n"), ids };
 }
 
 /** Sections shown per article. A short bill is shown whole. */
 export const SHORTLIST = 15;
+
 /** Extra sections per article added by word overlap with the section heading (py/candidates.py). */
 export const LEXICAL = 12;
+
 /** A bill with this many sections or fewer is shown whole to the matcher: no shortlist step. */
 export const WHOLE_MENU = 40;
 
@@ -97,6 +119,7 @@ export async function shortlist(
   const dir = join(paths.raw("analyze"), "match");
   const input = join(dir, `${bill}.cand.in.json`);
   const output = join(dir, `${bill}.cand.json`);
+
   const payload = JSON.stringify({
     shortlist: MATCHER,
     k: SHORTLIST,
@@ -104,12 +127,16 @@ export async function shortlist(
     sections: sections.map((s) => ({ id: s.id, text: `${s.heading}. ${lead(s.preview, 30)}` })),
     articles: articles.map((a) => ({ id: a.id, title: a.title, text: a.text?.slice(0, 14_000) ?? "" })),
   });
+
   const prev = Bun.file(input);
+
   if (!(await prev.exists()) || (await prev.text()) !== payload || !(await Bun.file(output).exists())) {
     await Bun.write(input, payload);
     await python(join(import.meta.dir, ".."), "candidates.py", [input, output], { memoryMax: "3G" });
   }
+
   const r: { candidates: Record<string, string[]> } = await Bun.file(output).json();
+
   return new Map(Object.entries(r.candidates));
 }
 
@@ -136,6 +163,7 @@ const articleBlock = (a: ArticleIn, n: number) =>
  */
 export function withParts(sections: Row<"sections">[], parts: (Row<"sections"> & { parent: string })[]) {
   const of = Map.groupBy(parts, (p) => p.parent);
+
   return sections.flatMap((s) => [s, ...(of.get(s.id) ?? [])]);
 }
 
@@ -160,10 +188,12 @@ export async function matchArticles(
   const parentOf = new Map(parts.map((p) => [p.id, p.parent]));
   const byId = new Map(sections.map((x) => [x.id, x]));
   const whole = sectionsOnly.length <= WHOLE_MENU;
+
   const menuHash = createHash("sha1")
     .update(`${whole ? 0 : `${SHORTLIST}+${LEXICAL}`}\n${menu(sections).text}`)
     .digest("hex")
     .slice(0, 12);
+
   const file = Bun.file(join(paths.raw("analyze"), "match", `${bill}.${model}.json`));
   const prior: MatchRun | null = (await file.exists()) ? await file.json() : null;
   const reuse = prior && !opts.refresh && prior.matcher === MATCHER && prior.menuHash === menuHash;
@@ -171,15 +201,24 @@ export async function matchArticles(
 
   const todo = articles.filter((a) => !run.matches[a.id]);
   const batches: ArticleIn[][] = [];
-  for (let i = 0; i < todo.length; i += BATCH) batches.push(todo.slice(i, i + BATCH));
-  if (batches.length) opts.log?.(`matching ${todo.length} articles in ${batches.length} calls (${model})`);
+
+  for (let i = 0; i < todo.length; i += BATCH) {
+    batches.push(todo.slice(i, i + BATCH));
+  }
+
+  if (batches.length) {
+    opts.log?.(`matching ${todo.length} articles in ${batches.length} calls (${model})`);
+  }
+
   const sys = system(bill, title);
   const everything = whole;
+
   const short =
     todo.length && !everything ? await shortlist(bill, opts.names ?? [], sections, todo) : new Map<string, string[]>();
 
   await pool(batches, PARALLEL, async (batch, bi) => {
     const menus: Map<string, string>[] = [];
+
     const prompt = batch
       .map((a, i) => {
         const m = menu(
@@ -187,25 +226,34 @@ export async function matchArticles(
             ? sections
             : withSections(short.get(a.id) ?? [], parentOf).flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])),
         );
+
         menus.push(m.ids);
+
         return `${articleBlock(a, i + 1)}\n\nSECTIONS THIS ARTICLE MIGHT BE ABOUT\n${m.text}`;
       })
       .join("\n\n=====\n\n");
+
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const r = await claude(prompt, { system: sys, model, signal: opts.signal });
         let out: { a: number; about: Match["about"]; s: string[]; whole: boolean; outside: string | null }[];
+
         try {
           out = parseJson(r.text);
-        } catch (e) {
+        } catch (error) {
           const kept = `${file.name}.unreadable-${bi + 1}.txt`;
           await Bun.write(kept, r.text);
-          throw new Error(`${(e as Error).message} (reply kept in ${kept})`);
+          throw new Error(`${(error as Error).message} (reply kept in ${kept})`);
         }
+
         for (const o of out) {
           const a = batch[o.a - 1];
           const ids = menus[o.a - 1];
-          if (!a || !ids) continue;
+
+          if (!a || !ids) {
+            continue;
+          }
+
           run.matches[a.id] = {
             about: ["bill", "mention", "unrelated"].includes(o.about) ? o.about : "unrelated",
             sections: [...new Set(o.s.flatMap((k) => (ids.has(k) ? [ids.get(k)!] : [])))],
@@ -213,29 +261,46 @@ export async function matchArticles(
             outside: o.outside?.trim() || null,
           };
         }
+
         run.model = r.model;
         run.costUsd += r.costUsd;
-        if (batch.every((a) => run.matches[a.id])) break;
-      } catch (e) {
-        opts.log?.(`batch ${bi + 1}: ${(e as Error).message.slice(0, 160)}`);
+
+        if (batch.every((a) => run.matches[a.id])) {
+          break;
+        }
+      } catch (error) {
+        opts.log?.(`batch ${bi + 1}: ${(error as Error).message.slice(0, 160)}`);
       }
     }
+
     await Bun.write(file, JSON.stringify(run));
   });
   await Bun.write(file, JSON.stringify(run));
   const missing = articles.filter((a) => !run.matches[a.id]).length;
-  if (missing) throw new Error(`${missing} of ${articles.length} articles could not be matched; re-run to finish`);
+
+  if (missing) {
+    throw new Error(`${missing} of ${articles.length} articles could not be matched; re-run to finish`);
+  }
+
   return run;
 }
 
 /** A shortlisted part brings its section along (just before it), so the matcher can tell the two apart. */
 function withSections(ids: string[], parentOf: Map<string, string>): string[] {
   const out: string[] = [];
+
   for (const id of ids) {
     const parent = parentOf.get(id);
-    if (parent && !out.includes(parent)) out.push(parent);
-    if (!out.includes(id)) out.push(id);
+
+    if (parent && !out.includes(parent)) {
+      out.push(parent);
+    }
+
+    if (!out.includes(id)) {
+      out.push(id);
+    }
   }
+
   return out;
 }
 
@@ -245,13 +310,23 @@ export const EMBED_MATCHER = "section-matcher-embed-v1";
 export async function cachedMatchRun(bill: BillId, model = MATCH_MODEL): Promise<MatchRun | null> {
   const dir = join(paths.raw("analyze"), "match");
   const claudeRun = Bun.file(join(dir, `${bill}.${model}.json`));
+
   if (await claudeRun.exists()) {
     const r: MatchRun = await claudeRun.json();
-    if (r.matcher === MATCHER) return r;
+
+    if (r.matcher === MATCHER) {
+      return r;
+    }
   }
+
   const embed = Bun.file(join(dir, `${bill}.embed.json`));
-  if (!(await embed.exists())) return null;
+
+  if (!(await embed.exists())) {
+    return null;
+  }
+
   const r = await embed.json();
+
   return { matcher: EMBED_MATCHER, model: r.model, menuHash: "", costUsd: 0, matches: r.matches };
 }
 
@@ -259,6 +334,7 @@ export async function cachedMatchRun(bill: BillId, model = MATCH_MODEL): Promise
 export async function claudeAvailable(model = MATCH_MODEL): Promise<boolean> {
   try {
     await claude('Reply with {"ok":true}', { system: "Reply with JSON only.", model });
+
     return true;
   } catch {
     return false;
@@ -280,18 +356,23 @@ export async function matchEmbed(
   const dir = join(paths.raw("analyze"), "match");
   const input = join(dir, `${bill}.embed.in.json`);
   const output = join(dir, `${bill}.embed.json`);
+
   const payload = {
     bill_title: title,
     names,
     sections: sections.map((s) => ({ id: s.id, text: `${s.heading}. ${lead(s.preview, 30)}` })),
     articles: articles.map((a) => ({ id: a.id, title: a.title, text: a.text?.slice(0, 14_000) ?? "" })),
   };
+
   const key = JSON.stringify(payload);
   const prev = Bun.file(input);
+
   if (!(await prev.exists()) || (await prev.text()) !== key || !(await Bun.file(output).exists())) {
     await Bun.write(input, key);
     await python(join(import.meta.dir, ".."), "match_embed.py", [input, output], { memoryMax: "3G" });
   }
+
   const r = await Bun.file(output).json();
+
   return { matcher: EMBED_MATCHER, model: r.model, menuHash: "", costUsd: 0, matches: r.matches };
 }

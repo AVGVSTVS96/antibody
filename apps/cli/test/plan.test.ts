@@ -21,6 +21,7 @@ test("dependencies run first", () => {
     "@antibody/analyze": [stage("score", ["bills", "cbo"], ["section_scores"])],
     "@antibody/ingest-cbo": [stage("cbo", ["bills"], ["cbo_lines"])],
   });
+
   expect(order(all, ["score"]).map((s) => s.name)).toEqual(["bills", "cbo", "score"]);
 });
 

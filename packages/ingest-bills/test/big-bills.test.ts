@@ -9,16 +9,17 @@ import { ingestBill } from "../src/ingest.ts";
  * against the GovInfo downloads in data/bills/raw when they're there (the server), and skip in CI.
  */
 const have = (...files: string[]) => files.every((f) => existsSync(join(RAW, f)));
-const run = (id: "119-hr-1" | "117-hr-5376") => ingestBill(id, { write: false, llm: false });
+const run = async (id: "119-hr-1" | "117-hr-5376") => ingestBill(id, { write: false, llm: false });
 
 const hr1 = have("BILLSTATUS-119hr1.xml", "BILLS-119hr1eas.xml", "PLAW-119publ21.xml") ? await run("119-hr-1") : null;
+
 const ira = have("BILLSTATUS-117hr5376.xml", "BILLS-117hr5376eas.xml", "PLAW-117publ169.xml")
   ? await run("117-hr-5376")
   : null;
 
-if (hr1)
+if (hr1) {
   describe("H.R.1", () => {
-    const { versions, lineages, steps, rows } = hr1!;
+    const { versions, lineages, steps, rows } = hr1;
     const byId = new Map(lineages.map((l) => [l.id, l]));
     const sections = new Map(rows.sections!.map((s) => [s.id, s]));
 
@@ -66,10 +67,11 @@ if (hr1)
       expect([sa.sponsor_bioguide, sa.status, sa.roll_id]).toEqual(["G000359", "agreed", "senate-119-1-370"]);
     });
   });
+}
 
-if (ira)
+if (ira) {
   describe("IRA", () => {
-    const { lineages, rows } = ira!;
+    const { lineages, rows } = ira;
     const sections = new Map(rows.sections!.map((s) => [s.id, s]));
 
     test("the $4B drought section is a late Senate add, no longer hidden by a same-law match", () => {
@@ -92,3 +94,4 @@ if (ira)
       expect(sa.map((r) => r.section_id)).toContain("117-hr-5376@eas:title:V/subtitle:B/part:3/sec:50233");
     });
   });
+}

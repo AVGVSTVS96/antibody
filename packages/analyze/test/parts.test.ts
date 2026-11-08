@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import type { Row } from "@antibody/core";
 import { attention } from "../src/attention.ts";
-import { type MatchRun, menu, withParts } from "../src/match.ts";
+import { menu, withParts } from "../src/match.ts";
+import type { MatchRun } from "../src/match.ts";
 import { asSection, partLocator, partSections } from "../src/parts.ts";
 import { scoreRows, sectionDollars } from "../src/score.ts";
 
@@ -18,27 +19,26 @@ const section = (id: string, over: Partial<Row<"sections">> = {}) =>
     ...over,
   }) as Row<"sections">;
 
-const part = (id: string, section_id: string, over: Partial<Row<"section_parts">> = {}) =>
-  ({
-    id,
-    bill_id: "119-hr-1",
-    section_id,
-    num: `${section_id.replace(/^s/, "")}(c)`,
-    ord: 2,
-    enum: "(c)",
-    heading: "Moratorium",
-    trail: [],
-    path: "subsection:c",
-    lead_in: false,
-    words: 120,
-    preview: "no State or political subdivision thereof may enforce any law or regulation",
-    first_version: "rh",
-    late: false,
-    version: "plaw",
-    source_url: "https://www.govinfo.gov/content/pkg/PLAW-119publ21/uslm/PLAW-119publ21.xml",
-    source_locator: "sec. 1, subsection (c)",
-    ...over,
-  }) as Row<"section_parts">;
+const part = (id: string, section_id: string, over: Partial<Row<"section_parts">> = {}) => ({
+  id,
+  bill_id: "119-hr-1",
+  section_id,
+  num: `${section_id.replace(/^s/, "")}(c)`,
+  ord: 2,
+  enum: "(c)",
+  heading: "Moratorium",
+  trail: [],
+  path: "subsection:c",
+  lead_in: false,
+  words: 120,
+  preview: "no State or political subdivision thereof may enforce any law or regulation",
+  first_version: "rh",
+  late: false,
+  version: "plaw",
+  source_url: "https://www.govinfo.gov/content/pkg/PLAW-119publ21/uslm/PLAW-119publ21.xml",
+  source_locator: "sec. 1, subsection (c)",
+  ...over,
+});
 
 const article = (id: string, outlet: string) =>
   ({ id, outlet_id: outlet, text_chars: 2000, via: "mediacloud" }) as Row<"articles">;
@@ -48,14 +48,18 @@ test("an article tied to a part counts for its section too, and the part is rank
     ...Array.from({ length: 12 }, (_, i) => article(`L${i}`, "rawstory.com")),
     ...Array.from({ length: 12 }, (_, i) => article(`R${i}`, "foxnews.com")),
   ];
+
   const matches: MatchRun["matches"] = {};
-  for (const a of arts)
+
+  for (const a of arts) {
     matches[a.id] = {
       about: "bill",
       sections: a.id === "L0" || a.id === "R0" ? ["s1(c)"] : ["s1"],
       whole: false,
       outside: null,
     };
+  }
+
   const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
   const res = attention("119-hr-1", [section("s1"), section("s2")], arts, run, [part("s1(c)", "s1")]);
   const own = res.rows.find((r) => r.section_id === "s1" && !r.part_id)!;
@@ -67,6 +71,7 @@ test("an article tied to a part counts for its section too, and the part is rank
 
 test("a loud section's quiet part with reach is buried on its own, with no dollars of the section's", () => {
   const sections = Array.from({ length: 12 }, (_, i) => section(`s${i}`));
+
   const loud = (id: string) =>
     ({
       id: `b:${id}`,
@@ -77,6 +82,7 @@ test("a loud section's quiet part with reach is buried on its own, with no dolla
       evidence: { balanced_share: 0.4 },
       rests_on: [],
     }) as unknown as Row<"attention">;
+
   const quietPart = {
     id: "b:s0(c)",
     section_id: "s0",
@@ -86,6 +92,7 @@ test("a loud section's quiet part with reach is buried on its own, with no dolla
     evidence: { balanced_share: 0 },
     rests_on: [],
   } as unknown as Row<"attention">;
+
   const tag = (id: string, part_id: string | null) =>
     ({
       id: `${id}#states`,
@@ -95,16 +102,13 @@ test("a loud section's quiet part with reach is buried on its own, with no dolla
       pattern: "no-state-may",
       quote: "no State or political subdivision thereof may enforce any law or regulation regulating AI",
     }) as Row<"section_reach">;
+
   const rows = scoreRows(
     "119-hr-1",
     sections,
     [
       loud("s0"),
-      ...sections
-        .slice(1)
-        .map(
-          (s) => ({ ...loud(s.id), hits: 0, pct: 0, evidence: { balanced_share: 0 } }) as unknown as Row<"attention">,
-        ),
+      ...sections.slice(1).map((s) => ({ ...loud(s.id), hits: 0, pct: 0, evidence: { balanced_share: 0 } })),
       quietPart,
     ],
     sectionDollars([], []),
@@ -115,6 +119,7 @@ test("a loud section's quiet part with reach is buried on its own, with no dolla
     [tag("s0", null), tag("s0(c)", "s0(c)")],
     [part("s0(c)", "s0", { late: true })],
   );
+
   const whole = rows.find((r) => r.section_id === "s0" && !r.part_id)!;
   const p = rows.find((r) => r.part_id === "s0(c)")!;
   expect(whole.label).toBe("headline");
@@ -143,6 +148,7 @@ test("a part of a dropped section is read but never scored", () => {
     [],
     [part("s0(c)", "s0")],
   );
+
   expect(rows.map((r) => r.section_id)).toEqual(["s1"]);
 });
 

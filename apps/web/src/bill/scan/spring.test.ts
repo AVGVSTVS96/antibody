@@ -4,19 +4,25 @@ import { nearest, project, rubberBand, settleTime, springAt, springEasing } from
 test("a critically damped spring approaches its target without crossing it", () => {
   const s = { zeta: 1, response: 0.4 };
   let prev = 0;
+
   for (let i = 1; i <= 100; i++) {
     const [x] = springAt(i / 100, 0, 0, 1, s);
     expect(x).toBeGreaterThanOrEqual(prev);
     expect(x).toBeLessThanOrEqual(1);
     prev = x;
   }
+
   expect(prev).toBeGreaterThan(0.99);
 });
 
 test("an underdamped spring overshoots, then settles", () => {
   const s = { zeta: 0.8, response: 0.3 };
   let peak = 0;
-  for (let i = 1; i <= 200; i++) peak = Math.max(peak, springAt(i / 100, 0, 0, 1, s)[0]);
+
+  for (let i = 1; i <= 200; i++) {
+    peak = Math.max(peak, springAt(i / 100, 0, 0, 1, s)[0]);
+  }
+
   expect(peak).toBeGreaterThan(1);
   expect(Math.abs(springAt(3, 0, 0, 1, s)[0] - 1)).toBeLessThan(0.001);
 });

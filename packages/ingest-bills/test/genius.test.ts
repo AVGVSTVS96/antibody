@@ -14,10 +14,12 @@ const fixture = (name: string) =>
 
 const status = parseBillStatus(fixture("BILLSTATUS-119s1582.xml"), "119-s-1582");
 const refs = textVersions(status);
+
 const versions = [
   { code: "s394-is", predecessor: true, secs: parseSections(fixture("BILLS-119s394is.xml")) },
   ...refs.map((r) => ({ code: r.code, predecessor: false, secs: parseSections(fixture(r.file)) })),
 ];
+
 const { lineages, steps } = trace("119-s-1582", versions);
 const sec19 = lineages.find((l) => l.id === "119-s-1582@es:sec:19")!;
 
@@ -56,11 +58,14 @@ test("sec. 19 came in through Hagerty's substitute SA 2307, read from its printe
   const sa = status.amendments.find((a) => a.number === "2307")!;
   expect(amendmentStatus(sa)).toBe("agreed");
   const dated = refs.map((r) => ({ code: r.code, date: r.date }));
+
   const agreed = status.amendments.filter(
     (a) => amendmentStatus(a) === "agreed" && versionStep(a.latestAction!.date, dated) === "pcs->es",
   );
+
   expect(agreed.map((a) => a.number)).toEqual(["2307"]);
   const url = "https://www.govinfo.gov/content/pkg/CREC-2025-06-05/html/CREC-2025-06-05-pt1-PgS3259-5.htm";
+
   const rows = attribute({
     bill: "119-s-1582",
     from: "pcs",
@@ -76,6 +81,7 @@ test("sec. 19 came in through Hagerty's substitute SA 2307, read from its printe
     removed: [],
     amended: new Map(),
   });
+
   expect(rows).toHaveLength(1);
   expect(rows[0]).toMatchObject({
     amendment_id: "119-samdt-2307",

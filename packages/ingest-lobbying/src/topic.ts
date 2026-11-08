@@ -1,8 +1,10 @@
 import { join } from "node:path";
-import { type BillId, billDisplay, type Row, type StageContext } from "@antibody/core";
+import { billDisplay } from "@antibody/core";
+import type { BillId, Row, StageContext } from "@antibody/core";
 import { readRows, writeRows } from "@antibody/core/node";
 import { billStatus } from "./billstatus.ts";
-import { type Aliases, best, billNumbers, findRefs, matcher, period } from "./extract.ts";
+import { best, billNumbers, findRefs, matcher, period } from "./extract.ts";
+import type { Aliases } from "./extract.ts";
 import { askJson } from "./llm.ts";
 import { readAliases } from "./lobbying.ts";
 import { pullTerms, rawDir } from "./pull.ts";
@@ -13,11 +15,13 @@ import { spendRows } from "./spend.ts";
 const MODEL = "sonnet";
 const BATCH = 40;
 const KEEP = 0.6;
+
 /** A topic-only line never reads as more certain than this, whatever the model says. */
 const CAP = 0.8;
 
 async function topicPhrases(a: Aliases, signal: AbortSignal) {
   const s = await billStatus(a.bill, signal);
+
   const prompt = `Federal lobbying reports (LD-2) often describe legislation by its subject instead of naming it,
 e.g. "stablecoin legislation" or "the reconciliation bill". Give 1 to 4 short lowercase search phrases (1-3 words)
 that such issue lines would contain when lobbying on THIS bill's subject. Each phrase must be distinctive: most
@@ -28,7 +32,8 @@ Policy area: ${s?.policyArea ?? "unknown"}.
 CRS summary: ${(s?.summary ?? "").slice(0, 1500)}
 
 Return only JSON: {"phrases": ["..."]}`;
-  return askJson<{ phrases: string[] }>(prompt, MODEL, signal);
+
+  return await askJson<{ phrases: string[] }>(prompt, MODEL, signal);
 }
 
 interface Candidate {
@@ -66,7 +71,7 @@ ${JSON.stringify(batch.map(({ i, quarter, text }) => ({ i, quarter, text })))}`;
 }
 
 const wordRe = (phrase: string) =>
-  new RegExp(`(?<![A-Za-z])${phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")}`, "i");
+  new RegExp(`(?<![A-Za-z])${phrase.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll(/\s+/g, "\\s+")}`, "i");
 
 /**
  * Topic-only lobbying: lines that describe the bill's subject while it was pending without naming any bill.
@@ -75,9 +80,19 @@ const wordRe = (phrase: string) =>
  */
 export async function runTopic(ctx: StageContext) {
   const bill = ctx.bill as BillId;
-  if (!Bun.which("claude")) return ctx.log("skipped: the claude CLI is not on this machine");
+
+  if (!Bun.which("claude")) {
+    ctx.log("skipped: the claude CLI is not on this machine");
+
+    return;
+  }
+
   const a = await readAliases(bill);
-  if (!a) throw new Error(`run the lobbying stage for ${bill} first`);
+
+  if (!a) {
+    throw new Error(`run the lobbying stage for ${bill} first`);
+  }
+
   const s = await billStatus(bill, ctx.signal);
   const m = matcher(a);
   const until = a.enactedOn ?? `${1789 + 2 * (a.congress - 1) + 1}-12-31`;
@@ -93,40 +108,70 @@ export async function runTopic(ctx: StageContext) {
   const pulled = await pullTerms(bill, "topic-filings", terms, years, ctx);
 
   const candidates: Candidate[] = [];
+
   for (const f of pulled) {
-    if (f.filing_type.startsWith("R")) continue;
+    if (f.filing_type.startsWith("R")) {
+      continue;
+    }
+
     const p = period(f.filing_year, f.filing_period);
-    if (!a.introduced || p.end < a.introduced || p.start > until) continue;
+
+    if (!a.introduced || p.end < a.introduced || p.start > until) {
+      continue;
+    }
+
     const lines = f.lobbying_activities.map((x) => x.description ?? "");
-    if (lines.some((t) => (best(findRefs(t, p, m))?.level ?? "low") !== "low")) continue;
+
+    if (lines.some((t) => (best(findRefs(t, p, m))?.level ?? "low") !== "low")) {
+      continue;
+    }
+
     for (const [line, text] of lines.entries()) {
-      if (billNumbers(text).length) continue;
+      if (billNumbers(text).length) {
+        continue;
+      }
+
       const phrase = phrases.value.phrases.find((ph) => wordRe(ph).test(text));
-      if (!phrase) continue;
+
+      if (!phrase) {
+        continue;
+      }
+
       const quarter = `${f.filing_year} ${f.filing_period.replace("_", " ")}`;
       candidates.push({ i: candidates.length, filing: f.filing_uuid, line, quarter, text: text.trim(), phrase });
     }
   }
+
   ctx.log(`${candidates.length} candidate lines in ${new Set(candidates.map((c) => c.filing)).size} filings`);
 
   const verdicts = new Map<number, Verdict>();
+
   const batches = Array.from({ length: Math.ceil(candidates.length / BATCH) }, (_, k) =>
     candidates.slice(k * BATCH, (k + 1) * BATCH),
   );
-  for (let k = 0; k < batches.length; k += 3)
+
+  for (let k = 0; k < batches.length; k += 3) {
     await Promise.all(
       batches.slice(k, k + 3).map(async (batch) => {
         const ans = await askJson<Verdict[]>(classifyPrompt(a, s?.summary ?? "", batch), MODEL, ctx.signal);
+
         if (!ans.cached) [cost, ms, calls] = [cost + ans.costUsd, ms + ans.ms, calls + 1];
+
         for (const v of ans.value) verdicts.set(v.i, v);
       }),
     );
+  }
 
   const byUuid = new Map(pulled.map((f) => [f.filing_uuid, f]));
   const refs: Row<"lda_topic_refs">[] = [];
+
   for (const c of candidates) {
     const v = verdicts.get(c.i);
-    if (v?.verdict !== "this-bill" || v.confidence < KEEP) continue;
+
+    if (v?.verdict !== "this-bill" || v.confidence < KEEP) {
+      continue;
+    }
+
     const f = byUuid.get(c.filing)!;
     const p = period(f.filing_year, f.filing_period);
     refs.push({
@@ -153,8 +198,11 @@ export async function runTopic(ctx: StageContext) {
   await upsert("lda_clients", clientRows(kept), () => "all", { merge: mergeClient });
   await writeRows("lda_topic_refs", bill, refs);
   const stored = new Map<string, Row<"lda_filings">>();
-  for (const y of new Set(filings.map((f) => String(f.year))))
+
+  for (const y of new Set(filings.map((f) => String(f.year)))) {
     for (const f of await readRows("lda_filings", y)) stored.set(f.id, f);
+  }
+
   await writeRows(
     "lda_spend",
     `${bill}-topic`,
@@ -167,7 +215,11 @@ export async function runTopic(ctx: StageContext) {
   );
 
   const counts = { "this-bill": 0, other: 0, unclear: 0 };
-  for (const v of verdicts.values()) counts[v.verdict]++;
+
+  for (const v of verdicts.values()) {
+    counts[v.verdict]++;
+  }
+
   const report = {
     phrases: phrases.value.phrases,
     candidates: candidates.length,
@@ -177,6 +229,7 @@ export async function runTopic(ctx: StageContext) {
     costUsd: cost,
     ms,
   };
+
   await Bun.write(join(rawDir(bill), "topic.json"), JSON.stringify(report, null, 1));
   ctx.log(
     `${refs.length} topic-only lines kept in ${kept.length} filings (${JSON.stringify(counts)}); ` +

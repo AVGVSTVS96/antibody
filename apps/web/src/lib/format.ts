@@ -24,26 +24,49 @@ export function nice(name: string): string {
     .replace(/\s*\/[A-Z]{2,3}\/?$/, "")
     .replace(/\s*\/NEW\/$/, "")
     .replace(/ DE$/, "");
-  if (s === s.toUpperCase())
+
+  if (s === s.toUpperCase()) {
     s = s.toLowerCase().replace(/(^|[\s(&/-])(\w)/g, (_m, a: string, b: string) => a + b.toUpperCase());
-  for (const [re, to] of UPPER_FIXES) s = s.replace(re, to);
+  }
+
+  for (const [re, to] of UPPER_FIXES) {
+    s = s.replace(re, to);
+  }
+
   return s.replace(/ S A De C V$/, " S.A. de C.V.");
 }
 
 export function usd(n: number | null | undefined): string {
-  if (n == null) return "—";
+  if (n == null) {
+    return "—";
+  }
+
   const a = Math.abs(n);
   const sign = n < 0 ? "−" : "";
-  if (a >= 1e12) return `${sign}$${(a / 1e12).toFixed(a >= 1e13 ? 0 : 1)}T`;
-  if (a >= 1e9) return `${sign}$${(a / 1e9).toFixed(a >= 1e10 ? 0 : 1)}B`;
-  if (a >= 1e6) return `${sign}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}M`;
-  if (a >= 1e3) return `${sign}$${Math.round(a / 1e3)}K`;
+
+  if (a >= 1e12) {
+    return `${sign}$${(a / 1e12).toFixed(a >= 1e13 ? 0 : 1)}T`;
+  }
+
+  if (a >= 1e9) {
+    return `${sign}$${(a / 1e9).toFixed(a >= 1e10 ? 0 : 1)}B`;
+  }
+
+  if (a >= 1e6) {
+    return `${sign}$${(a / 1e6).toFixed(a >= 1e7 ? 0 : 1)}M`;
+  }
+
+  if (a >= 1e3) {
+    return `${sign}$${Math.round(a / 1e3)}K`;
+  }
+
   return `${sign}$${Math.round(a)}`;
 }
 
 /** CBO prints $ millions; signed, with the sign spelled out so a cut never reads as spending. */
 export function musd(m: number): string {
   const s = usd(Math.abs(m) * 1e6);
+
   return m > 0 ? `+${s}` : m < 0 ? `−${s}` : s;
 }
 
@@ -54,9 +77,14 @@ export const count = (n: number, one: string, many = `${one}s`) =>
   `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 export function day(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) {
+    return "—";
+  }
+
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number) as [number, number, number];
+
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
@@ -67,21 +95,67 @@ export const stamp = (iso: string) =>
 /** Short name for a source chip, from the record's host. */
 export function sourceName(url: string): string {
   const u = url.toLowerCase();
-  if (u.includes("lda.gov")) return "LDA";
-  if (u.includes("disclosures-clerk")) return "House PTR";
-  if (u.includes("efdsearch")) return "Senate eFD";
-  if (u.includes("clerk.house.gov")) return "House roll";
-  if (u.includes("senate.gov")) return "Senate vote";
-  if (u.includes("docquery.fec.gov")) return "FEC filing";
-  if (u.includes("fec.gov")) return "FEC";
-  if (u.includes("sec.gov")) return "SEC";
-  if (u.includes("cbo.gov")) return "CBO";
-  if (u.includes("govinfo")) return u.includes("billstatus") ? "BILLSTATUS" : "GovInfo";
-  if (u.includes("bioguide")) return "Bioguide";
-  if (u.includes("congress.gov")) return "congress.gov";
-  if (u.includes("theunitedstates.io")) return "Legislators";
-  if (u.includes("github.com/avgvstvs96/antibody")) return "method";
-  if (u.includes("news.google.com")) return "news";
+
+  if (u.includes("lda.gov")) {
+    return "LDA";
+  }
+
+  if (u.includes("disclosures-clerk")) {
+    return "House PTR";
+  }
+
+  if (u.includes("efdsearch")) {
+    return "Senate eFD";
+  }
+
+  if (u.includes("clerk.house.gov")) {
+    return "House roll";
+  }
+
+  if (u.includes("senate.gov")) {
+    return "Senate vote";
+  }
+
+  if (u.includes("docquery.fec.gov")) {
+    return "FEC filing";
+  }
+
+  if (u.includes("fec.gov")) {
+    return "FEC";
+  }
+
+  if (u.includes("sec.gov")) {
+    return "SEC";
+  }
+
+  if (u.includes("cbo.gov")) {
+    return "CBO";
+  }
+
+  if (u.includes("govinfo")) {
+    return u.includes("billstatus") ? "BILLSTATUS" : "GovInfo";
+  }
+
+  if (u.includes("bioguide")) {
+    return "Bioguide";
+  }
+
+  if (u.includes("congress.gov")) {
+    return "congress.gov";
+  }
+
+  if (u.includes("theunitedstates.io")) {
+    return "Legislators";
+  }
+
+  if (u.includes("github.com/avgvstvs96/antibody")) {
+    return "method";
+  }
+
+  if (u.includes("news.google.com")) {
+    return "news";
+  }
+
   try {
     return new URL(url).hostname.replace(/^www\./, "").split(".")[0]!;
   } catch {
@@ -112,22 +186,33 @@ const TRAILING =
 /** A company or client the way a reader says it: "General Motors", not "GENERAL MOTORS CO". Cut at a word past `max`. */
 export function plainName(label: string, max = 22): string {
   const strip = (x: string) => {
-    for (let prev = ""; prev !== x; ) {
+    for (let prev = ""; prev !== x;) {
       prev = x;
       x = x
         .replace(/[/\s]+$/, "")
         .replace(TRAILING, "")
         .replace(/\s*&$/, "");
     }
+
     return x;
   };
+
   const s = strip(nice(label).replace(/^the\s+/i, ""));
-  if (s.length <= max) return s;
+
+  if (s.length <= max) {
+    return s;
+  }
+
   let out = "";
+
   for (const w of s.split(" ")) {
-    if (out && out.length + w.length + 1 > max) break;
+    if (out && out.length + w.length + 1 > max) {
+      break;
+    }
+
     out = out ? `${out} ${w}` : w;
   }
+
   return `${strip(out).slice(0, max)}…`;
 }
 

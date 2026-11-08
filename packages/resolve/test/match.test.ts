@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 import type { Row } from "@antibody/core";
 import type { Company } from "../src/edgar.ts";
 import { ratio, tokenSet, tokenSort, typoClose } from "../src/fuzzy.ts";
-import { CompanyIndex, type Mention, resolveMention } from "../src/match.ts";
+import { CompanyIndex, resolveMention } from "../src/match.ts";
+import type { Mention } from "../src/match.ts";
 import { employerMentions, pacMentions, tradeMentions } from "../src/mentions.ts";
 import { norm, parseAsset } from "../src/normalize.ts";
 
@@ -12,20 +13,22 @@ const co = (cik: number, name: string, ...tickers: string[]): Company => ({
   tickers,
   exchange: "NYSE",
 });
+
 const index = new CompanyIndex([
-  co(1403161, "VISA INC.", "V"),
-  co(1679788, "Coinbase Global, Inc.", "COIN"),
-  co(1555280, "Edgewell Personal Care Co", "EPC"),
-  co(107263, "WILLIAMS COMPANIES, INC.", "WMB"),
-  co(63754, "MCCORMICK & CO INC", "MKC"),
-  co(1818874, "Compass, Inc.", "COMP"),
-  co(797468, "OCCIDENTAL PETROLEUM CORP /DE/", "OXY"),
-  co(1652044, "Alphabet Inc.", "GOOGL", "GOOG"),
-  co(1067983, "BERKSHIRE HATHAWAY INC", "BRK-B", "BRK-A"),
+  co(1_403_161, "VISA INC.", "V"),
+  co(1_679_788, "Coinbase Global, Inc.", "COIN"),
+  co(1_555_280, "Edgewell Personal Care Co", "EPC"),
+  co(107_263, "WILLIAMS COMPANIES, INC.", "WMB"),
+  co(63_754, "MCCORMICK & CO INC", "MKC"),
+  co(1_818_874, "Compass, Inc.", "COMP"),
+  co(797_468, "OCCIDENTAL PETROLEUM CORP /DE/", "OXY"),
+  co(1_652_044, "Alphabet Inc.", "GOOGL", "GOOG"),
+  co(1_067_983, "BERKSHIRE HATHAWAY INC", "BRK-B", "BRK-A"),
   co(1001, "Duke Energy CORP", "DUK"),
   co(1002, "Duke Realty Corp", "DRE"),
   co(1003, "DUKE ENERGY INC /NC/", "DUKN"),
 ]);
+
 const m = (source: Mention["source"], name: string, ticker: string | null = null): Mention => ({
   src: `${source}:x`,
   source,
@@ -103,6 +106,7 @@ test("leadership PACs are never resolved (WILLIAMS ≠ Williams Companies)", () 
       source_locator: null,
     },
   ]);
+
   expect(pacs.map((p) => p.src)).toEqual(["pac:C2"]);
   const r = resolveMention(pacs[0]!, index);
   expect(r.kind === "match" && r.match.method).toBe("name_exact");
@@ -135,7 +139,7 @@ test("only stock and option trades are resolved", () => {
     notified_on: null,
     amount: "$1,001 - $15,000",
     amount_min: 1001,
-    amount_max: 15000,
+    amount_max: 15_000,
     page: 1,
     read_by: "text" as const,
     confidence: 1,
@@ -144,21 +148,25 @@ test("only stock and option trades are resolved", () => {
     source_url: "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/1.pdf",
     source_locator: null,
   };
+
   const ms = tradeMentions([
     { ...base, id: "1", asset: "Visa Inc. (V) [ST]", asset_type: "ST", ticker: "V" },
     { ...base, id: "2", asset: "DELL INTL LLC/EMC CORP", asset_type: "Corporate Bond", ticker: null },
   ]);
+
   expect(ms.map((x) => x.src)).toEqual(["trade:1"]);
 });
 
 test("donor employers merge across members; small ones skip review and keep only deterministic matches", () => {
   const row = (id: string, employer: string, key: string, usd: number) =>
     ({ id, employer, employer_key: key, amount_usd: usd }) as Row<"employer_contributions">;
+
   const [big, small] = employerMentions([
     row("a", "Occidental Petroleum Corp.", "OCCIDENTAL PETROLEUM", 20_000),
-    row("b", "OCCIDENTAL PETROLEUM CORPORATION", "OCCIDENTAL PETROLEUM", 9_000),
-    row("c", "Compass", "COMPASS", 2_000),
+    row("b", "OCCIDENTAL PETROLEUM CORPORATION", "OCCIDENTAL PETROLEUM", 9000),
+    row("c", "Compass", "COMPASS", 2000),
   ]);
+
   expect(big!.name).toBe("Occidental Petroleum Corp.");
   expect(big!.reviewable).toBe(true);
   expect(resolveMention(big!, index).kind).toBe("match");

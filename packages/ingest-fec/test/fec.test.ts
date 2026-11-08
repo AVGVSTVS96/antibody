@@ -22,8 +22,17 @@ test("cycles, dates and employer keys", () => {
   expect(employerKey("CROWE LLP")).toBe("CROWE");
   expect(employerKey("The Goldman Sachs Group, Inc.")).toBe("GOLDMAN SACHS GROUP");
   expect(employerKey("AT&T")).toBe("AT AND T");
-  for (const none of ["N/A", "NOT-EMPLOYED", "Self-Employed", "RETIRED", "INFORMATION REQUESTED PER BEST EFFORTS", ""])
+
+  for (const none of [
+    "N/A",
+    "NOT-EMPLOYED",
+    "Self-Employed",
+    "RETIRED",
+    "INFORMATION REQUESTED PER BEST EFFORTS",
+    "",
+  ]) {
     expect(employerKey(none)).toBeNull();
+  }
 });
 
 test("pas2: direct PAC money and outside spending land in separate tables; memo and undated lines are counted", async () => {
@@ -35,8 +44,15 @@ test("pas2: direct PAC money and outside spending land in separate tables; memo 
   expect(contributions[0]!.recipient_committee_id).toBe("C00648493");
   expect(independent).toEqual([expect.objectContaining({ pac_id: "C00030718", support: "support", amount_usd: 4287 })]);
   expect(skipped).toEqual({ memo: 1, badDate: 1 });
-  for (const r of contributions) expect(TABLES.contributions.schema.safeParse(r).success).toBe(true);
-  for (const r of independent) expect(TABLES.independent_expenditures.schema.safeParse(r).success).toBe(true);
+
+  for (const r of contributions) {
+    expect(TABLES.contributions.schema.safeParse(r).success).toBe(true);
+  }
+
+  for (const r of independent) {
+    expect(TABLES.independent_expenditures.schema.safeParse(r).success).toBe(true);
+  }
+
   expect(givingUrl("C00165589", "C00648493", "H8IL06139", 2026)).toContain("recipient_committee_id=C00648493");
 
   const pacs = await readPacs([2026], new Set(["C00165589"]), dir);
@@ -60,7 +76,11 @@ test("indiv: spellings of one employer are summed per member, memo lines and non
   });
   expect(rows.map((r) => r.employer_key).sort()).toEqual(["BRATTLE GROUP", "CROWE"]);
   expect(stats).toMatchObject({ kept: 5, noEmployer: 1, belowMin: 0 });
-  for (const r of rows) expect(TABLES.employer_contributions.schema.safeParse(r).success).toBe(true);
+
+  for (const r of rows) {
+    expect(TABLES.employer_contributions.schema.safeParse(r).success).toBe(true);
+  }
+
   expect((await aggregateEmployers(2026, committees, 1000, dir)).rows.map((r) => r.employer_key).sort()).toEqual([
     "BRATTLE GROUP",
     "CROWE",

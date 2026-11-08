@@ -50,13 +50,19 @@ export function spendRows(
   topicOnly = false,
 ): Row<"lda_spend">[] {
   const linesByFiling = new Map<string, Line[]>();
+
   for (const l of lines) {
     const f = filings.get(l.filing_id);
-    if (f?.form !== "LD-2" || f.superseded) continue;
+
+    if (f?.form !== "LD-2" || f.superseded) {
+      continue;
+    }
+
     linesByFiling.set(l.filing_id, [...(linesByFiling.get(l.filing_id) ?? []), l]);
   }
 
   const byClient = new Map<string, Row<"lda_filings">[]>();
+
   for (const id of linesByFiling.keys()) {
     const f = filings.get(id)!;
     byClient.set(f.client_key, [...(byClient.get(f.client_key) ?? []), f]);
@@ -64,16 +70,22 @@ export function spendRows(
 
   const suffix = topicOnly ? ":topic" : "";
   const rows: Row<"lda_spend">[] = [];
+
   for (const [client, reports] of byClient) {
     const quarters = new Map<string, Row<"lda_filings">[]>();
-    for (const f of reports)
+
+    for (const f of reports) {
       quarters.set(`${f.year}|${f.period}`, [...(quarters.get(`${f.year}|${f.period}`) ?? []), f]);
+    }
+
     let total = 0;
     let share = 0;
     let anyAmount = false;
     const counted: Row<"lda_filings">[] = [];
+
     for (const q of quarters.values()) {
       const inHouse = q.filter((f) => f.amount_kind === "expenses");
+
       for (const f of inHouse.length ? inHouse : q.filter((f) => f.amount_kind === "income")) {
         anyAmount = true;
         counted.push(f);
@@ -81,6 +93,7 @@ export function spendRows(
         share += ((f.amount_usd ?? 0) * linesByFiling.get(f.id)!.length) / Math.max(1, f.issue_lines);
       }
     }
+
     const clientLines = reports.flatMap((f) => linesByFiling.get(f.id)!);
     const phases = count(reports.map((f) => linesByFiling.get(f.id)![0]!.phase));
     const specific = clientLines.find((l) => l.section_nums.length) ?? latest(clientLines, filings);
@@ -118,7 +131,10 @@ export function spendRows(
       },
     });
   }
-  if (!rows.length) return rows;
+
+  if (!rows.length) {
+    return rows;
+  }
 
   const reports = [...linesByFiling.keys()].map((id) => filings.get(id)!);
   const phases = count(reports.map((f) => linesByFiling.get(f.id)![0]!.phase));
@@ -141,22 +157,29 @@ export function spendRows(
     section_nums: [],
     rule: topicOnly ? "lda-topic-only" : "lda-bill-share",
     confidence: 0.5,
-    rests_on: rows.map((r) => claim.spend(r.id, r.share_usd != null ? "share" : "total")),
+    rests_on: rows.map((r) => claim.spend(r.id, r.share_usd == null ? "total" : "share")),
     evidence: { method: "sum of the per-client rows", clients: rows.length },
   });
+
   return rows;
 }
 
 function count(phases: Line["phase"][]) {
   const c = { bill: 0, "enactment-quarter": 0, law: 0 };
-  for (const p of phases) c[p]++;
+
+  for (const p of phases) {
+    c[p]++;
+  }
+
   return c;
 }
 
 function latest(lines: Line[], filings: Map<string, Row<"lda_filings">>): Line | undefined {
   const at = (l: Line) => {
     const f = filings.get(l.filing_id)!;
+
     return f.period_end;
   };
+
   return lines.reduce<Line | undefined>((b, l) => (!b || at(l) > at(b) ? l : b), undefined);
 }

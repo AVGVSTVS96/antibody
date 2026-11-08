@@ -3,6 +3,7 @@ import type { Bundle } from "@antibody/core";
 import { limitGraph } from "../src/limit.ts";
 
 const client = (key: string) => ({ id: `client:${key}`, kind: "client" });
+
 const lobbied = (key: string, reports: number) => ({
   id: `lobbied:${key}`,
   kind: "lobbied",
@@ -10,6 +11,7 @@ const lobbied = (key: string, reports: number) => ({
   dst: "bill:119-s-1",
   props: { reports, topicOnly: false },
 });
+
 const funded = (pac: string, member: string, amountUsd: number) => ({
   id: `funded:${pac}:${member}`,
   kind: "funded",

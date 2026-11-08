@@ -3,7 +3,8 @@ import type { BillId, Row, StageContext } from "@antibody/core";
 import { readRows, writeRows } from "@antibody/core/node";
 import { buildAliases, coCited, sameTitle } from "./aliases.ts";
 import { billStatus } from "./billstatus.ts";
-import { type Aliases, matcher } from "./extract.ts";
+import { matcher } from "./extract.ts";
+import type { Aliases } from "./extract.ts";
 import { pull, rawDir } from "./pull.ts";
 import { extract, markSuperseded, mergeClient } from "./rows.ts";
 import { upsert } from "./shards.ts";
@@ -19,29 +20,36 @@ export async function resolveAliases(bill: BillId, ctx: Pick<StageContext, "refr
   let aliases = await buildAliases(bill, [], ctx.signal);
   let filings = await pull(aliases, ctx);
   const confirmed: BillId[] = [];
+
   for (const id of coCited(filings, matcher(aliases))) {
     const s = await billStatus(id, ctx.signal);
+
     if (
       s &&
       sameTitle(aliases, s) &&
       s.introduced &&
       aliases.introduced &&
       s.introduced <= addDays(aliases.introduced, COMPANION_DAYS)
-    )
+    ) {
       confirmed.push(id);
+    }
   }
+
   if (confirmed.length) {
     ctx.log(`same short title: ${confirmed.join(", ")}`);
     aliases = await buildAliases(bill, confirmed, ctx.signal);
     filings = await pull(aliases, ctx);
   }
+
   await Bun.write(join(rawDir(bill), "aliases.json"), JSON.stringify(aliases, null, 1));
+
   return { aliases, filings };
 }
 
 export async function readAliases(bill: BillId): Promise<Aliases | null> {
   const file = Bun.file(join(rawDir(bill), "aliases.json"));
-  return (await file.exists()) ? file.json() : null;
+
+  return (await file.exists()) ? await file.json() : null;
 }
 
 const yearOf = (uuid: string, filings: Map<string, Row<"lda_filings">>) => String(filings.get(uuid)!.year);
@@ -71,8 +79,11 @@ export async function runLobbying(ctx: StageContext) {
   await writeRows("lda_bill_refs", bill, x.refs);
 
   const stored = new Map<string, Row<"lda_filings">>();
-  for (const y of new Set(x.filings.map((f) => String(f.year))))
+
+  for (const y of new Set(x.filings.map((f) => String(f.year)))) {
     for (const f of await readRows("lda_filings", y)) if (byId.has(f.id)) stored.set(f.id, f);
+  }
+
   const counted = x.refs.filter((r) => r.match !== "low");
   const spend = spendRows(bill, stored, counted);
   await writeRows("lda_spend", bill, spend);

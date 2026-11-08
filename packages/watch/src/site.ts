@@ -1,6 +1,7 @@
 import { mkdir, rename } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { type BillId, Bundle, type BundleIndex, billDisplay, checkBundle } from "@antibody/core";
+import { Bundle, billDisplay, checkBundle } from "@antibody/core";
+import type { BillId, BundleIndex } from "@antibody/core";
 import { heavy, paths, ROOT } from "@antibody/core/node";
 import { CURATED, writeBundle, writeIndex } from "@antibody/store";
 
@@ -23,14 +24,24 @@ const curated = new Set<string>(CURATED.map((p) => p.id));
 
 /** The x-ray's bundle goes to the site only if it parses and every claim and edge resolves; curated bills are left as they are. */
 export async function publishBundle(id: BillId, from = paths.bundles, to = paths.published): Promise<string | null> {
-  if (curated.has(id)) return null;
+  if (curated.has(id)) {
+    return null;
+  }
+
   const parsed = Bundle.safeParse(await Bun.file(join(from, `${id}.json`)).json());
-  if (!parsed.success)
+
+  if (!parsed.success) {
     return `${billDisplay(id)} bundle not published, it does not parse: ${parsed.error.message.slice(0, 200)}`;
+  }
+
   const problems = checkBundle(parsed.data);
-  if (problems.length)
+
+  if (problems.length) {
     return `${billDisplay(id)} bundle not published, ${problems.length} checkBundle problems: ${problems.slice(0, 3).join("; ")}`;
+  }
+
   await writeBundle(parsed.data, { publish: true, local: from, published: to });
+
   return null;
 }
 
@@ -38,7 +49,7 @@ export const deployDisabled = () => process.env.ANTIBODY_WATCH_DEPLOY === "0";
 
 type Run = (cmd: string[], cwd: string, signal: AbortSignal) => Promise<string>;
 
-const run: Run = (cmd, cwd, signal) => heavy(cmd, { cwd, signal });
+const run: Run = async (cmd, cwd, signal) => heavy(cmd, { cwd, signal });
 
 const withoutStamp = (index: string) => index.replace(/"generatedAt": "[^"]*"/, "");
 
@@ -49,7 +60,10 @@ const withoutStamp = (index: string) => index.replace(/"generatedAt": "[^"]*"/, 
 async function linkProject(root: string) {
   const link = Bun.file(join(root, ".vercel/project.json"));
   const from = Bun.file(join(root, "apps/web/.vercel/project.json"));
-  if (!(await link.exists()) && (await from.exists())) await Bun.write(link, from);
+
+  if (!(await link.exists()) && (await from.exists())) {
+    await Bun.write(link, from);
+  }
 }
 
 interface Where {
@@ -76,28 +90,38 @@ export async function updateSite(
 ): Promise<{ index: BundleIndex | null; problems: string[] }> {
   const problems: string[] = [];
   let index: BundleIndex | null = null;
+
   try {
     index = await writeIndex(
       where.published,
       CURATED.map((p) => p.id),
     );
-  } catch (e) {
-    site.deploy = { status: "failed", error: `index not rebuilt: ${(e as Error).message}` };
+  } catch (error) {
+    site.deploy = { status: "failed", error: `index not rebuilt: ${(error as Error).message}` };
+
     return { index, problems: [`site: ${site.deploy.error}`] };
   }
+
   if (!deploy) {
     site.deploy = { status: "disabled", reason: "ANTIBODY_WATCH_DEPLOY=0 or --no-deploy" };
+
     return { index, problems };
   }
+
   const text = await Bun.file(join(where.published, "index.json")).text();
+
   const before = await Bun.file(where.deployedIndex)
     .text()
     .catch(() => null);
+
   if (before !== null && withoutStamp(before) === withoutStamp(text)) {
     site.deploy = { status: "unchanged" };
+
     return { index, problems };
   }
+
   const signal = AbortSignal.timeout(minutes * 60_000);
+
   try {
     await exec(["bun", "run", "--cwd", "apps/web", "build"], where.root, signal);
     await linkProject(where.root);
@@ -108,10 +132,11 @@ export async function updateSite(
     await Bun.write(`${where.deployedIndex}.tmp`, text);
     await rename(`${where.deployedIndex}.tmp`, where.deployedIndex);
     site.deploy = { status: "deployed", url };
-  } catch (e) {
-    const error = signal.aborted ? `stopped after ${minutes} min` : (e as Error).message;
+  } catch (error_) {
+    const error = signal.aborted ? `stopped after ${minutes} min` : (error_ as Error).message;
     site.deploy = { status: "failed", error };
     problems.push(`site deploy failed, the previous live site is unchanged and the next run retries: ${error}`);
   }
+
   return { index, problems };
 }

@@ -3,6 +3,7 @@ import { Contrast } from "./icons.tsx";
 
 export function ThemeButton() {
   const theme = useTheme();
+
   return (
     <button
       type="button"

@@ -29,6 +29,7 @@ test("rows are strict: an unknown column fails", () => {
     source_url: "https://www.fec.gov/data/committee/C00431312/",
     source_locator: null,
   };
+
   expect(TABLES.pacs.schema.safeParse(ok).success).toBe(true);
   expect(TABLES.pacs.schema.safeParse({ ...ok, extra: 1 }).success).toBe(false);
 });
@@ -59,6 +60,7 @@ test("cbo lines name their spending kind and estimates keep the PDF they quote",
     source_url: "https://www.cbo.gov/system/files/2025-07/s1582.pdf",
     source_locator: "page 1, At a Glance",
   };
+
   expect(TABLES.cbo_lines.schema.safeParse(line).success).toBe(true);
   expect(TABLES.cbo_lines.schema.safeParse({ ...line, spending: "other" }).success).toBe(false);
   expect(Object.fromEntries(columns("cbo_estimates")).pdf_url).toBe("VARCHAR");
@@ -76,17 +78,21 @@ test("cbo lines say how CBO's row was tied to sections; rows from before the col
     measure: "outlays",
     spending: "direct",
     period: "2021-2031",
-    total_musd: -50807,
-    values: { "2021-2031": -50807 },
+    total_musd: -50_807,
+    values: { "2021-2031": -50_807 },
     split: "exact",
     archive_url: null,
     rests_on: [],
     source_url: "https://www.cbo.gov/system/files/2021-08/hr3684_infrastructure.pdf",
     source_locator: "page 6",
   };
+
   expect(TABLES.cbo_lines.schema.parse(line).join).toBeNull();
-  for (const join of ["number", "heading", "title"])
+
+  for (const join of ["number", "heading", "title"]) {
     expect(TABLES.cbo_lines.schema.safeParse({ ...line, join }).success).toBe(true);
+  }
+
   expect(TABLES.cbo_lines.schema.safeParse({ ...line, join: "guess" }).success).toBe(false);
   expect(Object.fromEntries(columns("cbo_lines")).join).toBe("VARCHAR");
 });
@@ -108,6 +114,7 @@ test("lobbying: topic-only refs are inference rows, spend rows carry both facets
     rests_on: ["lda_filings/u"],
     evidence: {},
   };
+
   expect(TABLES.lda_topic_refs.schema.safeParse(topic).success).toBe(true);
   expect(TABLES.lda_topic_refs.schema.safeParse({ ...topic, rests_on: [] }).success).toBe(false);
   const cols = Object.fromEntries(columns("lda_spend"));
@@ -120,6 +127,7 @@ test("lobbying: topic-only refs are inference rows, spend rows carry both facets
 test("members carry dated terms; FEC money splits contributions, outside spending and employer sums", () => {
   const cols = Object.fromEntries(columns("members"));
   expect(cols.terms).toBe("JSON[] NOT NULL");
+
   const member = {
     id: "S001191",
     name: "Kyrsten Sinema",
@@ -152,6 +160,7 @@ test("members carry dated terms; FEC money splits contributions, outside spendin
     source_url: "https://bioguide.congress.gov/search/bio/S001191",
     source_locator: null,
   };
+
   expect(TABLES.members.schema.safeParse(member).success).toBe(true);
   expect(Object.fromEntries(columns("employer_contributions")).committee_ids).toBe("VARCHAR[] NOT NULL");
   expect(TABLES.independent_expenditures.owner).toBe("@antibody/ingest-fec");
@@ -167,7 +176,10 @@ test("watch events cover votes, major actions and new CBO estimates", () => {
     url: "https://clerk.house.gov/evs/2025/roll145.xml",
     detail: { yeas: 215, nays: 214 },
   };
+
   expect(TABLES.watch_events.schema.safeParse(row).success).toBe(true);
-  for (const kind of ["action", "cbo_estimate", "hot"])
+
+  for (const kind of ["action", "cbo_estimate", "hot"]) {
     expect(TABLES.watch_events.schema.safeParse({ ...row, kind }).success).toBe(true);
+  }
 });

@@ -1,4 +1,5 @@
-import { type BillId, billRef, billstatusUrl, congressGovUrl, type Row, type TableName } from "@antibody/core";
+import { billRef, billstatusUrl, congressGovUrl } from "@antibody/core";
+import type { BillId, Row, TableName } from "@antibody/core";
 import { writeRows } from "@antibody/core/node";
 import {
   amendmentId,
@@ -11,14 +12,19 @@ import {
   rollId,
   versionStep,
 } from "./amendments.ts";
-import { type BillStatus, parseBillStatus } from "./billstatus.ts";
-import { type CounterpartStep, canRun, counterparts } from "./counterparts.ts";
+import { parseBillStatus } from "./billstatus.ts";
+import type { BillStatus } from "./billstatus.ts";
+import { canRun, counterparts } from "./counterparts.ts";
+import type { CounterpartStep } from "./counterparts.ts";
 import type { AmendmentText } from "./crec.ts";
 import { cached, NotFound } from "./fetch.ts";
-import { isLate, type Lineage, type ParsedVersion, PURE_SPLIT, trace, wholesaleReason } from "./lineage.ts";
+import { isLate, PURE_SPLIT, trace, wholesaleReason } from "./lineage.ts";
+import type { Lineage, ParsedVersion } from "./lineage.ts";
 import { findPredecessor } from "./predecessor.ts";
-import { PartialAmendment, parseSections, type Sec, sectionNum } from "./sections.ts";
-import { textVersions, type VersionRef } from "./versions.ts";
+import { PartialAmendment, parseSections, sectionNum } from "./sections.ts";
+import type { Sec } from "./sections.ts";
+import { textVersions } from "./versions.ts";
+import type { VersionRef } from "./versions.ts";
 
 export interface IngestOptions {
   refresh?: boolean;
@@ -51,6 +57,7 @@ const heading = (l: Lineage) =>
 
 export async function loadStatus(bill: BillId, refresh = false): Promise<BillStatus> {
   const { congress, type, number } = billRef(bill);
+
   return parseBillStatus(
     await cached(billstatusUrl(bill), `BILLSTATUS-${congress}${type}${number}.xml`, refresh),
     bill,
@@ -65,17 +72,20 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   const status = await loadStatus(bill, opts.refresh);
   const skipped: { code: string; why: string }[] = [];
   const own: Version[] = [];
+
   for (const ref of textVersions(status)) {
     try {
       own.push({ ref, code: ref.code, secs: await loadSections(ref), predecessor: false, predecessorRule: null });
-    } catch (e) {
-      if (!(e instanceof PartialAmendment || e instanceof NotFound)) throw e;
-      skipped.push({ code: ref.code, why: (e as Error).message });
-      log(`skipped ${ref.code}: ${(e as Error).message}`);
+    } catch (error) {
+      if (!(error instanceof PartialAmendment || error instanceof NotFound)) throw error;
+      skipped.push({ code: ref.code, why: error.message });
+      log(`skipped ${ref.code}: ${error.message}`);
     }
   }
+
   const head = own[0];
   const pred = head ? await findPredecessor(status, head, loadSections, opts.refresh ?? false) : null;
+
   const versions: Version[] = pred
     ? [
         {
@@ -88,6 +98,7 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
         ...own,
       ]
     : own;
+
   log(`${versions.length} versions: ${versions.map((v) => `${v.code} (${v.secs.length})`).join(", ")}`);
 
   const { lineages, steps } = trace(bill, versions);
@@ -95,7 +106,10 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   const lateUnavailable = wholesaleReason(lineages, versions);
   const late = new Map(lineages.map((l) => [l.id, !lateUnavailable && isLate(l, versions)]));
   log(`${lineages.length} section lineages, ${[...late.values()].filter(Boolean).length} late`);
-  if (lateUnavailable) log(`late flags withheld: ${lateUnavailable}`);
+
+  if (lateUnavailable) {
+    log(`late flags withheld: ${lateUnavailable}`);
+  }
 
   const rows: BillRows = {};
   const src = billstatusUrl(bill);
@@ -139,6 +153,7 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   const final = versions.at(-1)?.code;
   rows.sections = lineages.map((l) => {
     const firstPath = l.history[l.firstVersion]!.path;
+
     return {
       id: l.id,
       bill_id: bill,
@@ -176,11 +191,14 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   }));
 
   const ownDated = own.map((v) => ({ code: v.code, date: v.ref.date }));
+
   const amendments = status.amendments.map((a) => {
     const st = amendmentStatus(a);
     const when = lastActionDate(a);
+
     return { rec: a, status: st, when, step: st === "no_action" ? null : versionStep(when, ownDated) };
   });
+
   rows.amendments = amendments.map(({ rec, status: st, step }) => ({
     id: amendmentId(rec),
     bill_id: bill,
@@ -200,17 +218,28 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   }));
 
   const texts = new Map<string, AmendmentText | null>();
+
   const textOf = async (rec: (typeof amendments)[number]["rec"]) => {
     const key = `${rec.type} ${rec.number}`;
-    if (!texts.has(key)) texts.set(key, await loadText(rec));
+
+    if (!texts.has(key)) {
+      texts.set(key, await loadText(rec));
+    }
+
     return texts.get(key)!;
   };
+
   rows.amendment_sections = [];
   const counterpartSteps: CounterpartStep[] = [];
+
   for (const s of steps) {
     const from = byCode.get(s.from)!;
     const to = byCode.get(s.to)!;
-    if (from.predecessor) continue;
+
+    if (from.predecessor) {
+      continue;
+    }
+
     const added = lineages.filter((l) => l.firstVersion === s.to && !(l.splitFrom && l.splitFrom.share >= PURE_SPLIT));
     const removed = lineages.filter((l) => l.history[s.from] && l.removedIn === s.to);
     counterpartSteps.push({
@@ -222,26 +251,42 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
       added: added.filter((l) => !l.splitFrom),
     });
     const agreed = amendments.filter((a) => a.status === "agreed" && a.step === `${s.from}->${s.to}`);
-    if (!agreed.length || (!added.length && !removed.length)) continue;
+
+    if (!agreed.length || (!added.length && !removed.length)) {
+      continue;
+    }
+
     const withText = await Promise.all(
       agreed.map(async (a) => ({ rec: a.rec, when: a.when, text: await textOf(a.rec) })),
     );
+
     const amended = new Map<string, AmendmentText | null>();
+
     for (const a of agreed) {
-      if (!a.rec.amends) continue;
+      if (!a.rec.amends) {
+        continue;
+      }
+
       const parent = status.amendments.find((x) => `${x.type} ${x.number}` === a.rec.amends);
-      if (parent) amended.set(a.rec.amends, await textOf(parent));
+
+      if (parent) {
+        amended.set(a.rec.amends, await textOf(parent));
+      }
     }
+
     rows.amendment_sections.push(
       ...attribute({ bill, from: s.from, to: s.to, agreed: withText, added, removed, amended }),
     );
   }
+
   log(`${rows.amendments.length} amendments, ${rows.amendment_sections.length} section attributions`);
 
   rows.counterparts = opts.llm && canRun() ? await counterparts(bill, counterpartSteps, log) : [];
 
-  if (opts.write ?? true)
+  if (opts.write ?? true) {
     for (const [table, list] of Object.entries(rows)) await writeRows(table as TableName, bill, list as never[]);
+  }
+
   return { status, versions, lineages, steps, rows, skipped };
 }
 
@@ -255,18 +300,20 @@ export function sponsorshipRows(
   src: string,
 ): Row<"sponsorships">[] {
   const seen = new Set<string>();
+
   return [
     ...(status.sponsor
       ? [{ bioguide: status.sponsor, role: "sponsor" as const, date: status.introducedOn, withdrawnOn: null }]
       : []),
     ...status.cosponsors.filter((c) => c.bioguide).map((c) => ({ ...c, role: "cosponsor" as const })),
   ].map((s) => {
-    const again = seen.has(s.bioguide!);
-    seen.add(s.bioguide!);
+    const again = seen.has(s.bioguide);
+    seen.add(s.bioguide);
+
     return {
       id: again ? `${bill}:${s.bioguide}:${s.date}` : `${bill}:${s.bioguide}`,
       bill_id: bill,
-      bioguide: s.bioguide!,
+      bioguide: s.bioguide,
       role: s.role,
       date: s.date,
       withdrawn_on: s.withdrawnOn,

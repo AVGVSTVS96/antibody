@@ -8,8 +8,10 @@
 const BILL = "119-s-1582";
 const BS = "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/s/BILLSTATUS-119s1582.xml";
 const LEGISLATORS = "https://github.com/unitedstates/congress-legislators/blob/main/legislators-current.yaml";
+
 const text = (code: string) =>
   `https://www.govinfo.gov/content/pkg/BILLS-119s1582${code}/xml/BILLS-119s1582${code}.xml`;
+
 const fact = (url: string, locator: string | null = null) => ({ source_url: url, source_locator: locator });
 
 const member = (id: string, name: string, party: string, state: string, chamber: string, district: number | null) => ({
@@ -172,7 +174,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       name: "Placed on Calendar Senate",
       date: "2025-05-05",
       sections: 19,
-      words: 18047,
+      words: 18_047,
       predecessor_rule: null,
       url: text("pcs"),
     },
@@ -181,7 +183,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       name: "Engrossed in Senate",
       date: "2025-06-17",
       sections: 20,
-      words: 19838,
+      words: 19_838,
       predecessor_rule: null,
       url: text("es"),
     },
@@ -190,7 +192,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       name: "Enrolled Bill",
       date: "2025-07-18",
       sections: 20,
-      words: 19900,
+      words: 19_900,
       predecessor_rule: null,
       url: text("enr"),
     },
@@ -415,7 +417,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       "51414",
       "PORTERFIELD, FETTIG & SEARS, LLC",
       "401105568",
-      60000,
+      60_000,
     ),
     filing("548ed6b1-79a9-4d70-889a-b5f61c1c0751", "BANK OF AMERICA", "134187", "BANK OF AMERICA", "40305", 1_520_000),
   ],
@@ -476,8 +478,8 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       reports_bill: 1,
       reports_enactment_quarter: 0,
       reports_law: 0,
-      total_usd: 60000,
-      share_usd: 20000,
+      total_usd: 60_000,
+      share_usd: 20_000,
       total_rests_on: ["lda_filings/9beeca5f-74bd-4012-8957-7053df57e67a"],
       issue_quote: "S.394/S.1582, GENIUS Act, section 4 reserve requirements",
       section_nums: ["4"],

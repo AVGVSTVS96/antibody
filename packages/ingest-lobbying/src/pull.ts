@@ -1,10 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type BillId, billRef } from "@antibody/core";
+import { billRef } from "@antibody/core";
+import type { BillId } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 import type { Aliases } from "./extract.ts";
 import { acronyms, transpositions } from "./extract.ts";
-import { filings, type LdaFiling, slim } from "./lda.ts";
+import { filings, slim } from "./lda.ts";
+import type { LdaFiling } from "./lda.ts";
 
 const SPELLINGS: Record<string, string[]> = {
   hr: ["H.R. #", "H.R.#", "HR #", "HR#", "H. R. #"],
@@ -20,19 +22,34 @@ const SPELLINGS: Record<string, string[]> = {
 /** Quoted phrases for lda.gov's issue-text search: every spelling of every number, the names, typos, the law. */
 export function searchTerms(a: Aliases): string[] {
   const terms = new Set<string>();
+
   for (const n of a.numbers) {
     const { type, number } = billRef(n.id);
-    for (const s of SPELLINGS[type]!) terms.add(s.replace("#", String(number)));
+
+    for (const s of SPELLINGS[type]!) {
+      terms.add(s.replace("#", String(number)));
+    }
   }
+
   for (const n of a.names) {
     terms.add(n.text);
-    for (const ac of acronyms(n.title)) terms.add(ac);
+
+    for (const ac of acronyms(n.title)) {
+      terms.add(ac);
+    }
+
     const words = n.text.split(/\s+/);
-    for (const [i, w] of words.entries())
+
+    for (const [i, w] of words.entries()) {
       if (/^[A-Z]{5,}$/.test(w))
         for (const typo of transpositions(w)) terms.add([...words.slice(0, i), typo, ...words.slice(i + 1)].join(" "));
+    }
   }
-  for (const law of a.laws) terms.add(law);
+
+  for (const law of a.laws) {
+    terms.add(law);
+  }
+
   return [...new Set([...terms].map(searchable).filter((t): t is string => !!t))].map(
     (t) => `"${t.replaceAll('"', "")}"`,
   );
@@ -44,19 +61,27 @@ export function searchTerms(a: Aliases): string[] {
  * searched by its longest stretch without the word; extraction still requires the full name in the filing text.
  */
 export function searchable(term: string): string | null {
-  if (!/\badmin\w*/i.test(term)) return term;
+  if (!/\badmin\w*/i.test(term)) {
+    return term;
+  }
+
   const stretch = term
     .split(/\badmin\w*/i)
     .map((s) => s.trim())
     .filter((s) => s.split(/\s+/).length >= 2)
     .sort((a, b) => b.length - a.length)[0];
+
   return stretch ?? null;
 }
 
 /** lda.gov handles long OR queries, but keep each one modest. */
 function queries(terms: string[], per = 20): string[] {
   const out: string[] = [];
-  for (let i = 0; i < terms.length; i += per) out.push(terms.slice(i, i + per).join(" OR "));
+
+  for (let i = 0; i < terms.length; i += per) {
+    out.push(terms.slice(i, i + per).join(" OR "));
+  }
+
   return out;
 }
 
@@ -69,7 +94,11 @@ export const rawDir = (bill: BillId) => join(paths.raw("lobbying"), bill);
 
 export async function readFilings(bill: BillId, name = "filings"): Promise<LdaFiling[]> {
   const file = Bun.file(join(rawDir(bill), `${name}.jsonl`));
-  if (!(await file.exists())) return [];
+
+  if (!(await file.exists())) {
+    return [];
+  }
+
   return (await file.text())
     .split("\n")
     .filter(Boolean)
@@ -83,7 +112,8 @@ interface PullOptions {
 }
 
 /** Every filing that names the bill in any of its spellings, in the years it could be lobbied on. */
-export const pull = (a: Aliases, opts: PullOptions) => pullTerms(a.bill, "filings", searchTerms(a), a.years, opts);
+export const pull = async (a: Aliases, opts: PullOptions) =>
+  pullTerms(a.bill, "filings", searchTerms(a), a.years, opts);
 
 /**
  * Pulls every filing whose issue text matches one of the terms, per filing year, and merges them into
@@ -103,32 +133,39 @@ export async function pullTerms(
   const manifest: Manifest = (await manifestFile.exists()) ? await manifestFile.json() : { done: {} };
   const byUuid = new Map((await readFilings(bill, name)).map((f) => [f.filing_uuid, f]));
   const before = byUuid.size;
+
   const save = async () => {
     const lines = [...byUuid.values()].map((f) => `${JSON.stringify(f)}\n`).join("");
     await Bun.write(join(dir, `${name}.jsonl`), lines);
     await Bun.write(manifestFile, JSON.stringify(manifest, null, 1));
   };
 
-  for (const q of queries(terms))
+  for (const q of queries(terms)) {
     for (const year of years) {
       const key = `${q}|${year}`;
       const last = manifest.done[key];
+
       if (last !== undefined && !opts.refresh) continue;
       const params: Record<string, string | number> = { filing_specific_lobbying_issues: q, filing_year: year };
+
       if (last) params.filing_dt_posted_after = new Date(Date.parse(last) - 2 * 86_400_000).toISOString().slice(0, 10);
       const pulledAt = new Date().toISOString();
       let n = 0;
+
       for await (const f of filings(params, { fresh: !!last, signal: opts.signal })) {
         byUuid.set(f.filing_uuid, slim(f));
         n++;
       }
+
       manifest.done[key] = pulledAt;
       await save();
       opts.log?.(`${year} ${q.slice(0, 50)}… ${n} hits`);
     }
+  }
 
   const all = [...byUuid.values()];
   await save();
   opts.log?.(`${all.length} ${name} (${all.length - before} new)`);
+
   return all;
 }

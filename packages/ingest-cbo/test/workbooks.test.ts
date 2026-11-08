@@ -13,13 +13,18 @@ const parsed = uv
       await python(PKG, "cbo.py", ["xlsx", resolve(import.meta.dir, "fixtures", "arpa-titles.xlsx")]),
     ) as Parsed)
   : null;
+
 const sheet = (name: string) => parsed!.sheets.find((s) => s.sheet === name)!.rows;
+
 const amount = (rows: ParsedRow[], num: string, kind: string, year = "2021-2031") =>
   rows.find((r) => r.line_kind === "section" && r.sections.includes(num) && r.measure_kind === kind)?.values[year];
 
 test.skipIf(!uv)("every title sheet is read, whichever column CBO starts its numbers in", () => {
   expect(parsed!.sheets.map((s) => s.sheet)).toEqual(["Title 1.", "Title 4.", "Title 8.", "Title 9."]);
-  for (const s of parsed!.sheets) expect(s.years.at(-1)).toBe("2021-2031");
+
+  for (const s of parsed!.sheets) {
+    expect(s.years.at(-1)).toBe("2021-2031");
+  }
 });
 
 test.skipIf(!uv)("'Sec. 1001 - Title' in one cell is a section row, and its title can wrap into the next row", () => {
@@ -38,13 +43,13 @@ test.skipIf(!uv)("a blank column between the years and the totals doesn't shift 
 });
 
 test.skipIf(!uv)("measure labels in column A, under 'Sec. 8001  Title', belong to that section", () => {
-  expect(amount(sheet("Title 8."), "8002", "outlays")).toBe(14088);
+  expect(amount(sheet("Title 8."), "8002", "outlays")).toBe(14_088);
 });
 
 test.skipIf(!uv)("Finance's sheet: 'Sec.', number and title in columns C to E, and numbers from column G", () => {
   const rows = sheet("Title 9.");
-  expect(Math.round(amount(rows, "9704", "outlays")!)).toBe(83304);
-  expect(amount(rows, "9901", "outlays")).toBe(362050);
+  expect(Math.round(amount(rows, "9704", "outlays")!)).toBe(83_304);
+  expect(amount(rows, "9901", "outlays")).toBe(362_050);
   expect(rows.find((r) => r.sections.includes("9704"))?.section_title).toBe("Multiemployer Pension Plans");
   expect(rows.find((r) => r.section_title === "Total Increase in Direct Spending")?.line_kind).toBe("total");
 });

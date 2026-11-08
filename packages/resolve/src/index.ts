@@ -35,6 +35,7 @@ export const stages: Stage[] = [
     async run(ctx) {
       const companies = await loadEdgar();
       const index = new CompanyIndex(companies);
+
       for (const [shard, mentions] of [
         ["clients", clientMentions(await readRows("lda_clients"))],
         ["pacs", pacMentions(await readRows("pacs"))],
@@ -46,6 +47,7 @@ export const stages: Stage[] = [
         const unique = new Set(r.outcomes.map((o) => o.mention.src)).size;
         ctx.log(`${shard}: ${r.rows.length} of ${mentions.length} resolved (${unique} distinct names)`);
       }
+
       const resolved = new Set((await readRows("resolutions")).map((r) => r.company_id));
       await fetchSubmissions(resolved, ctx.log);
       await writeRows("companies", "edgar", companyRows(companies, await cachedSic()));
@@ -72,5 +74,7 @@ export const stages: Stage[] = [
     },
   },
 ];
+
 export { norm, parseAsset, tokens } from "./normalize.ts";
+
 export { ownedOn, ownedSince } from "./since.ts";

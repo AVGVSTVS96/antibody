@@ -5,8 +5,10 @@ import { readRows } from "@antibody/core/node";
 const [bill, n = "30", seed = "1", level] = Bun.argv.slice(2);
 const id = parseBillId(bill!);
 let s = Number(seed);
+
 const rand = () => {
-  s = (s * 1103515245 + 12345) % 2 ** 31;
+  s = (s * 1_103_515_245 + 12_345) % 2 ** 31;
+
   return s / 2 ** 31;
 };
 
@@ -19,16 +21,19 @@ const rows =
         why: r.evidence.reason,
       }))
     : (await readRows("lda_bill_refs", id)).filter((r) => (level ? r.match === level : r.match !== "low"));
+
 const pool = [...rows];
+
 for (let i = pool.length - 1; i > 0; i--) {
   const j = Math.floor(rand() * (i + 1));
   [pool[i], pool[j]] = [pool[j]!, pool[i]!];
 }
+
 for (const r of pool.slice(0, Number(n))) {
-  const hits = [...r.quote.matchAll(new RegExp(String(r.matched).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))];
-  const exact = hits.find((h) => !/\d/.test(r.quote[h.index! + String(r.matched).length] ?? "")) ?? hits[0];
+  const hits = [...r.quote.matchAll(new RegExp(String(r.matched).replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"))];
+  const exact = hits.find((h) => !/\d/.test(r.quote[h.index + String(r.matched).length] ?? "")) ?? hits[0];
   const at = Math.max(0, (exact?.index ?? 0) - 160);
   console.log(
-    `${r.match} | ${r.matched} | ${r.why}\n  ${r.source_url}\n  …${r.quote.slice(at, at + 380).replace(/\s+/g, " ")}…\n`,
+    `${r.match} | ${r.matched} | ${r.why}\n  ${r.source_url}\n  …${r.quote.slice(at, at + 380).replaceAll(/\s+/g, " ")}…\n`,
   );
 }

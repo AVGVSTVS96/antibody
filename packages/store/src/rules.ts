@@ -114,13 +114,20 @@ export const CLAIM_TEXT_RULES = ["buried-v5", "attention-v2", "quiet-check-v1"];
 /** `"subsidiary-parent: a subsidiary's lobbying counts…"` or `"tied-stock"` → a published rule entry. */
 export function ruleFor(rule: string): Rule {
   const [head, ...rest] = rule.split(":");
+
   const id = head!
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-");
+    .replaceAll(/[^a-z0-9]+/g, "-");
+
   const known = RULES[id];
-  if (known) return { id, version: known.version, text: known.text, url: `${DOCS}#${id}` };
+
+  if (known) {
+    return { id, version: known.version, text: known.text, url: `${DOCS}#${id}` };
+  }
+
   const text = rest.join(":").trim() || rule;
+
   return {
     id,
     version: "1",

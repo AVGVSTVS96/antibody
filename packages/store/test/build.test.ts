@@ -2,24 +2,36 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Bundle, checkBundle, TABLES, type TableName } from "@antibody/core";
+import { checkBundle, TABLES } from "@antibody/core";
+import type { Bundle, TableName } from "@antibody/core";
 import { buildBundle } from "../src/build.ts";
-import { type Db, loadTables, openDb } from "../src/db.ts";
+import { loadTables, openDb } from "../src/db.ts";
+import type { Db } from "../src/db.ts";
 import { GENIUS_ROWS } from "./genius-rows.ts";
 
 const dir = await mkdtemp(join(tmpdir(), "antibody-build-"));
-afterAll(() => rm(dir, { recursive: true, force: true }));
+
+afterAll(async () => rm(dir, { recursive: true, force: true }));
 
 async function load(rows: Record<string, Record<string, unknown>[]>): Promise<Db> {
   const out = await mkdtemp(join(dir, "out-"));
+
   for (const [table, rs] of Object.entries(rows)) {
-    if (!(table in TABLES)) continue;
-    for (const r of rs) TABLES[table as TableName].schema.parse(r);
+    if (!(table in TABLES)) {
+      continue;
+    }
+
+    for (const r of rs) {
+      TABLES[table as TableName].schema.parse(r);
+    }
+
     await mkdir(join(out, table), { recursive: true });
     await Bun.write(join(out, table, "fixture.jsonl"), rs.map((r) => JSON.stringify(r)).join("\n"));
   }
+
   const db = await openDb(":memory:");
   await loadTables(db, (t) => join(out, t));
+
   return db;
 }
 
@@ -97,9 +109,13 @@ describe("GENIUS bundle from contract rows", () => {
 
   test("lobbying dollars: the filing total only, never a per-bill share", () => {
     const e = edges("lobbied").find((x) => x.id === "lobbied:coinbase")!;
-    if (e.kind !== "lobbied") throw new Error("not lobbied");
+
+    if (e.kind !== "lobbied") {
+      throw new Error("not lobbied");
+    }
+
     expect(e.basis).toBe("fact");
-    expect(e.props).toMatchObject({ spendTotalUsd: 60000, shareEstimateUsd: null, shareClaim: null });
+    expect(e.props).toMatchObject({ spendTotalUsd: 60_000, shareEstimateUsd: null, shareClaim: null });
     expect(e.claims).toContain("lda_spend/119-s-1582:coinbase#total");
     expect(claim("lda_spend/119-s-1582:coinbase#total").text).toContain("not what was spent on this bill");
     expect(claim("lda_spend/119-s-1582:coinbase#total").restsOn).toEqual([
@@ -162,9 +178,13 @@ describe("GENIUS bundle from contract rows", () => {
 
   test("a gift is split into before and after the member's vote", () => {
     for (const e of edges("funded")) {
-      if (e.kind !== "funded") continue;
+      if (e.kind !== "funded") {
+        continue;
+      }
+
       expect(e.props.beforeUsd + e.props.afterUsd).toBe(e.props.amountUsd);
     }
+
     const g = edges("funded").find((e) => e.dst === "member:G000555")!;
     expect(g.kind === "funded" && g.props).toMatchObject({
       cutoff: "2025-06-17",
@@ -193,7 +213,11 @@ describe("GENIUS bundle from contract rows", () => {
 
   test("published rules cover every inference rule used", () => {
     const ids = new Set(b.rules.map((r) => r.id));
-    for (const c of Object.values(b.claims)) if (c.rule) expect(ids.has(c.rule.split(":")[0]!)).toBe(true);
+
+    for (const c of Object.values(b.claims)) {
+      if (c.rule) expect(ids.has(c.rule.split(":")[0]!)).toBe(true);
+    }
+
     expect(b.rules.find((r) => r.id === "tied-stock")!.url).toContain("docs/rules.md#tied-stock");
   });
 
@@ -207,6 +231,7 @@ test("an even split of a CBO group line is an inference that keeps the sign, and
   const secs = GENIUS_ROWS.sections!;
   const est = { ...GENIUS_ROWS.cbo_estimates![0]!, per_section: true };
   const base = { ...GENIUS_ROWS.cbo_lines![0]!, measure: "outlays", split: "exact" };
+
   const group = {
     ...base,
     id: "s1582-es:group",
@@ -215,6 +240,7 @@ test("an even split of a CBO group line is an inference that keeps the sign, and
     section_ids: [secs[0]!.id, secs[1]!.id],
     total_musd: -149,
   };
+
   const share = (i: number) => ({
     ...base,
     id: `s1582-es:s${i}`,
@@ -225,11 +251,13 @@ test("an even split of a CBO group line is an inference that keeps the sign, and
     split: "even_split",
     rests_on: ["cbo_lines/s1582-es:group"],
   });
+
   const { bundle } = await buildBundle(
     await load({ bills: bill, sections: secs, cbo_estimates: [est], cbo_lines: [group, share(1), share(4)] }),
     "119-s-1582",
     { now: NOW },
   );
+
   const dollars = bundle.sections.find((s) => s.num === "4")!.dollars;
   expect(dollars).toHaveLength(1);
   const d = dollars[0]!;
@@ -246,6 +274,7 @@ test("a CBO row tied to a section by its heading is an inference that rests on t
   const bill = GENIUS_ROWS.bills!;
   const secs = GENIUS_ROWS.sections!;
   const est = { ...GENIUS_ROWS.cbo_estimates![0]!, per_section: true };
+
   const row = (id: string, i: number, join: "number" | "heading") => ({
     ...GENIUS_ROWS.cbo_lines![0]!,
     id,
@@ -258,6 +287,7 @@ test("a CBO row tied to a section by its heading is an inference that rests on t
     join,
     rests_on: [],
   });
+
   const { bundle } = await buildBundle(
     await load({
       bills: bill,
@@ -268,6 +298,7 @@ test("a CBO row tied to a section by its heading is an inference that rests on t
     "119-s-1582",
     { now: NOW },
   );
+
   const dollarsOf = (i: number) => bundle.sections.find((x) => x.num === secs[i]!.num)!.dollars;
   const byHeading = bundle.claims[dollarsOf(0)[0]!.claim]!;
   expect(byHeading.kind).toBe("inference");
@@ -280,7 +311,7 @@ test("a CBO row tied to a section by its heading is an inference that rests on t
 });
 
 test("a bundle rebuilds byte for byte, however the rows were loaded", async () => {
-  const reversed = Object.fromEntries(Object.entries(GENIUS_ROWS).map(([t, rs]) => [t, [...rs!].reverse()]));
+  const reversed = Object.fromEntries(Object.entries(GENIUS_ROWS).map(([t, rs]) => [t, [...rs].reverse()]));
   const again = await buildBundle(await load(reversed), "119-s-1582", { now: NOW });
   expect(JSON.stringify(again.bundle)).toBe(JSON.stringify(b));
 });
@@ -366,6 +397,7 @@ test("a long section's notable parts ride in its bundle entry, each with its own
   const rows = structuredClone(GENIUS_ROWS);
   const sec4 = rows.sections!.find((s) => s.num === "4")!;
   const url = "https://www.govinfo.gov/content/pkg/BILLS-119s1582enr/xml/BILLS-119s1582enr.xml";
+
   const part = (en: string, ord: number, heading: string, first: string, late: boolean) => ({
     id: `${sec4.id}${en}`,
     bill_id: "119-s-1582",
@@ -375,7 +407,7 @@ test("a long section's notable parts ride in its bundle entry, each with its own
     enum: en,
     heading,
     trail: ["Standards for the issuance of payment stablecoins"],
-    path: `subsection:a/paragraph:${en.match(/\((\d+)\)$/)![1]}`,
+    path: `subsection:a/paragraph:${/\((\d+)\)$/.exec(en)![1]}`,
     lead_in: false,
     words: 600,
     preview: "A public company that is not predominantly engaged in one or more financial activities",
@@ -385,10 +417,12 @@ test("a long section's notable parts ride in its bundle entry, each with its own
     source_url: url,
     source_locator: "sec. 4, subsection (a), paragraph (12)",
   });
+
   rows.section_parts = [
     part("(a)(1)", 0, "In general", "pcs", false),
     part("(a)(12)", 11, "Non-financial services public companies", "es", true),
   ];
+
   const score = (partId: string | null, late: boolean) => ({
     id: `119-s-1582:${partId ?? sec4.id}`,
     bill_id: "119-s-1582",
@@ -407,6 +441,7 @@ test("a long section's notable parts ride in its bundle entry, each with its own
     rests_on: [`sections/${sec4.id}`, ...(partId ? [`section_parts/${partId}`] : [])],
     evidence: {},
   });
+
   rows.section_scores = [score(null, false), score(`${sec4.id}(a)(1)`, false), score(`${sec4.id}(a)(12)`, true)];
   const { bundle } = await buildBundle(await load(rows), "119-s-1582", { now: NOW });
   expect(checkBundle(bundle)).toEqual([]);

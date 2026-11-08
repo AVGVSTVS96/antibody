@@ -12,7 +12,8 @@ import { XrayList } from "../bill/XrayList.tsx";
 import { loadBundle, loadClaims, loadIndex } from "../lib/data.ts";
 import { day } from "../lib/format.ts";
 import { buildModel } from "../lib/model.ts";
-import { billHref, type MapView, navigate, onLink, type Route } from "../lib/router.ts";
+import { billHref, navigate, onLink } from "../lib/router.ts";
+import type { MapView, Route } from "../lib/router.ts";
 import { ClaimProvider } from "../ui/claims.tsx";
 import { Footer, Top } from "../ui/Top.tsx";
 
@@ -20,23 +21,33 @@ type BillRoute = Extract<Route, { page: "bill" }>;
 
 export default function BillPage({ route }: { route: BillRoute }) {
   let id = route.id;
+
   try {
     id = parseBillId(route.id);
   } catch {}
+
   const bundle = use(loadBundle(id));
   const index = use(loadIndex());
-  if (!bundle) return <NotFound id={id} index={index} />;
+
+  if (!bundle) {
+    return <NotFound id={id} index={index} />;
+  }
+
   return <BillView b={bundle} route={route} entry={index.bills.find((x) => x.id === bundle.bill.id)} />;
 }
 
 function BillView({ b, route, entry }: { b: Bundle; route: BillRoute; entry?: BundleIndex["bills"][number] }) {
   const [claims, setClaims] = useState<Record<string, Claim> | null>(Object.keys(b.claims).length ? b.claims : null);
   useEffect(() => {
-    if (claims) return;
+    if (claims) {
+      return;
+    }
+
     let live = true;
     loadClaims(b.bill.id)
       .then((c) => live && setClaims(c ?? {}))
       .catch(() => live && setClaims({}));
+
     return () => {
       live = false;
     };
@@ -48,10 +59,19 @@ function BillView({ b, route, entry }: { b: Bundle; route: BillRoute; entry?: Bu
   }, [b]);
 
   const setFocus = useCallback(
-    (focus: string | null) => navigate(billHref(b.bill.id, { map: route.map, focus }), { replace: true }),
+    (focus: string | null) => {
+      navigate(billHref(b.bill.id, { map: route.map, focus }), { replace: true });
+    },
     [b.bill.id, route.map],
   );
-  const setMap = useCallback((map: MapView) => navigate(billHref(b.bill.id, { map }), { replace: true }), [b.bill.id]);
+
+  const setMap = useCallback(
+    (map: MapView) => {
+      navigate(billHref(b.bill.id, { map }), { replace: true });
+    },
+    [b.bill.id],
+  );
+
   const name = b.bill.shortTitle ?? b.bill.title;
 
   return (
@@ -107,10 +127,13 @@ function NotFound({ id, index }: { id: string; index: BundleIndex }) {
     document.title = "Not x-rayed yet · antibody";
   }, []);
   let url: string | null = null;
+
   try {
     url = congressGovUrl(parseBillId(id));
   } catch {}
+
   const start = index.bills.filter((b) => ["119-s-1582", "117-hr-5376", "119-hr-1"].includes(b.id));
+
   return (
     <>
       <Top find />

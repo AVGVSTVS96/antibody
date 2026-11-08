@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type Action, parseBillStatus, parsePackage } from "../src/billstatus.ts";
+import { parseBillStatus, parsePackage } from "../src/billstatus.ts";
+import type { Action } from "../src/billstatus.ts";
 import { deficitEffect, digestJson, digestMarkdown, money, reasons } from "../src/digest.ts";
 import {
   beforeFloor,
@@ -15,9 +16,11 @@ import {
   voteQuestion,
 } from "../src/events.ts";
 import { lobbyingQuery } from "../src/lda.ts";
-import { type Facts, score, subScores } from "../src/score.ts";
+import { score, subScores } from "../src/score.ts";
+import type { Facts } from "../src/score.ts";
 import { newSections, textShape } from "../src/text.ts";
-import { candidate, toXray, type WatchResult, windowStart } from "../src/watch.ts";
+import { candidate, toXray, windowStart } from "../src/watch.ts";
+import type { WatchResult } from "../src/watch.ts";
 
 const xml = await Bun.file(join(import.meta.dir, "fixtures/BILLSTATUS-119hr42.xml")).text();
 const status = () => parseBillStatus(xml);
@@ -44,10 +47,12 @@ test("short title: a title for portions of the bill (H.R.1's \"FEHB Protection A
         `<titles>${items.map(([type, title]) => `<item><titleType>${type}</titleType><title>${title}</title></item>`).join("")}</titles>`,
       ),
     ).shortTitle;
+
   const portion: [string, string] = [
     "Short Titles as Enacted for portions of this bill",
     "FEHB Protection Act of 2025",
   ];
+
   expect(titles([portion, ["Popular Titles", "One Big Beautiful Bill Act"]])).toBe("One Big Beautiful Bill Act");
   expect(titles([["Short Title(s) as Passed House", "One Big Beautiful Bill Act"]])).toBe("One Big Beautiful Bill Act");
   expect(titles([portion])).toBeNull();
@@ -106,6 +111,7 @@ test("tallies read every chamber's wording", () => {
 test("closed rule: only the bills named before 'under a closed rule' count", () => {
   const genius =
     "Rule provides for consideration of H.R. 4016, H.R. 3633, H.R. 1919 and S. 1582. The resolution provides for consideration of H.R. 4016 and H.R. 3633 under a structured rule, and H.R. 1919 and S. 1582 under a closed rule, with one hour of general debate on each bill.";
+
   expect(closedRuleBills(genius, "119-s-1582")).toEqual(["119-hr-1919", "119-s-1582"]);
   expect(closedRule(status(), "2026-09-01")).toBe(true);
   expect(closedRule(status(), "2026-10-01")).toBe(false);
@@ -168,6 +174,7 @@ test("sub-scores follow the published scales", () => {
     divisive: 1,
   });
   expect(score(subScores(facts))).toBe(69.7);
+
   const none = subScores({
     ...facts,
     words: null,
@@ -179,6 +186,7 @@ test("sub-scores follow the published scales", () => {
     buriedSections: null,
     newsStories: null,
   });
+
   expect(none).toMatchObject({ attention: null, size: null, dollars: null, rushed: null, divisive: null });
   expect(score(none)).toBe(11.2);
   expect(subScores({ ...facts, daysToVote: 30, closedRule: true }).rushed).toBe(0.5);
@@ -188,8 +196,10 @@ test("the sponsor's party never moves the score", () => {
   const parties = ["R", "D", "I"].map((party) => {
     const s = status();
     s.sponsor = { ...s.sponsor!, party };
+
     return candidate(s, "2026-09-01")!;
   });
+
   expect(new Set(parties.map((c) => c.score)).size).toBe(1);
   expect(new Set(parties.map((c) => JSON.stringify(reasons(c)))).size).toBe(1);
 });
@@ -197,10 +207,13 @@ test("the sponsor's party never moves the score", () => {
 test("text shape skips sections quoted into existing law; renumbering is not a new section", () => {
   const sec = (n: string, h: string, body = "") =>
     `<section id="x"><enum>${n}</enum><header display-inline="yes">${h}</header>${body}</section>`;
+
   const before = textShape(`<bill>${sec("1.", "Short title")}${sec("2.", "Definitions")}</bill>`);
+
   const after = textShape(
     `<bill>${sec("1.", "Short title")}${sec("3.", "Definitions")}${sec("4.", "Exemption for <term>small</term> issuers", `<quoted-block>${sec("5.", "Quoted")}</quoted-block>`)}</bill>`,
   );
+
   expect(after.sections).toEqual(["1. Short title", "3. Definitions", "4. Exemption for small issuers"]);
   expect(newSections(before, after)).toEqual(["4. Exemption for small issuers"]);
   const toc = textShape(`<bill>${sec("1.", "Short title; table of contents")}${sec("2.", "Definitions")}</bill>`);
@@ -225,6 +238,7 @@ test("window starts at the last digest, never more than 14 days back, 3 days on 
 
 test("digest: every reason links a source; party is shown only in the audit tally", () => {
   const c = candidate(status(), "2026-09-01")!;
+
   const r: WatchResult = {
     date: "2026-10-10",
     since: "2026-10-09",
@@ -237,9 +251,14 @@ test("digest: every reason links a source; party is shown only in the audit tall
     site: { published: [], deploy: { status: "disabled", reason: "test" } },
     problems: [],
   };
+
   const d = digestJson(r);
   expect(d.flagged[0]!.reasons.length).toBeGreaterThan(2);
-  for (const reason of d.flagged[0]!.reasons) expect(reason.url).toMatch(/^https:\/\//);
+
+  for (const reason of d.flagged[0]!.reasons) {
+    expect(reason.url).toMatch(/^https:\/\//);
+  }
+
   expect(d.flaggedBySponsorParty).toEqual({ I: 1 });
   const md = digestMarkdown(d);
   expect(md).toContain("## 1. H.R.42 · Example Act");
@@ -247,12 +266,15 @@ test("digest: every reason links a source; party is shown only in the audit tall
   expect(md).toContain("closed rule");
   expect(md).toContain("Site: no new bundles published · not deployed (turned off)");
   expect(md).toContain("page: not published yet");
+
   const lobbied = (clients: number) => {
     c.facts.lobbyingFilings = 16;
     c.evidence.lobbyingFrom = "x-ray";
     c.evidence.lobbyingClients = clients;
+
     return digestJson(r).flagged[0]!.reasons.find((x) => x.signal === "lobbying")!.text;
   };
+
   expect(lobbied(1)).toBe("16 lobbying filings name it (1 client)");
   expect(lobbied(11)).toBe("16 lobbying filings name it (11 clients)");
   expect(money(-149_000)).toBe("−$149.0B");
@@ -271,10 +293,12 @@ test("a lobbying line counts only when it cites this bill's exact number in its 
 test("party audit: a bill counts once across days, and equal flag rates show no gap", async () => {
   const { auditParties } = await import("../src/audit.ts");
   const day = (bill: string, party: string, score: number, flagged: boolean) => ({ bill, party, score, flagged });
+
   const a = auditParties([
     [day("a", "R", 10, false), day("b", "D", 30, true)],
     [day("a", "R", 40, true), day("c", "D", 5, false), day("d", "R", 3, false)],
   ]);
+
   expect(a.bills).toBe(4);
   expect(a.parties.find((p) => p.party === "R")).toMatchObject({ moved: 2, flagged: 1, meanScore: 21.5 });
   expect(a.parties.find((p) => p.party === "D")).toMatchObject({ moved: 2, flagged: 1 });
@@ -299,8 +323,10 @@ test("a day's digest flags at most 25 bills; a sweep of a whole Congress flags e
 
 test("a Senate referral recorded as a floor action is not floor action", () => {
   const act = (text: string, type = "Floor") => ({ date: "2026-10-15", text, type, votes: [] }) as never;
+
   const referral =
     "Under authority of the order of the Senate of September 30, 2026, ordered read twice and referred to the Committee on Foreign Relations.";
+
   expect(classify(act(referral), new Set())).toBeNull();
   expect(classify(act("Read twice and referred to the Committee on Finance."), new Set())).toBeNull();
   expect(classify(act("Motion to proceed to consideration of measure made in Senate."), new Set())).toBe("floor");
@@ -314,22 +340,26 @@ test("'Passed Senate …' counts as passing a chamber, once, next to its 'Passed
   expect(classify(act("Passed Senate with an amendment by Voice Vote."), new Set())).toBe("passed");
   expect(classify(act(plain), new Set(["House"]))).toBe("passed_second");
   expect(classify(act(twin), new Set())).toBe("passed");
+
   const s = {
     ...status(),
     versions: [],
     cbo: [],
     actions: [plain, twin].map(act),
   };
+
   expect(billEvents(s, "2026-10-01").map((e) => e.step)).toEqual(["passed"]);
 });
 
 test("the x-ray's lobbying client count reads lda_filings, which is sharded by year, not by bill", async () => {
   const dir = await mkdtemp(join(tmpdir(), "antibody-xray-"));
+
   try {
     const write = async (table: string, shard: string, rows: object[]) => {
       await mkdir(join(dir, "out", table), { recursive: true });
       await writeFile(join(dir, "out", table, `${shard}.jsonl`), rows.map((r) => JSON.stringify(r)).join("\n"));
     };
+
     const ref = (n: number) => ({ id: `f${n}#0#119-hr-9`, filing_id: `f${n}`, bill_id: "119-hr-9" });
     await write("lda_bill_refs", "119-hr-9", [ref(1), ref(2), ref(3)]);
     await write("lda_filings", "2025", [
@@ -339,11 +369,13 @@ test("the x-ray's lobbying client count reads lda_filings, which is sharded by y
     ]);
     await write("lda_filings", "2026", [{ id: "f3", client_key: "globex" }]);
     const code = `import { xrayFacts } from "./packages/watch/src/xray.ts"; console.log(JSON.stringify((await xrayFacts("119-hr-9")).lobbying))`;
+
     const run = Bun.spawn(["bun", "-e", code], {
       cwd: join(import.meta.dir, "../../.."),
       env: { ...process.env, ANTIBODY_DATA: dir },
       stdout: "pipe",
     });
+
     expect(JSON.parse(await new Response(run.stdout).text())).toEqual({ filings: 3, clients: 2 });
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -366,8 +398,10 @@ test("a deficit figure reads in plain words, and a rounding error is no measurab
 test("news attention weighs the left, center and right of the outlet list equally, whatever their outlet counts", async () => {
   const { COUNTED, SIDES } = await import("@antibody/ingest-news");
   const { newsWindow, weighSides } = await import("../src/news.ts");
+
   const on = (side: keyof typeof SIDES) =>
     COUNTED.filter((o) => o.mediacloud_id && (SIDES[side] as readonly string[]).includes(o.group));
+
   const [left, center, right] = [on("left"), on("center"), on("right")];
   const total = left.length + center.length + right.length;
   // Every side runs one story per outlet it has: equal coverage, so the weighted count is the list's size.
@@ -383,15 +417,18 @@ test("news attention weighs the left, center and right of the outlet list equall
 
   const s = status();
   expect(newsWindow(s, "2026-10-21")).toEqual({ start: "2026-08-25", end: "2026-10-21" });
+
   // A bill that stopped moving: 30 days after its last action, the same on any later day.
   const dormant = {
     ...s,
     actions: s.actions.filter((a) => !/Became (Public|Private) Law/.test(a.text) && a.type !== "BecameLaw"),
   };
+
   const lastAction = dormant.actions
     .map((a) => a.date)
     .sort()
     .at(-1)!;
+
   const end = new Date(Date.parse(lastAction) + 30 * 86_400_000).toISOString().slice(0, 10);
   expect(newsWindow(dormant, "2027-06-01").end).toBe(end);
   expect(newsWindow(dormant, "2028-01-01").end).toBe(end);
@@ -404,7 +441,7 @@ test("a sweep starts at the first day of its Congress", async () => {
   expect(congressStart(117)).toBe("2021-01-03");
 });
 
-const rule = (n: number) => Bun.file(join(import.meta.dir, `fixtures/rules/BILLS-119hres${n}.xml`)).text();
+const rule = async (n: number) => Bun.file(join(import.meta.dir, `fixtures/rules/BILLS-119hres${n}.xml`)).text();
 
 test("rule riders: sections of a House rule that do more than set up debate, by their wording", async () => {
   const { ruleRiders } = await import("../src/rules.ts");
@@ -428,12 +465,15 @@ test("rule riders: sections of a House rule that do more than set up debate, by 
 test("a House rule is listed for its riders, never flagged or x-rayed on its score", async () => {
   const { isSpecialRule } = await import("../src/rules.ts");
   const { withRiders, flaggedOf } = await import("../src/digest.ts");
+
   const ruleStatus = () => {
     const s = status();
     s.id = "119-hres-211";
     s.title = "Providing for consideration of the joint resolution (H.J. Res. 25) and for other purposes.";
+
     return s;
   };
+
   expect(isSpecialRule(ruleStatus())).toBe(true);
   expect(isSpecialRule({ id: "119-hres-189", title: "Censuring Representative Al Green of Texas." })).toBe(false);
   const c = candidate(ruleStatus(), "2026-09-01")!;
@@ -443,6 +483,7 @@ test("a House rule is listed for its riders, never flagged or x-rayed on its sco
   expect(withRiders([c])).toEqual([]);
   c.evidence.riders = [{ kind: "clock", label: "Stops the clock", section: "4", quote: "Each day …" }];
   expect(withRiders([c])).toEqual([c]);
+
   const r: WatchResult = {
     date: "2026-10-10",
     since: "2026-10-09",
@@ -455,6 +496,7 @@ test("a House rule is listed for its riders, never flagged or x-rayed on its sco
     site: { published: [], deploy: { status: "disabled", reason: "test" } },
     problems: [],
   };
+
   const d = digestJson(r);
   expect(d.movedBills).toEqual([]);
   expect(digestMarkdown(d)).toContain("## Riders in House rules");
@@ -463,7 +505,7 @@ test("a House rule is listed for its riders, never flagged or x-rayed on its sco
 
 test("late is measured from the last text before the floor, so a section added on the way to passage counts", async () => {
   // H.R.7008, the House stock-trading bill: the photo-ID section is in the text the House passed, not the reported one.
-  const fixture = (code: string) => Bun.file(join(import.meta.dir, `fixtures/BILLS-119hr7008${code}.xml`)).text();
+  const fixture = async (code: string) => Bun.file(join(import.meta.dir, `fixtures/BILLS-119hr7008${code}.xml`)).text();
   expect(newSections(textShape(await fixture("rh")), textShape(await fixture("eh")))).toEqual([
     "3. Requiring voters to provide photo identification",
   ]);
@@ -475,10 +517,12 @@ test("late is measured from the last text before the floor, so a section added o
 
 test("a sweep reads the press for its best bills, every bill that reached the President and every contested vote", async () => {
   const { sweepShortlist } = await import("../src/sweep.ts");
+
   const mk = (id: string, score: number, step: string, closestVote: { yeas: number; nays: number } | null = null) =>
     ({ score, status: { id }, facts: { step, closestVote } }) as unknown as Parameters<
       typeof sweepShortlist
     >[0][number];
+
   const law = mk("119-hr-4405", 15, "law");
   const fight = mk("119-hr-22", 40, "passed");
   const minor = mk("119-hr-9", 20, "passed", { yeas: 400, nays: 3 });

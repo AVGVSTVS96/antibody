@@ -1,6 +1,8 @@
 import type { BundleIndex } from "@antibody/core";
-import { type BillId, billDisplay, congressGovUrl, parseBillId } from "@antibody/core/ids";
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { billDisplay, congressGovUrl, parseBillId } from "@antibody/core/ids";
+import type { BillId } from "@antibody/core/ids";
+import { useEffect, useId, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import { loadIndex } from "../lib/data.ts";
 import { billHref, navigate, onLink } from "../lib/router.ts";
 import { Search } from "./icons.tsx";
@@ -9,8 +11,13 @@ type Entry = BundleIndex["bills"][number];
 
 export const matchBills = (bills: Entry[], q: string) => {
   const needle = q.trim().toLowerCase();
-  if (!needle) return [];
-  const squash = (s: string) => s.toLowerCase().replace(/[\s.]/g, "");
+
+  if (!needle) {
+    return [];
+  }
+
+  const squash = (s: string) => s.toLowerCase().replaceAll(/[\s.]/g, "");
+
   return bills.filter((b) =>
     [b.id, b.display, b.title, b.shortTitle ?? "", b.law ?? ""].some(
       (s) => s.toLowerCase().includes(needle) || squash(s).includes(squash(needle)),
@@ -20,9 +27,11 @@ export const matchBills = (bills: Entry[], q: string) => {
 
 export function missingBill(raw: string) {
   let id: BillId | null = null;
+
   try {
     id = parseBillId(raw.trim());
   } catch {}
+
   return id;
 }
 
@@ -58,19 +67,26 @@ export function Find() {
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (e.key !== "/" || e.metaKey || e.ctrlKey || el.closest("input,textarea,[contenteditable]")) return;
+
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || el.closest("input,textarea,[contenteditable]")) {
+        return;
+      }
+
       e.preventDefault();
       setPhone(true);
       input.current?.focus();
     };
+
     const onDown = (e: PointerEvent) => {
       if (!root.current?.contains(e.target as Node)) {
         setOpen(false);
         setPhone(false);
       }
     };
+
     addEventListener("keydown", onKey);
     addEventListener("pointerdown", onDown);
+
     return () => {
       removeEventListener("keydown", onKey);
       removeEventListener("pointerdown", onDown);
@@ -87,11 +103,16 @@ export function Find() {
     input.current?.blur();
     navigate(billHref(id));
   };
+
   const submit = (e: { preventDefault: () => void }) => {
     e.preventDefault();
     const hit = hits[at] ?? hits[0];
-    if (hit) go(hit.id);
+
+    if (hit) {
+      go(hit.id);
+    }
   };
+
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
@@ -126,10 +147,15 @@ export function Find() {
             setAt(0);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+          }}
           onKeyDown={(e) => {
-            if (e.key === "Enter") submit(e);
-            else onKey(e);
+            if (e.key === "Enter") {
+              submit(e);
+            } else {
+              onKey(e);
+            }
           }}
           placeholder="Find a bill by number or name"
           aria-label="Find a bill by number or name"
@@ -154,7 +180,9 @@ export function Find() {
                 onLink(e);
                 go(b.id);
               }}
-              onPointerEnter={() => setAt(i)}
+              onPointerEnter={() => {
+                setAt(i);
+              }}
             >
               <b>{b.shortTitle ?? b.title}</b>
               <span>

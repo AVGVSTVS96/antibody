@@ -13,12 +13,14 @@ import { SourceUrl } from "./claim.ts";
 const date = z.iso.date();
 const json = z.record(z.string(), z.unknown());
 const fact = { source_url: SourceUrl, source_locator: z.string().nullable() };
+
 const inference = {
   rule: z.string(),
   confidence: z.number().min(0).max(1),
   rests_on: z.array(z.string()).min(1),
   evidence: json,
 };
+
 const billId = z.string().regex(/^\d+-[a-z]+-\d+$/);
 const Party = z.enum(["R", "D", "I"]);
 const Chamber = z.enum(["House", "Senate"]);
@@ -26,6 +28,7 @@ const Baseline = z.enum(["current-law", "current-policy"]);
 const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit", "nonscorable_revenues"]);
 const Spending = z.enum(["direct", "discretionary"]);
 export const ReachKind = z.enum(["courts", "states", "lawsuit", "review", "rule"]);
+
 export type ReachKind = z.infer<typeof ReachKind>;
 
 const table = <S extends z.ZodRawShape>(owner: string, shape: S) => ({
@@ -378,7 +381,7 @@ export const TABLES = {
     congress: z.number().int(),
     session: z.number().int(),
     number: z.number().int(),
-    date: date,
+    date,
     question: z.string(),
     result: z.string(),
     yeas: z.number().int(),
@@ -409,7 +412,7 @@ export const TABLES = {
     /** The campaign committee that received it (FEC OTHER_ID); with pac_id it makes the fec.gov link to every such payment. */
     recipient_committee_id: z.string().nullable(),
     amount_usd: z.number(),
-    date: date,
+    date,
     cycle: z.number().int(),
     transaction_type: z.string(),
     ...fact,
@@ -613,5 +616,7 @@ export const TABLES = {
 } as const;
 
 export type TableName = keyof typeof TABLES;
+
 export type Row<T extends TableName> = z.infer<(typeof TABLES)[T]["schema"]>;
+
 export const TABLE_NAMES = Object.keys(TABLES) as TableName[];

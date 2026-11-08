@@ -8,17 +8,21 @@ import { chromium } from "playwright-core";
 
 const base = process.argv[2] ?? "http://localhost:4870";
 const out = process.argv[3] ?? "docs/shots";
+
 mkdirSync(out, { recursive: true });
+
 const browser = await chromium.launch({
   executablePath: `${homedir()}/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome`,
   args: [],
 });
+
 const pages = [
   ["index", "/"],
   ["genius", "/bill/119-s-1582"],
   ["ira", "/bill/117-hr-5376"],
 ] as const;
-for (const [name, path] of pages)
+
+for (const [name, path] of pages) {
   for (const [w, h, mobile] of [
     [1440, 900, false],
     [390, 844, true],
@@ -31,11 +35,14 @@ for (const [name, path] of pages)
         hasTouch: mobile,
         colorScheme: theme,
       });
+
       await page.goto(`${base}${path}?theme=${theme}`, { waitUntil: "load" });
       await page.waitForSelector(name === "index" ? ".lawrow" : "#map", { state: "attached", timeout: 30000 });
-      await page.evaluate(() => document.fonts.ready);
+      await page.evaluate(async () => document.fonts.ready);
       await page.waitForTimeout(1500);
       await page.screenshot({ path: `${out}/${name}-${w}-${theme}.png` });
       await page.close();
     }
+}
+
 await browser.close();

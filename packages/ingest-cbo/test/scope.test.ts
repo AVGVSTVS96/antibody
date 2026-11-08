@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { type Row, TABLES } from "@antibody/core";
+import { TABLES } from "@antibody/core";
+import type { Row } from "@antibody/core";
 import { python } from "@antibody/core/node";
 import { buildLines, reconcile } from "../src/lines.ts";
 import type { Parsed } from "../src/parsed.ts";
@@ -40,6 +41,7 @@ test("a label that matches no heading, or the pages of tables, gives no scope", 
 
 const section = (id: string, path: string, heading: string) =>
   ({ id, history: { eh: { path, heading } } }) as unknown as Row<"sections">;
+
 const fra = [
   section(
     "s251",
@@ -72,16 +74,17 @@ test.skipIf(!uv)(
       ["Funding for the Internal Revenue Service and Related Agencies", null, -1400],
       ["Supplemental Nutrition Assistance Program", "Work Requirements", 2100],
       ["Temporary Assistance for Needy Families", null, 0],
-      ["Rescission of Unobligated Balances", null, -11000],
+      ["Rescission of Unobligated Balances", null, -11_000],
     ]);
     expect(parsed.summary?.rows.map((r) => [r.measure, r.values["2023-2033"]])).toEqual([
-      ["Estimated Budget Authority", -26400],
-      ["Estimated Outlays", -10300],
+      ["Estimated Budget Authority", -26_400],
+      ["Estimated Outlays", -10_300],
       ["Effect on the Deficit", -7900],
     ]);
 
     scopeRows(parsed.sheets, letter);
     const index = sectionIndex(fra, null);
+
     const src = {
       estimateId: "118-hr-3746.cbo-59225",
       billId: "118-hr-3746",
@@ -90,8 +93,12 @@ test.skipIf(!uv)(
       pdfUrl: null,
       pdfArchiveUrl: null,
     };
+
     const { lines } = buildLines(src, parsed, null, index.join, index.places);
-    for (const l of lines) expect(TABLES.cbo_lines.schema.safeParse(l).error).toBeUndefined();
+
+    for (const l of lines) {
+      expect(TABLES.cbo_lines.schema.safeParse(l).error).toBeUndefined();
+    }
 
     const irs = lines.filter((l) => l.section_ids[0] === "s251" && l.line_kind === "section");
     expect(irs.map((l) => [l.measure, l.total_musd, l.join, l.split])).toEqual([

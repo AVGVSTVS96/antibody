@@ -1,9 +1,12 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
-import { type BillId, parseBillId, type StageContext } from "@antibody/core";
+import { parseBillId } from "@antibody/core";
+import type { BillId, StageContext } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
-import { buildBundle, CURATED, type Db, loadTables, openDb, writeBundle, writeIndex } from "@antibody/store";
-import { order, type Registered, register } from "./plan.ts";
+import { buildBundle, CURATED, loadTables, openDb, writeBundle, writeIndex } from "@antibody/store";
+import type { Db } from "@antibody/store";
+import { order, register } from "./plan.ts";
+import type { Registered } from "./plan.ts";
 import { PACKAGES } from "./registry.ts";
 
 const HELP = `antibody — x-ray a US federal bill
@@ -30,10 +33,14 @@ const { positionals, values } = parseArgs({
     "no-deploy": { type: "boolean", default: false },
   },
 });
+
 const [command, ...args] = positionals;
 const all = register(PACKAGES);
 const controller = new AbortController();
-process.on("SIGINT", () => controller.abort());
+
+process.on("SIGINT", () => {
+  controller.abort();
+});
 
 /** Global stages that already ran in this process; `build` refreshes them once, not once per bill. */
 const ranGlobal = new Set<string>();
@@ -41,23 +48,35 @@ const ranGlobal = new Set<string>();
 async function run(stages: Registered[], bill: BillId | null, targets: string[] = []) {
   for (const s of stages) {
     if (s.scope === "global") {
-      if (ranGlobal.has(s.name)) continue;
+      if (ranGlobal.has(s.name)) {
+        continue;
+      }
+
       ranGlobal.add(s.name);
+
       if (!values.refresh && !targets.includes(s.name) && s.writes.length) {
         const filled = await Promise.all(s.writes.map(async (t) => (await readRows(t)).length > 0));
+
         if (filled.every(Boolean)) {
           console.log(`· ${s.name} (global, cached)`);
           continue;
         }
       }
     }
-    if (s.scope === "bill" && !bill) throw new Error(`stage "${s.name}" needs a bill`);
+
+    if (s.scope === "bill" && !bill) {
+      throw new Error(`stage "${s.name}" needs a bill`);
+    }
+
     const ctx: StageContext = {
       bill: s.scope === "bill" ? bill : null,
       refresh: values.refresh,
-      log: (m) => console.log(`  ${s.name}: ${m}`),
+      log: (m) => {
+        console.log(`  ${s.name}: ${m}`);
+      },
       signal: controller.signal,
     };
+
     const t0 = performance.now();
     console.log(`▸ ${s.name}${bill && s.scope === "bill" ? ` ${bill}` : ""}`);
     await s.run(ctx);
@@ -75,9 +94,10 @@ const billStages = () =>
 async function database(): Promise<Db> {
   try {
     return await openDb();
-  } catch (e) {
-    console.log(`· ${paths.db} is busy (${(e as Error).message.split("\n")[0]}); loading into memory instead`);
-    return openDb(":memory:");
+  } catch (error) {
+    console.log(`· ${paths.db} is busy (${(error as Error).message.split("\n")[0]}); loading into memory instead`);
+
+    return await openDb(":memory:");
   }
 }
 
@@ -88,6 +108,7 @@ async function bundles(ids: BillId[], publish: boolean): Promise<BillId[]> {
   const loaded = Object.entries(counts).filter(([, n]) => n);
   console.log(`· loaded ${loaded.map(([t, n]) => `${t} ${n}`).join(", ") || "no rows"}`);
   const failed: BillId[] = [];
+
   for (const id of ids) {
     try {
       const { bundle, warnings } = await buildBundle(db, id);
@@ -96,23 +117,27 @@ async function bundles(ids: BillId[], publish: boolean): Promise<BillId[]> {
       console.log(
         `✓ bundle ${id}: ${bundle.sections.length} sections, ${bundle.nodes.length} nodes, ${bundle.edges.length} edges, ${Object.keys(bundle.claims).length} claims, ${bundle.gaps.length} gaps, ${size} KB`,
       );
+
       if (warnings.length) {
         const log = `${paths.bundles}/${id}.warnings.txt`;
         await Bun.write(log, `${warnings.join("\n")}\n`);
         console.log(`  ${warnings.length} rows left out (${log}), e.g. ${warnings.slice(0, 3).join("; ")}`);
       }
-    } catch (e) {
+    } catch (error) {
       failed.push(id);
-      console.log(`✗ bundle ${id}: ${(e as Error).message}`);
+      console.log(`✗ bundle ${id}: ${(error as Error).message}`);
     }
   }
+
   if (publish) {
     const index = await writeIndex(
       paths.published,
       CURATED.map((p) => p.id),
     );
+
     console.log(`✓ index: ${index.bills.length} bills in ${paths.published}/index.json`);
   }
+
   return failed;
 }
 
@@ -120,35 +145,50 @@ async function bundles(ids: BillId[], publish: boolean): Promise<BillId[]> {
 async function xray(ids: BillId[]): Promise<BillId[]> {
   const failed: BillId[] = [];
   const stages = billStages();
-  if (!stages.length) console.log("· no bill stages registered yet");
+
+  if (!stages.length) {
+    console.log("· no bill stages registered yet");
+  }
+
   for (const id of ids) {
     try {
       await run(stages, id);
-    } catch (e) {
-      if (controller.signal.aborted) throw e;
+    } catch (error) {
+      if (controller.signal.aborted) throw error;
       failed.push(id);
-      console.log(`✗ ${id}: ${(e as Error).stack ?? e}`);
+      console.log(`✗ ${id}: ${(error as Error).stack ?? error}`);
     }
   }
+
   return failed;
 }
 
 function finish(failed: BillId[]) {
-  if (!failed.length) return;
+  if (!failed.length) {
+    return;
+  }
+
   console.log(`\n${failed.length} failed: ${failed.join(", ")}`);
   process.exitCode = 1;
 }
 
 switch (command) {
   case "xray": {
-    if (!args[0]) throw new Error("usage: antibody xray <bill>");
+    if (!args[0]) {
+      throw new Error("usage: antibody xray <bill>");
+    }
+
     const bill = parseBillId(args[0]);
     const failed = await xray([bill]);
     finish([...new Set([...failed, ...(await bundles([bill], values.publish))])]);
     break;
   }
+
   case "bundle": {
-    if (!args.length) throw new Error("usage: antibody bundle <bill>...");
+    if (!args.length) {
+      throw new Error("usage: antibody bundle <bill>...");
+    }
+
     finish(
       await bundles(
         args.map((a) => parseBillId(a)),
@@ -157,33 +197,47 @@ switch (command) {
     );
     break;
   }
+
   case "build": {
     const ids = CURATED.map((p) => p.id);
     const failed = values["no-stages"] ? [] : await xray(ids);
     finish([...new Set([...failed, ...(await bundles(ids, true))])]);
     break;
   }
+
   case "run": {
-    if (!args[0]) throw new Error("usage: antibody run <stage> [<bill>]");
+    if (!args[0]) {
+      throw new Error("usage: antibody run <stage> [<bill>]");
+    }
+
     const stages = values.only ? [all.get(args[0])!].filter(Boolean) : order(all, [args[0]]);
     await run(stages, args[1] ? parseBillId(args[1]) : null, [args[0]]);
     break;
   }
-  case "watch":
+
+  case "watch": {
     if (values["no-deploy"]) process.env.ANTIBODY_WATCH_DEPLOY = "0";
     await run(order(all, ["watch"]), null, ["watch"]);
     break;
-  case "sweep":
+  }
+
+  case "sweep": {
     if (values["no-deploy"]) process.env.ANTIBODY_WATCH_DEPLOY = "0";
+
     if (args[0]) process.env.ANTIBODY_SWEEP_CONGRESS = String(Number.parseInt(args[0], 10));
     await run(order(all, ["sweep"]), null, ["sweep"]);
     break;
-  case "stages":
+  }
+
+  case "stages": {
     for (const [pkg, stages] of Object.entries(PACKAGES))
       console.log(
         `${pkg}\n${stages.map((s) => `  ${s.name} (${s.scope}) → ${s.writes.join(", ")}`).join("\n") || "  —"}`,
       );
     break;
-  default:
+  }
+
+  default: {
     console.log(HELP);
+  }
 }

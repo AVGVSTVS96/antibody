@@ -1,5 +1,7 @@
-import { type BillId, billRef } from "@antibody/core";
-import { all, at, type Element, first, parseXml, textOf } from "./xml.ts";
+import { billRef } from "@antibody/core";
+import type { BillId } from "@antibody/core";
+import { all, at, first, parseXml, textOf } from "./xml.ts";
+import type { Element } from "./xml.ts";
 
 export interface Action {
   date: string;
@@ -68,10 +70,20 @@ export interface BillStatus {
 
 /** GovInfo stamps dates as UTC instants of Eastern midnight (`2025-06-17T04:00:00Z`); this is the Eastern calendar day. */
 export function easternDate(s: string | null): string | null {
-  if (!s) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  if (!s) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return s;
+  }
+
   const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return null;
+
+  if (Number.isNaN(d.getTime())) {
+    return null;
+  }
+
   return d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 }
 
@@ -92,6 +104,7 @@ function actions(e: Element, path: string): Action[] {
 
 function latest(e: Element): { date: string; text: string } | null {
   const text = at(e, "latestAction/text");
+
   return text ? { date: easternDate(at(e, "latestAction/actionDate")) ?? "", text } : null;
 }
 
@@ -106,7 +119,11 @@ export function thomasCode(systemCode: string): string {
  */
 function committeeSponsor(a: Element): string | null {
   const code = first(a, "actions/actions/item/committees/item/systemCode");
-  if (code) return thomasCode(textOf(code).trim());
+
+  if (code) {
+    return thomasCode(textOf(code).trim());
+  }
+
   return at(a, "sponsors/item/name") === "Rules Committee" ? "HSRU" : null;
 }
 
@@ -116,13 +133,17 @@ function committeeSponsor(a: Element): string | null {
  */
 function shortTitle(titles: { type: string; title: string }[]): string | null {
   const final = titles.filter((t) => /ENR \(Enrolled\)|as Enacted/i.test(t.type));
-  if (final.length && final.every((t) => /portions/i.test(t.type)))
+
+  if (final.length && final.every((t) => /portions/i.test(t.type))) {
     return (
       titles.find((t) => t.type === "Override Display Title")?.title ??
       titles.find((t) => t.type === "Popular Titles")?.title ??
       null
     );
+  }
+
   const whole = titles.filter((t) => !/portions/i.test(t.type));
+
   return (
     titles.find((t) => t.type === "Override Display Title")?.title ??
     whole.find((t) => /^Short Titles? .*as Enacted/i.test(t.type))?.title ??
@@ -134,7 +155,11 @@ function shortTitle(titles: { type: string; title: string }[]): string | null {
 
 export function parseBillStatus(xml: string, id: BillId): BillStatus {
   const b = first(parseXml(xml), "bill");
-  if (!b) throw new Error(`BILLSTATUS for ${id} has no <bill>`);
+
+  if (!b) {
+    throw new Error(`BILLSTATUS for ${id} has no <bill>`);
+  }
+
   const titles = all(b, "titles/item").map((t) => ({ type: at(t, "titleType") ?? "", title: at(t, "title") ?? "" }));
   const display = at(b, "title") ?? "";
   const lawNumber = at(b, "laws/item/number");
@@ -164,7 +189,9 @@ export function parseBillStatus(xml: string, id: BillId): BillStatus {
           date: easternDate(at(a, "date")),
         })),
       });
+
       const chamber = at(c, "chamber") ?? "";
+
       return [own(c, chamber), ...all(c, "subcommittees/item").map((s) => own(s, chamber))];
     }),
     law: lawNumber ? `${at(b, "laws/item/type") === "Private Law" ? "Pvt.L." : "P.L."} ${lawNumber}` : null,
@@ -180,6 +207,7 @@ export function parseBillStatus(xml: string, id: BillId): BillStatus {
     })),
     amendments: all(b, "amendments/amendment").map((a) => {
       const type = at(a, "type") ?? "";
+
       return {
         type,
         number: at(a, "number") ?? "",
@@ -201,7 +229,11 @@ export function parseBillStatus(xml: string, id: BillId): BillStatus {
       const type = at(r, "type")?.toLowerCase();
       const number = at(r, "number");
       const congress = at(r, "congress");
-      if (!type || !number || !congress) return [];
+
+      if (!type || !number || !congress) {
+        return [];
+      }
+
       return [
         {
           id: `${congress}-${type}-${number}` as BillId,

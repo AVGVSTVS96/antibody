@@ -16,10 +16,18 @@ const REWRITTEN: Partial<Record<BillId, { on: string; oldName: RegExp; newName: 
 /** Why an issue line is about an earlier bill that used this number, or null when it counts. */
 export function earlierBill(bill: BillId, periodEnd: string, text: string): string | null {
   const era = REWRITTEN[bill];
-  if (!era) return null;
-  if (periodEnd < era.on)
+
+  if (!era) {
+    return null;
+  }
+
+  if (periodEnd < era.on) {
     return `filed for a period ending ${periodEnd}, before ${era.on}, when the Senate replaced this number's text; until then it was ${era.was}`;
-  if (era.oldName.test(text) && !era.newName.test(text))
+  }
+
+  if (era.oldName.test(text) && !era.newName.test(text)) {
     return `the filing calls it ${era.was}, the bill this number carried before ${era.on}`;
+  }
+
   return null;
 }

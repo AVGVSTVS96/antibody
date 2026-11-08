@@ -17,8 +17,10 @@ interface Pattern {
 
 const STATE = `State(?:,? or (?:a |any )?(?:(?:political )?subdivision(?: of a State| thereof)?|unit of local government|local government))?,?`;
 const BLOCK = `(?:propose|issue|finalize|promulgate|implement|administer|enforce|apply)`;
+
 /** "the final rule", "any rule", "any new administrative directive or regulation": a rule, at most four words on. */
 const RULE = String.raw`\b(?:the|any|a|such|new)(?: [^\s.;]+){0,4}? (?:rules?|regulations?)\b`;
+
 /** The review laws a section can switch off: NEPA and the APA's notice and comment. */
 const REVIEW_LAW = `(?:the )?(?:requirements of )?(?:the )?(?:National Environmental Policy Act(?: of 1969)?|section 553 of title 5|sections? 551 through 559 of title 5|(?:subchapter II of )?chapter 5 of title 5|Administrative Procedure Act|notice and comment)`;
 
@@ -138,15 +140,19 @@ export const PATTERNS: Pattern[] = [
 /** The sentence a match sits in starts after the last full stop (not an abbreviation) or heading dash before it. */
 const BOUNDARY =
   /(?:(?<!\b(?:U\.S|Pub|No|Nos|Sec|Secs|Fed|Reg|Stat|seq|et|Inc|Co|Corp|v|St|Jr|Dr|Mr|Ms))\.\s+(?=[A-Z(]|\d+[A-Z]? [A-Z]{2,}))|\.-\s+/g;
+
 /** A clause that only says what the section does not do: "Nothing in this section shall be construed to preempt…". */
 const NEGATED =
   /\b(?:nothing in|shall not be construed|may not be construed|be construed (?:to|as)|construed to|is not intended|nor shall|shall have no effect on)\b|\b(?:shall|may|does|do) not\s*[-—–]/i;
+
 /** Wording struck out of existing law takes reach away, not adds it. */
 const STRUCK = /\bstrik(?:e|es|ing) ["“]?\s*$/i;
 const NOT_BEFORE = /\b(?:not|nor|no)\s+$/i;
 const MAX_QUOTE = 420;
+
 /** A sentence that bars states from their own laws is about state law, not an agency's rule. */
 const STATE_PATTERNS = PATTERNS.filter((p) => p.kind === "states");
+
 /** A standing bar on enforcing rules Congress already disapproved blocks nothing new. */
 const DISAPPROVED = /\bdisapproved pursuant to a joint resolution\b/i;
 
@@ -159,9 +165,14 @@ export interface ReachTag {
 function sentenceAround(text: string, start: number, end: number): [number, number] {
   let from = 0;
   BOUNDARY.lastIndex = 0;
-  for (let m = BOUNDARY.exec(text); m && m.index < start; m = BOUNDARY.exec(text)) from = m.index + m[0].length;
+
+  for (let m = BOUNDARY.exec(text); m && m.index < start; m = BOUNDARY.exec(text)) {
+    from = m.index + m[0].length;
+  }
+
   BOUNDARY.lastIndex = end;
   const next = BOUNDARY.exec(text);
+
   return [from, next ? next.index + 1 : text.length];
 }
 
@@ -174,29 +185,45 @@ function quoteOf(text: string, from: number, to: number, start: number, end: num
     from = a > from ? text.indexOf(" ", a) + 1 || a : from;
     to = b < to ? text.lastIndexOf(" ", b) : to;
   }
+
   return text.slice(from, to).trim();
 }
 
 /** Every kind of reach the text has, the first matching sentence for each. */
 export function reach(text: string): ReachTag[] {
   const out = new Map<ReachKind, ReachTag>();
+
   for (const p of PATTERNS) {
-    if (out.has(p.kind)) continue;
+    if (out.has(p.kind)) {
+      continue;
+    }
+
     const re = new RegExp(p.re.source, `${p.re.flags.replace("g", "")}g`);
+
     for (const m of text.matchAll(re)) {
       const start = m.index;
       const end = start + m[0].length;
       const [from, to] = sentenceAround(text, start, end);
       const before = text.slice(from, start);
-      if (NEGATED.test(before) || NEGATED.test(m[0]) || STRUCK.test(text.slice(Math.max(0, start - 12), start)))
+
+      if (NEGATED.test(before) || NEGATED.test(m[0]) || STRUCK.test(text.slice(Math.max(0, start - 12), start))) {
         continue;
-      if (NOT_BEFORE.test(text.slice(Math.max(0, start - 12), start))) continue;
+      }
+
+      if (NOT_BEFORE.test(text.slice(Math.max(0, start - 12), start))) {
+        continue;
+      }
+
       const sentence = text.slice(from, to);
-      if (p.kind === "rule" && (STATE_PATTERNS.some((s) => s.re.test(sentence)) || DISAPPROVED.test(sentence)))
+
+      if (p.kind === "rule" && (STATE_PATTERNS.some((s) => s.re.test(sentence)) || DISAPPROVED.test(sentence))) {
         continue;
+      }
+
       out.set(p.kind, { kind: p.kind, pattern: p.id, quote: quoteOf(text, from, to, start, end) });
       break;
     }
   }
+
   return [...out.values()];
 }

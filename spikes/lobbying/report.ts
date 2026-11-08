@@ -5,9 +5,11 @@ const data = new URL("../../data/lobbying/", import.meta.url).pathname;
 const out = new URL("./out/", import.meta.url).pathname;
 
 const enacted: Record<string, string> = { genius: "2025-07-18", obbba: "2025-07-04", ira: "2022-08-16" };
+
 const periodEnd: Record<string, string> = {
   first_quarter: "03-31", second_quarter: "06-30", third_quarter: "09-30", fourth_quarter: "12-31", mid_year: "06-30", year_end: "12-31",
 };
+
 const periodStart: Record<string, string> = {
   first_quarter: "01-01", second_quarter: "04-01", third_quarter: "07-01", fourth_quarter: "10-01", mid_year: "01-01", year_end: "07-01",
 };
@@ -15,8 +17,11 @@ const periodStart: Record<string, string> = {
 function phase(f: any, billKey: string) {
   const start = `${f.filing_year}-${periodStart[f.filing_period] ?? "01-01"}`;
   const end = `${f.filing_year}-${periodEnd[f.filing_period] ?? "12-31"}`;
+
   if (end < enacted[billKey]!) return "bill";
+
   if (start > enacted[billKey]!) return "law";
+
   return "enactment-quarter";
 }
 
@@ -44,8 +49,10 @@ export type Match = {
 export async function matchesFor(billKey: string): Promise<{ candidates: number; matches: Match[] }> {
   const lines = (await Bun.file(`${data}${billKey}/filings.jsonl`).text()).trim().split("\n");
   const matches: Match[] = [];
+
   for (const line of lines) {
     const f = JSON.parse(line);
+
     const activities = (f.lobbying_activities ?? [])
       .map((a: any) => ({
         issue_code: a.general_issue_code,
@@ -54,6 +61,7 @@ export async function matchesFor(billKey: string): Promise<{ candidates: number;
         lobbyists: (a.lobbyists ?? []).map((x: any) => ({ id: x.lobbyist.id, name: lobbyistName(x.lobbyist), covered_position: x.covered_position })),
       }))
       .filter((a: any) => a.refs.length);
+
     if (!activities.length) continue;
     const confidence = bestConfidence(activities.flatMap((a: any) => a.refs))!;
     matches.push({
@@ -74,15 +82,21 @@ export async function matchesFor(billKey: string): Promise<{ candidates: number;
       activities,
     });
   }
+
   const latest = new Map<string, Match>();
+
   for (const m of matches) {
     if (m.filing_type.startsWith("R")) continue;
     const key = `${m.registrant.id}|${m.client.id}|${m.filing_year}|${m.filing_period}`;
     const prev = latest.get(key);
+
     if (!prev || m.dt_posted > prev.dt_posted) latest.set(key, m);
   }
+
   const keep = new Set([...latest.values()]);
+
   for (const m of matches) if (!m.filing_type.startsWith("R") && !keep.has(m)) m.superseded = true;
+
   return { candidates: lines.length, matches };
 }
 
@@ -102,19 +116,25 @@ const share = (m: Match) => ((m.amount ?? 0) * m.activities.length) / Math.max(1
 
 function clientSpend(reports: Match[]) {
   const quarters = new Map<string, Match[]>();
+
   for (const m of reports) {
     const k = `${clientKey(m.client.name)}|${m.filing_year}|${m.filing_period}`;
     quarters.set(k, [...(quarters.get(k) ?? []), m]);
   }
+
   const spend = new Map<string, { usd: number; share_usd: number }>();
+
   for (const ms of quarters.values()) {
     const inHouse = ms.filter((m) => m.amount_kind === "expenses");
     const counted = inHouse.length ? inHouse : ms.filter((m) => m.amount_kind === "income");
     const key = clientKey(ms[0]!.client.name);
     const s = spend.get(key) ?? { usd: 0, share_usd: 0 };
+
     for (const m of counted) { s.usd += m.amount ?? 0; s.share_usd += share(m); }
+
     spend.set(key, s);
   }
+
   return spend;
 }
 
@@ -125,6 +145,7 @@ function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence
   const registrants = new Map<number, any>();
   const lobbyists = new Map<number, any>();
   const codes = new Map<string, number>();
+
   for (const m of reports) {
     const ck = clientKey(m.client.name);
     const c = clients.get(ck) ?? { key: ck, names: new Set(), client_ids: new Set(), reports: 0, quarters: new Set(), registrants: new Set(), phases: new Set(), sample_filing: m.filing_url };
@@ -134,25 +155,31 @@ function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence
     const r = registrants.get(m.registrant.id) ?? { id: m.registrant.id, name: m.registrant.name, reports: 0, clients: new Set(), amount_on_reports: 0 };
     r.reports++; r.clients.add(m.client.name); r.amount_on_reports += m.amount ?? 0;
     registrants.set(m.registrant.id, r);
+
     for (const a of m.activities) {
       codes.set(a.issue_code, (codes.get(a.issue_code) ?? 0) + 1);
+
       for (const l of a.lobbyists) {
         const x = lobbyists.get(l.id) ?? { id: l.id, name: l.name, covered_positions: new Set(), clients: new Set(), reports: new Set(), sample_filing: m.filing_url };
+
         if (l.covered_position) x.covered_positions.add(l.covered_position);
         x.clients.add(m.client.name); x.reports.add(m.filing_uuid);
         lobbyists.set(l.id, x);
       }
     }
   }
+
   const plain = (o: any) => JSON.parse(JSON.stringify(o, (_k, v) => (v instanceof Set ? [...v] : v)));
   const lob = [...lobbyists.values()].map((l) => ({ ...l, reports: l.reports.size }));
   const spend = clientSpend(reports);
+
   for (const c of clients.values()) {
     c.total_spend_on_quarters_usd = spend.get(c.key)?.usd ?? 0;
     c.bill_share_estimate_usd = Math.round(spend.get(c.key)?.share_usd ?? 0);
     c.quarters = c.quarters.size;
     c.firms = c.registrants.size;
   }
+
   return {
     bill: bills.find((b) => b.key === billKey)!.name,
     reports: reports.length,
@@ -174,11 +201,14 @@ function summarize(billKey: string, all: Match[], minConfidence: Ref["confidence
 
 if (import.meta.main) {
   const keys = process.argv.slice(2);
+
   for (const bill of bills.filter((b) => !keys.length || keys.includes(b.key))) {
     if (!(await Bun.file(`${data}${bill.key}/filings.jsonl`).exists())) { console.error(bill.key, "not pulled yet"); continue; }
+
     const { candidates, matches } = await matchesFor(bill.key);
     await Bun.write(`${data}${bill.key}/matches.jsonl`, matches.map((m) => JSON.stringify(m)).join("\n") + "\n");
     const conf = { high: 0, medium: 0, low: 0 } as Record<string, number>;
+
     for (const m of matches) conf[m.confidence]!++;
     const summary = { candidates_from_api: candidates, matched_filings: matches.length, by_confidence: conf, ...summarize(bill.key, matches, ["high", "medium"]) };
     await Bun.write(`${out}${bill.key}.json`, JSON.stringify(summary, null, 1));

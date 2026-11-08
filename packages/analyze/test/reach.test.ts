@@ -6,6 +6,7 @@ const kinds = (text: string) => reach(text).map((t) => `${t.kind}/${t.pattern}`)
 test("courts: stripping jurisdiction, review or contempt power is tagged, with the sentence quoted", () => {
   const mvp =
     "(d) Expedited Approval .- The Secretary shall issue all permits. (e) Judicial Review .- (1) Notwithstanding any other provision of law, no court shall have jurisdiction to review any action taken by the Secretary of the Army that grants an authorization for the Mountain Valley Pipeline. (2) The United States Court of Appeals for the District of Columbia Circuit shall have original and exclusive jurisdiction over any claim alleging the invalidity of this section.";
+
   expect(reach(mvp)).toEqual([
     {
       kind: "courts",
@@ -66,6 +67,7 @@ test("states: barring states from their own laws is tagged; savings clauses are 
 test("lawsuit: a right to sue the United States, set damages and waived immunity are tagged", () => {
   const senate =
     "(2) Cause of action .- Any Senator whose Senate data has been disclosed in violation of this section may bring a civil action against the United States if the violation was committed by an officer of the United States. (3) Relief .- the greater of statutory damages of $500,000 or the amount of actual damages. (5) Waiver of sovereign immunity .- The United States expressly waives sovereign immunity with respect to actions brought under this subsection.";
+
   expect(kinds(senate)).toEqual(["lawsuit/sue-the-united-states"]);
   expect(
     kinds(

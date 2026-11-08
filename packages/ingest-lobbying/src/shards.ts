@@ -7,15 +7,20 @@ import { paths, readRows, writeRows } from "@antibody/core/node";
 async function locked<T>(fn: () => Promise<T>): Promise<T> {
   const lock = join(paths.table("lda_filings"), "..", ".lobbying.lock");
   await mkdir(join(lock, ".."), { recursive: true });
+
   for (let waited = 0; ; waited += 200) {
     try {
       await mkdir(lock);
       break;
     } catch {
-      if (waited > 120_000) throw new Error(`lock held for 2 minutes: ${lock}`);
+      if (waited > 120_000) {
+        throw new Error(`lock held for 2 minutes: ${lock}`);
+      }
+
       await Bun.sleep(200);
     }
   }
+
   try {
     return await fn();
   } finally {
@@ -27,7 +32,7 @@ async function locked<T>(fn: () => Promise<T>): Promise<T> {
  * Merges rows into shared shards by id. `merge` combines an existing row with the incoming one;
  * `finish` rewrites a whole shard after the merge (e.g. recomputing which filings are superseded).
  */
-export function upsert<T extends TableName>(
+export async function upsert<T extends TableName>(
   table: T,
   rows: Row<T>[],
   shardOf: (row: Row<T>) => string,
@@ -40,16 +45,25 @@ export function upsert<T extends TableName>(
   } = {},
 ): Promise<void> {
   const byShard = new Map<string, Row<T>[]>();
-  for (const s of opts.alsoShards ?? []) byShard.set(s, []);
-  for (const r of rows) byShard.set(shardOf(r), [...(byShard.get(shardOf(r)) ?? []), r]);
+
+  for (const s of opts.alsoShards ?? []) {
+    byShard.set(s, []);
+  }
+
+  for (const r of rows) {
+    byShard.set(shardOf(r), [...(byShard.get(shardOf(r)) ?? []), r]);
+  }
+
   return locked(async () => {
     for (const [shard, incoming] of byShard) {
       const existing = (opts.prepare ?? ((x) => x))(await readRows(table, shard));
       const merged = new Map(existing.map((r) => [r.id, r]));
+
       for (const r of incoming) {
         const old = merged.get(r.id);
         merged.set(r.id, old && opts.merge ? opts.merge(old, r) : r);
       }
+
       await writeRows(table, shard, (opts.finish ?? ((x) => x))([...merged.values()]));
     }
   });

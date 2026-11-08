@@ -1,24 +1,22 @@
 import { count, musd } from "../../lib/format.ts";
 import { Sources, Src, useClaims } from "../../ui/claims.tsx";
-import {
-  type CardData,
-  type GroupCard,
-  type MemberCardData,
-  money,
-  monthYear,
-  type PacCard,
-  type TradesCard,
-} from "./cards.ts";
+import { money, monthYear } from "./cards.ts";
+import type { CardData, GroupCard, MemberCardData, PacCard, TradesCard } from "./cards.ts";
 
 function Linked({ id, label }: { id: string | null; label: string }) {
   const { claim } = useClaims();
+
   return id && claim(id) ? <Src id={id} label={label} /> : <>{label}</>;
 }
 
 const span = (first: string | null, last: string | null) => {
-  if (!first || !last) return "";
+  if (!first || !last) {
+    return "";
+  }
+
   const a = monthYear(first);
   const b = monthYear(last);
+
   return a === b ? `, ${a}` : `, ${a} to ${b}`;
 };
 
@@ -75,6 +73,7 @@ function owners(list: string[]) {
 
 function TradesBody({ d, onClear }: { d: TradesCard; onClear: () => void }) {
   const max = d.rows[0]?.trades ?? 1;
+
   return (
     <>
       <Header mark="co" name={d.name} tag={d.ticker} onClear={onClear} />
@@ -122,6 +121,7 @@ function TradesBody({ d, onClear }: { d: TradesCard; onClear: () => void }) {
 
 function PacBody({ d, onClear }: { d: PacCard; onClear: () => void }) {
   const max = Math.max(...d.buckets.map((b) => b.members), 1);
+
   return (
     <>
       <Header mark="co" name={d.name} tag={d.ticker} onClear={onClear} />
@@ -160,6 +160,7 @@ function GroupBody({ d, onClear }: { d: GroupCard; onClear: () => void }) {
   const top = d.rows.slice(0, 8);
   const max = Math.max(...top.map((r) => Math.abs(r.musd)), 1);
   const net = d.netMusd;
+
   return (
     <>
       <Header mark="sec" name={d.name} tag={count(d.count, "section")} onClear={onClear} />
@@ -219,6 +220,7 @@ function GroupBody({ d, onClear }: { d: GroupCard; onClear: () => void }) {
 function MemberBody({ d, onClear }: { d: MemberCardData; onClear: () => void }) {
   const trades = d.view === "trades";
   const max = d.rows[0]?.value ?? 1;
+
   return (
     <>
       <Header mark="mem" name={d.name} tag={d.seat} onClear={onClear} />
@@ -268,6 +270,7 @@ export function CompactCard({ data, more, onClear }: { data: CardData; more: boo
         : data.kind === "sections"
           ? `${count(data.count, "section")}${data.priced ? `, ${data.netMusd < 0 ? "cutting" : "adding"} ${money(Math.abs(data.netMusd) * 1e6)} ${data.netMusd < 0 ? "from" : "to"} the deficit` : ", none priced by CBO"}.`
           : `${data.seat}. ${data.view === "trades" ? `${count(data.total, "trade")} in ${count(data.rows.length, "tied company", "tied companies")}.` : `${money(data.total)} from tied companies’ PACs.`}`;
+
   const rows =
     data.kind === "trades"
       ? data.rows.map((r) => ({
@@ -286,6 +289,7 @@ export function CompactCard({ data, more, onClear }: { data: CardData; more: boo
               value: data.view === "trades" ? `${r.value} ${r.value === 1 ? "trade" : "trades"}` : money(r.value),
               claim: r.claim,
             }));
+
   return (
     <aside className="sc-card sc-compact" data-kind={data.kind} aria-label={`${data.name}, pinned`}>
       <div className="sc-card-head">

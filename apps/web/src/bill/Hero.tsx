@@ -6,8 +6,12 @@ import { Sources } from "../ui/claims.tsx";
 
 export const jump = (id: string) => (e: React.MouseEvent) => {
   e.preventDefault();
-  const el = document.getElementById(id);
-  if (!el) return;
+  const el = document.querySelector(`#${id}`);
+
+  if (!el) {
+    return;
+  }
+
   el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   history.replaceState(null, "", `${location.pathname}${location.search}#${id}`);
 };
@@ -16,6 +20,7 @@ export function Hero({ m, entry }: { m: BillModel; entry?: BundleIndex["bills"][
   const { b } = m;
   const steps = timeline(m);
   const kicker = `${b.bill.display}, ${b.bill.congress}th Congress`;
+
   return (
     <section className="wrap bhero">
       <div className="bhero-copy">

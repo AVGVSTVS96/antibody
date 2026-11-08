@@ -1,4 +1,5 @@
-import { STEPS, type Step, type Tally } from "./events.ts";
+import { STEPS } from "./events.ts";
+import type { Step, Tally } from "./events.ts";
 
 /**
  * The numbers a bill is ranked on. Nothing here knows the sponsor's party: the same facts give the same score
@@ -34,6 +35,7 @@ export type Signal =
   | "rushed"
   | "buried"
   | "divisive";
+
 export type SubScores = Record<Signal, number | null>;
 
 export const RULES_VERSION = "watch-v3";
@@ -82,6 +84,7 @@ export function subScores(f: Facts): SubScores {
   const speed = f.daysToVote === null ? null : 1 - clamp(Math.log1p(f.daysToVote) / Math.log1p(60));
   const rushed = speed === null && !f.closedRule ? null : Math.max(speed ?? 0, f.closedRule ? 0.5 : 0);
   const v = f.closestVote;
+
   const s: SubScores = {
     moving: STEPS[f.step].weight,
     attention: f.newsStories === null ? null : clamp(Math.log10(1 + f.newsStories) / 3),
@@ -93,13 +96,21 @@ export function subScores(f: Facts): SubScores {
     buried: f.buriedSections === null ? null : clamp(f.buriedSections / 5),
     divisive: v && v.yeas + v.nays > 0 ? 1 - Math.abs(v.yeas - v.nays) / (v.yeas + v.nays) : null,
   };
-  for (const k of Object.keys(s) as Signal[]) if (s[k] !== null) s[k] = round(s[k]!);
+
+  for (const k of Object.keys(s) as Signal[]) {
+    if (s[k] !== null) s[k] = round(s[k]);
+  }
+
   return s;
 }
 
 /** 0-100: the weighted sum of the sub-scores. */
 export function score(s: SubScores): number {
   let total = 0;
-  for (const k of Object.keys(WEIGHTS) as Signal[]) total += WEIGHTS[k] * (s[k] ?? 0);
+
+  for (const k of Object.keys(WEIGHTS) as Signal[]) {
+    total += WEIGHTS[k] * (s[k] ?? 0);
+  }
+
   return Math.round(total * 1000) / 10;
 }

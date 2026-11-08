@@ -54,12 +54,18 @@ const cacheFile = () => join(paths.raw("entities"), "resolve", "review-verdicts.
 async function loadCache(): Promise<Map<string, Cached>> {
   const f = Bun.file(cacheFile());
   const out = new Map<string, Cached>();
-  if (!(await f.exists())) return out;
-  for (const line of (await f.text()).split("\n"))
+
+  if (!(await f.exists())) {
+    return out;
+  }
+
+  for (const line of (await f.text()).split("\n")) {
     if (line) {
       const c = JSON.parse(line) as Cached;
       out.set(c.key, c);
     }
+  }
+
   return out;
 }
 
@@ -74,6 +80,7 @@ function itemKey(q: Queued): string {
       q.candidates.map((c) => c.cik),
     ]),
   );
+
   return h.digest("hex").slice(0, 16);
 }
 
@@ -83,6 +90,7 @@ const squash = (s: string) => norm(s).replaceAll(" ", "");
 export function sameCompanyName(proposed: string, sec: string): boolean {
   const a = squash(proposed);
   const b = squash(sec);
+
   return (
     tokenSet(norm(proposed), norm(sec)) >= 80 || (a.length > 3 && b.length > 3 && (a.startsWith(b) || b.startsWith(a)))
   );
@@ -116,6 +124,7 @@ export async function review(
   const todo = [...new Map(keyed.filter((k) => !cache.has(k.key)).map((k) => [k.key, k])).values()];
   const size = opts.batch ?? 30;
   const batches = Array.from({ length: Math.ceil(todo.length / size) }, (_, i) => todo.slice(i * size, (i + 1) * size));
+
   const stats: ReviewStats = {
     queued: queued.length,
     cached: queued.length - todo.length,
@@ -125,8 +134,11 @@ export async function review(
     seconds: 0,
     failedBatches: 0,
   };
-  if (batches.length)
+
+  if (batches.length) {
     opts.log(`review: ${todo.length} names in ${batches.length} ${MODEL} calls (${stats.cached} cached)`);
+  }
+
   await mkdir(join(paths.raw("entities"), "resolve"), { recursive: true });
 
   await pool(batches, opts.parallel ?? 4, async (batch, i) => {
@@ -140,6 +152,7 @@ export async function review(
       may_propose_parent: q.mayProposeParent,
       candidates: q.candidates.map((c) => ({ cik: c.cik, name: c.name, tickers: c.tickers.slice(0, 3) })),
     }));
+
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const {
@@ -147,9 +160,11 @@ export async function review(
           costUsd,
           model,
         } = await askJson<Verdict>(PROMPT + JSON.stringify(items, null, 0), opts.signal);
+
         stats.calls++;
         stats.costUsd += costUsd;
         const at = new Date().toISOString();
+
         const lines = verdicts
           .filter((v) => batch.some((b) => b.key === v.key))
           .map((v) =>
@@ -160,32 +175,42 @@ export async function review(
               at,
             } satisfies Cached),
           );
-        if (lines.length) await appendFile(cacheFile(), `${lines.join("\n")}\n`);
+
+        if (lines.length) {
+          await appendFile(cacheFile(), `${lines.join("\n")}\n`);
+        }
+
         for (const l of lines) {
           const c = JSON.parse(l) as Cached;
           cache.set(c.key, c);
         }
+
         opts.log(
           `review batch ${i + 1}/${batches.length}: ${lines.length}/${batch.length} verdicts, $${costUsd.toFixed(3)}`,
         );
+
         return;
-      } catch (e) {
-        opts.log(`review batch ${i + 1} attempt ${attempt} failed: ${(e as Error).message.slice(0, 200)}`);
+      } catch (error) {
+        opts.log(`review batch ${i + 1} attempt ${attempt} failed: ${(error as Error).message.slice(0, 200)}`);
       }
     }
+
     stats.failedBatches++;
   });
 
   const matches: Match[] = [];
   const rejected: { q: Queued; verdict: Verdict | null; why: string }[] = [];
+
   for (const { q, key } of keyed) {
     const c = cache.get(key);
     const v = c?.verdict ?? null;
     const base = { normalized: q.normalized, queuedBecause: q.why, candidates: q.candidates, model: c?.model ?? null };
+
     if (!v) {
       rejected.push({ q, verdict: null, why: "no verdict" });
       continue;
     }
+
     if (v.relation === "none" || v.confidence < ACCEPT) {
       rejected.push({
         q,
@@ -194,7 +219,9 @@ export async function review(
       });
       continue;
     }
+
     const picked = v.cik ? q.candidates.find((x) => x.cik === v.cik) : undefined;
+
     if (picked) {
       matches.push({
         mention: q.mention,
@@ -205,8 +232,10 @@ export async function review(
       });
       continue;
     }
+
     const parent = q.mayProposeParent && v.parent_ticker ? index.byTicker.get(normTicker(v.parent_ticker)) : undefined;
     const agrees = parent && v.parent_name ? sameCompanyName(v.parent_name, parent.name) : false;
+
     if (parent && agrees) {
       matches.push({
         mention: q.mention,
@@ -223,12 +252,15 @@ export async function review(
       });
       continue;
     }
+
     rejected.push({
       q,
       verdict: v,
       why: v.cik ? "model picked a CIK outside the candidates" : "proposed parent not confirmed in SEC's list",
     });
   }
+
   stats.seconds = Math.round((performance.now() - t0) / 1000);
+
   return { matches, rejected, stats };
 }

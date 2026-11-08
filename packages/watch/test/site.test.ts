@@ -5,13 +5,16 @@ import { join } from "node:path";
 import type { Bundle } from "@antibody/core";
 import fixture from "../../core/fixtures/genius-mini.bundle.json";
 import { pageUrl } from "../src/digest.ts";
-import { publishBundle, type Site, updateSite } from "../src/site.ts";
+import { publishBundle, updateSite } from "../src/site.ts";
+import type { Site } from "../src/site.ts";
 
 const dir = await mkdtemp(join(tmpdir(), "antibody-site-"));
-afterAll(() => rm(dir, { recursive: true, force: true }));
+
+afterAll(async () => rm(dir, { recursive: true, force: true }));
 
 const withId = (id: string): Bundle => {
   const b = fixture as unknown as Bundle;
+
   return JSON.parse(JSON.stringify(b).replaceAll(b.bill.id, id).replaceAll("S.1582", "S.9999"));
 };
 
@@ -21,6 +24,7 @@ async function folders(name: string) {
   const published = join(root, "published");
   await mkdir(local, { recursive: true });
   await mkdir(published, { recursive: true });
+
   return { local, published, root };
 }
 
@@ -54,13 +58,17 @@ async function setup(name: string) {
   const f = await folders(name);
   await Bun.write(join(f.published, "119-s-1582.json"), JSON.stringify({ ...(fixture as object), claims: {} }));
   const calls: string[][] = [];
+
   const exec = async (cmd: string[]) => {
     calls.push(cmd);
+
     return cmd.includes("deploy")
       ? 'Production https://antibody-abc123.vercel.app\n{\n  "url": "https://antibody-abc123.vercel.app",\n}\n'
       : "";
   };
+
   const where = { root: f.root, published: f.published, deployedIndex: join(f.root, "deployed-index.json") };
+
   return { calls, exec, where };
 }
 
@@ -83,12 +91,14 @@ test("deploy builds, deploys to production and remembers the index; an identical
 test("a failed deploy is a problem, keeps the old snapshot, and the next run retries", async () => {
   const { calls, exec, where } = await setup("failed");
   const s = site();
+
   const { problems } = await updateSite(s, {
     exec: async () => {
       throw new Error("failed (1): bunx vercel build");
     },
     where,
   });
+
   expect(s.deploy.status).toBe("failed");
   expect(problems[0]).toContain("previous live site is unchanged");
   expect(await Bun.file(where.deployedIndex).exists()).toBe(false);
@@ -108,6 +118,6 @@ test("deploy can be turned off; the index is still rebuilt", async () => {
 });
 
 test("the digest's page link points at the live site once published", () => {
-  expect(pageUrl("119-hr-1" as never, false)).toBeNull();
-  expect(pageUrl("119-hr-1" as never)).toBe("https://antibody-murex.vercel.app/bill/119-hr-1");
+  expect(pageUrl("119-hr-1", false)).toBeNull();
+  expect(pageUrl("119-hr-1")).toBe("https://antibody-murex.vercel.app/bill/119-hr-1");
 });

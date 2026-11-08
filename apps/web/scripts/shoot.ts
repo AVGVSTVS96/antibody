@@ -9,6 +9,7 @@ import { chromium } from "playwright-core";
 const base = process.argv[2] ?? "http://localhost:4870";
 const out = process.argv[3] ?? "shots";
 const only = process.argv[4];
+
 mkdirSync(out, { recursive: true });
 
 const browser = await chromium.launch({
@@ -17,6 +18,7 @@ const browser = await chromium.launch({
 });
 
 const bill = "/bill/119-s-1582";
+
 const shots = [
   { name: "index-dark", path: "/", w: 1440, h: 900, theme: "dark", full: true },
   { name: "index-light-phone", path: "/", w: 390, h: 844, theme: "light", mobile: true, full: true },
@@ -34,7 +36,10 @@ const shots = [
 ];
 
 for (const s of shots) {
-  if (only && !s.name.includes(only)) continue;
+  if (only && !s.name.includes(only)) {
+    continue;
+  }
+
   const page = await browser.newPage({
     viewport: { width: s.w, height: s.h },
     deviceScaleFactor: s.mobile ? 2 : 1,
@@ -42,14 +47,18 @@ for (const s of shots) {
     hasTouch: !!s.mobile,
     colorScheme: s.theme as "dark" | "light",
   });
+
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   const t0 = Date.now();
   await page.goto(`${base}${s.path}${s.path.includes("?") ? "&" : "?"}theme=${s.theme}`, { waitUntil: "networkidle" });
-  if (s.path.startsWith("/bill"))
+
+  if (s.path.startsWith("/bill")) {
     await page.waitForSelector("#map", { state: "attached", timeout: 15000 }).catch(() => {});
-  await page.evaluate(() => document.fonts.ready);
+  }
+
+  await page.evaluate(async () => document.fonts.ready);
   await page.waitForTimeout(500);
   const ready = Date.now() - t0;
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -57,4 +66,5 @@ for (const s of shots) {
   console.log(s.name, JSON.stringify({ ready, overflow, errors, title: await page.title() }));
   await page.close();
 }
+
 await browser.close();

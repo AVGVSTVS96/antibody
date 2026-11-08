@@ -1,4 +1,5 @@
-import { type Dollar, headlineDeficit } from "@antibody/core";
+import { headlineDeficit } from "@antibody/core";
+import type { Dollar } from "@antibody/core";
 import { count, day, musd, nice, RULES_URL } from "../lib/format.ts";
 import type { BillModel } from "../lib/model.ts";
 import { billHref, onLink } from "../lib/router.ts";
@@ -15,6 +16,7 @@ const MEASURE: Record<Dollar["measure"], string> = {
 export function Rules({ m }: { m: BillModel }) {
   const seen = new Set<string>();
   const gaps = m.b.gaps.filter((g) => !seen.has(g.text) && seen.add(g.text));
+
   return (
     <section className="rules" id="read" aria-label="What’s missing and how to read this page">
       <div className="wrap rules-g">
@@ -66,6 +68,7 @@ export function Records({ m }: { m: BillModel }) {
   const byStatus = (s: string) => amend.filter((a) => a.status === s).length;
   const tied = m.actors.filter((a) => a.benefits).sort((x, y) => nice(x.label).localeCompare(nice(y.label)));
   const withPositions = m.lobbyists.filter((l) => l.props.coveredPositions.length);
+
   return (
     <section className="wrap records" id="records" aria-labelledby="records-h">
       <h2 id="records-h">The records behind this page</h2>
@@ -83,12 +86,14 @@ export function Records({ m }: { m: BillModel }) {
               Scored: {est.versionScored}. Baseline: <b>{est.baselineLabel}</b>.{" "}
               {lawDeficit && (
                 <>
-                  Deficit, {lawDeficit.period}: {musd(lawDeficit.amountMusd)} <Src id={lawDeficit.claim} label="CBO" />.{" "}
+                  Deficit, {lawDeficit.period}: {musd(lawDeficit.amountMusd)} <Src id={lawDeficit.claim} label="CBO" />
+                  .{" "}
                 </>
               )}
               {policyDeficit && (
                 <>
-                  Under current policy: {musd(policyDeficit.amountMusd)} <Src id={policyDeficit.claim} label="CBO" />.{" "}
+                  Under current policy: {musd(policyDeficit.amountMusd)} <Src id={policyDeficit.claim} label="CBO" />
+                  .{" "}
                 </>
               )}
               {b.dollars.wholeBill
@@ -159,6 +164,7 @@ export function Records({ m }: { m: BillModel }) {
             <ul className="recl">
               {amend.slice(0, 30).map((a) => {
                 const sponsor = a.sponsor ? m.memberById.get(a.sponsor)?.node : null;
+
                 return (
                   <li key={a.id}>
                     <span>

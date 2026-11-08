@@ -1,7 +1,9 @@
 const ALIAS_PAREN =
   /\((?:F\/?K\/?A|FORMERLY|D\/?B\/?A|ON BEHALF OF)[^)]*\)|\b(?:F\/?K\/?A|D\/?B\/?A|FORMERLY KNOWN AS)\b.*$/g;
+
 const NOISE =
   /\b(?:AND (?:ITS )?(?:AFFILIATES|SUBSIDIARIES)|POLITICAL ACTION COMMITTEE|EMPLOYEES?|FEDERAL|GOOD GOVERNMENT|COMMON STOCK|CLASS [A-C]|ORDINARY SHARES|SPONSORED ADR|ADR|ADS|COMMON|STOCK|SHARES|PAC|FUND|COMMITTEE)\b/g;
+
 const SUFFIX =
   /\b(?:INC|INCORPORATED|CORP|CORPORATION|CO|COMPANY|LLC|L L C|LP|L P|LLP|LTD|LIMITED|PLC|N ?A|SA|AG|NV|SE|HOLDINGS?|GROUP|THE|DE|NEW|CL [A-C])\b/g;
 
@@ -13,12 +15,13 @@ const SUFFIX =
 export function norm(name: string | null | undefined): string {
   let s = (name ?? "").toUpperCase().replaceAll("&", " AND ").replaceAll("’", "'");
   s = s.replace(/^.*\b(?:OBO|O\/B\/O|ON BEHALF OF)\b/, " ");
-  s = s.replace(/\s*\/[A-Z]{2,3}\/?\s*$|\/ADR\b|\/NEW\//g, " ");
-  s = s.replace(ALIAS_PAREN, " ");
-  s = s.replace(/\(.*?\)/g, " ");
-  s = s.replaceAll("'", "").replace(/[^A-Z0-9 ]+/g, " ");
-  s = s.replace(NOISE, " ").replace(SUFFIX, " ");
-  return s.replace(/\s+/g, " ").trim();
+  s = s.replaceAll(/\s*\/[A-Z]{2,3}\/?\s*$|\/ADR\b|\/NEW\//g, " ");
+  s = s.replaceAll(ALIAS_PAREN, " ");
+  s = s.replaceAll(/\(.*?\)/g, " ");
+  s = s.replaceAll("'", "").replaceAll(/[^A-Z0-9 ]+/g, " ");
+  s = s.replaceAll(NOISE, " ").replaceAll(SUFFIX, " ");
+
+  return s.replaceAll(/\s+/g, " ").trim();
 }
 
 export const tokens = (normalized: string): string[] => (normalized ? normalized.split(" ") : []);
@@ -29,22 +32,35 @@ export const tokens = (normalized: string): string[] => (normalized ? normalized
  */
 export function parseAsset(asset: string): { name: string; ticker: string | null } {
   const s = asset.trim();
-  const lead = s.match(/^([A-Z]{1,5}(?:[.-][A-Z])?)\s+-\s+(.+)$/);
-  if (lead) return { name: lead[2]!.replace(/\s+-\s+.*$/, ""), ticker: lead[1]! };
-  const option = s.match(/^([A-Z]{1,5})\s+(?:CALLS?|PUTS?)\b/);
-  if (option) return { name: "", ticker: option[1]! };
-  if (/^[A-Z]{1,5}$/.test(s)) return { name: "", ticker: s };
-  const ticker = s.match(/\(([A-Z][A-Z0-9.-]{0,6})\)\s*(?:\[[A-Z]{2}\])?\s*$/)?.[1] ?? null;
+  const lead = /^([A-Z]{1,5}(?:[.-][A-Z])?)\s+-\s+(.+)$/.exec(s);
+
+  if (lead) {
+    return { name: lead[2]!.replace(/\s+-\s+.*$/, ""), ticker: lead[1]! };
+  }
+
+  const option = /^([A-Z]{1,5})\s+(?:CALLS?|PUTS?)\b/.exec(s);
+
+  if (option) {
+    return { name: "", ticker: option[1]! };
+  }
+
+  if (/^[A-Z]{1,5}$/.test(s)) {
+    return { name: "", ticker: s };
+  }
+
+  const ticker = /\(([A-Z][A-Z0-9.-]{0,6})\)\s*(?:\[[A-Z]{2}\])?\s*$/.exec(s)?.[1] ?? null;
+
   const name = s
     .replace(/\[[A-Z]{2}\]\s*$/, "")
     .replace(/\(([A-Z0-9./-]{1,8})\)\s*$/, "")
     .replace(/\s+-\s+.*$/, "")
     .trim();
+
   return { name, ticker };
 }
 
 /** EDGAR writes share classes with a dash (BRK-B); filings write BRK.B, BRK/B or BRK B. */
-export const normTicker = (t: string) => t.trim().toUpperCase().replace(/[./ ]/g, "-");
+export const normTicker = (t: string) => t.trim().toUpperCase().replaceAll(/[./ ]/g, "-");
 
 /**
  * Names that are almost never a public company: associations, governments, schools, tribes, unions.

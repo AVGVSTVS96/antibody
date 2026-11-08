@@ -23,6 +23,7 @@ for (const s of shots) {
   await page.goto(`${url}?theme=${s.theme}${s.view ? `&view=${s.view}` : ''}`, { waitUntil: 'networkidle' })
   await page.waitForSelector('#map svg', { state: 'attached' })
   await page.evaluate(() => document.fonts.ready)
+
   if (s.focus) await page.evaluate(id => (window as any).__show(id), s.focus)
   const full = (s as any).full || s.mobile
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
@@ -30,4 +31,5 @@ for (const s of shots) {
   console.log(s.name, { overflow, errors, title: await page.title() })
   await page.close()
 }
+
 await browser.close()

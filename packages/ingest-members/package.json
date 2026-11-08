@@ -7,6 +7,9 @@
   },
   "dependencies": {
     "@antibody/core": "workspace:*",
-    "fast-xml-parser": "5.11.2"
+    "fast-xml-parser": "catalog:"
+  },
+  "scripts": {
+    "typecheck": "tsc"
   }
 }

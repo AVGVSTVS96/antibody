@@ -27,15 +27,27 @@ const MAX_DECADES = 5;
  */
 export function dollarScale(figures: (number | null)[]): DollarScale | null {
   const abs = figures.filter((v): v is number => v != null && v !== 0).map(Math.abs);
-  if (!abs.length) return null;
+
+  if (!abs.length) {
+    return null;
+  }
+
   const hiExp = Math.ceil(Math.log10(Math.max(...abs)) - 1e-9);
   let loExp = Math.max(Math.floor(Math.log10(Math.min(...abs)) + 1e-9), hiExp - MAX_DECADES);
-  if (hiExp - loExp < 1) loExp = hiExp - 1;
+
+  if (hiExp - loExp < 1) {
+    loExp = hiExp - 1;
+  }
+
   const span = hiExp - loExp;
   const decades: Decade[] = [];
-  for (let exp = loExp; exp <= hiExp; exp++)
+
+  for (let exp = loExp; exp <= hiExp; exp++) {
     decades.push({ exp, musd: 10 ** exp, label: money(10 ** exp * 1e6), t: (exp - loExp) / span });
+  }
+
   const t = (v: number) => (Math.log10(Math.max(Math.abs(v), 10 ** loExp)) - loExp) / span;
+
   return {
     loExp,
     hiExp,

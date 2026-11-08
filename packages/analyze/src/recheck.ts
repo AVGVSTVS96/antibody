@@ -1,13 +1,17 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { type BillId, billDisplay, parseJson, type Row } from "@antibody/core";
+import { billDisplay, parseJson } from "@antibody/core";
+import type { BillId, Row } from "@antibody/core";
 import { paths, python } from "@antibody/core/node";
 import { claude, pool } from "./llm.ts";
-import { type ArticleIn, MATCH_MODEL } from "./match.ts";
+import { MATCH_MODEL } from "./match.ts";
+import type { ArticleIn } from "./match.ts";
 
 export const RECHECK = "quiet-check-v1";
+
 /** Bumped when the judge's question changes, so earlier answers are asked again. */
 const JUDGE = "quote-v1";
+
 /** Bumped when the description prompt or the passage finder changes. */
 const FINDER = "phrases-v4";
 
@@ -54,12 +58,14 @@ interface Passage {
 
 const lead = (s: string, words: number) => s.split(/\s+/).slice(0, words).join(" ");
 const sectionText = (s: Row<"sections">) => `${s.heading}. ${lead(s.preview, SECTION_WORDS)}`;
+
 /** Lowercase words only, so a quote matches its passage whatever the punctuation or spacing. */
 const words = (s: string) =>
   ` ${s
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
+    .replaceAll(/[^a-z0-9]+/g, " ")
     .trim()} `;
+
 const hash = (s: string) => createHash("sha1").update(s).digest("hex").slice(0, 16);
 
 function system(bill: BillId, title: string) {
@@ -90,6 +96,7 @@ async function passages(
   const dir = join(paths.raw("analyze"), "recheck");
   const input = join(dir, `${bill}.passages.in.json`);
   const output = join(dir, `${bill}.passages.json`);
+
   const payload = JSON.stringify({
     recheck: RECHECK,
     finder: FINDER,
@@ -102,12 +109,16 @@ async function passages(
     })),
     articles: articles.map((a) => ({ id: a.id, title: a.title, text: a.text?.slice(0, 14_000) ?? "" })),
   });
+
   const prev = Bun.file(input);
+
   if (!(await prev.exists()) || (await prev.text()) !== payload || !(await Bun.file(output).exists())) {
     await Bun.write(input, payload);
     await python(pkg, "recheck.py", [input, output], { memoryMax: "3G" });
   }
+
   const r: { passages: Record<string, Passage[]> } = await Bun.file(output).json();
+
   return new Map(Object.entries(r.passages));
 }
 
@@ -129,16 +140,29 @@ export async function recheck(
   const prior: CheckRun | null = (await file.exists()) ? await file.json() : null;
   const reuse = prior && !opts.refresh && prior.checker === RECHECK;
   const run: CheckRun = reuse ? prior : { checker: RECHECK, model, costUsd: 0, described: {}, results: {} };
-  if (!candidates.length) return run;
+
+  if (!candidates.length) {
+    return run;
+  }
+
   run.described ??= {};
 
   const toDescribe = candidates.filter((s) => run.described[s.id]?.key !== hash(`${FINDER}\n${sectionText(s)}`));
-  if (toDescribe.length) opts.log?.(`restating ${toDescribe.length} provisions in news words`);
+
+  if (toDescribe.length) {
+    opts.log?.(`restating ${toDescribe.length} provisions in news words`);
+  }
+
   const dsys = describeSystem(bill, title);
   const dbatches: Row<"sections">[][] = [];
-  for (let i = 0; i < toDescribe.length; i += BATCH) dbatches.push(toDescribe.slice(i, i + BATCH));
+
+  for (let i = 0; i < toDescribe.length; i += BATCH) {
+    dbatches.push(toDescribe.slice(i, i + BATCH));
+  }
+
   await pool(dbatches, PARALLEL, async (batch, bi) => {
     const prompt = batch.map((s, i) => `PROVISION ${i + 1}\nSection ${s.num} | ${sectionText(s)}`).join("\n\n");
+
     for (
       let attempt = 0;
       attempt < 5 && !batch.every((s) => run.described[s.id]?.key === hash(`${FINDER}\n${sectionText(s)}`));
@@ -146,37 +170,56 @@ export async function recheck(
     ) {
       try {
         const r = await claude(prompt, { system: dsys, model, signal: opts.signal });
+
         for (const o of parseJson<{ p: number; says: string; phrases: string[] }[]>(r.text)) {
           const s = batch[o.p - 1];
-          if (!s || typeof o.says !== "string") continue;
+
+          if (!s || typeof o.says !== "string") {
+            continue;
+          }
+
           const phrases = (Array.isArray(o.phrases) ? o.phrases : [])
             .filter((p): p is string => typeof p === "string")
             .map((p) => p.toLowerCase().trim())
             .filter((p) => p.length >= 4);
+
           run.described[s.id] = { key: hash(`${FINDER}\n${sectionText(s)}`), says: o.says.trim(), phrases };
         }
+
         run.model = r.model;
         run.costUsd += r.costUsd;
-      } catch (e) {
-        opts.log?.(`describe batch ${bi + 1}: ${(e as Error).message.slice(0, 160)}`);
+      } catch (error) {
+        opts.log?.(`describe batch ${bi + 1}: ${(error as Error).message.slice(0, 160)}`);
       }
     }
   });
+
   const undescribed = candidates.filter(
     (s) => run.described[s.id]?.key !== hash(`${FINDER}\n${sectionText(s)}`),
   ).length;
-  if (undescribed)
+
+  if (undescribed) {
     throw new Error(`${undescribed} of ${candidates.length} sections could not be described; re-run to finish`);
+  }
+
   await Bun.write(file, JSON.stringify(run));
 
   const close = await passages(bill, names, candidates, run.described, articles, opts.pkg);
+
   const keyOf = (s: Row<"sections">) =>
     hash(`${JUDGE}\n${sectionText(s)}\n${(close.get(s.id) ?? []).map((p) => p.article).join(",")}`);
+
   const todo = candidates.filter((s) => run.results[s.id]?.key !== keyOf(s));
   const batches: Row<"sections">[][] = [];
-  for (let i = 0; i < todo.length; i += BATCH) batches.push(todo.slice(i, i + BATCH));
-  if (batches.length)
+
+  for (let i = 0; i < todo.length; i += BATCH) {
+    batches.push(todo.slice(i, i + BATCH));
+  }
+
+  if (batches.length) {
     opts.log?.(`checking ${todo.length} sections against their closest passages in ${batches.length} calls (${model})`);
+  }
+
   const sys = system(bill, title);
 
   await pool(batches, PARALLEL, async (batch, bi) => {
@@ -184,22 +227,33 @@ export async function recheck(
       .map((s, i) => {
         const ps = close.get(s.id) ?? [];
         const body = ps.map((p, j) => `${j + 1}. ${p.text}`).join("\n");
+
         return `PROVISION ${i + 1}\nSection ${s.num} | ${sectionText(s)}\nIn plain words: ${run.described[s.id]?.says ?? ""}\nPASSAGES\n${body}`;
       })
       .join("\n\n=====\n\n");
+
     const answered = new Set<string>();
+
     for (let attempt = 0; attempt < 5 && answered.size < batch.length; attempt++) {
       try {
         const r = await claude(prompt, { system: sys, model, signal: opts.signal });
         const out = parseJson<{ p: number; yes: { n: number | string; quote: string }[] }[]>(r.text);
+
         for (const o of out) {
           const s = batch[o.p - 1];
-          if (!s) continue;
+
+          if (!s) {
+            continue;
+          }
+
           const ps = close.get(s.id) ?? [];
+
           const yes = o.yes.flatMap((y) => {
             const p = ps[Number(y.n) - 1];
+
             return p && typeof y.quote === "string" && words(p.text).includes(words(y.quote)) ? [p.article] : [];
           });
+
           run.results[s.id] = {
             key: keyOf(s),
             passages: ps.map((p) => ({ article: p.article, sim: p.sim })),
@@ -207,16 +261,22 @@ export async function recheck(
           };
           answered.add(s.id);
         }
+
         run.model = r.model;
         run.costUsd += r.costUsd;
-      } catch (e) {
-        opts.log?.(`batch ${bi + 1}: ${(e as Error).message.slice(0, 160)}`);
+      } catch (error) {
+        opts.log?.(`batch ${bi + 1}: ${(error as Error).message.slice(0, 160)}`);
       }
     }
+
     await Bun.write(file, JSON.stringify(run));
   });
   await Bun.write(file, JSON.stringify(run));
   const missing = candidates.filter((s) => run.results[s.id]?.key !== keyOf(s)).length;
-  if (missing) throw new Error(`${missing} of ${candidates.length} sections could not be checked; re-run to finish`);
+
+  if (missing) {
+    throw new Error(`${missing} of ${candidates.length} sections could not be checked; re-run to finish`);
+  }
+
   return run;
 }

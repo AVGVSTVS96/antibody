@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const ClaimKind = z.enum(["fact", "inference"]);
+
 export type ClaimKind = z.infer<typeof ClaimKind>;
 
 /** Source pages that look like citations but don't point at one record. A claim needs the record itself. */
@@ -23,6 +24,7 @@ export const SourceUrl = z
  * several things (e.g. `cbo_lines/hr1-clb:70101:deficit`, `trades/20032256#3`).
  */
 export const ClaimId = z.string().regex(/^[a-z_]+\/.+$/);
+
 export type ClaimId = z.infer<typeof ClaimId>;
 
 export const Claim = z
@@ -49,4 +51,5 @@ export const Claim = z
   .refine((c) => c.kind === "fact" || (c.rule && c.restsOn.length > 0), {
     message: "an inference names its rule and what it rests on",
   });
+
 export type Claim = z.infer<typeof Claim>;

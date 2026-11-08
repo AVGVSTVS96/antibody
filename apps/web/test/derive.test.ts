@@ -43,7 +43,7 @@ test("four answers, each with a jump target", () => {
 test("eras group final sections by the version they first appear in", () => {
   const groups = eras(m);
   expect(groups.reduce((n, g) => n + g.sections.length, 0)).toBe(m.sections.filter((v) => v.s.inFinal).length);
-  expect(groups.map(eraLine).every((l) => /section/.test(l))).toBe(true);
+  expect(groups.map(eraLine).every((l) => l.includes("section"))).toBe(true);
 });
 
 test("lobbying phases add up and traders are ranked by trades", () => {
@@ -80,7 +80,11 @@ const withBuriedDollars = (musd: number, heading?: string) => {
   const b = Bundle.parse(structuredClone(genius));
   b.dollars.estimates[0]!.perSection = true;
   const s = b.sections.find((x) => x.inFinal && x.score?.label === "buried")!;
-  if (heading) s.heading = heading;
+
+  if (heading) {
+    s.heading = heading;
+  }
+
   s.dollars = [
     {
       estimateId: b.dollars.estimates[0]!.id,
@@ -93,6 +97,7 @@ const withBuriedDollars = (musd: number, heading?: string) => {
       claim: Object.keys(b.claims)[0]!,
     },
   ];
+
   return buildModel(b);
 };
 
@@ -124,10 +129,12 @@ test("members with unread paper filings come from the bundle, drawn in the graph
 
 test("dated labels on the month chart never share a row where they would overlap", () => {
   const at = (label: string, x: number) => ({ at: "2025-01-01", label, x });
+
   const rows = layMarks(
     [at("First text, May 20", 700), at("House passes, May 22", 708), at("Signed, Jul 4", 770)],
     false,
   );
+
   expect(rows.map((r) => r.row)).toEqual([0, 1, 2]);
   expect(layMarks([at("First text, May 20", 100), at("Signed, Jul 4", 700)], false).map((r) => r.row)).toEqual([0, 0]);
   expect(layMarks([at("First text, May 20", 100), at("Signed, Jul 4", 120)], true).map((r) => r.row)).toEqual([0, 1]);

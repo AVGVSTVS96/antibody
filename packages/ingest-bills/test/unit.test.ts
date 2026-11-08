@@ -11,10 +11,12 @@ import { cached } from "../src/fetch.ts";
 import { sponsorshipRows } from "../src/ingest.ts";
 import { trace } from "../src/lineage.ts";
 import { match } from "../src/match.ts";
-import { parseSections, type Sec } from "../src/sections.ts";
+import { parseSections } from "../src/sections.ts";
+import type { Sec } from "../src/sections.ts";
 import { canon, citations, normEnum } from "../src/text.ts";
 
 const bill = (body: string) => `<?xml version="1.0"?><bill><legis-body>${body}</legis-body></bill>`;
+
 const section = (num: string, heading: string, text: string, id = "") =>
   `<section${id ? ` id="${id}"` : ""}><enum>${num}.</enum><header>${heading}</header><text>${text}</text></section>`;
 
@@ -30,6 +32,7 @@ describe("text", () => {
   test("citations skip definition cross-references", () => {
     const t =
       "Section 45Y of the Internal Revenue Code of 1986 is amended. The term has the meaning given in section 3 of the Clean Air Act. See 42 U.S.C. 7401.";
+
     expect([...citations(t)].sort()).toEqual(["irc:45y", "usc:42:7401"]);
   });
 
@@ -48,6 +51,7 @@ describe("sections", () => {
           `<quoted-block><section><enum>9.</enum><header>Inner</header><text>inside</text></section></quoted-block></section></title>`,
       ),
     );
+
     expect(secs.map((s) => [s.path, s.heading, s.text])).toEqual([
       ["title:I/sec:101", "Credit", "Section 45 is amended."],
       ["title:I/sec:102", "Gone", "new words 9 Inner inside"],
@@ -63,12 +67,14 @@ describe("match and lineage", () => {
       section("1", "Short title", "This Act may be cited as the X Act.") + section("2", "Grants", LOREM("g")),
       "ih",
     );
+
     const b = v(
       section("1", "Short title", "This Act may be cited as the X Act.") +
         section("2", "Disclosure", LOREM("d")) +
         section("3", "Grants", LOREM("g")),
       "es",
     );
+
     const { lineages, steps } = trace("119-s-1", [a, b]);
     expect(steps[0]!.matched).toEqual({ identical: 2 });
     const added = lineages.find((l) => l.firstVersion === "es")!;
@@ -133,6 +139,7 @@ describe("amendments", () => {
       { code: "enr", date: null },
       { code: "plaw", date: "2025-07-18" },
     ];
+
     expect(versionStep("2025-06-12", versions)).toBe("pcs->es");
     expect(versionStep("2025-06-17", versions)).toBe("pcs->es");
     expect(versionStep("2025-04-01", versions)).toBeNull();
@@ -166,6 +173,7 @@ test("counterpart candidates need a shared heading word, cited law or wording", 
       ),
     },
   ]);
+
   const removed = lineages.find((l) => l.firstVersion === "pcs")!;
   const added = lineages.filter((l) => l.firstVersion === "eas");
   expect(candidates(removed, added).map((l) => l.last.heading)).toEqual([
@@ -197,12 +205,14 @@ test("sponsorships: a member who cosponsored twice keeps both rows, with distinc
     },
     "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/s/BILLSTATUS-119s1383.xml",
   );
+
   expect(rows.map((r) => r.id)).toEqual(["119-s-1383:M001", "119-s-1383:W000790", "119-s-1383:W000790:2025-09-18"]);
 });
 
 test("sections: a reported bill whose first body is all struck reads the substitute after it", () => {
   const sec = (n: string, h: string) =>
     `<section><enum>${n}.</enum><header>${h}</header><text>Text of ${h}.</text></section>`;
+
   const xml = `<?xml version="1.0"?><bill><form/><legis-body><title changed="deleted"><enum>I</enum>${sec("101", "House text")}</title></legis-body><legis-body>${sec("1", "Short title")}${sec("2", "Senate text")}</legis-body></bill>`;
   expect(parseSections(xml).map((s) => s.heading)).toEqual(["Short title", "Senate text"]);
   // Two committees' full texts: the first is the one read, as before.

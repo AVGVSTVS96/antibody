@@ -13,7 +13,7 @@ const xml = `<billStatus><bill><cboCostEstimates>
 </cboCostEstimates></bill></billStatus>`;
 
 test("BILLSTATUS lists each CBO publication once, with the version it scored", () => {
-  const twice = xml.replace("</cboCostEstimates>", `${xml.match(/<item>[\s\S]*?<\/item>/)![0]}</cboCostEstimates>`);
+  const twice = xml.replace("</cboCostEstimates>", `${/<item>[\s\S]*?<\/item>/.exec(xml)![0]}</cboCostEstimates>`);
   expect(parseListings(twice).map((l) => l.pubId)).toEqual(["61569", "61570"]);
   const [beb, clb] = parseListings(xml);
   expect(beb).toMatchObject({ pubId: "61569", description: "Public Law 119-21 as enacted on July 4, 2025" });
@@ -73,6 +73,7 @@ test("CBO section numbers join through the scored version's path, not the final 
     ],
     "enr",
   );
+
   expect(map("70101", "Medicaid work requirements")).toBe("s1");
   expect(map("110001", "Medicaid work requirements")).toBe("s1");
   expect(map("999", "Medicaid work requirements")).toBeUndefined();
@@ -105,6 +106,7 @@ test("bills that carried the same text: identical bills, public laws that contai
       <item><titleType>Other Short Titles for portions of a bill</titleType><title>TEAM Act of 2022</title></item>
       <item><titleType>Official Title as Introduced</titleType><title>Build a Better VA Act</title></item>
     </titles></bill></billStatus>`;
+
   expect(companions(status, "117-s-3373")).toEqual(["117-hr-3967", "117-s-77", "117-hr-29"]);
 });
 

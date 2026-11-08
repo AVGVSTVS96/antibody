@@ -13,9 +13,13 @@ const base = process.argv[2] ?? "http://localhost:4870";
 const bundlesDir = join(import.meta.dir, "../public/bundles");
 const index = (await Bun.file(join(bundlesDir, "index.json")).json()) as BundleIndex;
 const failures: string[] = [];
+
 const check = (ok: boolean, what: string) => {
   console.log(`${ok ? "pass" : "FAIL"}  ${what}`);
-  if (!ok) failures.push(what);
+
+  if (!ok) {
+    failures.push(what);
+  }
 };
 
 const browser = await chromium.launch({
@@ -29,7 +33,8 @@ async function open(path: string, width = 1440) {
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await page.goto(`${base}${path}`, { waitUntil: "load" });
-  await page.waitForSelector(path === "/" ? ".lawrow" : "#map", { state: "attached", timeout: 30000 });
+  await page.waitForSelector(path === "/" ? ".lawrow" : "#map", { state: "attached", timeout: 30_000 });
+
   return { page, errors };
 }
 
@@ -49,96 +54,131 @@ async function open(path: string, width = 1440) {
   await page.waitForTimeout(300);
   check((await page.locator("a[href='/bill/119-s-1582']").count()) > 0, "search 'GENIUS' keeps the GENIUS bill");
   await box.fill("");
+
   for (const width of [768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.waitForTimeout(200);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     check(over <= 0, `index at ${width}: no horizontal overflow (${over}px)`);
   }
+
   check(errors.length === 0, `index has no console errors ${errors.join(" | ")}`);
   await page.close();
 }
 
 const ids = index.bills.map((b) => b.id);
 const sample = ["119-s-1582", ids.find((i) => i === "117-hr-5376") ?? ids[1]].filter(Boolean) as string[];
+
 for (const id of ids) {
   const { page, errors } = await open(`/bill/${id}`);
   check((await page.title()).length > 12, `${id} tab title: ${await page.title()}`);
   check((await page.locator(".bhero h1").count()) === 1, `${id} renders its heading`);
+
   for (const width of [1440, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.waitForTimeout(200);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     check(over <= 0, `${id} at ${width}: no horizontal overflow (${over}px)`);
   }
+
   await page.setViewportSize({ width: 1440, height: 900 });
+
   if (sample.includes(id)) {
     const shift = await page.evaluate(
-      () =>
+      async () =>
         new Promise<number>((resolve) => {
           let total = 0;
           new PerformanceObserver((list) => {
-            for (const e of list.getEntries() as (PerformanceEntry & { value: number; hadRecentInput: boolean })[])
+            for (const e of list.getEntries() as (PerformanceEntry & { value: number; hadRecentInput: boolean })[]) {
               if (!e.hadRecentInput) total += e.value;
+            }
           }).observe({ type: "layout-shift", buffered: true });
-          setTimeout(() => resolve(total), 300);
+          setTimeout(() => {
+            resolve(total);
+          }, 300);
         }),
     );
+
     check(shift <= 0.1, `${id} layout shift ${shift.toFixed(3)} <= 0.1`);
     await page.goto(`${base}/bill/${id}?view=list`, { waitUntil: "load" });
-    await page.waitForSelector("table tbody tr", { timeout: 20000 });
+    await page.waitForSelector("table tbody tr", { timeout: 20_000 });
     check((await page.locator("table tbody tr").count()) > 0, `${id} section list has rows`);
     await page.goto(`${base}/bill/${id}`, { waitUntil: "load" });
-    await page.waitForSelector("a.src[href]", { timeout: 20000 });
+    await page.waitForSelector("a.src[href]", { timeout: 20_000 });
     const hrefs = await page.$$eval("a.src[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href));
     const bad = hrefs.filter((h) => !/^https:\/\/[^/]+\/./.test(h));
     check(hrefs.length > 5 && bad.length === 0, `${id} ${hrefs.length} source links, ${bad.length} malformed`);
   }
+
   check(errors.length === 0, `${id} no console errors ${errors.slice(0, 2).join(" | ")}`);
   await page.close();
 }
 
 const phone = await open(`/bill/${sample[0]}`, 390);
+
 check(
   (await phone.page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0,
   "phone 390: no horizontal overflow",
 );
+
 await phone.page.close();
+
 await browser.close();
 
 const urls = new Map<string, string>();
+
 for (const f of readdirSync(bundlesDir).filter((f) => f.endsWith(".claims.json"))) {
   const claims = Object.values((await Bun.file(join(bundlesDir, f)).json()) as Bundle["claims"]);
   const step = Math.max(1, Math.floor(claims.length / 6));
-  for (let i = 0; i < claims.length; i += step) urls.set(claims[i]!.sourceUrl, claims[i]!.id);
+
+  for (let i = 0; i < claims.length; i += step) {
+    urls.set(claims[i]!.sourceUrl, claims[i]!.id);
+  }
 }
+
 const picked = [...urls.keys()].sort(() => 0.5 - Math.random()).slice(0, 40);
 let ok = 0;
 const blocked: string[] = [];
+
 await Promise.all(
   picked.map(async (u) => {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const r = await fetch(u, {
           headers: { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131 Safari/537.36" },
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.timeout(30_000),
           redirect: "follow",
         });
+
         await r.body?.cancel();
-        if (r.ok) ok++;
-        else blocked.push(`${r.status} ${u}`);
+
+        if (r.ok) {
+          ok++;
+        } else {
+          blocked.push(`${r.status} ${u}`);
+        }
+
         return;
-      } catch (e) {
-        if (attempt === 2) blocked.push(`ERR ${(e as Error).message} ${u}`);
-        else await Bun.sleep(1500);
+      } catch (error) {
+        if (attempt === 2) blocked.push(`ERR ${(error as Error).message} ${u}`);
+        else {
+          await Bun.sleep(1500);
+        }
       }
     }
   }),
 );
+
 console.log(`source URL sample: ${ok}/${picked.length} answered 2xx`);
-for (const b of blocked) console.log(`  ${b}`);
+
+for (const b of blocked) {
+  console.log(`  ${b}`);
+}
+
 const hard = blocked.filter((b) => /^(404|410|5\d\d|ERR)/.test(b));
+
 check(hard.length === 0, `no sampled source URL is gone or erroring (${hard.length})`);
 
 console.log(failures.length ? `\n${failures.length} failed` : "\nall e2e checks passed");
+
 process.exit(failures.length ? 1 : 0);

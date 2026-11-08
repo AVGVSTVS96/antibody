@@ -52,14 +52,14 @@ describe("normalize", () => {
   });
 
   test("amount ranges, open-ended and exact amounts", () => {
-    expect(amountRange("$15,001 - $50,000")).toEqual({ min: 15001, max: 50000 });
-    expect(amountRange("$1,000 - $15,000")).toEqual({ min: 1001, max: 15000 });
-    expect(amountRange("$1,0001 - $15,000")).toEqual({ min: 1001, max: 15000 });
-    expect(amountRange("Over $50,000,000")).toEqual({ min: 50000001, max: null });
-    expect(amountRange("Spouse/DC Over $1,000,000")).toEqual({ min: 1000001, max: null });
+    expect(amountRange("$15,001 - $50,000")).toEqual({ min: 15_001, max: 50_000 });
+    expect(amountRange("$1,000 - $15,000")).toEqual({ min: 1001, max: 15_000 });
+    expect(amountRange("$1,0001 - $15,000")).toEqual({ min: 1001, max: 15_000 });
+    expect(amountRange("Over $50,000,000")).toEqual({ min: 50_000_001, max: null });
+    expect(amountRange("Spouse/DC Over $1,000,000")).toEqual({ min: 1_000_001, max: null });
     expect(amountRange("$360.00")).toEqual({ min: 360, max: 360 });
     expect(amountRange("$.25")).toEqual({ min: 0.25, max: 0.25 });
-    expect(amountRange("$15,001 \u00ad $50,000")).toEqual({ min: 15001, max: 50000 });
+    expect(amountRange("$15,001 \u00AD $50,000")).toEqual({ min: 15_001, max: 50_000 });
     expect(amountRange("")).toEqual({ min: null, max: null });
   });
 });
@@ -71,6 +71,7 @@ test("House index keeps only PTRs and marks paper DocIDs as scanned", () => {
     "Hon.\tKhanna\tRo\t\tP\tCA17\t2025\t10/2/2025\t8220906",
     "\tAbel\tWilliam\t\tC\tTX31\t2024\t5/12/2024\t10060658",
   ].join("\r\n");
+
   const rows = parseIndex(`﻿${text}`);
   expect(rows.map((r) => [r.docId, r.scanned, r.url])).toEqual([
     ["20032256", false, "https://disclosures-clerk.house.gov/public_disc/ptr-pdfs/2025/20032256.pdf"],
@@ -122,6 +123,7 @@ describe("Senate eFD", () => {
       <img class="filingImage" src="https://efd-media-public.senate.gov/media/2026/2/000/000/000000522.gif" />
       <img class="filingImage"  style="margin-top:220px;"
         src="https://efd-media-public.senate.gov/media/2021/2/000/001/000001283.gif" alt="filing document" />`;
+
     expect(paperImages(page)).toEqual([
       "https://efd-media-public.senate.gov/media/2026/2/000/000/000000521.gif",
       "https://efd-media-public.senate.gov/media/2026/2/000/000/000000522.gif",
@@ -142,6 +144,7 @@ describe("vision rows", () => {
     uncertain: ["date" as const],
     note: null,
   };
+
   const page = (cells: { row: number; field: "date"; value: string; readable: boolean }[]): PageResult => ({
     doc: "h-8220906",
     page: 2,

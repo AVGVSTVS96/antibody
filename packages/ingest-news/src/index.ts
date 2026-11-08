@@ -4,7 +4,9 @@ import { collect } from "./news.ts";
 import { OUTLET_LIST, outletRows } from "./outlets.ts";
 
 export { countsBySource } from "./mediacloud.ts";
+
 export { articleText, defaultTerms, SAMPLE, searchPlan, termsFor } from "./news.ts";
+
 export * from "./outlets.ts";
 
 export const stages: Stage[] = [

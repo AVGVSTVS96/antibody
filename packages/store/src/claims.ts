@@ -1,22 +1,11 @@
-import { Claim, type ClaimId, REACH_WORDS } from "@antibody/core";
+import { Claim, REACH_WORDS } from "@antibody/core";
+import type { ClaimId } from "@antibody/core";
 import { CBO_EVEN_SPLIT, CBO_HEADING_JOIN, COUNTERPART_REF, DOCS } from "./rules.ts";
 
 const ATTENTION_LOCATOR = 'how attention is counted; the counted articles are under "rests on"';
 
-import {
-  count,
-  day,
-  lawNumber,
-  type MemberLike,
-  memberLabel,
-  musd,
-  ordinal,
-  PARTY,
-  quarter,
-  quote,
-  STATES,
-  usd,
-} from "./text.ts";
+import { count, day, lawNumber, memberLabel, musd, ordinal, PARTY, quarter, quote, STATES, usd } from "./text.ts";
+import type { MemberLike } from "./text.ts";
 
 // biome-ignore lint/suspicious/noExplicitAny: rows come from DuckDB shaped by each table's schema, read loosely so a part's new column never breaks wording
 export type AnyRow = Record<string, any>;
@@ -63,23 +52,30 @@ type Template = (row: AnyRow, facet: string | null, n: Names) => Wording;
 
 const who = (n: Names, bioguide: string | null | undefined, fallback = "A member") => {
   const m = n.member(bioguide);
+
   return m ? memberLabel(m) : fallback;
 };
+
 const sec = (n: Names, id: string | null | undefined) => {
   const s = n.section(id);
+
   return s ? `section ${s.num} (${s.heading ? quote(s.heading, 80) : "no heading"})` : `section ${id}`;
 };
+
 const lobbied = (n: Names, filingId: string) => {
   const f = n.filing(filingId);
+
   return f
     ? `${f.registrant} reported lobbying for ${f.client} in ${f.when}`
     : `Lobbying filing ${filingId} reports lobbying`;
 };
+
 /** Whether a bill reference in a filing ("H.R. 29", "S. 394") is a different bill number than the bill's own. */
 export function namesAnotherBill(said: string, display: string): boolean {
-  const norm = (x: string) => x.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const norm = (x: string) => x.toUpperCase().replaceAll(/[^A-Z0-9]/g, "");
   const own = norm(display);
-  const m = norm(said).match(/(HR|S|HJRES|SJRES)(\d+)/);
+  const m = /(HR|S|HJRES|SJRES)(\d+)/.exec(norm(said));
+
   return !!m && `${m[1]}${m[2]}` !== own;
 }
 
@@ -89,18 +85,31 @@ const secNums = (nums: string[]) =>
 /** CBO's sign, worded the same way whichever way it points. */
 function cboChange(measure: string, m: number): string {
   const amount = musd(m);
-  if (m === 0) return `has no effect on ${measure === "deficit" ? "deficits" : measure.replace("_", " ")}`;
+
+  if (m === 0) {
+    return `has no effect on ${measure === "deficit" ? "deficits" : measure.replace("_", " ")}`;
+  }
+
   switch (measure) {
-    case "deficit":
+    case "deficit": {
       return m > 0 ? `adds ${amount} to deficits` : `reduces deficits by ${amount}`;
-    case "revenues":
+    }
+
+    case "revenues": {
       return m > 0 ? `raises revenues by ${amount}` : `lowers revenues by ${amount}`;
-    case "nonscorable_revenues":
+    }
+
+    case "nonscorable_revenues": {
       return `would also raise revenues by ${amount} that CBO does not score, so it is not part of the deficit effect`;
-    case "outlays":
+    }
+
+    case "outlays": {
       return m > 0 ? `increases outlays by ${amount}` : `decreases outlays by ${amount}`;
-    default:
+    }
+
+    default: {
       return m > 0 ? `increases budget authority by ${amount}` : `decreases budget authority by ${amount}`;
+    }
   }
 }
 
@@ -110,12 +119,14 @@ const OWNER: Record<string, (label: string) => string> = {
   joint: (l) => `${l} and spouse, jointly,`,
   dependent: (l) => `${l}'s dependent child`,
 };
+
 const TRADE_VERB: Record<string, string> = {
   purchase: "bought",
   sale: "sold",
   sale_partial: "sold part of a holding in",
   exchange: "exchanged",
 };
+
 const AMENDMENT_STATUS: Record<string, string> = {
   agreed: "was agreed to",
   failed: "failed",
@@ -126,14 +137,20 @@ const AMENDMENT_STATUS: Record<string, string> = {
 export const TEMPLATES: Record<string, Template> = {
   bills: (r, _f, n) => {
     const name = `${n.display}${r.short_title ? `, the ${r.short_title},` : ""}`;
-    if (r.law) return { text: `${name} became Public Law ${lawNumber(r.law)} on ${day(r.law_on)}.` };
+
+    if (r.law) {
+      return { text: `${name} became Public Law ${lawNumber(r.law)} on ${day(r.law_on)}.` };
+    }
+
     const intro = r.introduced_on ? ` was introduced on ${day(r.introduced_on)}` : " was introduced";
+
     return { text: `${name}${intro}; latest action: ${r.latest_action ?? "none recorded"}.` };
   },
 
   versions: (r, facet, n) => {
     const of = r.date ? ` of ${day(r.date)}` : "";
-    if (facet === "predecessor")
+
+    if (facet === "predecessor") {
       return {
         text: `The ${quote(r.name)} text${of} is shown as an earlier stage of ${n.bill}.`,
         kind: "inference",
@@ -142,6 +159,8 @@ export const TEMPLATES: Record<string, Template> = {
         sourceUrl: r.url,
         confidence: 0.9,
       };
+    }
+
     return {
       text: `The ${quote(r.name)} text${of} has ${count(r.sections, "section")} and ${count(r.words, "word")}.`,
     };
@@ -151,24 +170,44 @@ export const TEMPLATES: Record<string, Template> = {
     const parts = [
       `Section ${r.num} (${r.heading ? quote(r.heading, 80) : "no heading"}) first appears in the ${n.version(r.first_version)} text`,
     ];
-    if (r.split_from) parts.push(`, split out of ${sec(n, r.split_from)}`);
+
+    if (r.split_from) {
+      parts.push(`, split out of ${sec(n, r.split_from)}`);
+    }
+
     parts.push(".");
-    if (r.changed_in?.length) parts.push(` Its text changes in ${r.changed_in.map(n.version).join(", ")}.`);
-    if (r.split_into?.length)
+
+    if (r.changed_in?.length) {
+      parts.push(` Its text changes in ${r.changed_in.map(n.version).join(", ")}.`);
+    }
+
+    if (r.split_into?.length) {
       parts.push(` It is split into ${r.split_into.map((s: string) => sec(n, s)).join(" and ")}.`);
-    else if (r.merged_into) parts.push(` It is merged into ${sec(n, r.merged_into)}.`);
-    else if (r.removed_in) parts.push(` It is dropped in the ${n.version(r.removed_in)} text.`);
-    if (r.revived_in?.length) parts.push(` It returns in ${r.revived_in.map(n.version).join(", ")}.`);
-    if (r.in_final) parts.push(" It is in the final text.");
+    } else if (r.merged_into) {
+      parts.push(` It is merged into ${sec(n, r.merged_into)}.`);
+    } else if (r.removed_in) {
+      parts.push(` It is dropped in the ${n.version(r.removed_in)} text.`);
+    }
+
+    if (r.revived_in?.length) {
+      parts.push(` It returns in ${r.revived_in.map(n.version).join(", ")}.`);
+    }
+
+    if (r.in_final) {
+      parts.push(" It is in the final text.");
+    }
+
     return { text: parts.join("") };
   },
 
   section_parts: (r, _f, n) => {
     const late = r.late ? ", after a chamber had passed the bill, so it was added late" : "";
+
     const first =
       r.first_version === r.version
         ? ` It is new in that text${late}.`
         : ` It first appears in the ${n.version(r.first_version)} text (the earliest with at least half its wording)${late}.`;
+
     return {
       text: `Section ${r.num} (${r.heading ? quote(r.heading, 80) : r.lead_in ? "its opening words" : "no heading"}) is ${count(r.words, "word")} of ${sec(n, r.section_id)} in the ${n.version(r.version)} text.${first}`,
     };
@@ -186,6 +225,7 @@ export const TEMPLATES: Record<string, Template> = {
     const by = r.sponsor_bioguide ? `, offered by ${who(n, r.sponsor_bioguide)},` : "";
     const status = AMENDMENT_STATUS[r.status] ?? `has this latest action: ${r.latest_action ?? "none recorded"}`;
     const on = r.latest_action_on && r.status !== "no_action" ? ` on ${day(r.latest_action_on)}` : "";
+
     return { text: `${n.amendment(r.id)}${by} ${status}${on}.` };
   },
 
@@ -194,22 +234,28 @@ export const TEMPLATES: Record<string, Template> = {
   }),
 
   cbo_estimates: (r, facet, n) => {
-    if (facet === "mandates")
+    if (facet === "mandates") {
       return {
         text: `CBO found private-sector mandates: ${r.mandate_private ?? "not stated"}; intergovernmental mandates: ${r.mandate_intergovernmental ?? "not stated"}.`,
       };
+    }
+
     const label = /current.law|current.policy/i.test(r.baseline_label) ? "" : ` (${r.baseline_label})`;
+
     return { text: `CBO scored ${n.display} (${r.version_scored}) against its ${r.baseline} baseline${label}.` };
   },
 
   cbo_lines: (r, facet, n) => {
     const base = n.estimate(r.estimate_id)?.baseline ?? "stated";
+
     const what =
       r.line_kind === "whole-bill"
         ? "the bill"
         : `${secNums(r.section_nums)}${r.title ? ` (${quote(r.title, 80)})` : ""}`;
+
     if (facet) {
       const share = r.total_musd / Math.max(1, r.section_ids.length);
+
       return {
         text: `An even share of CBO's line for ${what}: ${sec(n, facet)} ${cboChange(r.measure, share)} over ${r.period} (${base} baseline). CBO did not split this line itself.`,
         kind: "inference",
@@ -218,8 +264,10 @@ export const TEMPLATES: Record<string, Template> = {
         confidence: 0.5,
       };
     }
+
     const tied = r.section_ids.length === 1 && (r.join === "heading" || r.join === "title") ? r.section_ids[0]! : null;
-    if (tied)
+
+    if (tied) {
       return {
         text: `CBO: ${what} ${cboChange(r.measure, r.total_musd)} over ${r.period} (${base} baseline). CBO printed no section number; the row is tied to ${sec(n, tied)} ${r.join === "heading" ? "because its label matches that section's heading" : "because it is the only section under the title the figure covers"}.`,
         kind: "inference",
@@ -227,6 +275,8 @@ export const TEMPLATES: Record<string, Template> = {
         restsOn: [`sections/${tied}`],
         confidence: 0.8,
       };
+    }
+
     return { text: `CBO: ${what} ${cboChange(r.measure, r.total_musd)} over ${r.period} (${base} baseline).` };
   },
 
@@ -236,12 +286,13 @@ export const TEMPLATES: Record<string, Template> = {
   }),
 
   lda_filings: (r) => ({
-    text: `${r.registrant_name} filed ${r.form ? `an ${r.form}` : "a lobbying report"} for ${r.client_name} for ${quarter(r.period)} ${r.year}${r.amount_usd != null ? `, reporting ${usd(r.amount_usd)} in ${r.amount_kind ?? "spending"}` : ""}.`,
+    text: `${r.registrant_name} filed ${r.form ? `an ${r.form}` : "a lobbying report"} for ${r.client_name} for ${quarter(r.period)} ${r.year}${r.amount_usd == null ? "" : `, reporting ${usd(r.amount_usd)} in ${r.amount_kind ?? "spending"}`}.`,
   }),
 
   lda_bill_refs: (r, _f, n) => {
-    const said = r.matched ? r.matched.replace(/^\W+|[\s,;:.]+$/g, "") : "";
-    if (said && namesAnotherBill(said, n.display))
+    const said = r.matched ? r.matched.replaceAll(/^\W+|[\s,;:.]+$/g, "") : "";
+
+    if (said && namesAnotherBill(said, n.display)) {
       return {
         text: `${lobbied(n, r.filing_id)} on ${quote(said, 60)}, taken to be ${n.bill} (the other chamber's or an earlier version of the same bill).`,
         kind: "inference",
@@ -250,6 +301,8 @@ export const TEMPLATES: Record<string, Template> = {
         confidence: 0.8,
         quote: r.quote,
       };
+    }
+
     return {
       text: `${lobbied(n, r.filing_id)} on ${n.bill}${said ? ` (the filing says ${quote(said, 60)})` : ""}.`,
       quote: r.quote,
@@ -265,15 +318,18 @@ export const TEMPLATES: Record<string, Template> = {
     const f = n.filing(r.filing_id);
     const where = f ? ` for ${f.client} through ${f.registrant} in ${f.when}` : "";
     const covered = r.covered_position ? `; covered position as filed: ${quote(r.covered_position, 200)}` : "";
+
     return { text: `${r.name} lobbied${where}${covered}.`, quote: r.covered_position };
   },
 
   lda_spend: (r, _facet, n) => {
     const whom = r.client_key ? n.client(r.client_key) : "All clients";
+
     const amounts =
       r.amounts != null && r.amounts < r.reports
         ? ` ${count(r.reports, "report")} named it and ${r.amounts} gave a dollar amount that is in this total; the other ${r.reports - r.amounts} add $0.`
         : "";
+
     return {
       text: `${whom} reported ${usd(r.total_usd ?? 0)} in lobbying spending in the ${count(r.quarters, "quarter")} whose filings named ${n.bill}${r.topic_only ? " by topic only" : ""}. That is the filing's total for every issue it lists, not what was spent on this bill.${amounts}`,
       kind: "fact",
@@ -299,6 +355,7 @@ export const TEMPLATES: Record<string, Template> = {
     const label = m ? memberLabel(m) : r.filer_name;
     const asset = String(r.asset).replace(/\s*\[[A-Z]{2}\]\s*$/, "");
     const by = r.read_by === "vision" ? " Read from a scanned page by a vision model." : "";
+
     return {
       text: `${OWNER[r.owner]!(label)} ${TRADE_VERB[r.type]} ${asset}${r.ticker && !asset.includes(`(${r.ticker})`) ? ` (${r.ticker})` : ""} worth ${r.amount} on ${day(r.traded_on)}.${by}`,
       ...(String(r.source_url).includes("efdsearch.senate.gov") && {
@@ -310,15 +367,18 @@ export const TEMPLATES: Record<string, Template> = {
   members: (r, facet, n) => {
     const t = facet ? (r.terms as AnyRow[] | undefined)?.find((x) => x.start === facet) : null;
     const m = t ? { party: t.party, state: t.state, district: t.district, chamber: t.chamber } : r;
-    const party = PARTY[m.party as "R"] ?? (/^Democrat/.test(m.party) ? "Democratic" : m.party);
+    const party = PARTY[m.party as "R"] ?? (m.party.startsWith("Democrat") ? "Democratic" : m.party);
     const role = `${/^[AEIOUaeiou]/.test(party) ? "an" : "a"} ${party} ${m.chamber === "Senate" ? "senator" : "representative"}`;
     const where = `${STATES[m.state] ?? m.state}${m.district ? `'s ${ordinal(m.district)} district` : ""}`;
+
     if (t) {
       const open = String(t.end) >= n.today;
+
       return {
         text: `${r.name} ${open ? "serves" : "served"} as ${role} from ${where} from ${day(t.start)}${open ? `; the term ends ${day(t.end)}` : ` to ${day(t.end)}`}.`,
       };
     }
+
     return { text: `${r.name} is ${role} from ${where}.` };
   },
 
@@ -340,10 +400,12 @@ export const TEMPLATES: Record<string, Template> = {
 
   contributions: (r, _f, n) => {
     const to = who(n, r.bioguide, `candidate ${r.candidate_id}`);
+
     const text =
       r.amount_usd < 0
         ? `${to}'s campaign returned ${usd(r.amount_usd)} to ${n.pac(r.pac_id)} on ${day(r.date)}.`
         : `${n.pac(r.pac_id)} gave ${usd(r.amount_usd)} to ${to} on ${day(r.date)}.`;
+
     return {
       text: text.replace(/^./, (c) => c.toUpperCase()),
       sourceLocator: `FEC filing image, transaction ${r.id}; fec.gov turns away scripts, so open it in a browser`,
@@ -363,8 +425,10 @@ export const TEMPLATES: Record<string, Template> = {
 
   resolutions: (r, _f, n) => {
     const [kind, key] = String(r.src).split(/:(.*)/s) as [string, string];
+
     const name =
       kind === "pac" ? `The political committee ${quote(n.pac(key))}` : `The lobbying client ${quote(n.client(key))}`;
+
     return { text: `${name} is taken to be ${n.company(r.company_id)}.` };
   },
 
@@ -375,12 +439,15 @@ export const TEMPLATES: Record<string, Template> = {
   attention: (r, _f, n) => {
     const subject = r.section_id ? sec(n, r.part_id ?? r.section_id) : `${n.bill} as a whole`;
     const trade = r.trade_legal_hits ? ` Trade and legal press: ${count(r.trade_legal_hits, "more article")}.` : "";
-    if (!r.hits)
+
+    if (!r.hits) {
       return {
         text: `None of the ${n.sample.relevant.toLocaleString("en-US")} relevant articles read (out of ${n.sample.found.toLocaleString("en-US")} found) matched ${subject}. Only a few hundred articles are read, so zero means none among those, not that nobody covered it.${trade}`,
         sourceLocator: ATTENTION_LOCATOR,
         sourceUrl: `${DOCS}#attention-v2`,
       };
+    }
+
     const rank =
       r.pct == null
         ? ""
@@ -389,6 +456,7 @@ export const TEMPLATES: Record<string, Template> = {
           : r.pct <= 0.005
             ? ", among the least covered sections of this bill"
             : `, more than ${Math.round(r.pct * 100)}% of this bill's other sections`;
+
     return {
       text: `${r.hits.toLocaleString("en-US")} of the ${n.sample.relevant.toLocaleString("en-US")} relevant articles read (out of ${n.sample.found.toLocaleString("en-US")} found) matched ${subject}${rank}.${trade}`,
       sourceLocator: ATTENTION_LOCATOR,
@@ -417,30 +485,33 @@ export const TEMPLATES: Record<string, Template> = {
       dollars_baseline?: string | null;
       dollars_by_baseline?: { baseline: string; musd: number }[];
     };
+
     const against = ev.dollars_by_baseline ?? [];
     const baseName = (b: string) => (b === "current-policy" ? "current policy" : "current law");
     const others = against.filter((b) => b.baseline !== ev.dollars_baseline);
+
     const both =
       against.length < 2
         ? ""
         : others.every((b) => b.musd === r.dollars_musd)
           ? " (the same against current law and current policy)"
           : ` against ${baseName(ev.dollars_baseline ?? "")} (${others.map((b) => `${musd(b.musd)} against ${baseName(b.baseline)}`).join(", ")}; the smaller counts)`;
+
     const bits = [
-      r.dollars_musd != null
-        ? `CBO says it ${r.dollars_musd < 0 ? "cuts" : "adds"} ${musd(r.dollars_musd)} ${r.dollars_musd < 0 ? "from" : "to"} the deficit${both}${r.dollars_split === "even_split" ? " (even split)" : ""}`
-        : "no CBO dollars",
-      r.attention_share != null
-        ? `${(r.attention_share * 100).toFixed(1)}% of the bill's relevant articles discussed it`
-        : r.attention_pct != null
+      r.dollars_musd == null
+        ? "no CBO dollars"
+        : `CBO says it ${r.dollars_musd < 0 ? "cuts" : "adds"} ${musd(r.dollars_musd)} ${r.dollars_musd < 0 ? "from" : "to"} the deficit${both}${r.dollars_split === "even_split" ? " (even split)" : ""}`,
+      r.attention_share == null
+        ? r.attention_pct != null
           ? `attention at the ${ordinal(Math.round(r.attention_pct * 100))} percentile`
-          : "attention unmeasured",
+          : "attention unmeasured"
+        : `${(r.attention_share * 100).toFixed(1)}% of the bill's relevant articles discussed it`,
       r.late
         ? "added late"
         : r.late_cleared_by
           ? `not added late (it rewrites ${sec(n, r.late_cleared_by)}, which was in the text before a chamber passed it)`
           : "not added late",
-      r.off_topic != null ? `off-topic distance ${r.off_topic.toFixed(2)}` : null,
+      r.off_topic == null ? null : `off-topic distance ${r.off_topic.toFixed(2)}`,
       r.lobbying_reports
         ? `${count(r.lobbying_reports, "lobbying report")} from ${count(r.lobbying_firms, "firm")}`
         : "no lobbying reports",
@@ -448,10 +519,13 @@ export const TEMPLATES: Record<string, Template> = {
         ? `its text ${r.reach.map((k: keyof typeof REACH_WORDS) => REACH_WORDS[k]).join(" and ")} (reach-v2)`
         : null,
     ].filter(Boolean);
-    const score = r.buried != null ? ` (buried score ${r.buried.toFixed(2)})` : "";
+
+    const score = r.buried == null ? "" : ` (buried score ${r.buried.toFixed(2)})`;
+
     const pays = r.offsets_section_id
       ? ` CBO prints exactly the opposite figure for ${sec(n, r.offsets_section_id)}, so this is read as the section's pay-for and is not flagged on its own.`
       : "";
+
     return {
       text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/, "S")}${r.part_id ? `, a part of ${sec(n, r.section_id)} scored on its own (parts-v1),` : ""} is scored ${r.label}${score}: ${bits.join(", ")}.${pays}`,
     };
@@ -491,6 +565,7 @@ export function mintClaim(
 ): Claim {
   const w = template(table)(row, facet, n);
   const kind = w.kind ?? (INFERENCE_TABLES.has(table) ? "inference" : "fact");
+
   return Claim.parse({
     id: `${table}/${row.id}${facet ? `#${facet}` : ""}`,
     text: w.text,
@@ -507,6 +582,10 @@ export function mintClaim(
 
 function template(table: string): Template {
   const t = TEMPLATES[table];
-  if (!t) throw new Error(`no claim template for ${table}`);
+
+  if (!t) {
+    throw new Error(`no claim template for ${table}`);
+  }
+
   return t;
 }

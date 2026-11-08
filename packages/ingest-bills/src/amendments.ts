@@ -1,6 +1,8 @@
-import { type BillId, ordinal, type Row } from "@antibody/core";
+import { ordinal } from "@antibody/core";
+import type { BillId, Row } from "@antibody/core";
 import type { AmendmentRecord } from "./billstatus.ts";
-import { type AmendmentText, senateAmendmentText, textPages } from "./crec.ts";
+import { senateAmendmentText, textPages } from "./crec.ts";
+import type { AmendmentText } from "./crec.ts";
 import type { Lineage } from "./lineage.ts";
 import { canon, headingWords, intersect, shingles } from "./text.ts";
 
@@ -27,15 +29,27 @@ export function amendmentUrl(a: AmendmentRecord): string {
 /** Read from the latest action's own words, so a tabled or ruled-out amendment never reads as agreed. */
 export function amendmentStatus(a: AmendmentRecord): Status {
   const t = a.latestAction?.text ?? "";
-  if (!t && !a.actions.some((x) => x.text && !/submitted/i.test(x.text))) return "no_action";
-  if (/withdrawn/i.test(t)) return "withdrawn";
+
+  if (!t && !a.actions.some((x) => x.text && !/submitted/i.test(x.text))) {
+    return "no_action";
+  }
+
+  if (/withdrawn/i.test(t)) {
+    return "withdrawn";
+  }
+
   if (
     /not agreed|failed|ruled out of order|\bfell\b|not having achieved|motion to table[^.]*agreed|point of order[^.]*sustained/i.test(
       t,
     )
-  )
+  ) {
     return "failed";
-  if (/\bagreed to\b|adopted/i.test(t)) return "agreed";
+  }
+
+  if (/\bagreed to\b|adopted/i.test(t)) {
+    return "agreed";
+  }
+
   return t ? "other" : "no_action";
 }
 
@@ -43,23 +57,33 @@ export function amendmentStatus(a: AmendmentRecord): Status {
 export function rollId(a: AmendmentRecord): string | null {
   const action =
     a.actions.find((x) => x.text === a.latestAction?.text && x.votes.length) ?? a.actions.find((x) => x.votes.length);
+
   const v = action?.votes[0];
+
   return v ? `${v.chamber.toLowerCase()}-${v.congress}-${v.session}-${v.roll}` : null;
 }
 
 export function lastActionDate(a: AmendmentRecord): string | null {
   const dates = a.actions.map((x) => x.date).filter(Boolean);
+
   return dates.length ? dates.sort().at(-1)! : a.submittedOn;
 }
 
 /** The version step (`pcs->eas`) whose dates bracket the amendment's last action. */
 export function versionStep(when: string | null, versions: { code: string; date: string | null }[]): string | null {
-  if (!when) return null;
+  if (!when) {
+    return null;
+  }
+
   for (let i = 1; i < versions.length; i++) {
     const [a, b] = [versions[i - 1]!, versions[i]!];
     const end = versions.slice(i).find((v) => v.date)?.date;
-    if (a.date && a.date <= when && (!end || when <= end)) return `${a.code}->${b.code}`;
+
+    if (a.date && a.date <= when && (!end || when <= end)) {
+      return `${a.code}->${b.code}`;
+    }
   }
+
   return null;
 }
 
@@ -68,11 +92,12 @@ const isSubstitute = (a: AmendmentRecord, text: AmendmentText | null) =>
 
 /** A section of a substitute as printed in the Record: its heading from the table of contents, and its text. */
 function sectionIn(text: string, num: string): { heading: string | null; body: string } {
-  const toc = text.match(new RegExp(`Sec\\. ${num}\\. ([\\s\\S]{3,300}?)\\.\\s*\\n`));
+  const toc = new RegExp(`Sec\\. ${num}\\. ([\\s\\S]{3,300}?)\\.\\s*\\n`).exec(text);
   const start = text.search(new RegExp(`\\n\\s*SEC\\. ${num}\\. `));
   const rest = start < 0 ? "" : text.slice(start + 1);
   const end = rest.slice(10).search(/\n\s*SEC\. \d+[A-Z]?\. /);
-  return { heading: toc ? toc[1]!.replace(/\s+/g, " ") : null, body: end < 0 ? rest : rest.slice(0, end + 10) };
+
+  return { heading: toc ? toc[1]!.replaceAll(/\s+/g, " ") : null, body: end < 0 ? rest : rest.slice(0, end + 10) };
 }
 
 interface StepInput {
@@ -97,14 +122,18 @@ const SHARE = 0.6;
  */
 export function attribute(s: StepInput): Row<"amendment_sections">[] {
   const rows: Row<"amendment_sections">[] = [];
+
   const texts = s.agreed
     .filter((a) => a.text)
     .map((a) => ({ ...a, sh: shingles(a.text!.text), canon: canon(a.text!.text) }))
     .sort((x, y) => x.canon.length - y.canon.length);
+
   const subs = s.agreed
     .filter((a) => isSubstitute(a.rec, a.text))
     .sort((x, y) => (x.when ?? "").localeCompare(y.when ?? ""));
+
   const stepLabel = `${s.from}->${s.to}`;
+
   const row = (
     a: AmendmentRecord,
     l: Lineage,
@@ -128,12 +157,15 @@ export function attribute(s: StepInput): Row<"amendment_sections">[] {
   for (const l of s.added) {
     const sec = l.history[s.to]!;
     const own = shingles(l.last.text);
+
     const holders = texts.filter((t) =>
       own.size >= 5
         ? intersect(own, t.sh) / own.size >= SHARE
         : t.canon.includes(canon(`${sec.heading} ${l.last.text}`)),
     );
+
     const [best, ...others] = holders;
+
     if (best) {
       rows.push(
         row(
@@ -153,9 +185,11 @@ export function attribute(s: StepInput): Row<"amendment_sections">[] {
       );
       continue;
     }
+
     const only = s.agreed.length === 1 ? s.agreed[0]! : null;
     const sub = subs.at(-1);
-    if (only)
+
+    if (only) {
       rows.push(
         row(
           only.rec,
@@ -169,7 +203,7 @@ export function attribute(s: StepInput): Row<"amendment_sections">[] {
           },
         ),
       );
-    else if (sub)
+    } else if (sub) {
       rows.push(
         row(
           sub.rec,
@@ -183,20 +217,27 @@ export function attribute(s: StepInput): Row<"amendment_sections">[] {
           },
         ),
       );
+    }
   }
 
   for (const a of texts) {
-    const strike = a.text!.text.match(/\bStrike section (\d+[A-Za-z]*)\.\s*(?:_{3,}|$)/);
+    const strike = /\bStrike section (\d+[A-Za-z]*)\.\s*(?:_{3,}|$)/.exec(a.text!.text);
     const parent = a.rec.amends ? s.amended.get(a.rec.amends) : null;
-    if (!strike || !parent) continue;
+
+    if (!strike || !parent) {
+      continue;
+    }
+
     const struck = sectionIn(parent.text, strike[1]!);
     const words = headingWords(struck.heading ?? "");
     const sh = shingles(struck.body);
+
     const scored = s.removed
       .map((l) => {
         const hw = headingWords(l.history[s.from]!.heading);
         const shared = intersect(words, hw);
         const small = Math.min(sh.size, l.last.sh.size);
+
         return {
           l,
           heading: shared / Math.max(1, words.size + hw.size - shared),
@@ -204,8 +245,10 @@ export function attribute(s: StepInput): Row<"amendment_sections">[] {
         };
       })
       .sort((x, y) => Math.max(y.heading, y.wording) - Math.max(x.heading, x.wording));
+
     const top = scored[0];
-    if (top && (top.heading >= 0.5 || top.wording >= 0.3))
+
+    if (top && (top.heading >= 0.5 || top.wording >= 0.3)) {
       rows.push(
         row(
           a.rec,
@@ -225,13 +268,19 @@ export function attribute(s: StepInput): Row<"amendment_sections">[] {
           },
         ),
       );
+    }
   }
+
   return rows;
 }
 
 /** Fetches the printed text of each agreed Senate amendment (House amendment text isn't split into granules). */
 export async function loadText(a: AmendmentRecord): Promise<AmendmentText | null> {
-  if (a.chamber !== "Senate") return null;
+  if (a.chamber !== "Senate") {
+    return null;
+  }
+
   const dates = [a.submittedOn, ...a.actions.map((x) => x.date)].filter((d): d is string => !!d);
-  return senateAmendmentText(a.number, dates, textPages(a.actions));
+
+  return await senateAmendmentText(a.number, dates, textPages(a.actions));
 }

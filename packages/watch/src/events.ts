@@ -1,4 +1,5 @@
-import { type BillId, billRef, congressGovUrl, parseBillId } from "@antibody/core";
+import { billRef, congressGovUrl, parseBillId } from "@antibody/core";
+import type { BillId } from "@antibody/core";
 import type { Action, BillStatus, TextVersion } from "./billstatus.ts";
 
 /** How far along a bill moved, strongest first. The weight is the `moving` sub-score. */
@@ -18,6 +19,7 @@ export const STEPS = {
   cbo_estimate: { weight: 0.3, label: "got a CBO cost estimate" },
   calendar: { weight: 0.3, label: "was placed on a calendar" },
 } as const;
+
 export type Step = keyof typeof STEPS;
 
 export interface Tally {
@@ -46,34 +48,66 @@ export const voteQuestion = (text: string): string | null =>
     .trim() || null;
 
 export function tally(text: string): Tally | null {
-  const m = text.match(TALLY);
+  const m = TALLY.exec(text);
+
   return m ? { yeas: +m[1]!, nays: +m[2]! } : null;
 }
 
 /** A recorded floor vote's count; committee markup votes are left out. */
 const floorTally = (a: Action) => (a.type === "Committee" ? null : tally(a.text));
 
-const passedIn = (a: Action) => a.text.match(/^Passed(?:\/agreed to in)? (House|Senate)\b/)?.[1] ?? null;
+const passedIn = (a: Action) => /^Passed(?:\/agreed to in)? (House|Senate)\b/.exec(a.text)?.[1] ?? null;
 
 export function classify(a: Action, passedBefore: Set<string>): Step | null {
   const t = a.text;
-  if (a.type === "BecameLaw" || /Became (Public|Private) Law/.test(t)) return "law";
-  if (a.type === "Veto" || /Vetoed by President/i.test(t)) return "vetoed";
-  if (/^Presented to President/.test(t)) return "presented";
-  if (a.type === "ResolvingDifferences" || /conference report|Resolving differences/i.test(t)) return "resolving";
+
+  if (a.type === "BecameLaw" || /Became (Public|Private) Law/.test(t)) {
+    return "law";
+  }
+
+  if (a.type === "Veto" || /Vetoed by President/i.test(t)) {
+    return "vetoed";
+  }
+
+  if (t.startsWith("Presented to President")) {
+    return "presented";
+  }
+
+  if (a.type === "ResolvingDifferences" || /conference report|Resolving differences/i.test(t)) {
+    return "resolving";
+  }
+
   const chamber = passedIn(a);
-  if (chamber) return [...passedBefore].some((c) => c !== chamber) ? "passed_second" : "passed";
-  if (/^Failed of passage|^Failed to pass|motion to proceed rejected|cloture .*not invoked/i.test(t)) return "failed";
-  if (a.votes.length || floorTally(a)) return "vote";
+
+  if (chamber) {
+    return [...passedBefore].some((c) => c !== chamber) ? "passed_second" : "passed";
+  }
+
+  if (/^Failed of passage|^Failed to pass|motion to proceed rejected|cloture .*not invoked/i.test(t)) {
+    return "failed";
+  }
+
+  if (a.votes.length || floorTally(a)) {
+    return "vote";
+  }
+
   if (
     a.type === "Floor" &&
     !/amendment submitted|^Received in the|^Held at the desk|^Message on|read twice and referred|referred to the (sub)?committee/i.test(
       t,
     )
-  )
+  ) {
     return "floor";
-  if (a.type === "Committee" && /reported|ordered to be reported/i.test(t)) return "reported";
-  if (a.type === "Calendars") return "calendar";
+  }
+
+  if (a.type === "Committee" && /reported|ordered to be reported/i.test(t)) {
+    return "reported";
+  }
+
+  if (a.type === "Calendars") {
+    return "calendar";
+  }
+
   return null;
 }
 
@@ -82,20 +116,33 @@ export function classify(a: Action, passedBefore: Set<string>): Step | null {
  * new text versions and CBO estimates. `published` holds GovInfo publication dates for text packages
  * (enrolled bills carry no date in BILLSTATUS).
  */
-export function billEvents(s: BillStatus, since: string, published: Map<string, string> = new Map()): BillEvent[] {
+export function billEvents(s: BillStatus, since: string, published = new Map<string, string>()): BillEvent[] {
   const byKey = new Map<string, BillEvent>();
+
   const add = (e: BillEvent) => {
     const prior = byKey.get(e.id);
     const rank = (x: BillEvent) => STEPS[x.step].weight + (x.tally ? 0.01 : 0);
-    if (!prior || rank(e) > rank(prior)) byKey.set(e.id, e);
+
+    if (!prior || rank(e) > rank(prior)) {
+      byKey.set(e.id, e);
+    }
   };
+
   const passed = new Set<string>();
   const actionsUrl = `${congressGovUrl(s.id)}/all-actions`;
+
   for (const a of [...s.actions].sort((x, y) => x.date.localeCompare(y.date))) {
     const step = classify(a, passed);
     const chamber = passedIn(a);
-    if (chamber) passed.add(chamber);
-    if (!step || a.date < since) continue;
+
+    if (chamber) {
+      passed.add(chamber);
+    }
+
+    if (!step || a.date < since) {
+      continue;
+    }
+
     const vote = a.votes[0];
     const key = vote ? `${vote.chamber[0]!.toLowerCase()}${vote.roll}` : step;
     add({
@@ -109,9 +156,14 @@ export function billEvents(s: BillStatus, since: string, published: Map<string, 
       tally: floorTally(a),
     });
   }
+
   for (const v of s.versions) {
     const date = v.date ?? published.get(`BILLS-${packageStem(s.id)}${v.code}`) ?? null;
-    if (!date || date < since || INTRODUCED.has(v.code)) continue;
+
+    if (!date || date < since || INTRODUCED.has(v.code)) {
+      continue;
+    }
+
     const enrolled = v.code === "enr";
     add({
       id: `${s.id}/${enrolled ? "enrolled" : "new_version"}/${v.code}`,
@@ -124,7 +176,8 @@ export function billEvents(s: BillStatus, since: string, published: Map<string, 
       tally: null,
     });
   }
-  for (const c of s.cbo)
+
+  for (const c of s.cbo) {
     if (c.publishedOn >= since)
       add({
         id: `${s.id}/cbo_estimate/${c.url.split("/").pop()}`,
@@ -136,7 +189,10 @@ export function billEvents(s: BillStatus, since: string, published: Map<string, 
         url: c.url,
         tally: null,
       });
+  }
+
   const rolled = new Set([...byKey.values()].filter((e) => e.kind === "floor_vote").map(voteKey));
+
   return [...byKey.values()]
     .filter((e) => e.kind !== "action" || !e.tally || !rolled.has(voteKey(e)))
     .sort((a, b) => b.date.localeCompare(a.date) || STEPS[b.step].weight - STEPS[a.step].weight);
@@ -147,6 +203,7 @@ const INTRODUCED = new Set(["ih", "is", "iph", "ips"]);
 /** The text the first chamber passed (engrossed in the chamber the bill started in). */
 export function passedVersion(s: BillStatus): TextVersion | null {
   const code = s.id.split("-")[1]!.startsWith("h") ? "eh" : "es";
+
   return s.versions.find((v) => v.code === code) ?? null;
 }
 
@@ -157,7 +214,11 @@ export function passedVersion(s: BillStatus): TextVersion | null {
  */
 export function beforeFloor(s: BillStatus): TextVersion | null {
   const passed = passedVersion(s);
-  if (!passed?.date) return null;
+
+  if (!passed?.date) {
+    return null;
+  }
+
   return (
     s.versions.filter((v) => v.date && v.date < passed.date!).sort((a, b) => b.date!.localeCompare(a.date!))[0] ?? null
   );
@@ -165,7 +226,7 @@ export function beforeFloor(s: BillStatus): TextVersion | null {
 
 const voteKey = (e: BillEvent) => `${e.date}/${e.tally?.yeas}-${e.tally?.nays}`;
 
-export const packageStem = (id: BillId) => id.replace(/-/g, "");
+export const packageStem = (id: BillId) => id.replaceAll("-", "");
 
 /** True when a House rule in the bill's actions brings it up under a closed rule (no floor amendments). */
 export function closedRule(s: BillStatus, since: string): boolean {
@@ -180,12 +241,17 @@ export function closedRuleBills(text: string, of: BillId): BillId[] {
   const congress = billRef(of).congress;
   const out: BillId[] = [];
   let from = 0;
+
   for (const m of text.matchAll(RULE)) {
     const start = Math.max(from, text.lastIndexOf("consideration of", m.index));
-    if (m[1]!.toLowerCase() === "closed")
+
+    if (m[1]!.toLowerCase() === "closed") {
       for (const b of text.slice(start, m.index).matchAll(BILL_REF)) out.push(parseBillId(`${b[1]} ${b[2]}`, congress));
+    }
+
     from = m.index + m[0].length;
   }
+
   return out;
 }
 
@@ -207,15 +273,25 @@ export function voteClock(s: BillStatus, events: BillEvent[]): VoteClock | null 
     .filter((e) => e.tally)
     .map((e) => e.date)
     .sort()[0];
-  if (!voteOn) return null;
+
+  if (!voteOn) {
+    return null;
+  }
+
   const starts = [
     { from: "introduced", on: s.introducedOn },
     ...s.amendments
       .filter((a) => /nature of a substitute/i.test(a.purpose ?? ""))
       .map((a) => ({ from: a.id, on: a.submittedOn })),
   ].filter((x): x is { from: string; on: string } => !!x.on && x.on <= voteOn);
+
   const start = starts.sort((a, b) => a.on.localeCompare(b.on)).pop();
-  if (!start) return null;
+
+  if (!start) {
+    return null;
+  }
+
   const days = Math.round((Date.parse(voteOn) - Date.parse(start.on)) / 86_400_000);
+
   return { days, from: start.from, startedOn: start.on, voteOn };
 }

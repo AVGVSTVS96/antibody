@@ -19,20 +19,27 @@ export function lobbiedBenefits(
   sections: Row<"sections">[],
 ): Row<"benefits">[] {
   const byNum = new Map<string, Row<"sections">[]>();
-  for (const s of sections) byNum.set(s.num, [...(byNum.get(s.num) ?? []), s]);
+
+  for (const s of sections) {
+    byNum.set(s.num, [...(byNum.get(s.num) ?? []), s]);
+  }
+
   const sectionFor = (num: string) => {
     const hits = byNum.get(num) ?? [];
+
     return (hits.find((s) => s.in_final) ?? (hits.length === 1 ? hits[0] : undefined))?.id ?? null;
   };
 
-  type Acc = {
+  interface Acc {
     cik: string;
     section: string | null;
     refs: Row<"lda_bill_refs">[];
     res: Set<Row<"resolutions">>;
     topicOnly: number;
-  };
+  }
+
   const acc = new Map<string, Acc>();
+
   const add = (cik: string, section: string | null, ref: Row<"lda_bill_refs">, res: Row<"resolutions">) => {
     const k = `${cik}\u0000${section ?? ""}`;
     const a = acc.get(k) ?? { cik, section, refs: [], res: new Set(), topicOnly: 0 };
@@ -40,15 +47,28 @@ export function lobbiedBenefits(
     a.res.add(res);
     acc.set(k, a);
   };
+
   for (const ref of refs) {
     const filing = filings.get(ref.filing_id);
-    if (ref.bill_id !== bill || ref.match === "low" || !filing || filing.superseded) continue;
+
+    if (ref.bill_id !== bill || ref.match === "low" || !filing || filing.superseded) {
+      continue;
+    }
+
     const res = resolutions.get(`client:${filing.client_key}`);
-    if (!res || !ownedOn(ownedSince((res.evidence as { reason?: string }).reason), filing.period_end)) continue;
+
+    if (!res || !ownedOn(ownedSince((res.evidence as { reason?: string }).reason), filing.period_end)) {
+      continue;
+    }
+
     add(res.company_id, null, ref, res);
+
     for (const num of ref.section_nums) {
       const id = sectionFor(num);
-      if (id) add(res.company_id, id, ref, res);
+
+      if (id) {
+        add(res.company_id, id, ref, res);
+      }
     }
   }
 
@@ -56,6 +76,7 @@ export function lobbiedBenefits(
     const best = Math.max(...a.refs.map((r) => REF_CONFIDENCE[r.match]));
     const resolved = [...a.res];
     const refIds = [...new Set(a.refs.map((r) => `lda_bill_refs/${r.id}`))];
+
     return {
       id: `${bill}:lobbied:${a.cik}${a.section ? `:${a.section}` : ""}`,
       bill_id: bill,
@@ -81,6 +102,7 @@ export function lobbiedBenefits(
 }
 
 const round = (x: number) => Math.round(x * 1000) / 1000;
+
 const countBy = (xs: string[]) =>
   Object.fromEntries([...new Set(xs)].map((x) => [x, xs.filter((y) => y === x).length]));
 
@@ -100,11 +122,17 @@ export function splitSections(xml: string): TextSection[] {
   let cur: TextSection | null = null;
   let wantEnum = false;
   const tag = /<(\/?)([A-Za-z][\w-]*)([^>]*?)(\/?)>|([^<]+)/g;
+
   for (let m = tag.exec(xml); m; m = tag.exec(xml)) {
     const [, close, name, , selfClose, text] = m;
+
     if (text !== undefined) {
-      if (!cur) continue;
+      if (!cur) {
+        continue;
+      }
+
       const t = decode(text);
+
       if (wantEnum && stack.at(-1) === "enum" && t.trim()) {
         cur.num = t
           .trim()
@@ -112,20 +140,32 @@ export function splitSections(xml: string): TextSection[] {
           .replace(/\.$/, "");
         wantEnum = false;
       }
+
       cur.text += t;
       continue;
     }
+
     const n = name!.toLowerCase();
-    if (selfClose) continue;
+
+    if (selfClose) {
+      continue;
+    }
+
     if (close) {
       const i = stack.lastIndexOf(n);
-      if (i >= 0) stack.length = i;
+
+      if (i !== -1) {
+        stack.length = i;
+      }
+
       if (n === "section" && cur && !stack.includes("section")) {
         out.push(cur);
         cur = null;
       }
+
       continue;
     }
+
     if (
       n === "section" &&
       !stack.includes("section") &&
@@ -133,14 +173,18 @@ export function splitSections(xml: string): TextSection[] {
     ) {
       cur = { num: null, text: "" };
       wantEnum = true;
-    } else if (cur && /^(?:p|paragraph|subsection|text|header|heading|enum|content|chapeau)$/.test(n)) cur.text += " ";
+    } else if (cur && /^(?:p|paragraph|subsection|text|header|heading|enum|content|chapeau)$/.test(n)) {
+      cur.text += " ";
+    }
+
     stack.push(n);
   }
+
   return out;
 }
 
 const decode = (s: string) =>
-  s.replace(/&(?:#(\d+)|#x([0-9a-f]+)|(amp|lt|gt|quot|apos));/gi, (_, d, h, e) =>
+  s.replaceAll(/&(?:#(\d+)|#x([0-9a-f]+)|(amp|lt|gt|quot|apos));/gi, (_, d, h, e) =>
     d
       ? String.fromCodePoint(+d)
       : h
@@ -158,6 +202,7 @@ export interface TextHit {
 
 const LEGAL =
   /^,?\s*(?:Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.|LLC|L\.L\.C\.|plc|PLC|Ltd\.?|Limited|N\.A\.|Holdings?)\b/;
+
 const WORD = /[A-Za-z0-9&.'-]+/g;
 
 /**
@@ -169,49 +214,83 @@ const WORD = /[A-Za-z0-9&.'-]+/g;
 export function findNames(sections: TextSection[], companies: Company[], norm: (s: string) => string): TextHit[] {
   const multi = new Map<string, Company[]>();
   const single = new Map<string, Company[]>();
+
   for (const c of companies) {
     const n = norm(c.name);
     const parts = n.split(" ").filter(Boolean);
-    if (!parts.length || parts.every((p) => /^\d+$/.test(p))) continue;
+
+    if (!parts.length || parts.every((p) => /^\d+$/.test(p))) {
+      continue;
+    }
+
     const into = parts.length > 1 ? multi : single;
-    if (parts.length === 1 && parts[0]!.length < 3) continue;
+
+    if (parts.length === 1 && parts[0]!.length < 3) {
+      continue;
+    }
+
     into.set(n, [...(into.get(n) ?? []), c]);
   }
+
   const maxLen = 6;
   const hits: TextHit[] = [];
+
   for (const s of sections) {
-    const words = [...s.text.matchAll(WORD)].map((m) => ({ w: m[0], at: m.index! }));
-    const keys = words.map((x) => x.w.toUpperCase().replace(/[^A-Z0-9]/g, ""));
+    const words = [...s.text.matchAll(WORD)].map((m) => ({ w: m[0], at: m.index }));
+    const keys = words.map((x) => x.w.toUpperCase().replaceAll(/[^A-Z0-9]/g, ""));
     const cap = words.map((x) => /^[A-Z0-9]/.test(x.w));
+
     for (let i = 0; i < words.length; i++) {
-      if (!cap[i]) continue;
+      if (!cap[i]) {
+        continue;
+      }
+
       for (let len = Math.min(maxLen, words.length - i); len >= 1; len--) {
-        if (!cap.slice(i, i + len).every(Boolean)) continue;
+        if (!cap.slice(i, i + len).every(Boolean)) {
+          continue;
+        }
+
         const key = keys
           .slice(i, i + len)
           .filter(Boolean)
           .join(" ");
+
         const end = words[i + len - 1]!.at + words[i + len - 1]!.w.length;
         const suffixed = LEGAL.test(s.text.slice(end, end + 16));
         const found = len > 1 ? multi.get(key) : suffixed ? single.get(key) : undefined;
-        if (!found) continue;
+
+        if (!found) {
+          continue;
+        }
+
         const runsOn = !suffixed && cap[i + len] && /^\s+$/.test(s.text.slice(end, words[i + len]!.at));
+
         const runsIn =
           i > 0 &&
           cap[i - 1] &&
           !/^the$/i.test(words[i - 1]!.w) &&
           /^\s+$/.test(s.text.slice(words[i - 1]!.at + words[i - 1]!.w.length, words[i]!.at));
-        if (runsOn || runsIn) break;
+
+        if (runsOn || runsIn) {
+          break;
+        }
+
         const start = words[i]!.at;
         const matched = s.text.slice(start, end);
+
         const context = s.text
           .slice(Math.max(0, start - 220), end + 220)
-          .replace(/\s+/g, " ")
+          .replaceAll(/\s+/g, " ")
           .trim();
-        for (const c of found) hits.push({ cik: c.cik, name: c.name, matched, num: s.num, context });
+
+        for (const c of found) {
+          hits.push({ cik: c.cik, name: c.name, matched, num: s.num, context });
+        }
+
         break;
       }
     }
   }
+
   return hits;
 }

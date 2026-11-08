@@ -8,15 +8,17 @@
  */
 import { join } from "node:path";
 import { paths } from "@antibody/core/node";
-import { collectionSources, countsBySource, type Source, sourceByDomain } from "../src/mediacloud.ts";
-import { type Group, midpoint, type Partisan } from "../src/outlets.ts";
+import { collectionSources, countsBySource, sourceByDomain } from "../src/mediacloud.ts";
+import type { Source } from "../src/mediacloud.ts";
+import { midpoint } from "../src/outlets.ts";
+import type { Group, Partisan } from "../src/outlets.ts";
 
 const QUINTILES: Record<Partisan, number> = {
-  left: 200363061,
-  "center-left": 200363048,
-  center: 200363050,
-  "center-right": 200363062,
-  right: 200363049,
+  left: 200_363_061,
+  "center-left": 200_363_048,
+  center: 200_363_050,
+  "center-right": 200_363_062,
+  right: 200_363_049,
 };
 
 /** National outlets that cover Congress, across the spectrum. Inclusion is decided by the rules below, not by this list. */
@@ -129,41 +131,60 @@ const PROBES = [
   { start: "2022-07-01", end: "2022-09-30" },
   { start: "2025-05-01", end: "2025-07-31" },
 ];
+
 const MIN_CONGRESS_STORIES = 20;
 
 if (import.meta.main) {
   const version = Bun.argv[2];
-  if (!version) throw new Error("usage: outlets.ts <version>");
+
+  if (!version) {
+    throw new Error("usage: outlets.ts <version>");
+  }
+
   const cache = join(paths.raw("news"), "mediacloud");
 
   const membership = new Map<number, Partisan[]>();
+
   for (const [q, id] of Object.entries(QUINTILES) as [Partisan, number][]) {
-    for (const s of await collectionSources(id)) membership.set(s.id, [...(membership.get(s.id) ?? []), q]);
+    for (const s of await collectionSources(id)) {
+      membership.set(s.id, [...(membership.get(s.id) ?? []), q]);
+    }
   }
 
   const found = new Map<string, Source | null>();
-  for (const d of [...NEWS, ...TRADE_LEGAL]) found.set(d, await sourceByDomain(d));
+
+  for (const d of [...NEWS, ...TRADE_LEGAL]) {
+    found.set(d, await sourceByDomain(d));
+  }
+
   const ids = [...found.values()].flatMap((s) => (s ? [s.id] : []));
 
   const probes: Record<string, number>[] = [];
-  for (const w of PROBES) probes.push(await countsBySource("Congress", ids, w));
+
+  for (const w of PROBES) {
+    probes.push(await countsBySource("Congress", ids, w));
+  }
+
   await Bun.write(join(cache, `outlets-${version}-probe.json`), JSON.stringify({ PROBES, probes }, null, 1));
 
   const outlets: object[] = [];
   const left: object[] = [];
+
   for (const d of [...NEWS, ...TRADE_LEGAL]) {
     const s = found.get(d);
     const quintiles = s ? (membership.get(s.id) ?? []) : [];
     const congress = probes.map((p) => p[d] ?? 0);
     const trade = TRADE_LEGAL.includes(d);
     const group: Group | null = trade ? "trade-legal" : midpoint(quintiles);
-    const why = !s
-      ? "not in the Media Cloud directory"
-      : !trade && !group
+
+    const why = s
+      ? !trade && !group
         ? "no 2019 partisanship rating in Media Cloud"
         : !trade && Math.max(...congress) < MIN_CONGRESS_STORIES
           ? `fewer than ${MIN_CONGRESS_STORIES} Congress stories collected in each probe window`
-          : null;
+          : null
+      : "not in the Media Cloud directory";
+
     const row = {
       domain: d,
       name: d,
@@ -173,8 +194,12 @@ if (import.meta.main) {
       media_type: s?.media_type ?? null,
       congress_stories: congress,
     };
-    if (why) left.push({ ...row, why });
-    else outlets.push(row);
+
+    if (why) {
+      left.push({ ...row, why });
+    } else {
+      outlets.push(row);
+    }
   }
 
   const list = {
@@ -194,9 +219,14 @@ if (import.meta.main) {
     outlets,
     left_out: left,
   };
+
   const file = join(import.meta.dir, "../data/outlets.json");
   await Bun.write(file, `${JSON.stringify(list, null, 1)}\n`);
   const by: Record<string, number> = {};
-  for (const o of outlets as { group: string }[]) by[o.group] = (by[o.group] ?? 0) + 1;
+
+  for (const o of outlets as { group: string }[]) {
+    by[o.group] = (by[o.group] ?? 0) + 1;
+  }
+
   console.log(file, by, "left out", left.length);
 }

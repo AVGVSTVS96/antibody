@@ -1,6 +1,7 @@
 import type { BillId, Row } from "@antibody/core";
 import { earlierBill } from "./eras.ts";
-import { best, findRefs, type Matcher, period, sectionNums } from "./extract.ts";
+import { best, findRefs, period, sectionNums } from "./extract.ts";
+import type { Matcher } from "./extract.ts";
 import type { LdaFiling, LdaLobbyist } from "./lda.ts";
 import { namedMembers } from "./staff.ts";
 
@@ -8,8 +9,14 @@ export type Phase = Row<"lda_bill_refs">["phase"];
 
 /** Before the quarter of enactment, that quarter, or after. A bill that never became law is always "bill". */
 export function phaseOf(start: string, end: string, enactedOn: string | null): Phase {
-  if (!enactedOn || end < enactedOn) return "bill";
-  if (start > enactedOn) return "law";
+  if (!enactedOn || end < enactedOn) {
+    return "bill";
+  }
+
+  if (start > enactedOn) {
+    return "law";
+  }
+
   return "enactment-quarter";
 }
 
@@ -24,13 +31,14 @@ export function clientKey(name: string, ldaClientId: number | string): string {
   const key = name
     .toUpperCase()
     .replace(/^.*\b(?:OBO|ON BEHALF OF|O\/B\/O)\b/, "")
-    .replace(/\(.*?\)/g, " ")
-    .replace(/&/g, " AND ")
-    .replace(/[^A-Z0-9 ]+/g, " ")
-    .replace(SUFFIXES, " ")
+    .replaceAll(/\(.*?\)/g, " ")
+    .replaceAll("&", " AND ")
+    .replaceAll(/[^A-Z0-9 ]+/g, " ")
+    .replaceAll(SUFFIXES, " ")
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, "-");
+    .replaceAll(/\s+/g, "-");
+
   return key || `lda-${ldaClientId}`;
 }
 
@@ -38,15 +46,16 @@ const lobbyistName = ({ lobbyist: l }: LdaLobbyist) =>
   [l.prefix_display, l.first_name, l.middle_name, l.last_name, l.suffix_display].filter(Boolean).join(" ");
 
 const amountOf = (f: LdaFiling): [number | null, "income" | "expenses" | null] =>
-  f.income != null
-    ? [Number(f.income), "income"]
-    : f.expenses != null
+  f.income == null
+    ? f.expenses != null
       ? [Number(f.expenses), "expenses"]
-      : [null, null];
+      : [null, null]
+    : [Number(f.income), "income"];
 
 export function filingRow(f: LdaFiling): Row<"lda_filings"> {
   const p = period(f.filing_year, f.filing_period);
   const [amount, kind] = amountOf(f);
+
   return {
     id: f.filing_uuid,
     url: f.filing_document_url,
@@ -87,16 +96,22 @@ export interface Extracted {
 export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSections?: Set<string>): Extracted {
   const out: Extracted = { filings: [], refs: [], lobbyists: [], clients: [] };
   const namedFilings: LdaFiling[] = [];
+
   for (const f of all) {
     const p = period(f.filing_year, f.filing_period);
     const phase = phaseOf(p.start, p.end, m.aliases.enactedOn);
     const lines = f.lobbying_activities;
     const lobbyists = new Map<string, Row<"lda_lobbyists">>();
     let named = false;
+
     for (const [i, a] of lines.entries()) {
       const text = a.description ?? "";
       const found = best(findRefs(text, p, m));
-      if (!found) continue;
+
+      if (!found) {
+        continue;
+      }
+
       const earlier = earlierBill(bill, p.end, text);
       const ref = earlier ? { ...found, level: "low" as const, why: `Held out: ${earlier}.` } : found;
       named = true;
@@ -117,7 +132,11 @@ export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSection
         source_url: f.filing_document_url,
         source_locator: `issue line ${i + 1} of ${lines.length} (${a.general_issue_code})`,
       });
-      if (ref.level === "low") continue;
+
+      if (ref.level === "low") {
+        continue;
+      }
+
       for (const l of a.lobbyists) {
         const id = `${f.filing_uuid}:${l.lobbyist.id}`;
         const prev = lobbyists.get(id);
@@ -135,26 +154,41 @@ export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSection
         });
       }
     }
-    if (!named) continue;
+
+    if (!named) {
+      continue;
+    }
+
     out.filings.push(filingRow(f));
     out.lobbyists.push(...lobbyists.values());
     namedFilings.push(f);
   }
+
   out.clients = clientRows(namedFilings);
+
   return out;
 }
 
 /** One row per merged client key, with every lda.gov client id and name spelling seen. */
 export function clientRows(filings: LdaFiling[]): Row<"lda_clients">[] {
   const out = new Map<string, Row<"lda_clients">>();
+
   for (const f of filings) {
     const key = clientKey(f.client.name, f.client.id);
     const c = out.get(key) ?? { id: key, name: f.client.name, lda_client_ids: [], names: [], description: null };
-    if (!c.lda_client_ids.includes(String(f.client.id))) c.lda_client_ids.push(String(f.client.id));
-    if (!c.names.includes(f.client.name)) c.names.push(f.client.name);
+
+    if (!c.lda_client_ids.includes(String(f.client.id))) {
+      c.lda_client_ids.push(String(f.client.id));
+    }
+
+    if (!c.names.includes(f.client.name)) {
+      c.names.push(f.client.name);
+    }
+
     c.description ??= f.client.general_description || null;
     out.set(key, c);
   }
+
   return [...out.values()];
 }
 
@@ -172,12 +206,21 @@ const posted = (r: Row<"lda_filings">) => (r.posted_at ? Date.parse(r.posted_at)
 /** Among LD-2 reports for the same registrant, client and period, the latest posted replaces the rest. */
 export function markSuperseded(rows: Row<"lda_filings">[]): Row<"lda_filings">[] {
   const latest = new Map<string, Row<"lda_filings">>();
+
   for (const r of rows) {
-    if (r.form !== "LD-2") continue;
+    if (r.form !== "LD-2") {
+      continue;
+    }
+
     const key = `${r.registrant_id}|${r.lda_client_id}|${r.year}|${r.period}`;
     const prev = latest.get(key);
-    if (!prev || posted(r) > posted(prev)) latest.set(key, r);
+
+    if (!prev || posted(r) > posted(prev)) {
+      latest.set(key, r);
+    }
   }
+
   const keep = new Set(latest.values());
+
   return rows.map((r) => ({ ...r, superseded: r.form === "LD-2" && !keep.has(r) }));
 }

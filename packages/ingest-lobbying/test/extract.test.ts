@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { type Aliases, acronyms, best, findRefs, matcher, nameForms, period, sectionNums } from "../src/extract.ts";
+import { acronyms, best, findRefs, matcher, nameForms, period, sectionNums } from "../src/extract.ts";
+import type { Aliases } from "../src/extract.ts";
 import { searchTerms } from "../src/pull.ts";
 
 const genius: Aliases = {
@@ -106,6 +107,7 @@ test("a filer's 'companion bill' of another named Act is held out; hyphenated na
     laws: ["119-1"],
     rivals: [],
   });
+
   const p = period(2025, "first_quarter");
   expect(level("H.R. 471, Fix Our Forests Act (and companion bill S. 5); all provisions", laken, p)).toBe("low");
   expect(level("NETWORK opposed S. 5, the Laken-Riley Act.", laken, p)).toBe("high");
@@ -136,6 +138,7 @@ test("section numbers for this bill, not for other laws", () => {
 test("a section next to an earlier bill with the same title, or a different law, is not this bill's", () => {
   const text =
     "S. 394 - Guiding and Establishing National Innovation for U.S. Stablecoins of 2025: custodians (Sec.8(b)(2)).";
+
   expect(sectionNums(text, G)).toEqual([]);
   expect(sectionNums("digital assets and the GENIUS Act - Section 16(a), Foreign Private Issuer", G)).toEqual([]);
   expect(sectionNums("Section 4 of the GENIUS Act (reserves)", G)).toEqual(["4"]);
@@ -150,7 +153,11 @@ test("name forms drop the year, and Act when three words remain", () => {
 
 test("search terms cover number spellings, names, typos and the law", () => {
   const t = searchTerms(genius);
-  for (const s of ['"S. 394"', '"S.1582"', '"GENIUS Act"', '"GENUIS Act"', '"119-27"']) expect(t).toContain(s);
+
+  for (const s of ['"S. 394"', '"S.1582"', '"GENIUS Act"', '"GENUIS Act"', '"119-27"']) {
+    expect(t).toContain(s);
+  }
+
   expect(searchTerms(obbba)).toContain('"OBBBA"');
 });
 
@@ -180,7 +187,9 @@ test("a public law number in a line about another bill is held out, even when th
     support: [],
     years: [2025, 2026],
   });
+
   const text =
     "Public Law No. 119-12, Business State and Local Tax Deduction provisions related to H.R. 1, One Big Beautiful Bill Act";
+
   expect(best(findRefs(text, period(2025, "third_quarter"), s146))?.level).toBe("low");
 });

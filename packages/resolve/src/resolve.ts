@@ -1,7 +1,9 @@
 import type { Row } from "@antibody/core";
-import { type CompanyIndex, type Match, type Mention, type Outcome, type Queued, resolveMention } from "./match.ts";
+import { resolveMention } from "./match.ts";
+import type { CompanyIndex, Match, Mention, Outcome, Queued } from "./match.ts";
 import { dedupe, uniqueBySrc } from "./mentions.ts";
-import { type ReviewStats, review } from "./review.ts";
+import { review } from "./review.ts";
+import type { ReviewStats } from "./review.ts";
 import { RULE_FOR } from "./rules.ts";
 
 export interface Resolved {
@@ -26,19 +28,30 @@ export async function resolveAll(
   const queued = first.flatMap(({ o }) => (o.kind === "queue" ? [o.queued] : []));
   const reviewed = opts.llm === false ? null : await review(queued, index, opts);
   const byMention = new Map<Mention, Match>();
-  for (const { m, o } of first) if (o.kind === "match") byMention.set(m, o.match);
-  for (const x of reviewed?.matches ?? []) byMention.set(x.mention, x);
+
+  for (const { m, o } of first) {
+    if (o.kind === "match") byMention.set(m, o.match);
+  }
+
+  for (const x of reviewed?.matches ?? []) {
+    byMention.set(x.mention, x);
+  }
+
   const rejected = new Map<Mention, string>((reviewed?.rejected ?? []).map((r) => [r.q.mention, r.why]));
 
   const rows: Row<"resolutions">[] = [];
-  for (const [rep, match] of byMention)
+
+  for (const [rep, match] of byMention) {
     for (const m of fanOut.get(rep) ?? [rep]) rows.push(toRow({ ...match, mention: m }));
+  }
+
   const outcomes = first.map(({ m, o }) => ({
     mention: m,
     outcome: rejected.has(m) ? { kind: "rejected" as const, why: rejected.get(m)! } : o,
     match: byMention.get(m) ?? null,
     count: fanOut.get(m)?.length ?? 1,
   }));
+
   return { rows, outcomes, review: reviewed?.stats ?? null };
 }
 

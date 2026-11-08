@@ -29,16 +29,23 @@ export interface Pas2Result {
 /** Every pas2 transaction aimed at a member of Congress (by their FEC candidate ids) in one cycle. */
 export async function readPas2(cycle: number, byFec: Map<string, string>, dir?: string): Promise<Pas2Result> {
   const out: Pas2Result = { contributions: [], independent: [], skipped: { memo: 0, badDate: 0 } };
+
   for await (const f of rows("pas2", cycle, { dir })) {
     const candidate = f[C.CAND_ID] ?? "";
     const bioguide = byFec.get(candidate);
     const type = f[C.TRANSACTION_TP]!;
-    if (!bioguide || !(CONTRIBUTION_TYPES.has(type) || type in IE_TYPES)) continue;
+
+    if (!bioguide || !(CONTRIBUTION_TYPES.has(type) || type in IE_TYPES)) {
+      continue;
+    }
+
     if (f[C.MEMO_CD] === "X") {
       out.skipped.memo++;
       continue;
     }
+
     const date = fecDate(f[C.TRANSACTION_DT]);
+
     const fact = {
       id: f[C.SUB_ID]!,
       pac_id: f[C.CMTE_ID]!,
@@ -49,11 +56,16 @@ export async function readPas2(cycle: number, byFec: Map<string, string>, dir?: 
       source_url: imageUrl(f[C.IMAGE_NUM]!),
       source_locator: `FEC filing ${f[C.FILE_NUM]}, transaction ${f[C.TRAN_ID]} (${type}); bulk pas2${String(cycle).slice(2)} sub_id ${f[C.SUB_ID]}`,
     };
-    if (type in IE_TYPES) out.independent.push({ ...fact, date, support: IE_TYPES[type]! });
-    else if (!date) out.skipped.badDate++;
-    else
+
+    if (type in IE_TYPES) {
+      out.independent.push({ ...fact, date, support: IE_TYPES[type]! });
+    } else if (date) {
       out.contributions.push({ ...fact, date, recipient_committee_id: f[C.OTHER_ID] || null, transaction_type: type });
+    } else {
+      out.skipped.badDate++;
+    }
   }
+
   return out;
 }
 
@@ -63,9 +75,11 @@ const CM = { CMTE_ID: 0, CMTE_NM: 1, CMTE_DSGN: 8, CMTE_TP: 9, CONNECTED_ORG_NM:
 /** Committee master rows for the given ids, the latest cycle's record winning. */
 export async function readPacs(cycles: number[], ids: Set<string>, dir?: string): Promise<Row<"pacs">[]> {
   const out = new Map<string, Row<"pacs">>();
-  for (const cycle of [...cycles].sort((a, b) => b - a))
+
+  for (const cycle of [...cycles].sort((a, b) => b - a)) {
     for await (const f of rows("cm", cycle, { dir })) {
       const id = f[CM.CMTE_ID]!;
+
       if (!ids.has(id) || out.has(id)) continue;
       out.set(id, {
         id,
@@ -77,6 +91,8 @@ export async function readPacs(cycles: number[], ids: Set<string>, dir?: string)
         source_locator: `FEC committee master cm${String(cycle).slice(2)}`,
       });
     }
+  }
+
   return [...out.values()];
 }
 

@@ -16,14 +16,25 @@ export interface Story {
 }
 
 export async function mediacloudKey(): Promise<string | null> {
-  if (process.env.MEDIACLOUD_API_KEY) return process.env.MEDIACLOUD_API_KEY;
+  if (process.env.MEDIACLOUD_API_KEY) {
+    return process.env.MEDIACLOUD_API_KEY;
+  }
+
   const env = Bun.file(`${ROOT}/.env`);
   const fromMain = Bun.file(`${process.env.HOME}/Developer/antibody/.env`);
+
   for (const f of [env, fromMain]) {
-    if (!(await f.exists())) continue;
-    const m = (await f.text()).match(/^MEDIACLOUD_API_KEY=(.+)$/m);
-    if (m) return m[1]!.trim();
+    if (!(await f.exists())) {
+      continue;
+    }
+
+    const m = /^MEDIACLOUD_API_KEY=(.+)$/m.exec(await f.text());
+
+    if (m) {
+      return m[1]!.trim();
+    }
   }
+
   return null;
 }
 
@@ -34,21 +45,37 @@ async function call<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   const key = await mediacloudKey();
-  if (!key) throw new Error("no MEDIACLOUD_API_KEY in the environment or .env");
+
+  if (!key) {
+    throw new Error("no MEDIACLOUD_API_KEY in the environment or .env");
+  }
+
   const url = `${API}${path}?${new URLSearchParams(params)}`;
+
   for (let attempt = 0; ; attempt++) {
     if (search) {
       const wait = nextSearchAt - Date.now();
-      if (wait > 0) await Bun.sleep(wait);
+
+      if (wait > 0) {
+        await Bun.sleep(wait);
+      }
+
       nextSearchAt = Date.now() + SEARCH_GAP_MS;
     }
+
     const res = await fetch(url, { headers: { authorization: `Token ${key}` }, signal });
-    if (res.ok) return (await res.json()) as T;
+
+    if (res.ok) {
+      return (await res.json()) as T;
+    }
+
     const body = await res.text();
+
     if ((res.status === 429 || res.status >= 500) && attempt < 4) {
       nextSearchAt = Date.now() + SEARCH_GAP_MS * (attempt + 2);
       continue;
     }
+
     throw new Error(`Media Cloud ${res.status} on ${path}: ${body.slice(0, 200)}`);
   }
 }
@@ -72,6 +99,7 @@ export async function storyCount(query: string, sources: number[], w: Window, si
     true,
     signal,
   );
+
   return r.count.relevant;
 }
 
@@ -82,6 +110,7 @@ export async function countsBySource(query: string, sources: number[], w: Window
     true,
     signal,
   );
+
   return Object.fromEntries(r.sources.map((s) => [s.source, s.count]));
 }
 
@@ -89,18 +118,25 @@ export async function countsBySource(query: string, sources: number[], w: Window
 export async function stories(query: string, sources: number[], w: Window, signal?: AbortSignal): Promise<Story[]> {
   const out: Story[] = [];
   let token: string | null = null;
+
   do {
     const params: Record<string, string> = searchParams(query, sources, w);
-    if (token) params.pagination_token = token;
+
+    if (token) {
+      params.pagination_token = token;
+    }
+
     const page: { stories: Story[]; pagination_token: string | null } = await call(
       "search/story-list",
       params,
       true,
       signal,
     );
+
     out.push(...page.stories);
     token = page.pagination_token;
   } while (token);
+
   return out;
 }
 
@@ -118,20 +154,27 @@ export async function sourceByDomain(domain: string): Promise<Source | null> {
     { name: domain, platform: "online_news", limit: "10" },
     false,
   );
+
   return r.results.find((s) => s.name === domain) ?? null;
 }
 
 export async function collectionSources(collectionId: number): Promise<Source[]> {
   const out: Source[] = [];
   let offset = 0;
+
   for (;;) {
     const r = await call<{ results: Source[]; next: string | null }>(
       "sources/sources/",
       { collection_id: String(collectionId), limit: "1000", offset: String(offset) },
       false,
     );
+
     out.push(...r.results);
-    if (!r.next) return out;
+
+    if (!r.next) {
+      return out;
+    }
+
     offset += r.results.length;
   }
 }

@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 const emptyDir = join(homedir(), ".cache", "claude-empty");
+
 mkdirSync(emptyDir, { recursive: true });
 
 /**
@@ -37,10 +38,19 @@ export async function claude(
       signal: opts.signal,
     },
   );
+
   const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-  if ((await proc.exited) !== 0) throw new Error(`claude -p failed: ${err.slice(0, 300) || out.slice(0, 300)}`);
+
+  if ((await proc.exited) !== 0) {
+    throw new Error(`claude -p failed: ${err.slice(0, 300) || out.slice(0, 300)}`);
+  }
+
   const r = JSON.parse(out) as { result: string; is_error?: boolean; total_cost_usd: number; modelUsage: object };
-  if (r.is_error) throw new Error(`claude -p error: ${r.result}`);
+
+  if (r.is_error) {
+    throw new Error(`claude -p error: ${r.result}`);
+  }
+
   return { text: r.result, costUsd: r.total_cost_usd, model: Object.keys(r.modelUsage)[0] ?? opts.model };
 }
 
@@ -48,12 +58,15 @@ export async function claude(
 export async function pool<T, R>(items: T[], n: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
   let next = 0;
+
   const worker = async () => {
     while (next < items.length) {
       const i = next++;
       out[i] = await fn(items[i]!, i);
     }
   };
+
   await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
+
   return out;
 }

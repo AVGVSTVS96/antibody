@@ -14,6 +14,7 @@ const date = z.iso.date();
 const Party = z.enum(["R", "D", "I"]);
 const Chamber = z.enum(["House", "Senate"]);
 export const Baseline = z.enum(["current-law", "current-policy"]);
+
 /** nonscorable_revenues is CBO's memorandum line (revenues it expects but does not score); it is never part of the deficit. */
 export const Measure = z.enum(["budget_authority", "outlays", "revenues", "deficit", "nonscorable_revenues"]);
 export const OutletGroup = z.enum(["left", "center-left", "center", "center-right", "right"]);
@@ -62,6 +63,7 @@ export const Dollar = z.object({
   split: z.enum(["exact", "even_split"]),
   claim: ClaimId,
 });
+
 export type Dollar = z.infer<typeof Dollar>;
 
 export const Estimate = z.object({
@@ -168,6 +170,7 @@ export const Part = z.object({
   reach: z.array(Reach).default([]),
   claims: z.array(ClaimId),
 });
+
 export type Part = z.infer<typeof Part>;
 
 export const Section = z.object({
@@ -201,13 +204,14 @@ export const Section = z.object({
   parts: z.array(Part).default([]),
   claims: z.array(ClaimId),
 });
+
 export type Section = z.infer<typeof Section>;
 
 export const RollCall = z.object({
   id: z.string(),
   chamber: Chamber,
   number: z.number().int(),
-  date: date,
+  date,
   question: z.string(),
   result: z.string(),
   yeas: z.number().int(),
@@ -263,6 +267,7 @@ export const NODE_PROPS = {
     subsidiaryOf: z.string().nullable().default(null),
   }),
 } as const;
+
 export type EntityKind = keyof typeof NODE_PROPS;
 
 const nodeOf = <K extends EntityKind>(kind: K) =>
@@ -283,7 +288,9 @@ export const Node = z.discriminatedUnion("kind", [
   nodeOf("committee"),
   nodeOf("pac"),
 ]);
+
 export type Node = z.infer<typeof Node>;
+
 export type NodeOf<K extends EntityKind> = Extract<Node, { kind: K }>;
 
 export const Gap = z.object({
@@ -346,6 +353,7 @@ export const Bundle = z.object({
     .default({ R: 0, D: 0, I: 0 }),
   rules: z.array(Rule),
 });
+
 export type Bundle = z.infer<typeof Bundle>;
 
 /** Counts shown on the index card, read from the bundle so the index never needs the bundle itself. */
@@ -452,6 +460,7 @@ export const BundleIndex = z.object({
   ),
   watch: z.array(WatchPick).default([]),
 });
+
 export type BundleIndex = z.infer<typeof BundleIndex>;
 
 /**
@@ -460,40 +469,62 @@ export type BundleIndex = z.infer<typeof BundleIndex>;
  */
 export function checkBundle(b: Bundle): string[] {
   const problems: string[] = [];
+
   const ids = new Set<string>([
     nodeId("bill", b.bill.id),
     ...b.sections.map((s) => nodeId("section", s.id)),
     ...b.nodes.map((n) => n.id),
   ]);
+
   for (const e of b.edges) {
-    if (!ids.has(e.src)) problems.push(`edge ${e.id}: unknown src ${e.src}`);
-    if (!ids.has(e.dst)) problems.push(`edge ${e.id}: unknown dst ${e.dst}`);
+    if (!ids.has(e.src)) {
+      problems.push(`edge ${e.id}: unknown src ${e.src}`);
+    }
+
+    if (!ids.has(e.dst)) {
+      problems.push(`edge ${e.id}: unknown dst ${e.dst}`);
+    }
   }
+
   const walk = (v: unknown, path: string) => {
     if (Array.isArray(v)) {
-      for (const [i, x] of v.entries()) walk(x, `${path}[${i}]`);
+      for (const [i, x] of v.entries()) {
+        walk(x, `${path}[${i}]`);
+      }
     } else if (v && typeof v === "object") {
       for (const [k, x] of Object.entries(v)) {
-        if (path === "" && k === "claims") continue;
-        if ((k === "claim" || k === "claims" || k === "restsOn" || k.endsWith("Claim")) && x != null)
+        if (path === "" && k === "claims") {
+          continue;
+        }
+
+        if ((k === "claim" || k === "claims" || k === "restsOn" || k.endsWith("Claim")) && x != null) {
           for (const id of [x].flat() as string[])
             if (!(id in b.claims)) problems.push(`${path}.${k}: unknown claim ${id}`);
+        }
+
         walk(x, `${path}.${k}`);
       }
     }
   };
+
   walk(b, "");
   const sectionIds = new Set(b.sections.map((s) => s.id));
-  for (const s of b.sections)
+
+  for (const s of b.sections) {
     if (s.score?.offsets && !sectionIds.has(s.score.offsets))
       problems.push(`section ${s.id}: offsets unknown section ${s.score.offsets}`);
-  for (const c of Object.values(b.claims))
+  }
+
+  for (const c of Object.values(b.claims)) {
     for (const id of c.restsOn) if (!(id in b.claims)) problems.push(`claims.${c.id}.restsOn: unknown claim ${id}`);
+  }
+
   return problems;
 }
 
 const years = (period: string) => {
   const [from, to] = period.split("-").map(Number);
+
   return (to ?? from ?? 0) - (from ?? 0);
 };
 
@@ -503,6 +534,7 @@ const years = (period: string) => {
  */
 export function headlineDeficit(b: Bundle, baseline: Dollar["baseline"]): Dollar | undefined {
   const published = new Map(b.dollars.estimates.map((e) => [e.id, e.publishedOn]));
+
   return b.dollars.wholeBill
     .filter((d) => d.measure === "deficit" && d.baseline === baseline)
     .sort(
@@ -518,22 +550,35 @@ function finalVote(b: Bundle) {
   const voted = new Set(
     b.edges.filter((e) => e.kind === "voted").map((e) => (e.kind === "voted" ? e.props.rollId : "")),
   );
+
   const roll = b.votes
     .filter((v) => voted.has(v.id))
     .sort((x, y) => x.date.localeCompare(y.date) || x.number - y.number)
     .at(-1);
-  if (!roll) return null;
+
+  if (!roll) {
+    return null;
+  }
+
   const party = new Map(b.nodes.flatMap((n) => (n.kind === "member" ? [[n.id, n.props.party] as const] : [])));
   const byParty: Partial<Record<"R" | "D" | "I", { yea: number; nay: number }>> = {};
+
   for (const e of b.edges) {
-    if (e.kind !== "voted" || e.props.rollId !== roll.id || (e.props.vote !== "Yea" && e.props.vote !== "Nay"))
+    if (e.kind !== "voted" || e.props.rollId !== roll.id || (e.props.vote !== "Yea" && e.props.vote !== "Nay")) {
       continue;
+    }
+
     const p = party.get(e.src);
-    if (!p) continue;
+
+    if (!p) {
+      continue;
+    }
+
     const c = byParty[p] ?? { yea: 0, nay: 0 };
     byParty[p] = c;
     c[e.props.vote === "Yea" ? "yea" : "nay"]++;
   }
+
   return {
     chamber: roll.chamber,
     date: roll.date,
@@ -549,8 +594,10 @@ function finalVote(b: Bundle) {
  * section itself, or 21 lobbying firms. A test in packages/analyze keeps these in step with `SCORE.costlyMin`.
  */
 export const BIG_STAKES = { dollarsMusd: 10_000, firms: 21 };
+
 /** A bill with fewer sections has nothing for one to be buried among (`SCORE.minSections`). */
 export const MIN_SECTIONS_TO_BURY = 10;
+
 /** Stakes big in dollars or lobbying: what "costly" means on the page. Reach is the other way to big stakes. */
 export const bigStakes = (c: { dollarsMusd: number | null; dollarsSplit: string | null; lobbyingFirms: number }) =>
   (c.dollarsMusd !== null && c.dollarsSplit !== "even_split" && Math.abs(c.dollarsMusd) >= BIG_STAKES.dollarsMusd) ||
@@ -568,6 +615,7 @@ export const REACH_WORDS: Record<ReachKind, string> = {
 /** Why a buried section is flagged: "quiet and costly" when dollars or lobbying make its stakes big, else its reach ("quiet, limits courts"). */
 export function buriedWords(score: z.infer<typeof Score>): string {
   const c = score.components;
+
   return bigStakes(c) || !c.reach.length
     ? "quiet and costly"
     : `quiet, ${c.reach.map((k) => REACH_WORDS[k]).join(", ")}`;
@@ -584,12 +632,14 @@ export const articlesOf = (s: Pick<Section, "attention" | "score">) =>
 export function activeSpan(b: Bundle): [string, string] | null {
   const own = b.versions.filter((v) => !v.predecessor && v.date).map((v) => v.date!);
   const start = own.sort()[0];
+
   const end =
     b.bill.lawOn ??
     [...b.votes.map((v) => v.date), ...b.versions.map((v) => v.date)]
       .filter((d): d is string => !!d)
       .sort()
       .at(-1);
+
   return start && end ? [start, end] : null;
 }
 
@@ -601,6 +651,7 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
   const deficit = headlineDeficit(b, "current-law");
   const traders = b.edges.filter((e) => e.kind === "traded");
   const span = activeSpan(b);
+
   const during = new Set(
     span
       ? traders
@@ -608,21 +659,26 @@ export function billStats(b: Bundle): z.infer<typeof BillStats> {
           .map((e) => e.src)
       : [],
   );
+
   const ranked = final.some((s) => s.attention?.pct != null);
+
   const priced = final.filter(
     (s) => s.score?.components.dollarsMusd != null && s.score.components.dollarsSplit !== "even_split",
   ).length;
+
   const dollarsMeasured = priced > 0;
   const big = final.filter((s) => s.score && bigStakes(s.score.components)).length;
   const reach = final.filter((s) => s.score?.components.reach.length).length;
+
   const why =
     final.length < MIN_SECTIONS_TO_BURY
       ? `the bill has only ${final.length} ${final.length === 1 ? "section" : "sections"}, too few for anything to be buried among`
-      : !ranked
-        ? "too few news articles to rank this bill's sections"
-        : !dollarsMeasured && !big && !reach
+      : ranked
+        ? !dollarsMeasured && !big && !reach
           ? "CBO gave no section its own dollar figure, no section is named in enough lobbying reports, and no section's text has reach, so no section's stakes are known"
-          : null;
+          : null
+        : "too few news articles to rank this bill's sections";
+
   return {
     sections: final.length,
     headline: final.filter((s) => s.score?.label === "headline").length,

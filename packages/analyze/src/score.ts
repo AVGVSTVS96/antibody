@@ -1,4 +1,5 @@
-import { type BillId, figureEstimates, type Row, sectionFigure } from "@antibody/core";
+import { figureEstimates, sectionFigure } from "@antibody/core";
+import type { BillId, Row } from "@antibody/core";
 import type { ReachKind } from "./reach.ts";
 
 /**
@@ -75,7 +76,10 @@ export function stakes(c: Pick<Components, "dollarsMusd" | "dollarsSplit" | "lob
 
 /** 1 when no sampled article discussed the section, 0 at `SCORE.quietShare` or more; null when attention is unranked. */
 export function quiet(c: Pick<Components, "attentionPct" | "attentionShare">): number | null {
-  if (c.attentionPct === null || c.attentionShare == null) return null;
+  if (c.attentionPct === null || c.attentionShare == null) {
+    return null;
+  }
+
   return 1 - Math.min(1, c.attentionShare / SCORE.quietShare);
 }
 
@@ -84,19 +88,30 @@ const offTopicOf = (c: Pick<Components, "offTopic" | "titles">) => ((c.titles ??
 
 export function buried(c: Components): number | null {
   const q = quiet(c);
-  if (q === null) return null;
+
+  if (q === null) {
+    return null;
+  }
+
   const sneak =
     1 + (lateCounts(c) ? SCORE.lateBonus * (1 - (c.lateShare ?? 0)) : 0) + SCORE.offTopicBonus * offTopicOf(c);
+
   return Number((stakes(c) * q * sneak).toFixed(4));
 }
 
 export const NAMES_BILL = /^(short title|table of contents)\b/i;
 
 export function label(c: Components, hits: number): Row<"section_scores">["label"] {
-  if (!c.namesBill && c.attentionPct !== null && c.attentionPct >= SCORE.headlinePct && hits >= SCORE.headlineMinHits)
+  if (!c.namesBill && c.attentionPct !== null && c.attentionPct >= SCORE.headlinePct && hits >= SCORE.headlineMinHits) {
     return "headline";
+  }
+
   const long = (c.sections ?? SCORE.minSections) >= SCORE.minSections;
-  if (long && !c.offsets && stakes(c) >= SCORE.costlyMin && (quiet(c) ?? 0) > 0) return "buried";
+
+  if (long && !c.offsets && stakes(c) >= SCORE.costlyMin && (quiet(c) ?? 0) > 0) {
+    return "buried";
+  }
+
   return "normal";
 }
 
@@ -124,6 +139,7 @@ export interface SectionDollars {
  */
 export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cbo_lines">[]) {
   const out = new Map<string, SectionDollars>();
+
   const known = estimates.map((e) => ({
     id: e.id,
     publishedOn: e.published_on,
@@ -131,10 +147,14 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
     baseline: e.baseline,
     versionScored: e.version_scored,
   }));
+
   const bySection = new Map<string, Row<"cbo_lines">[]>();
-  for (const l of lines)
+
+  for (const l of lines) {
     if (l.line_kind === "section")
       for (const sid of l.section_ids) bySection.set(sid, [...(bySection.get(sid) ?? []), l]);
+  }
+
   for (const [sid, ls] of bySection) {
     const f = sectionFigure(
       ls.map((l) => ({
@@ -146,7 +166,8 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
       })),
       known,
     );
-    if (f?.fromLatest)
+
+    if (f?.fromLatest) {
       out.set(sid, {
         musd: f.musd,
         split: f.split,
@@ -161,8 +182,11 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
           estimateId: b.estimateId,
         })),
       });
+    }
   }
+
   const used = new Set(figureEstimates(known).map((e) => e.id));
+
   return { estimates: estimates.filter((e) => used.has(e.id)), bySection: out };
 }
 
@@ -172,16 +196,21 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
  */
 export function payFors(sections: Row<"sections">[], dollars: ReturnType<typeof sectionDollars>) {
   const parent = (s: Row<"sections">) => s.path.split("/").slice(0, -1).join("/");
+
   const big = sections.flatMap((s) => {
     const d = dollars.bySection.get(s.id);
+
     return d && d.split === "exact" && stakes({ dollarsMusd: d.musd, lobbyingFirms: 0 }) >= SCORE.costlyMin
       ? [{ s, musd: Math.round(d.musd) }]
       : [];
   });
+
   const spends = new Map(big.filter((b) => b.musd > 0).map((b) => [`${parent(b.s)}|${b.musd}`, b.s.id]));
+
   return new Map(
     big.flatMap((b) => {
       const partner = b.musd < 0 ? spends.get(`${parent(b.s)}|${-b.musd}`) : undefined;
+
       return partner ? [[b.s.id, partner] as const] : [];
     }),
   );
@@ -196,14 +225,23 @@ type Filer = Pick<Row<"lda_filings">, "form" | "superseded" | "registrant_id">;
  */
 export function sectionReports(sections: Row<"sections">[], refs: Row<"lda_bill_refs">[], filings: Map<string, Filer>) {
   const byNum = new Map<string, Row<"lda_bill_refs">[]>();
+
   for (const r of refs) {
     const f = filings.get(r.filing_id);
-    if (r.match === "low" || f?.form !== "LD-2" || f.superseded) continue;
-    for (const n of r.section_nums) byNum.set(n, [...(byNum.get(n) ?? []), r]);
+
+    if (r.match === "low" || f?.form !== "LD-2" || f.superseded) {
+      continue;
+    }
+
+    for (const n of r.section_nums) {
+      byNum.set(n, [...(byNum.get(n) ?? []), r]);
+    }
   }
+
   return new Map(
     sections.map((s) => {
       const rs = byNum.get(s.num) ?? [];
+
       return [
         s.id,
         {
@@ -215,6 +253,7 @@ export function sectionReports(sections: Row<"sections">[], refs: Row<"lda_bill_
     }),
   );
 }
+
 export type Reports = ReturnType<typeof sectionReports>;
 
 /** Boilerplate sections get no off-topic value: a short title is always unlike the rest of a bill. */
@@ -228,11 +267,16 @@ export const BOILERPLATE =
 export function clearedLate(sections: Row<"sections">[], counterparts: Row<"counterparts">[]) {
   const byId = new Map(sections.map((s) => [s.id, s]));
   const cleared = new Map<string, Row<"counterparts">>();
+
   for (const c of counterparts.toSorted((a, b) => b.confidence - a.confidence || a.id.localeCompare(b.id))) {
     const added = byId.get(c.added_section_id);
     const older = byId.get(c.removed_section_id);
-    if (added?.late && older && !older.late && !cleared.has(added.id)) cleared.set(added.id, c);
+
+    if (added?.late && older && !older.late && !cleared.has(added.id)) {
+      cleared.set(added.id, c);
+    }
   }
+
   return cleared;
 }
 
@@ -257,15 +301,19 @@ export function scoreRows(
   const lateShare = final.length ? final.filter(lateOf).length / final.length : 0;
   const pays = payFors(final, dollars);
   const titles = new Set(final.map((s) => s.path.split("/")[0]).filter((p) => /^(title|division):/.test(p!))).size;
+
   const sectionRows = final.map((s) => {
     const a = att.get(s.id);
     const check = checked.get(s.id);
+
     const share =
       check?.share ?? (a && a.pct !== null ? Number((a.evidence as { balanced_share: number }).balanced_share) : null);
+
     const d = dollars.bySection.get(s.id) ?? null;
     const { filings, firms, refs } = reports.get(s.id) ?? { filings: [], firms: [], refs: [] };
     const pair = cleared.get(s.id);
     const tags = reachOf.get(s.id) ?? [];
+
     const c: Components = {
       namesBill: NAMES_BILL.test(s.heading.trim()),
       offsets: pays.get(s.id) ?? null,
@@ -281,6 +329,7 @@ export function scoreRows(
       lobbyingFirms: firms.length,
       reach: tags.map((t) => t.kind),
     };
+
     const restsOn = [
       `sections/${s.id}`,
       ...(a ? [`attention/${a.id}`] : []),
@@ -291,6 +340,7 @@ export function scoreRows(
       ...(pair ? [`counterparts/${pair.id}`] : []),
       ...tags.map((t) => `section_reach/${t.id}`),
     ];
+
     return {
       id: `${bill}:${s.id}`,
       bill_id: bill,
@@ -329,17 +379,22 @@ export function scoreRows(
       },
     };
   });
+
   const finalIds = new Set(final.map((s) => s.id));
+
   const partRows = parts
     .filter((p) => finalIds.has(p.section_id))
     .map((p): Row<"section_scores"> => {
       const a = att.get(p.id);
       const check = checked.get(p.id);
+
       const share =
         check?.share ??
         (a && a.pct !== null ? Number((a.evidence as { balanced_share: number }).balanced_share) : null);
+
       const pair = cleared.get(p.section_id);
       const tags = reachOf.get(p.id) ?? [];
+
       const c: Components = {
         namesBill: false,
         offsets: null,
@@ -355,6 +410,7 @@ export function scoreRows(
         lobbyingFirms: 0,
         reach: tags.map((t) => t.kind),
       };
+
       return {
         id: `${bill}:${p.id}`,
         bill_id: bill,
@@ -401,5 +457,6 @@ export function scoreRows(
         },
       };
     });
+
   return [...sectionRows, ...partRows];
 }

@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { type BillId, billRef, billstatusUrl } from "@antibody/core";
+import { billRef, billstatusUrl } from "@antibody/core";
+import type { BillId } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 
 export interface BillTitle {
@@ -27,6 +28,7 @@ export interface BillStatus {
 
 const fileName = (id: BillId) => {
   const { congress, type, number } = billRef(id);
+
   return `BILLSTATUS-${congress}${type}${number}.xml`;
 };
 
@@ -34,48 +36,66 @@ const fileName = (id: BillId) => {
 export async function billStatus(id: BillId, signal?: AbortSignal): Promise<BillStatus | null> {
   const name = fileName(id);
   const own = join(paths.raw("lobbying"), "billstatus", name);
+
   for (const path of [join(paths.raw("bills"), "raw", name), own]) {
     const file = Bun.file(path);
-    if (await file.exists()) return parseBillStatus(id, await file.text());
+
+    if (await file.exists()) {
+      return parseBillStatus(id, await file.text());
+    }
   }
+
   const res = await fetch(billstatusUrl(id), { signal });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`govinfo ${res.status}: ${billstatusUrl(id)}`);
+
+  if (res.status === 404) {
+    return null;
+  }
+
+  if (!res.ok) {
+    throw new Error(`govinfo ${res.status}: ${billstatusUrl(id)}`);
+  }
+
   const xml = await res.text();
   await mkdir(join(paths.raw("lobbying"), "billstatus"), { recursive: true });
   await Bun.write(own, xml);
+
   return parseBillStatus(id, xml);
 }
 
 const decode = (s: string) =>
   s
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;|&#39;/g, "'")
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll(/&apos;|&#39;/g, "'")
     .trim();
 
-const tag = (xml: string, name: string) => xml.match(new RegExp(`<${name}>([^<]*)</${name}>`))?.[1];
+const tag = (xml: string, name: string) => new RegExp(`<${name}>([^<]*)</${name}>`).exec(xml)?.[1];
 
 function items(xml: string, block: string): string[] {
-  const inner = xml.match(new RegExp(`<${block}>([\\s\\S]*?)</${block}>`))?.[1] ?? "";
+  const inner = new RegExp(`<${block}>([\\s\\S]*?)</${block}>`).exec(xml)?.[1] ?? "";
+
   return [...inner.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1]!);
 }
 
 export function parseBillStatus(id: BillId, xml: string): BillStatus {
-  const bill = xml.match(/<bill>([\s\S]*)<\/bill>/)?.[1] ?? xml;
+  const bill = /<bill>([\s\S]*)<\/bill>/.exec(xml)?.[1] ?? xml;
+
   const titles = items(bill, "titles").map((x) => ({
     type: decode(tag(x, "titleType") ?? ""),
     title: decode(tag(x, "title") ?? ""),
     version: tag(x, "billTextVersionName") ?? null,
   }));
+
   const laws = items(bill, "laws")
     .map((x) => tag(x, "number"))
     .filter((n): n is string => !!n);
+
   const enacted = items(bill, "actions").find((x) => /Became (Public|Private) Law/i.test(tag(x, "text") ?? ""));
   const summaries = [...bill.matchAll(/<summary>[\s\S]*?<text><!\[CDATA\[([\s\S]*?)\]\]><\/text>/g)];
   const summary = summaries.at(-1)?.[1];
+
   return {
     id,
     url: billstatusUrl(id),
@@ -87,8 +107,10 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
       type: decode(tag(x, "type") ?? ""),
       date: tag(x, "date")?.slice(0, 10) ?? null,
     })),
-    policyArea: bill.match(/<policyArea>\s*<name>([^<]*)<\/name>/)?.[1] ?? null,
-    summary: summary ? decode(summary.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ")).replace(/\s+/g, " ") : null,
+    policyArea: /<policyArea>\s*<name>([^<]*)<\/name>/.exec(bill)?.[1] ?? null,
+    summary: summary
+      ? decode(summary.replaceAll(/<[^>]+>/g, " ").replaceAll("&nbsp;", " ")).replaceAll(/\s+/g, " ")
+      : null,
   };
 }
 
@@ -118,18 +140,28 @@ export function billNames(s: BillStatus): BillName[] {
   const latest = dated.sort().at(-1) ?? s.introduced;
   const out = new Map<string, BillName>();
   const rank = { current: 2, earlier: 1, portion: 0 };
+
   for (const t of s.titles) {
-    if (!t.title || /official/i.test(t.type) || OFFICIAL.test(t.title)) continue;
+    if (!t.title || /official/i.test(t.type) || OFFICIAL.test(t.title)) {
+      continue;
+    }
+
     const kind: BillName["kind"] = PORTION.test(t.type)
       ? "portion"
       : !s.enactedOn || CURRENT.test(t.type) || /enrolled/i.test(t.version ?? "")
         ? "current"
         : "earlier";
+
     const since = versionDate(t.version) ?? (kind === "portion" ? latest : s.introduced);
     const prev = out.get(t.title);
-    if (!prev || rank[kind] > rank[prev.kind]) out.set(t.title, { title: t.title, kind, since });
-    else if (rank[kind] === rank[prev.kind] && since && (!prev.since || since < prev.since)) prev.since = since;
+
+    if (!prev || rank[kind] > rank[prev.kind]) {
+      out.set(t.title, { title: t.title, kind, since });
+    } else if (rank[kind] === rank[prev.kind] && since && (!prev.since || since < prev.since)) {
+      prev.since = since;
+    }
   }
+
   return [...out.values()];
 }
 

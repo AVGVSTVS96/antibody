@@ -2,6 +2,13 @@
   "name": "@antibody/resolve",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@antibody/core": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@antibody/core": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  }
 }

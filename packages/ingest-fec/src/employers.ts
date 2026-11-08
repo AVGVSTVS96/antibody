@@ -32,14 +32,22 @@ export function employerKey(raw: string): string | null {
   const words = raw
     .toUpperCase()
     .replaceAll("&", " AND ")
-    .replace(/[.']/g, "")
-    .replace(/[^A-Z0-9 ]+/g, " ")
+    .replaceAll(/[.']/g, "")
+    .replaceAll(/[^A-Z0-9 ]+/g, " ")
     .trim()
     .split(/\s+/)
     .filter(Boolean);
-  if (words[0] === "THE") words.shift();
-  while (words.length > 1 && LEGAL.has(words.at(-1)!)) words.pop();
+
+  if (words[0] === "THE") {
+    words.shift();
+  }
+
+  while (words.length > 1 && LEGAL.has(words.at(-1)!)) {
+    words.pop();
+  }
+
   const key = words.join(" ");
+
   return key && !NOT_AN_EMPLOYER.test(key) ? key : null;
 }
 
@@ -56,6 +64,7 @@ const I = {
   TRANSACTION_AMT: 14,
   MEMO_CD: 18,
 } as const;
+
 /** Individual contributions a campaign itemizes: direct (15), earmarked through ActBlue/WinRed (15E), via joint fundraisers (15J). */
 export const INDIVIDUAL_TYPES = new Set(["15", "15E", "15J"]);
 
@@ -79,14 +88,23 @@ export async function memberCommittees(
   dir?: string,
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
+
   for await (const f of rows("ccl", cycle, { dir })) {
     const bioguide = byFec.get(f[0]!);
-    if (bioguide && (f[5] === "P" || f[5] === "A")) out.set(f[3]!, bioguide);
+
+    if (bioguide && (f[5] === "P" || f[5] === "A")) {
+      out.set(f[3]!, bioguide);
+    }
   }
+
   for await (const f of rows("cn", cycle, { dir })) {
     const bioguide = byFec.get(f[0]!);
-    if (bioguide && f[9]) out.set(f[9], bioguide);
+
+    if (bioguide && f[9]) {
+      out.set(f[9], bioguide);
+    }
   }
+
   return out;
 }
 
@@ -107,23 +125,34 @@ export async function aggregateEmployers(
 ): Promise<EmployerResult> {
   const groups = new Map<string, Group>();
   const stats = { kept: 0, noEmployer: 0, noEmployerUsd: 0, groups: 0, belowMin: 0 };
+
   for await (const f of rows("indiv", cycle, { firstField: new Set(committees.keys()), dir })) {
-    if (!INDIVIDUAL_TYPES.has(f[I.TRANSACTION_TP]!) || f[I.MEMO_CD] === "X") continue;
+    if (!INDIVIDUAL_TYPES.has(f[I.TRANSACTION_TP]!) || f[I.MEMO_CD] === "X") {
+      continue;
+    }
+
     const date = fecDate(f[I.TRANSACTION_DT]);
     const amount = Number(f[I.TRANSACTION_AMT]);
-    if (!date || !Number.isFinite(amount)) continue;
+
+    if (!date || !Number.isFinite(amount)) {
+      continue;
+    }
+
     stats.kept++;
     const employer = (f[I.EMPLOYER] ?? "").trim();
     const key = employerKey(employer);
+
     if (!key) {
       stats.noEmployer++;
       stats.noEmployerUsd += amount;
       continue;
     }
+
     const committee = f[I.CMTE_ID]!;
     const bioguide = committees.get(committee)!;
     const id = `${bioguide}\t${key}`;
     let g = groups.get(id);
+
     if (!g) {
       g = {
         bioguide,
@@ -139,31 +168,45 @@ export async function aggregateEmployers(
       };
       groups.set(id, g);
     }
+
     g.amount += amount;
     g.n++;
-    if (date < g.first) g.first = date;
-    if (date > g.last) g.last = date;
+
+    if (date < g.first) {
+      g.first = date;
+    }
+
+    if (date > g.last) {
+      g.last = date;
+    }
+
     if (amount > g.largest) {
       g.largest = amount;
       g.largestImage = f[I.IMAGE_NUM]!;
     }
+
     g.spellings.set(employer, (g.spellings.get(employer) ?? 0) + amount);
     g.committees.add(committee);
   }
+
   stats.groups = groups.size;
   const out: Row<"employer_contributions">[] = [];
+
   for (const g of groups.values()) {
     if (g.amount < minUsd) {
       stats.belowMin++;
       continue;
     }
+
     const spellings = [...g.spellings].sort((a, b) => b[1] - a[1]).map(([s]) => s);
     const committeeIds = [...g.committees].sort();
+
     const query = new URLSearchParams([
       ...committeeIds.map((c) => ["committee_id", c]),
       ["contributor_employer", spellings[0]!],
       ["two_year_transaction_period", String(cycle)],
     ]);
+
     out.push({
       id: `${cycle}:${g.bioguide}:${g.key.replaceAll(" ", "-")}`,
       bioguide: g.bioguide,
@@ -182,5 +225,6 @@ export async function aggregateEmployers(
       source_locator: `sum of ${g.n} itemized contributions (types 15, 15E, 15J; memo lines excluded) whose employer normalizes to "${g.key}"; FEC bulk indiv${String(cycle).slice(2)}`,
     });
   }
+
   return { rows: out, stats };
 }

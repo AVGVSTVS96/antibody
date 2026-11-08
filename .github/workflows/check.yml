@@ -1,8 +1,11 @@
-name: ci
+name: check
+
 on:
-  push:
-    branches: [main, "p1/**"]
   pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -10,9 +13,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.2
+          bun-version-file: package.json
       - run: bun install --frozen-lockfile
-      - run: bunx biome ci .
-      - run: bunx tsc
-      - run: bun test
-      - run: bun run --cwd apps/web build
+      - run: bun run check
