@@ -4,14 +4,14 @@ import { join } from "node:path";
 import { billDisplay } from "@antibody/core";
 import type { BillId, Row, StageContext } from "@antibody/core";
 import { paths, python, readRows, writeRows } from "@antibody/core/node";
+import { z } from "zod";
 import queries from "../data/queries.json" with { type: "json" };
 import { gnews } from "./gnews.ts";
-import { mediacloudKey, stories } from "./mediacloud.ts";
+import { mediacloudKey, stories, StoryJson } from "./mediacloud.ts";
 import type { Window as MCWindow, Story } from "./mediacloud.ts";
 import { COUNTED, outletFor, SIDES, sideOf, TRADE_LEGAL } from "./outlets.ts";
 import type { Outlet, Side } from "./outlets.ts";
 
-/** Articles read in full per side (and for trade/legal), picked by a fixed hash so re-runs pick the same ones. */
 export const SAMPLE = { left: 150, center: 150, right: 150, "trade-legal": 60 } as const;
 
 type Stratum = keyof typeof SAMPLE;
@@ -28,6 +28,19 @@ export const articleText = async (bill: BillId, articleId: string) => {
   return (await f.exists()) ? await f.text() : null;
 };
 
+const QUERIES = z
+  .object({
+    bills: z.record(
+      z.string(),
+      z.object({ terms: z.array(z.string()), window: z.tuple([z.string(), z.string()]).optional() }),
+    ),
+  })
+  .parse(queries);
+
+const StoryCache = z.object({ query: z.string(), stories: z.array(StoryJson) });
+
+const FetchResult = z.object({ id: z.string(), url: z.string().nullable(), chars: z.number() });
+
 interface Found {
   url: string;
   title: string;
@@ -37,44 +50,40 @@ interface Found {
   gnews: boolean;
 }
 
-/**
- * The press drops the year from a short title ("Romance Scam Prevention Act of 2025" is "the Romance Scam Prevention
- * Act"), and writes a resolution's number both ways ("H.J.Res. 88", "H.J. Res. 88"). A named bill numbered under 100
- * is searched by name only: "S. 2" or "H.R. 4" also matches lists, exhibits and other Congresses' bills.
- */
 export function defaultTerms(shortTitle: string | null, display: string): string[] {
-  const name = shortTitle?.replace(/\s+of\s+(?:19|20)\d\d$/i, "").trim();
-  const number = display.replace(/(\D)(\d)/, "$1 $2");
-  const spaced = number.replaceAll(/\.(Res|Con)\./g, ". $1.");
-  const numbers = name && spaced === number && Number(/\d+$/.exec(number)?.[0]) < 100 ? [] : [number, spaced];
+  const name = shortTitle?.replace(/\s+of\s+(?:19|20)\d\d$/iu, "").trim() ?? "";
+  const number = display.replace(/(\D)(\d)/u, "$1 $2");
+  const spaced = number.replaceAll(/\.(Res|Con)\./gu, ". $1.");
+  const numbers = name !== "" && spaced === number && Number(/\d+$/u.exec(number)?.[0]) < 100 ? [] : [number, spaced];
 
-  return [...new Set([...(name ? [name] : []), ...numbers])].map((t) => `"${t}"`);
+  return [...new Set([...(name === "" ? [] : [name]), ...numbers])].map((t) => `"${t}"`);
 }
 
-/** Search terms for a bill: data/queries.json when it is listed there, else its short title and number. */
 export function termsFor(bill: BillId, shortTitle: string | null): string[] {
-  const listed = (queries.bills as Record<string, { terms: string[] }>)[bill];
+  const listed = QUERIES.bills[bill];
 
   return listed?.terms ?? defaultTerms(shortTitle, billDisplay(bill));
 }
 
-/** The query and window: data/queries.json when the bill is listed, else its short title and number from BILLSTATUS. */
 export async function searchPlan(bill: BillId): Promise<{ query: string; window: MCWindow }> {
-  const listed = (queries.bills as Record<string, { terms: string[]; window?: string[] }>)[bill];
+  const listed = QUERIES.bills[bill];
   const [row] = await readRows("bills", bill);
   const versions = await readRows("versions", bill);
   const terms = termsFor(bill, row?.short_title ?? null);
   let window: MCWindow;
 
   if (listed?.window) {
-    window = { start: listed.window[0]!, end: listed.window[1]! };
+    const [start, end] = listed.window;
+    window = { start, end };
   } else {
-    const dates = versions.flatMap((v) => (v.date ? [Date.parse(v.date)] : []));
-    const start = row?.introduced_on ? Date.parse(row.introduced_on) : Math.min(...dates);
-    const end = row?.law_on ? Date.parse(row.law_on) : Math.max(...dates, start);
+    const dates = versions.flatMap((v) => (v.date === null ? [] : [Date.parse(v.date)]));
+    const introduced = row?.introduced_on ?? null;
+    const law = row?.law_on ?? null;
+    const start = introduced === null ? Math.min(...dates) : Date.parse(introduced);
+    const end = law === null ? Math.max(...dates, start) : Date.parse(law);
 
     if (!Number.isFinite(start)) {
-      throw new Error(`no introduced date or versions for ${bill}: run the bills stage first`);
+      throw new TypeError(`no introduced date or versions for ${bill}: run the bills stage first`);
     }
 
     window = { start: iso(start - 7 * DAY), end: iso(Math.min(end + 30 * DAY, Date.now())) };
@@ -85,12 +94,16 @@ export async function searchPlan(bill: BillId): Promise<{ query: string; window:
 
 async function fromMediacloud(bill: BillId, query: string, w: MCWindow, ctx: StageContext): Promise<Found[]> {
   const cache = Bun.file(join(paths.raw("news"), "mediacloud", `${bill}.stories.json`));
+  const cached = !ctx.refresh && (await cache.exists()) ? StoryCache.safeParse(await cache.json()) : null;
   let got: Story[];
 
-  if (!ctx.refresh && (await cache.exists()) && (await cache.json()).query === query) {
-    got = (await cache.json()).stories;
+  if (cached?.success === true && cached.data.query === query) {
+    got = cached.data.stories;
   } else {
-    const ids = [...COUNTED, ...TRADE_LEGAL].flatMap((o) => (o.mediacloud_id ? [o.mediacloud_id] : []));
+    const ids = [...COUNTED, ...TRADE_LEGAL].flatMap((o) =>
+      o.mediacloud_id === null || o.mediacloud_id === 0 ? [] : [o.mediacloud_id],
+    );
+
     ctx.log(`Media Cloud: ${query} ${w.start}..${w.end} over ${ids.length} outlets (2 calls/min)`);
     got = await stories(query, ids, w, ctx.signal);
     await Bun.write(cache, JSON.stringify({ query, window: w, fetchedAt: new Date().toISOString(), stories: got }));
@@ -126,24 +139,33 @@ const stratumOf = (o: Outlet | null): Stratum | null =>
 export function sample<T extends { id: string; stratum: Stratum | null }>(items: T[]): T[] {
   const out: T[] = [];
 
-  for (const s of Object.keys(SAMPLE) as Stratum[]) {
-    const pool = items.filter((i) => i.stratum === s).sort((a, b) => (hash(a.id) < hash(b.id) ? -1 : 1));
-    out.push(...pool.slice(0, SAMPLE[s]));
+  for (const [s, size] of Object.entries(SAMPLE)) {
+    const pool = items.filter((i) => i.stratum === s).toSorted((a, b) => (hash(a.id) < hash(b.id) ? -1 : 1));
+    out.push(...pool.slice(0, size));
   }
 
   return out;
 }
 
 export async function collect(ctx: StageContext) {
-  const bill = ctx.bill!;
+  const { bill } = ctx;
+
+  if (bill === null) {
+    throw new Error("the news stage needs a bill");
+  }
+
   const { query, window } = await searchPlan(bill);
   let found: Found[] = [];
 
-  if (await mediacloudKey()) {
+  const key = await mediacloudKey();
+
+  if (key !== null && key !== "") {
     try {
       found = await fromMediacloud(bill, query, window, ctx);
     } catch (error) {
-      ctx.log(`Media Cloud failed (${(error as Error).message}); falling back to Google News RSS`);
+      ctx.log(
+        `Media Cloud failed (${error instanceof Error ? error.message : String(error)}); falling back to Google News RSS`,
+      );
     }
   } else {
     ctx.log("no MEDIACLOUD_API_KEY; falling back to Google News RSS");
@@ -156,7 +178,9 @@ export async function collect(ctx: StageContext) {
   const byUrl = new Map<string, Found>();
 
   for (const f of found) {
-    if (!byUrl.has(f.url)) byUrl.set(f.url, f);
+    if (!byUrl.has(f.url)) {
+      byUrl.set(f.url, f);
+    }
   }
 
   const items = [...byUrl.values()].map((f) => ({ ...f, id: `${bill}:${hash(f.url)}`, stratum: stratumOf(f.outlet) }));
@@ -167,7 +191,9 @@ export async function collect(ctx: StageContext) {
   const need = [];
 
   for (const p of picked) {
-    if (ctx.refresh || !(await Bun.file(join(dir, `${p.id.split(":")[1]}.txt`)).exists())) need.push(p);
+    if (ctx.refresh || !(await Bun.file(join(dir, `${p.id.split(":")[1]}.txt`)).exists())) {
+      need.push(p);
+    }
   }
 
   const fetched = new Map<string, { url: string | null; chars: number }>();
@@ -178,9 +204,11 @@ export async function collect(ctx: StageContext) {
     await Bun.write(input, JSON.stringify(need.map((p) => ({ id: p.id.split(":")[1], url: p.url, gnews: p.gnews }))));
     const out = await python(PKG, "fetch.py", [input, dir], { memoryMax: "2G" });
 
-    for (const line of out.split("\n").filter(Boolean)) {
-      const r = JSON.parse(line);
-      fetched.set(`${bill}:${r.id}`, { url: r.url, chars: r.chars });
+    for (const line of out.split("\n")) {
+      if (line !== "") {
+        const r = FetchResult.parse(JSON.parse(line));
+        fetched.set(`${bill}:${r.id}`, { url: r.url, chars: r.chars });
+      }
     }
   }
 
@@ -194,8 +222,10 @@ export async function collect(ctx: StageContext) {
     if (sampled.has(it.id)) {
       const f = fetched.get(it.id);
 
-      if (f?.url) {
-        url = f.url;
+      const fetchedUrl = f?.url ?? "";
+
+      if (fetchedUrl !== "") {
+        url = fetchedUrl;
       }
 
       const file = Bun.file(join(dir, `${it.id.split(":")[1]}.txt`));
@@ -217,10 +247,12 @@ export async function collect(ctx: StageContext) {
   }
 
   await writeRows("articles", bill, rows);
-  const per = (s: Stratum) => items.filter((i) => i.stratum === s).length;
+  const per = (s: string) => items.filter((i) => i.stratum === s).length;
   ctx.log(
     `${rows.length} articles via ${items[0]?.via ?? "none"}; ` +
-      `${(Object.keys(SAMPLE) as Stratum[]).map((s) => `${s} ${per(s)}`).join(", ")}; read ${picked.length}`,
+      `${Object.keys(SAMPLE)
+        .map((s) => `${s} ${per(s)}`)
+        .join(", ")}; read ${picked.length}`,
   );
 
   return { query, window, sides: SIDES };

@@ -4,7 +4,7 @@ import { Find } from "./Find.tsx";
 import { Mark } from "./icons.tsx";
 import { ThemeButton } from "./ThemeButton.tsx";
 
-export function Top({ crumb, find = false }: { crumb?: ReactNode; find?: boolean }) {
+export function Top({ crumb, find = false }: { crumb?: string | undefined; find?: boolean }) {
   return (
     <header className="nav">
       <div className="wrap nav-in">
@@ -13,7 +13,7 @@ export function Top({ crumb, find = false }: { crumb?: ReactNode; find?: boolean
             <Mark />
             antibody
           </a>
-          {crumb && (
+          {crumb !== undefined && crumb !== "" && (
             <div className="crumb">
               <span aria-hidden="true">/</span>
               <span>{crumb}</span>

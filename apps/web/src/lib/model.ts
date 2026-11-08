@@ -7,20 +7,13 @@ export type SectionKind = "headline" | "buried" | "normal" | "unscored";
 export interface SectionView {
   s: Section;
   kind: SectionKind;
-  /** Index of the version it first appeared in (0 = earliest stage, predecessor included). */
   stage: number;
   stageName: string;
-  /** Lobbying reports that cite this section by number. */
   lobbied: number;
   dollarsMusd: number | null;
-  /** The CBO figure that counts for the section (the smaller one when CBO printed two baselines), with the estimate's own wording; null when none lists it. */
   figure: (Figure & { estimate: Bundle["dollars"]["estimates"][number] }) | null;
 }
 
-/**
- * Who acts on the bill, merged the way a reader thinks of them: an LDA client and the PAC of the same company are
- * one actor, drawn as the company when it resolves to one. The merge itself is an inference, so it is kept.
- */
 export interface Actor {
   id: NodeId;
   kind: "company" | "client" | "pac";
@@ -55,7 +48,6 @@ export interface MemberView {
 
 export type DisplayKind = "lobbied" | "traded" | "funded" | "voted" | "sponsored" | "inserted";
 
-/** An edge as drawn: endpoints are display ids (bill, section, actor or member). */
 export interface DisplayEdge {
   id: string;
   kind: DisplayKind;
@@ -84,22 +76,14 @@ export interface BillModel {
   edges: DisplayEdge[];
   sponsor: NodeOf<"member"> | null;
   lobbyists: NodeOf<"lobbyist">[];
-  /** Members by party who cast a passage vote on the bill (all drawn members when none did), the size traders are counted against. */
   voters: Record<"R" | "D" | "I", number>;
-  /** Members by party whose paper filings we have not read, so their trades cannot be counted. */
   unread: Record<"R" | "D" | "I", number>;
   perSectionDollars: boolean;
-  /** Members who traded a tied company's stock, among those with a recorded vote by party (all traders when no one voted). */
   tradersVoted: Record<"R" | "D" | "I", number>;
-  /** Traders with no recorded vote on the bill (a chamber that passed it by consent casts none). */
   tradersNoVote: number;
-  /** Traders with at least one trade dated inside `span`. */
   tradersDuring: number;
-  /** First text through signing (or the last dated action): the span in which a trade could be about the bill. */
   span: [string, string] | null;
-  /** `§30002`, with the version in brackets when another section of the bill has the same number. */
   secLabel: (v: SectionView) => string;
-  /** Share of final sections that arrived late (null when the late flag is unavailable). */
   lateShare: number | null;
 }
 
@@ -108,19 +92,30 @@ const byKind = <K extends Edge["kind"]>(edges: Edge[], kind: K) => edges.filter(
 const isNode = <K extends Node["kind"]>(n: Node | undefined, kind: K): n is NodeOf<K> => n?.kind === kind;
 
 export function buildModel(b: Bundle): BillModel {
-  const billNode = `bill:${b.bill.id}` as NodeId;
+  const billNode: NodeId = `bill:${b.bill.id}`;
   const nodeById = new Map<string, Node>(b.nodes.map((n) => [n.id, n]));
-  const versions = [...b.versions].sort((x, y) => (x.date ?? "").localeCompare(y.date ?? ""));
+  const versions = b.versions.toSorted((x, y) => (x.date ?? "").localeCompare(y.date ?? ""));
   const stageOf = new Map(versions.map((v, i) => [v.code, i]));
 
   const sectionLobbying = new Map<string, number>();
 
   for (const e of byKind(b.edges, "lobbied")) {
-    if (e.dst.startsWith("section:"))
+    if (e.dst.startsWith("section:")) {
       sectionLobbying.set(e.dst.slice(8), (sectionLobbying.get(e.dst.slice(8)) ?? 0) + e.props.reports);
+    }
   }
 
   const estimateById = new Map(b.dollars.estimates.map((e) => [e.id, e]));
+
+  const estimateOf = (id: string) => {
+    const estimate = estimateById.get(id);
+
+    if (estimate === undefined) {
+      throw new Error(`figure cites estimate ${id}, missing from the bundle`);
+    }
+
+    return estimate;
+  };
 
   const sections: SectionView[] = b.sections.map((s) => {
     const f = sectionFigure(s.dollars, b.dollars.estimates);
@@ -133,7 +128,7 @@ export function buildModel(b: Bundle): BillModel {
       stageName: versions.find((v) => v.code === s.firstVersion)?.name ?? s.firstVersion,
       lobbied: sectionLobbying.get(s.id) ?? 0,
       dollarsMusd: shown?.musd ?? null,
-      figure: shown && { ...shown, estimate: estimateById.get(shown.estimateId)! },
+      figure: shown && { ...shown, estimate: estimateOf(shown.estimateId) },
     };
   });
 
@@ -262,11 +257,11 @@ export function buildModel(b: Bundle): BillModel {
     a.lobbied.push(e);
     a.reports += e.props.reports;
 
-    if (e.props.spendTotalUsd != null) {
+    if (e.props.spendTotalUsd !== null) {
       a.spendUsd = (a.spendUsd ?? 0) + e.props.spendTotalUsd;
     }
 
-    if (e.props.shareEstimateUsd != null) {
+    if (e.props.shareEstimateUsd !== null) {
       a.shareUsd = (a.shareUsd ?? 0) + e.props.shareEstimateUsd;
     }
 
@@ -292,7 +287,7 @@ export function buildModel(b: Bundle): BillModel {
   const memberById = new Map<string, MemberView>();
 
   for (const n of b.nodes) {
-    if (n.kind === "member")
+    if (n.kind === "member") {
       memberById.set(n.id, {
         node: n,
         trades: [],
@@ -305,6 +300,7 @@ export function buildModel(b: Bundle): BillModel {
         inserted: [],
         committees: [],
       });
+    }
   }
 
   for (const e of byKind(b.edges, "traded")) {
@@ -379,7 +375,8 @@ export function buildModel(b: Bundle): BillModel {
     }
 
     const roll = b.votes.find((v) => v.id === e.props.rollId);
-    const latest = m.vote ? b.votes.find((v) => v.id === m.vote!.props.rollId) : null;
+    const prior = m.vote;
+    const latest = prior ? b.votes.find((v) => v.id === prior.props.rollId) : null;
 
     if (!latest || (roll && roll.date >= latest.date)) {
       m.vote = e;
@@ -387,7 +384,7 @@ export function buildModel(b: Bundle): BillModel {
   }
 
   for (const m of memberById.values()) {
-    if (m.vote)
+    if (m.vote) {
       add({
         id: m.vote.id,
         kind: "voted",
@@ -397,6 +394,7 @@ export function buildModel(b: Bundle): BillModel {
         weight: 1,
         claims: m.vote.claims,
       });
+    }
   }
 
   for (const e of byKind(b.edges, "sponsored")) {
@@ -410,7 +408,7 @@ export function buildModel(b: Bundle): BillModel {
       m.sponsor = e;
     }
 
-    if (e.props.role === "sponsor" || !e.props.withdrawnOn) {
+    if (e.props.role === "sponsor" || e.props.withdrawnOn === null) {
       add({
         id: e.id,
         kind: "sponsored",
@@ -455,22 +453,24 @@ export function buildModel(b: Bundle): BillModel {
 
   const headline = scored
     .filter((v) => v.kind === "headline")
-    .sort((x, y) => (y.s.attention?.pct ?? 0) - (x.s.attention?.pct ?? 0));
+    .toSorted((x, y) => (y.s.attention?.pct ?? 0) - (x.s.attention?.pct ?? 0));
 
   const buried = scored
     .filter((v) => v.kind === "buried")
-    .sort((x, y) => (y.s.score?.buried ?? 0) - (x.s.score?.buried ?? 0));
+    .toSorted((x, y) => (y.s.score?.buried ?? 0) - (x.s.score?.buried ?? 0));
 
   const quiet = scored
     .filter((v) => v.kind === "normal" && (v.s.attention?.pct ?? 1) <= 0.25)
-    .sort((x, y) => (x.s.attention?.pct ?? 0) - (y.s.attention?.pct ?? 0));
+    .toSorted((x, y) => (x.s.attention?.pct ?? 0) - (y.s.attention?.pct ?? 0));
 
   const members = [...memberById.values()];
   const voters = { R: 0, D: 0, I: 0 };
   const voted = members.some((m) => m.vote);
 
   for (const m of members) {
-    if (!voted || m.vote) voters[m.node.props.party]++;
+    if (!voted || m.vote) {
+      voters[m.node.props.party]++;
+    }
   }
 
   const unread = b.paperUnread;
@@ -480,7 +480,7 @@ export function buildModel(b: Bundle): BillModel {
   const span = activeSpan(b);
 
   const tradersDuring = members.filter(
-    (m) => span && m.trades.some((t) => t.props.events.some((e) => e.date >= span[0] && e.date <= span[1])),
+    (m) => span !== null && m.trades.some((t) => t.props.events.some((e) => e.date >= span[0] && e.date <= span[1])),
   ).length;
 
   for (const m of members) {
@@ -503,7 +503,7 @@ export function buildModel(b: Bundle): BillModel {
 
   const finalSections = sections.filter((v) => v.s.inFinal);
 
-  const sponsorNode = b.bill.sponsor ? nodeById.get(b.bill.sponsor) : undefined;
+  const sponsorNode = b.bill.sponsor === null ? undefined : nodeById.get(b.bill.sponsor);
 
   return {
     b,
@@ -531,22 +531,18 @@ export function buildModel(b: Bundle): BillModel {
     tradersDuring,
     span,
     secLabel: (v) =>
-      (numCount.get(v.s.num) ?? 0) > 1 ? `§${v.s.num} (${v.stageName.replace(/ \(.*\)$/, "")})` : `§${v.s.num}`,
+      (numCount.get(v.s.num) ?? 0) > 1 ? `§${v.s.num} (${v.stageName.replace(/ \(.*\)$/u, "")})` : `§${v.s.num}`,
     lateShare:
-      b.bill.lateUnavailable || !finalSections.length
+      (b.bill.lateUnavailable ?? "") !== "" || finalSections.length === 0
         ? null
         : finalSections.filter((v) => isLate(v.s)).length / finalSections.length,
   };
 }
 
 export function memberShort(m: NodeOf<"member">): string {
-  const name = m.label.replace(/^(Sen|Rep)\.\s+/, "").replace(/\s*\(.*\)$/, "");
+  const name = m.label.replace(/^(Sen|Rep)\.\s+/u, "").replace(/\s*\(.*\)$/u, "");
 
-  const last =
-    name
-      .split(" ")
-      .filter((w) => !/^[A-Z]\.$/.test(w) && !/^(Jr|Sr|II|III)\.?$/.test(w))
-      .at(-1) ?? name;
+  const last = name.split(" ").findLast((w) => !/^[A-Z]\.$/u.test(w) && !/^(Jr|Sr|II|III)\.?$/u.test(w)) ?? name;
 
   return `${last} ${m.props.party}`;
 }

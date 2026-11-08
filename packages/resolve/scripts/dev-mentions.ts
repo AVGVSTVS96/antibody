@@ -1,12 +1,7 @@
-/**
- * Builds resolve's inputs straight from the Phase 0 raw downloads (LD-2 filings for GENIUS, IRA and OBBBA; FEC
- * committee and PAC-to-candidate files; House and Senate PTR lines), shaped like the contract rows the ingest parts
- * will write. For measuring the resolver before those parts land; the stages read the real tables.
- *
- *   bun packages/resolve/scripts/dev-mentions.ts > $ANTIBODY_DATA/entities/resolve/dev-mentions.json
- */
 import { join } from "node:path";
+import { filled } from "@antibody/core";
 import { paths } from "@antibody/core/node";
+import { isObject, isText, isTextOrNull } from "../src/is.ts";
 import type { Mention } from "../src/match.ts";
 import { STOCK_TYPES } from "../src/mentions.ts";
 
@@ -15,19 +10,61 @@ const lines = async (file: string) => (await Bun.file(file).text()).split("\n").
 function clientKey(name: string) {
   return name
     .toUpperCase()
-    .replace(/^.*\b(?:OBO|ON BEHALF OF|O\/B\/O)\b/, "")
-    .replaceAll(/\(.*?\)/g, " ")
+    .replace(/^.*\b(?:OBO|ON BEHALF OF|O\/B\/O)\b/u, "")
+    .replaceAll(/\(.*?\)/gu, " ")
     .replaceAll("&", " AND ")
-    .replaceAll(/[^A-Z0-9 ]+/g, " ")
+    .replaceAll(/[^A-Z0-9 ]+/gu, " ")
     .replaceAll(
-      /\b(THE|INC|INCORPORATED|LLC|L L C|LP|LLP|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HOLDINGS?|GROUP|N A|NA|USA|U S A|US|U S|AND AFFILIATES|AFFILIATES|AND ITS SUBSIDIARIES|AND VARIOUS SUBSIDIARIES|SUBSIDIARIES)\b/g,
+      /\b(THE|INC|INCORPORATED|LLC|L L C|LP|LLP|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HOLDINGS?|GROUP|N A|NA|USA|U S A|US|U S|AND AFFILIATES|AFFILIATES|AND ITS SUBSIDIARIES|AND VARIOUS SUBSIDIARIES|SUBSIDIARIES)\b/gu,
       " ",
     )
-    .replaceAll(/\s+/g, " ")
+    .replaceAll(/\s+/gu, " ")
     .trim()
     .toLowerCase()
     .replaceAll(" ", "-");
 }
+
+interface Filing {
+  client: { name: string; general_description: string | null };
+}
+
+const isFiling = (v: unknown): v is Filing =>
+  isObject(v) &&
+  "client" in v &&
+  isObject(v.client) &&
+  "name" in v.client &&
+  isText(v.client.name) &&
+  "general_description" in v.client &&
+  isTextOrNull(v.client.general_description);
+
+interface Trade {
+  asset: string;
+  asset_type: string | null;
+  ticker: string | null;
+  doc_id?: string | null;
+  report_id?: string | null;
+}
+
+const isTrade = (v: unknown): v is Trade =>
+  isObject(v) &&
+  "asset" in v &&
+  isText(v.asset) &&
+  "asset_type" in v &&
+  isTextOrNull(v.asset_type) &&
+  "ticker" in v &&
+  isTextOrNull(v.ticker) &&
+  (!("doc_id" in v) || isTextOrNull(v.doc_id)) &&
+  (!("report_id" in v) || isTextOrNull(v.report_id));
+
+const parse = <T>(line: string, is: (v: unknown) => v is T): T => {
+  const v: unknown = JSON.parse(line);
+
+  if (!is(v)) {
+    throw new Error(`unexpected record: ${line.slice(0, 200)}`);
+  }
+
+  return v;
+};
 
 const out: (Mention & { bills?: string[] })[] = [];
 
@@ -35,10 +72,13 @@ const clients = new Map<string, { names: Map<string, number>; desc: string | nul
 
 for (const bill of ["genius", "ira", "obbba"]) {
   for (const l of await lines(join(paths.raw("lobbying"), bill, "filings.jsonl"))) {
-    const f = JSON.parse(l) as { client: { name: string; general_description: string | null } };
+    const f = parse(l, isFiling);
     const k = clientKey(f.client.name);
 
-    if (!k) continue;
+    if (!k) {
+      continue;
+    }
+
     const c = clients.get(k) ?? { names: new Map(), desc: f.client.general_description, bills: new Set() };
     c.names.set(f.client.name, (c.names.get(f.client.name) ?? 0) + 1);
     c.bills.add(bill);
@@ -47,13 +87,18 @@ for (const bill of ["genius", "ira", "obbba"]) {
 }
 
 for (const [k, c] of clients) {
-  const names = [...c.names].sort((a, b) => b[1] - a[1]).map(([n]) => n);
+  const [name, ...aka] = [...c.names].toSorted((a, b) => b[1] - a[1]).map(([n]) => n);
+
+  if (name === undefined) {
+    continue;
+  }
+
   out.push({
     src: `client:${k}`,
     source: "client",
-    name: names[0]!,
+    name,
     ticker: null,
-    context: [names.slice(1, 5).join("; "), c.desc].filter(Boolean).join(" | ") || null,
+    context: [aka.slice(0, 4).join("; "), c.desc].filter(Boolean).join(" | ") || null,
     restsOn: [`lda_clients/${k}`],
     bills: [...c.bills],
   });
@@ -62,25 +107,35 @@ for (const [k, c] of clients) {
 const gave = new Set<string>();
 
 for (const cycle of ["24", "26"]) {
-  for (const l of await lines(join(paths.raw("entities"), "fec", `pas2${cycle}`, "itpas2.txt")))
-    gave.add(l.split("|")[0]!);
+  for (const l of await lines(join(paths.raw("entities"), "fec", `pas2${cycle}`, "itpas2.txt"))) {
+    const [committee = ""] = l.split("|");
+    gave.add(committee);
+  }
 }
 
 const seen = new Set<string>();
 
 for (const cycle of ["26", "24"]) {
   for (const l of await lines(join(paths.raw("entities"), "fec", `cm${cycle}`, "cm.txt"))) {
-    const [id, name, , , , , , , dsgn, tp, , , , org] = l.split("|");
+    const f = l.split("|");
+    const [id, name] = f;
+    const dsgn = f[8];
+    const tp = f[9];
+    const org = f[13];
 
-    if (!id || seen.has(id) || !gave.has(id) || dsgn === "D" || !["Q", "N"].includes(tp ?? "")) continue;
+    if (!filled(id) || seen.has(id) || !gave.has(id) || dsgn === "D" || !["Q", "N"].includes(tp ?? "")) {
+      continue;
+    }
+
     seen.add(id);
-    const connected = org && !/^(NONE|N\/?A|NULL)$/i.test(org.trim()) ? org : null;
+    const connected = filled(org) && !/^(NONE|N\/?A|NULL)$/iu.test(org.trim()) ? org : null;
+
     out.push({
       src: `pac:${id}`,
       source: "pac",
-      name: connected ?? name!,
+      name: connected ?? name ?? "",
       ticker: null,
-      context: connected ? `PAC name: ${name}` : null,
+      context: connected === null ? null : `PAC name: ${name ?? ""}`,
       restsOn: [`pacs/${id}`],
     });
   }
@@ -90,15 +145,12 @@ let n = 0;
 
 for (const chamber of ["house", "senate"]) {
   for (const l of await lines(join(paths.raw("trades"), `${chamber}-trades.jsonl`))) {
-    const t = JSON.parse(l) as {
-      asset: string;
-      asset_type: string | null;
-      ticker: string | null;
-      doc_id?: string;
-      report_id?: string;
-    };
+    const t = parse(l, isTrade);
 
-    if (!STOCK_TYPES.has(t.asset_type ?? "")) continue;
+    if (!STOCK_TYPES.has(t.asset_type ?? "")) {
+      continue;
+    }
+
     const id = `${t.doc_id ?? t.report_id}-${n++}`;
     out.push({
       src: `trade:${id}`,

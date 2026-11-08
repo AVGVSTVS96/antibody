@@ -7,7 +7,13 @@ import { initTheme } from "./lib/theme.ts";
 
 initTheme();
 
-createRoot(document.querySelector("#root")!).render(
+const root = document.querySelector("#root");
+
+if (!root) {
+  throw new Error("index.html has no #root element");
+}
+
+createRoot(root).render(
   <StrictMode>
     <App />
   </StrictMode>,

@@ -1,12 +1,12 @@
 import { billRef } from "@antibody/core";
-import type { Stage } from "@antibody/core";
+import type { BillId, Stage, StageContext } from "@antibody/core";
 import { readRows, writeRows } from "@antibody/core/node";
 import { committeeMemberRows, committeeRows } from "./committees.ts";
 import { fetchMembers, memberLookup } from "./legislators.ts";
 import { upsertRows } from "./upsert.ts";
 import { billRolls } from "./votes.ts";
 
-export { billstatus, recordedVotes, type Sponsor } from "./billstatus.ts";
+export { billstatus, recordedVotes } from "./billstatus.ts";
 
 export { committeeId, congressSpan } from "./committees.ts";
 
@@ -16,18 +16,26 @@ export { upsertRows } from "./upsert.ts";
 
 export { rollId } from "./votes.ts";
 
+function billOf(ctx: StageContext): BillId {
+  if (ctx.bill === null) {
+    throw new Error("this stage runs per bill");
+  }
+
+  return ctx.bill;
+}
+
 export const stages: Stage[] = [
   {
     name: "members",
     scope: "global",
     needs: [],
     writes: ["members", "committees"],
-    async run({ refresh, log }) {
-      const members = await fetchMembers(refresh);
+    async run(ctx) {
+      const members = await fetchMembers(ctx.refresh);
       await writeRows("members", "legislators", members);
-      const committees = await committeeRows(refresh);
+      const committees = await committeeRows(ctx.refresh);
       await upsertRows("committees", "legislators", committees);
-      log(`${members.length} members since 1993, ${committees.length} committees and subcommittees`);
+      ctx.log(`${members.length} members since 1993, ${committees.length} committees and subcommittees`);
     },
   },
   {
@@ -35,11 +43,11 @@ export const stages: Stage[] = [
     scope: "bill",
     needs: ["members"],
     writes: ["committee_members", "committees"],
-    async run({ bill, refresh, log }) {
-      const { congress } = billRef(bill!);
+    async run(ctx) {
+      const { congress } = billRef(billOf(ctx));
 
-      if (!refresh && (await readRows("committee_members", String(congress))).length) {
-        log(`${congress}th Congress roster cached`);
+      if (!ctx.refresh && (await readRows("committee_members", String(congress))).length > 0) {
+        ctx.log(`${congress}th Congress roster cached`);
 
         return;
       }
@@ -47,11 +55,11 @@ export const stages: Stage[] = [
       const { seats, committees } = await committeeMemberRows(congress);
       await writeRows("committee_members", String(congress), seats);
 
-      if (committees.length) {
+      if (committees.length > 0) {
         await upsertRows("committees", "legislators", committees);
       }
 
-      log(`${seats.length} seats in the ${congress}th Congress; ${committees.length} retired subcommittees added`);
+      ctx.log(`${seats.length} seats in the ${congress}th Congress; ${committees.length} retired subcommittees added`);
     },
   },
   {
@@ -59,11 +67,11 @@ export const stages: Stage[] = [
     scope: "bill",
     needs: ["members"],
     writes: ["roll_calls", "member_votes"],
-    async run({ bill, refresh, log }) {
-      const rolls = await billRolls(bill!, await memberLookup(), refresh);
+    async run(ctx) {
+      const rolls = await billRolls(billOf(ctx), await memberLookup(), ctx.refresh);
 
-      if (!rolls) {
-        log("GovInfo has no BILLSTATUS for this bill yet");
+      if (rolls === null) {
+        ctx.log("GovInfo has no BILLSTATUS for this bill yet");
 
         return;
       }
@@ -84,10 +92,10 @@ export const stages: Stage[] = [
       }
 
       const unmatched = rolls.flatMap((r) => r.unmatched.map((u) => `${r.roll.id} ${u}`));
-      log(`${rolls.length} roll calls, ${rolls.reduce((n, r) => n + r.votes.length, 0)} member votes`);
+      ctx.log(`${rolls.length} roll calls, ${rolls.reduce((n, r) => n + r.votes.length, 0)} member votes`);
 
-      if (unmatched.length) {
-        log(`unmatched voters: ${unmatched.join(", ")}`);
+      if (unmatched.length > 0) {
+        ctx.log(`unmatched voters: ${unmatched.join(", ")}`);
       }
     },
   },

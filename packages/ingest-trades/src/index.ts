@@ -18,10 +18,8 @@ export { VISION_MODEL } from "./vision.ts";
 
 const SENATE_SINCE = "01/01/2019";
 
-/** Pages a single run may send to the vision model; the daily run keeps up with new paper filings within it. */
 const visionBudget = () => Number(process.env.ANTIBODY_VISION_PAGES ?? 200);
 
-/** Only filings on or after this date go to the vision model (ISO); unset reads every year, newest first. */
 const visionSince = () => process.env.ANTIBODY_VISION_SINCE ?? "";
 
 interface Scanned {
@@ -32,29 +30,27 @@ interface Scanned {
   pages: number;
 }
 
-/** Filings by members who sponsored or cosponsored a bill already ingested come first: those are the trades the bill pages show. */
 async function priorityDocs(): Promise<Set<string>> {
   const involved = new Set((await readRows("sponsorships")).map((s) => s.bioguide));
 
   return new Set(
-    (await readRows("ptr_documents")).filter((d) => d.bioguide && involved.has(d.bioguide)).map((d) => d.id),
+    (await readRows("ptr_documents")).flatMap((d) =>
+      d.bioguide !== null && d.bioguide !== "" && involved.has(d.bioguide) ? [d.id] : [],
+    ),
   );
 }
 
-/** Every page of every scanned filing not yet read: priority members' filings first, then newest first. */
-async function unreadPages(house: HouseFiling[], pagesOf: (docId: string) => number, senate: SenateReport[]) {
-  const scanned: Scanned[] = house
-    .filter((f) => f.scanned)
-    .map((f) => ({
-      doc: `h-${f.docId}`,
-      filed: f.filed,
-      src: () => pdfPath(f),
-      perImage: false,
-      pages: pagesOf(f.docId),
-    }));
+const time = (d: string) => Date.parse(d) || 0;
 
-  for (const r of senate.filter((r) => r.kind === "paper")) {
-    const images = (await readdir(imageDir(r.id)).catch(() => [] as string[])).filter((f) => f.endsWith(".gif"));
+async function unreadPages(house: HouseFiling[], pagesOf: (docId: string) => number, senate: SenateReport[]) {
+  const scanned: Scanned[] = house.flatMap((f) =>
+    f.scanned
+      ? [{ doc: `h-${f.docId}`, filed: f.filed, src: () => pdfPath(f), perImage: false, pages: pagesOf(f.docId) }]
+      : [],
+  );
+
+  for (const r of senate.filter((report) => report.kind === "paper")) {
+    const images = (await readdir(imageDir(r.id)).catch((): string[] => [])).filter((f) => f.endsWith(".gif"));
     scanned.push({
       doc: `s-${r.id}`,
       filed: r.filed,
@@ -64,7 +60,6 @@ async function unreadPages(house: HouseFiling[], pagesOf: (docId: string) => num
     });
   }
 
-  const time = (d: string) => Date.parse(d) || 0;
   const since = visionSince() ? Date.parse(visionSince()) : 0;
   const priority = await priorityDocs();
   const rank = (s: Scanned) => (priority.has(s.doc) ? 1 : 0);
@@ -79,7 +74,9 @@ async function unreadPages(house: HouseFiling[], pagesOf: (docId: string) => num
     const done = new Set(await cachedPages(s.doc));
 
     for (let p = 1; p <= s.pages; p++) {
-      if (!done.has(p)) jobs.push({ doc: s.doc, page: p, s });
+      if (!done.has(p)) {
+        jobs.push({ doc: s.doc, page: p, s });
+      }
     }
   }
 
@@ -136,21 +133,21 @@ export async function ingestTrades(ctx: Pick<StageContext, "log" | "refresh">) {
 const shardOf = (r: { id: string }, filed: string | null | undefined) =>
   `${r.id.startsWith("h-") ? "house" : "senate"}-${filed?.slice(0, 4) ?? "undated"}`;
 
+function group<T extends { id: string }>(rows: T[], filed: (r: T) => string | null | undefined) {
+  const m = new Map<string, T[]>();
+
+  for (const r of rows) {
+    const k = shardOf(r, filed(r));
+    const list = m.get(k) ?? [];
+    list.push(r);
+    m.set(k, list);
+  }
+
+  return m;
+}
+
 async function writeSharded(documents: Row<"ptr_documents">[], trades: Row<"trades">[]) {
   const filedOf = new Map(documents.map((d) => [d.id, d.filed_on]));
-
-  const group = <T extends { id: string }>(rows: T[], filed: (r: T) => string | null | undefined) => {
-    const m = new Map<string, T[]>();
-
-    for (const r of rows) {
-      const k = shardOf(r, filed(r));
-      const list = m.get(k) ?? [];
-      list.push(r);
-      m.set(k, list);
-    }
-
-    return m;
-  };
 
   for (const [shard, rows] of group(documents, (d) => d.filed_on)) {
     await writeRows("ptr_documents", shard, rows);
@@ -167,6 +164,8 @@ export const stages: Stage[] = [
     scope: "global",
     needs: [],
     writes: ["ptr_documents", "trades"],
-    run: async (ctx) => void (await ingestTrades(ctx)),
+    run: async (ctx) => {
+      await ingestTrades(ctx);
+    },
   },
 ];

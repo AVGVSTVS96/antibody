@@ -1,28 +1,26 @@
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { python } from "@antibody/core/node";
+import { must } from "@antibody/core";
 import { reconcile } from "../src/lines.ts";
+import { readTables } from "../src/parsed.ts";
 import type { Parsed, ParsedRow } from "../src/parsed.ts";
 
-const PKG = resolve(import.meta.dir, "..");
-
-const parse = async (name: string) =>
-  JSON.parse(await python(PKG, "cbo.py", ["pages", resolve(import.meta.dir, "fixtures", name)])) as Parsed;
+const parse = async (name: string) => await readTables("pages", resolve(import.meta.dir, "fixtures", name));
 
 const rowsOf = (p: Parsed) => p.sheets.flatMap((s) => s.rows);
 
 const lineOf = (rows: ParsedRow[], pick: (r: ParsedRow) => boolean) => {
-  const first = rows.find(pick)!;
+  const first = must(rows.find(pick), "a matching row");
 
   return rows.filter((r) => r.line === first.line && r.sheet === first.sheet);
 };
 
 const total = (rows: ParsedRow[], measure: string, year: string) =>
-  rows.find((r) => r.measure_kind === measure)!.values[year];
+  rows.find((r) => r.measure_kind === measure)?.values[year];
 
 const parsers = Bun.which("uv") !== null;
 
-// CHIPS and Science, CBO publication 58319, Table 2 (pages 3-4 of hr4346_chip.pdf)
+// https://www.cbo.gov/publication/58319
 test.skipIf(!parsers)(
   "a table that prints 'Section N.' over wrapped titles reads one row per section, under its division",
   async () => {
@@ -47,7 +45,12 @@ test.skipIf(!parsers)(
   "a revenue row printed on the same line as its section title is that section's revenue, and the table reconciles",
   async () => {
     const parsed = await parse("chips-table2.json");
-    const revenue = rowsOf(parsed).find((r) => r.block === "revenues" && r.line_kind === "section")!;
+
+    const revenue = must(
+      rowsOf(parsed).find((r) => r.block === "revenues" && r.line_kind === "section"),
+      "revenue",
+    );
+
     expect(revenue).toMatchObject({
       division: "A",
       sections: ["107"],
@@ -58,16 +61,26 @@ test.skipIf(!parsers)(
   },
 );
 
-// Infrastructure Investment and Jobs Act, CBO publication 57406, Table 2 (pages 4-7)
+// https://www.cbo.gov/publication/57406
 test.skipIf(!parsers)(
   "division and title headings carry down to provision rows that have no section number",
   async () => {
     const rows = rowsOf(await parse("iija-table2.json"));
     const programs = rows.filter((r) => r.line_kind === "program" && r.measure_kind === "outlays");
-    const spr = programs.find((r) => r.section_title === "Strategic Petroleum Reserve")!;
+
+    const spr = must(
+      programs.find((r) => r.section_title === "Strategic Petroleum Reserve"),
+      "spr",
+    );
+
     expect(spr).toMatchObject({ division: "I", title_no: null, sections: [], block: "direct_spending" });
     expect(spr.values["2021-2031"]).toBe(-6100);
-    const transmission = programs.find((r) => r.section_title === "Transmission Facilitation Program")!;
+
+    const transmission = must(
+      programs.find((r) => r.section_title === "Transmission Facilitation Program"),
+      "transmission",
+    );
+
     expect(transmission).toMatchObject({ division: "D", title_no: "I" });
     expect(transmission.values["2021-2031"]).toBe(3785);
   },
@@ -109,15 +122,18 @@ test.skipIf(!parsers)(
 test.skipIf(!parsers)("a division total that does not match its rows fails that block", async () => {
   const parsed = await parse("iija-table2.json");
 
-  const division = rowsOf(parsed).find(
-    (r) => r.line_kind === "subtotal" && r.section_title === "DIVISION I Total" && r.measure_kind === "outlays",
-  )!;
+  const division = must(
+    rowsOf(parsed).find(
+      (r) => r.line_kind === "subtotal" && r.section_title === "DIVISION I Total" && r.measure_kind === "outlays",
+    ),
+    "division",
+  );
 
   division.values["2021-2031"] = -100_000;
   expect(reconcile(parsed.sheets).failing).toContain("Table 2|direct_spending|outlays");
 });
 
-// Consolidated Appropriations Act, 2023, CBO publication 58901: one table per division, section numbers repeat
+// https://www.cbo.gov/publication/58901
 test.skipIf(!parsers)(
   "tables that cover one division each tag their rows, so a repeated section number stays apart",
   async () => {
@@ -136,9 +152,12 @@ test.skipIf(!parsers)(
   async () => {
     const rows = rowsOf(await parse("caa-divisions.json"));
 
-    const title = rows.find(
-      (r) => r.line_kind === "title" && r.division === "T" && r.title_no === "I" && r.measure_kind === "revenues",
-    )!;
+    const title = must(
+      rows.find(
+        (r) => r.line_kind === "title" && r.division === "T" && r.title_no === "I" && r.measure_kind === "revenues",
+      ),
+      "title",
+    );
 
     expect(title.section_title).toBe("Expanding Coverage and Increasing Retirement Savings");
     expect(title.values["2023-2032"]).toBe(-27_020);
@@ -156,10 +175,14 @@ test.skipIf(!parsers)("every division table in the omnibus adds up to its printe
   expect(reconcile(parsed.sheets).failing).toEqual([]);
 });
 
-// Bipartisan Safer Communities Act, Table 2: 'Title II - Firearms' carries revenue with no section numbers
 test.skipIf(!parsers)("a division named in the table's caption applies to its title rows", async () => {
   const rows = rowsOf(await parse("s2938-table2.json"));
-  const firearms = rows.find((r) => r.line_kind === "title" && r.block === "revenues")!;
+
+  const firearms = must(
+    rows.find((r) => r.line_kind === "title" && r.block === "revenues"),
+    "firearms",
+  );
+
   expect(firearms).toMatchObject({ division: "A", title_no: "II", section_title: "Firearms" });
   expect(firearms.values["2022-2032"]).toBe(12);
 });
@@ -176,12 +199,12 @@ test.skipIf(!parsers)(
   },
 );
 
-// H.R. 3967 as amended by the Senate Committee on Veterans' Affairs, CBO publication 58177: billions, decimals, provision names
+// https://www.cbo.gov/publication/58177
 test.skipIf(!parsers)(
   "a table in billions with decimals and provision names reads in millions and adds up to its total",
   async () => {
     const parsed = await parse("pact-senate-version.json");
-    const sheet = parsed.sheets[0]!;
+    const sheet = must(parsed.sheets[0], "the first sheet");
     expect(sheet.unit).toBe("billions");
     const programs = sheet.rows.filter((r) => r.line_kind === "program" && r.measure_kind === "outlays");
     expect(programs.map((r) => [r.section_title, r.values["2022-2031"]])).toEqual([
@@ -208,7 +231,7 @@ test.skipIf(!parsers)(
   },
 );
 
-// National Defense Authorization Act for FY2026, CBO publication 61935: no 'Table N' heading, labels wrapped over lines
+// https://www.cbo.gov/publication/61935
 test.skipIf(!parsers)(
   "a table without a Table N heading is read from its column labels, wrapped measure labels included",
   async () => {
@@ -228,7 +251,7 @@ test.skipIf(!parsers)(
   },
 );
 
-// Inflation Reduction Act, CBO publication 58455, Table 1 page 14 and Table 2 page 17 (PL117-169_9-7-22.pdf)
+// https://www.cbo.gov/publication/58455
 test.skipIf(!parsers)(
   "an 'and' in the section-number column joins two sections into one row; an 'and' that wraps a title does not",
   async () => {
@@ -236,7 +259,11 @@ test.skipIf(!parsers)(
       (r) => r.line_kind === "section" && r.measure_kind !== "budget_authority",
     );
 
-    const joined = sections.find((r) => r.sections.includes("13904"))!;
+    const joined = must(
+      sections.find((r) => r.sections.includes("13904")),
+      "joined",
+    );
+
     expect(joined.sections).toEqual(["13903", "13904"]);
     expect(joined.section_title).toBe("Extension of Limitation on Excess Business Losses of Noncorporate Taxpayers");
     expect(joined.values["2022-2031"]).toBe(52_759);

@@ -3,17 +3,15 @@ import { join } from "node:path";
 import { billDisplay, parseJson } from "@antibody/core";
 import type { BillId, Row } from "@antibody/core";
 import { paths, python } from "@antibody/core/node";
-import { claude, pool } from "./llm.ts";
+import { z } from "zod";
+import { claude, messageOf, pool } from "./llm.ts";
 import { MATCH_MODEL } from "./match.ts";
 import type { ArticleIn } from "./match.ts";
 
 export const RECHECK = "quiet-check-v1";
 
-/** Bumped when the judge's question changes, so earlier answers are asked again. */
-const JUDGE = "quote-v1";
-
-/** Bumped when the description prompt or the passage finder changes. */
-const FINDER = "phrases-v4";
+const JUDGE_PROMPT_VERSION = "quote-v1";
+const FINDER_PROMPT_VERSION = "phrases-v4";
 
 export const CHECK_RULE =
   "quiet-check-v1: a section that looks quiet with big stakes gets a second look before it is called quiet. A language " +
@@ -21,49 +19,61 @@ export const CHECK_RULE =
   "or are closest in meaning (one per article) go back to the model, which says which of them describe what the " +
   "provision does. Articles it names add to the section's attention.";
 
-/** News passages put to the model per section. */
 export const PASSAGES = 8;
 const BATCH = 6;
 const PARALLEL = 4;
 const SECTION_WORDS = 60;
 
-export interface Checked {
-  key: string;
-  /** The articles whose passage was put to the model, with the passage's similarity to the section. */
-  passages: { article: string; sim: number }[];
-  /** The articles whose passage the model said describes the provision. */
-  yes: string[];
-}
+const CheckedSchema = z.object({
+  key: z.string(),
+  passages: z.array(z.object({ article: z.string(), sim: z.number() })),
+  yes: z.array(z.string()),
+});
 
-/** How a provision would be put in a news article: a plain sentence and phrases an article about it might use. */
-export interface Described {
-  key: string;
-  says: string;
-  phrases: string[];
-}
+export type Checked = z.infer<typeof CheckedSchema>;
 
-export interface CheckRun {
-  checker: string;
-  model: string;
-  costUsd: number;
-  described: Record<string, Described>;
-  results: Record<string, Checked>;
-}
+const DescribedSchema = z.object({ key: z.string(), says: z.string(), phrases: z.array(z.string()) });
 
-interface Passage {
-  article: string;
-  sim: number;
-  text: string;
-}
+export type Described = z.infer<typeof DescribedSchema>;
 
-const lead = (s: string, words: number) => s.split(/\s+/).slice(0, words).join(" ");
+const CheckRunSchema = z.object({
+  checker: z.string(),
+  model: z.string(),
+  costUsd: z.number(),
+  described: z.record(z.string(), DescribedSchema).default({}),
+  results: z.record(z.string(), CheckedSchema),
+});
+
+export type CheckRun = z.infer<typeof CheckRunSchema>;
+
+const PassageSchema = z.object({ article: z.string(), sim: z.number(), text: z.string() });
+
+type Passage = z.infer<typeof PassageSchema>;
+
+const PassagesFile = z.object({ passages: z.record(z.string(), z.array(PassageSchema)) });
+
+const Restatements = z.array(
+  z.object({
+    p: z.unknown().transform(Number),
+    says: z.string().nullable().catch(null),
+    phrases: z.array(z.string().nullable().catch(null)).catch([]),
+  }),
+);
+
+const Verdicts = z.array(
+  z.object({
+    p: z.unknown().transform(Number),
+    yes: z.array(z.object({ n: z.unknown().transform(Number), quote: z.string().nullable().catch(null) })),
+  }),
+);
+
+const lead = (s: string, words: number) => s.split(/\s+/u).slice(0, words).join(" ");
 const sectionText = (s: Row<"sections">) => `${s.heading}. ${lead(s.preview, SECTION_WORDS)}`;
 
-/** Lowercase words only, so a quote matches its passage whatever the punctuation or spacing. */
-const words = (s: string) =>
+const lowercaseWordsOnly = (s: string) =>
   ` ${s
     .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, " ")
+    .replaceAll(/[^a-z0-9]+/gu, " ")
     .trim()} `;
 
 const hash = (s: string) => createHash("sha1").update(s).digest("hex").slice(0, 16);
@@ -84,7 +94,6 @@ For each one write "says": one plain sentence on what the provision does, in the
 Reply with JSON only: an array with one object per provision, {"p": <provision number>, "says": "...", "phrases": ["...", ...]}.`;
 }
 
-/** The passages each section is closest to (py/recheck.py), cached per bill. */
 async function passages(
   bill: BillId,
   names: string[],
@@ -99,7 +108,7 @@ async function passages(
 
   const payload = JSON.stringify({
     recheck: RECHECK,
-    finder: FINDER,
+    finder: FINDER_PROMPT_VERSION,
     k: PASSAGES,
     names,
     sections: sections.map((s) => ({
@@ -117,16 +126,11 @@ async function passages(
     await python(pkg, "recheck.py", [input, output], { memoryMax: "3G" });
   }
 
-  const r: { passages: Record<string, Passage[]> } = await Bun.file(output).json();
+  const r = PassagesFile.parse(await Bun.file(output).json());
 
   return new Map(Object.entries(r.passages));
 }
 
-/**
- * Asks a model which news passages describe each candidate section. `articles` are the relevant articles from counted
- * outlets; a section's passages are the closest in meaning, one per article. Cached per bill and model by what the
- * model was shown, so a re-run only asks about sections whose passages changed.
- */
 export async function recheck(
   bill: BillId,
   title: string,
@@ -137,17 +141,20 @@ export async function recheck(
 ): Promise<CheckRun> {
   const model = opts.model ?? MATCH_MODEL;
   const file = Bun.file(join(paths.raw("analyze"), "recheck", `${bill}.${model}.json`));
-  const prior: CheckRun | null = (await file.exists()) ? await file.json() : null;
-  const reuse = prior && !opts.refresh && prior.checker === RECHECK;
-  const run: CheckRun = reuse ? prior : { checker: RECHECK, model, costUsd: 0, described: {}, results: {} };
+  const prior = (await file.exists()) ? CheckRunSchema.safeParse(await file.json()).data : undefined;
+
+  const run: CheckRun =
+    prior !== undefined && opts.refresh !== true && prior.checker === RECHECK
+      ? prior
+      : { checker: RECHECK, model, costUsd: 0, described: {}, results: {} };
 
   if (!candidates.length) {
     return run;
   }
 
-  run.described ??= {};
-
-  const toDescribe = candidates.filter((s) => run.described[s.id]?.key !== hash(`${FINDER}\n${sectionText(s)}`));
+  const toDescribe = candidates.filter(
+    (s) => run.described[s.id]?.key !== hash(`${FINDER_PROMPT_VERSION}\n${sectionText(s)}`),
+  );
 
   if (toDescribe.length) {
     opts.log?.(`restating ${toDescribe.length} provisions in news words`);
@@ -165,37 +172,42 @@ export async function recheck(
 
     for (
       let attempt = 0;
-      attempt < 5 && !batch.every((s) => run.described[s.id]?.key === hash(`${FINDER}\n${sectionText(s)}`));
+      attempt < 5 &&
+      !batch.every((s) => run.described[s.id]?.key === hash(`${FINDER_PROMPT_VERSION}\n${sectionText(s)}`));
       attempt++
     ) {
       try {
         const r = await claude(prompt, { system: dsys, model, signal: opts.signal });
 
-        for (const o of parseJson<{ p: number; says: string; phrases: string[] }[]>(r.text)) {
+        for (const o of parseJson(r.text, Restatements)) {
           const s = batch[o.p - 1];
 
-          if (!s || typeof o.says !== "string") {
+          if (s === undefined || o.says === null) {
             continue;
           }
 
-          const phrases = (Array.isArray(o.phrases) ? o.phrases : [])
-            .filter((p): p is string => typeof p === "string")
+          const phrases = o.phrases
+            .filter((p) => p !== null)
             .map((p) => p.toLowerCase().trim())
             .filter((p) => p.length >= 4);
 
-          run.described[s.id] = { key: hash(`${FINDER}\n${sectionText(s)}`), says: o.says.trim(), phrases };
+          run.described[s.id] = {
+            key: hash(`${FINDER_PROMPT_VERSION}\n${sectionText(s)}`),
+            says: o.says.trim(),
+            phrases,
+          };
         }
 
         run.model = r.model;
         run.costUsd += r.costUsd;
       } catch (error) {
-        opts.log?.(`describe batch ${bi + 1}: ${(error as Error).message.slice(0, 160)}`);
+        opts.log?.(`describe batch ${bi + 1}: ${messageOf(error).slice(0, 160)}`);
       }
     }
   });
 
   const undescribed = candidates.filter(
-    (s) => run.described[s.id]?.key !== hash(`${FINDER}\n${sectionText(s)}`),
+    (s) => run.described[s.id]?.key !== hash(`${FINDER_PROMPT_VERSION}\n${sectionText(s)}`),
   ).length;
 
   if (undescribed) {
@@ -207,7 +219,7 @@ export async function recheck(
   const close = await passages(bill, names, candidates, run.described, articles, opts.pkg);
 
   const keyOf = (s: Row<"sections">) =>
-    hash(`${JUDGE}\n${sectionText(s)}\n${(close.get(s.id) ?? []).map((p) => p.article).join(",")}`);
+    hash(`${JUDGE_PROMPT_VERSION}\n${sectionText(s)}\n${(close.get(s.id) ?? []).map((p) => p.article).join(",")}`);
 
   const todo = candidates.filter((s) => run.results[s.id]?.key !== keyOf(s));
   const batches: Row<"sections">[][] = [];
@@ -237,21 +249,24 @@ export async function recheck(
     for (let attempt = 0; attempt < 5 && answered.size < batch.length; attempt++) {
       try {
         const r = await claude(prompt, { system: sys, model, signal: opts.signal });
-        const out = parseJson<{ p: number; yes: { n: number | string; quote: string }[] }[]>(r.text);
 
-        for (const o of out) {
+        for (const o of parseJson(r.text, Verdicts)) {
           const s = batch[o.p - 1];
 
-          if (!s) {
+          if (s === undefined) {
             continue;
           }
 
           const ps = close.get(s.id) ?? [];
 
           const yes = o.yes.flatMap((y) => {
-            const p = ps[Number(y.n) - 1];
+            const p = ps[y.n - 1];
 
-            return p && typeof y.quote === "string" && words(p.text).includes(words(y.quote)) ? [p.article] : [];
+            return p !== undefined &&
+              y.quote !== null &&
+              lowercaseWordsOnly(p.text).includes(lowercaseWordsOnly(y.quote))
+              ? [p.article]
+              : [];
           });
 
           run.results[s.id] = {
@@ -265,7 +280,7 @@ export async function recheck(
         run.model = r.model;
         run.costUsd += r.costUsd;
       } catch (error) {
-        opts.log?.(`batch ${bi + 1}: ${(error as Error).message.slice(0, 160)}`);
+        opts.log?.(`batch ${bi + 1}: ${messageOf(error).slice(0, 160)}`);
       }
     }
 

@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
+import { Bundle, must } from "@antibody/core";
+import fixture from "../../core/fixtures/genius-mini.bundle.json";
 import { vehicleNote } from "../src/build.ts";
 import { namesAnotherBill } from "../src/claims.ts";
+import { GENIUS_ROWS } from "./genius-rows.ts";
 
-const sponsor = { name: "Rep. Test" } as never;
-const versions = (predecessor?: string) => [{ code: "ih", date: "2025-01-01", predecessor }] as never;
-const sections = (first: string[]) => first.map((firstVersion) => ({ inFinal: true, firstVersion })) as never;
+const genius = Bundle.parse(fixture);
+const sponsor = { ...must(GENIUS_ROWS.members[0], "a member"), name: "Rep. Test" };
+const version = must(genius.versions[0], "a version");
+const section = must(genius.sections[0], "a section");
+const versions = (predecessor = false) => [{ ...version, code: "ih", date: "2025-01-01", predecessor }];
+const sections = (first: string[]) => first.map((firstVersion) => ({ ...section, inFinal: true, firstVersion }));
 
 describe("vehicle bills", () => {
   test("a bill whose law text came from later versions is a vehicle", () => {
@@ -19,7 +25,7 @@ describe("vehicle bills", () => {
   });
   test("no sponsor or a predecessor version means no note", () => {
     expect(vehicleNote("shell", versions(), sections(["eh"]), undefined)).toBeNull();
-    expect(vehicleNote("shell", versions("hr1"), sections(["eh"]), sponsor)).toBeNull();
+    expect(vehicleNote("shell", versions(true), sections(["eh"]), sponsor)).toBeNull();
   });
 });
 

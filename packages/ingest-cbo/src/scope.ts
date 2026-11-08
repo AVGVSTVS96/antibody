@@ -1,3 +1,4 @@
+import { must } from "@antibody/core";
 import { headingScore } from "./headings.ts";
 import type { ParsedSheet, Scope } from "./parsed.ts";
 
@@ -7,38 +8,36 @@ interface Paragraph {
   page: number;
 }
 
-const TITLE_OF_DIVISION = /\bTitle ([IVXLC]+) of division ([A-Z]{1,2})\b/i;
-const DIVISION = /\bDivision ([A-Z]{1,2}) of (?:the bill|H\.R\.|S\.)/;
+const TITLE_OF_DIVISION = /\bTitle (?<title>[IVXLC]+) of division (?<division>[A-Z]{1,2})\b/iu;
+const DIVISION = /\bDivision (?<division>[A-Z]{1,2}) of (?:the bill|H\.R\.|S\.)/u;
 const SMALL = new Set("a an and for in of on or the to with".split(" "));
 
-/** A line that is a heading rather than a sentence: short, in title case, without closing punctuation. */
 function isHeading(line: string): boolean {
-  const words = line.split(/\s+/);
+  const words = line.split(/\s+/u);
 
   return (
     line.length <= 90 &&
-    !/[.:;,]$/.test(line) &&
-    words.every((w) => SMALL.has(w) || /^[A-Z0-9(]/.test(w)) &&
-    /^[A-Z]/.test(line)
+    !/[.:;,]$/u.test(line) &&
+    words.every((w) => SMALL.has(w) || /^[A-Z0-9(]/u.test(w)) &&
+    /^[A-Z]/u.test(line)
   );
 }
 
-/** A run-in heading: "Supplemental Nutrition Assistance Program. To receive …". */
 function runIn(line: string): [string, string] | null {
-  const m = /^([A-Z][A-Za-z,&' -]{8,70})\. (?=[A-Z])/.exec(line);
+  const m = /^(?<heading>[A-Z][A-Za-z,&' -]{8,70})\. (?=[A-Z])/u.exec(line);
+  const heading = m?.groups?.heading;
 
-  return m && m[1]!.split(/\s+/).length >= 2 && m[1]!.split(/\s+/).every((w) => SMALL.has(w) || /^[A-Z]/.test(w))
-    ? [m[1]!, line.slice(m[0].length)]
+  return m &&
+    heading !== undefined &&
+    heading.split(/\s+/u).length >= 2 &&
+    heading.split(/\s+/u).every((w) => SMALL.has(w) || /^[A-Z]/u.test(w))
+    ? [heading, line.slice(m[0].length)]
     : null;
 }
 
-const FURNITURE = /^(?:Page \d+|Honorable .+|Congressional Budget Office.*)$/;
-const TABLE_PAGE = /^Table \d+\./m;
+const FURNITURE = /^(?:Page \d+|Honorable .+|Congressional Budget Office.*)$/u;
+const TABLE_PAGE = /^Table \d+\./mu;
 
-/**
- * The paragraphs of a CBO letter, each under the heading (or run-in heading) that opens it. A heading comes after a
- * line that ends a sentence, so a bullet wrapped over two lines isn't taken for one; pages of tables are left out.
- */
 export function paragraphs(pages: string[]): Paragraph[] {
   const out: Paragraph[] = [];
   let ended = true;
@@ -61,23 +60,21 @@ export function paragraphs(pages: string[]): Paragraph[] {
         out.push({ heading: run[0], text: run[1], page: p + 1 });
       } else if (ended && isHeading(line)) {
         out.push({ heading: line, text: "", page: p + 1 });
-      } else if (out.length) {
-        out.at(-1)!.text += ` ${line}`;
+      } else {
+        const last = out.at(-1);
+
+        if (last) {
+          last.text += ` ${line}`;
+        }
       }
 
-      ended = /[.:;!?)]\s*\d{0,2}$/.test(line) || isHeading(line);
+      ended = /[.:;!?)]\s*\d{0,2}$/u.test(line) || isHeading(line);
     }
   }
 
   return out;
 }
 
-/**
- * The division and title CBO's text says a provision sits in: the paragraph under the heading that names the row's
- * label, and the first "Title II of division B" or "Division C of the bill" in it. A row that sits under a parent
- * heading ("Work Requirements" over a program) falls back to what the parent's paragraph says. Nothing is returned
- * unless one paragraph fits the label clearly.
- */
 export function scopeFromText(labels: string[], pages: string[]): Scope | undefined {
   const all = paragraphs(pages);
 
@@ -85,7 +82,7 @@ export function scopeFromText(labels: string[], pages: string[]): Scope | undefi
     const [best, next] = all
       .map((p) => ({ p, ...headingScore(label, p.heading) }))
       .filter((x) => x.confident)
-      .sort((a, b) => b.shared - a.shared);
+      .toSorted((a, b) => b.shared - a.shared);
 
     const found = best && best.shared !== next?.shared ? scopeIn(best.p) : undefined;
 
@@ -98,36 +95,55 @@ export function scopeFromText(labels: string[], pages: string[]): Scope | undefi
 }
 
 function scopeIn(p: Paragraph): Scope | undefined {
-  const text = `${p.heading}. ${p.text}`.replaceAll(/\s+/g, " ");
-  const title = TITLE_OF_DIVISION.exec(text);
-  const division = DIVISION.exec(text);
-  const hit = [title, division].filter((m): m is RegExpExecArray => !!m).sort((a, b) => a.index - b.index)[0];
+  const text = `${p.heading}. ${p.text}`.replaceAll(/\s+/gu, " ");
+  const titleHit = TITLE_OF_DIVISION.exec(text);
+  const divisionHit = DIVISION.exec(text);
+  const hit = [titleHit, divisionHit].filter((m) => m !== null).toSorted((a, b) => a.index - b.index)[0];
 
   if (!hit) {
     return undefined;
   }
 
+  const division = must(hit.groups?.division, "a division letter");
+
   const start = text.lastIndexOf(". ", hit.index) + 2;
   const end = text.indexOf(". ", hit.index);
   const quote = text.slice(Math.max(0, start), end === -1 ? undefined : end + 1).trim();
 
-  return hit === title
-    ? { division: hit[2]!.toUpperCase(), title: hit[1]!.toUpperCase(), quote, page: p.page }
-    : { division: hit[1]!, title: null, quote, page: p.page };
+  return hit === titleHit
+    ? {
+        division: division.toUpperCase(),
+        title: must(hit.groups?.title, "a title numeral").toUpperCase(),
+        quote,
+        page: p.page,
+      }
+    : { division, title: null, quote, page: p.page };
 }
 
-/** Gives every provision row whose table names no division or title the scope CBO's text states for it, if any. */
 export function scopeRows(sheets: ParsedSheet[], pages: string[]): void {
   const seen = new Map<string, Scope | undefined>();
 
   for (const row of sheets.flatMap((s) => s.rows)) {
-    if (row.line_kind === "program" && !row.division && !row.title_no && row.section_title) {
-      const key = `${row.parent ?? ""}|${row.section_title}`;
+    const label = row.section_title;
 
-      if (!seen.has(key)) seen.set(key, scopeFromText([row.section_title, ...(row.parent ? [row.parent] : [])], pages));
+    if (
+      row.line_kind === "program" &&
+      (row.division ?? "") === "" &&
+      (row.title_no ?? "") === "" &&
+      label !== null &&
+      label !== ""
+    ) {
+      const key = `${row.parent ?? ""}|${label}`;
+
+      if (!seen.has(key)) {
+        seen.set(key, scopeFromText([label, ...[row.parent ?? ""].filter((p) => p !== "")], pages));
+      }
+
       const scope = seen.get(key);
 
-      if (scope) row.scope = scope;
+      if (scope) {
+        row.scope = scope;
+      }
     }
   }
 }

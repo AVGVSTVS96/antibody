@@ -1,26 +1,20 @@
 import type { Row } from "@antibody/core";
+import { must } from "@antibody/core";
 import { cached } from "./fetch.ts";
-import { PASSED } from "./lineage.ts";
+import { isStepRef, PASSED } from "./lineage.ts";
+import type { StepRef } from "./lineage.ts";
 import { deleted, headerOf, label, parseSections, sectionElements, sectionText } from "./sections.ts";
 import type { Sec } from "./sections.ts";
 import { intersect, normEnum, shingles, words } from "./text.ts";
 import { versionFile } from "./versions.ts";
 import type { Element } from "./xml.ts";
-import { kids, local, textOf } from "./xml.ts";
+import { isElement, kids, local, textOf } from "./xml.ts";
 
-/**
- * parts-v1: a long section is read in its own pieces, so a provision buried in it is seen on its own. One rule for
- * every bill and party; every number is here and in PARTS_TEXT.
- */
 export const PARTS = {
   version: "parts-v1",
-  /** A section longer than this (about two printed pages) is read in its labeled subdivisions. */
   splitOver: 500,
-  /** A subdivision longer than this is split again into its own. */
   pieceOver: 1000,
-  /** Text a split piece has outside its subdivisions (a lead-in, a closing flush paragraph) is its own part from this long. */
   leadInMin: 40,
-  /** A part is in an earlier text when at least this share of its 5-word runs is in the section there. */
   carried: 0.5,
 } as const;
 
@@ -32,32 +26,23 @@ export const PARTS_TEXT = [
 
 const LEVELS = new Set(["subsection", "paragraph", "subparagraph", "clause", "subclause", "item", "subitem"]);
 
-/** One piece of a long section, as read from one text version. */
 export interface Piece {
-  /** `(a)(12)` */
   enum: string;
   heading: string;
-  /** Headings of the pieces it sits in, outermost first (the section's own heading is not included). */
   trail: string[];
-  /** `subsection:a/paragraph:12` */
   path: string;
   text: string;
   words: number;
-  /** A lead-in or closing text of a split piece, not one of its labeled subdivisions. */
   leadIn: boolean;
 }
 
-const plain = (e: string) => normEnum(e).replaceAll(/^\(|\)$/g, "");
+const plain = (e: string) => normEnum(e).replaceAll(/^\(|\)$/gu, "");
 const paren = (e: string) => (e ? `(${plain(e)})` : "(?)");
 
-/** The words of a piece that sit outside its labeled subdivisions. */
 function ownText(el: Element): string {
-  const clone = { ...el, children: el.children.filter((c) => !(c.type === "tag" && LEVELS.has(local(c)))) };
-
-  return sectionText(clone as Element);
+  return sectionText({ children: el.children.filter((c) => !(isElement(c) && LEVELS.has(local(c)))) });
 }
 
-/** The parts of a section element: empty when it is short enough to read whole. */
 export function splitSection(section: Element): Piece[] {
   if (words(sectionText(section)) <= PARTS.splitOver) {
     return [];
@@ -68,7 +53,7 @@ export function splitSection(section: Element): Piece[] {
   const rec = (el: Element, en: string, path: string, trail: string[], top: boolean) => {
     const text = sectionText(el);
     const subs = kids(el).filter((c) => LEVELS.has(local(c)) && !deleted(c));
-    const heading = top ? "" : headerOf(el).replace(/[\s.:-]+$/, "");
+    const heading = top ? "" : headerOf(el).replace(/[\s.:-]+$/u, "");
 
     if (!top && (words(text) <= PARTS.pieceOver || subs.length < 2)) {
       out.push({ enum: en, heading, trail, path, text, words: words(text), leadIn: false });
@@ -103,15 +88,11 @@ export function splitSection(section: Element): Piece[] {
 }
 
 export interface SectionPart extends Piece {
-  /** `<section id><enum>`, with `~2`, `~3` … when a text repeats an enum. */
   id: string;
   sectionId: string;
-  /** `4(a)(12)` */
   num: string;
-  /** The version the part's wording first appears in (see PARTS_TEXT). */
   firstVersion: string;
   late: boolean;
-  /** The version code and URL the part is read from: the final text, or the last one a dropped section was in. */
   version: string;
   url: string;
 }
@@ -120,27 +101,34 @@ type SectionRow = Pick<Row<"sections">, "id" | "num" | "words" | "history" | "sp
 
 type VersionRow = Pick<Row<"versions">, "code" | "url" | "predecessor_rule">;
 
-/** Share of a part's 5-word runs found in a text. */
+const findStep = <T extends StepRef>(secs: T[], step: StepRef) =>
+  secs.find((x) => x.hash === step.hash) ?? secs.find((x) => x.path === step.path);
+
+const stepAt = (s: SectionRow, code: string) => {
+  const step = s.history[code];
+
+  return isStepRef(step) ? step : undefined;
+};
+
 export function carriedShare(part: Set<string>, text: Set<string>): number {
   return part.size ? intersect(part, text) / part.size : 0;
 }
 
-/**
- * Every long section's parts, read from the text it was last seen in (the final text, or for a dropped section the
- * last text it was in, so a page can say what a dropped rider did); each part's first version comes from the
- * section's earlier texts and those of the section it was split out of. `lateUnavailable` withholds late flags for
- * the whole bill, as it does for sections.
- */
 export async function sectionParts(
   sections: SectionRow[],
   versions: VersionRow[],
   opts: { lateUnavailable?: string | null; read?: (url: string) => Promise<string> } = {},
 ): Promise<SectionPart[]> {
-  const read = opts.read ?? (async (url: string) => cached(url, versionFile(url)));
+  const read = opts.read ?? (async (url: string) => await cached(url, versionFile(url)));
   const codes = versions.map((v) => v.code);
   const urlOf = new Map(versions.map((v) => [v.code, v.url]));
-  const lastOf = (s: SectionRow) => Object.keys(s.history).at(-1)!;
-  const long = sections.filter((s) => s.words > PARTS.splitOver && urlOf.has(lastOf(s)));
+
+  const long = sections.flatMap((s) => {
+    const last = Object.keys(s.history).at(-1);
+    const url = last === undefined ? undefined : urlOf.get(last);
+
+    return s.words > PARTS.splitOver && last !== undefined && url !== undefined ? [{ s, last, url }] : [];
+  });
 
   if (!long.length) {
     return [];
@@ -149,33 +137,34 @@ export async function sectionParts(
   const xml = new Map<string, string>();
 
   const textOfVersion = async (code: string) => {
-    if (!xml.has(code)) {
-      xml.set(code, await read(urlOf.get(code)!));
+    let text = xml.get(code);
+
+    if (text === undefined) {
+      text = await read(must(urlOf.get(code), `the URL of ${code}`));
+      xml.set(code, text);
     }
 
-    return xml.get(code)!;
+    return text;
   };
 
   const parsed = new Map<string, Sec[]>();
 
   const secsOf = async (code: string) => {
-    if (!parsed.has(code)) {
-      parsed.set(code, urlOf.has(code) ? parseSections(await textOfVersion(code)) : []);
+    let secs = parsed.get(code);
+
+    if (secs === undefined) {
+      secs = urlOf.has(code) ? parseSections(await textOfVersion(code)) : [];
+      parsed.set(code, secs);
     }
 
-    return parsed.get(code)!;
+    return secs;
   };
 
   const byId = new Map(sections.map((s) => [s.id, s]));
-  const stepAt = (s: SectionRow, code: string) => s.history[code] as { path: string; hash: string } | undefined;
 
-  const find = <T extends { path: string; hash: string }>(secs: T[], step: { path: string; hash: string }) =>
-    secs.find((x) => x.hash === step.hash) ?? secs.find((x) => x.path === step.path);
-
-  /** The section's wording in each version before `upTo` it (or the section it was split from) was in. */
   const earlier = async (s: SectionRow, upTo: string) => {
     const out = new Map<string, Set<string>>();
-    const from = s.split_from ? byId.get(s.split_from) : undefined;
+    const from = s.split_from === null ? undefined : byId.get(s.split_from);
 
     for (const [owner, until] of [
       [s, upTo],
@@ -192,7 +181,7 @@ export async function sectionParts(
           continue;
         }
 
-        const hit = find(await secsOf(code), step);
+        const hit = findStep(await secsOf(code), step);
 
         if (hit) {
           out.set(code, hit.sh);
@@ -203,35 +192,34 @@ export async function sectionParts(
     return out;
   };
 
-  const ownStart = versions.findIndex((v) => !v.predecessor_rule);
+  const ownStart = versions.findIndex((v) => v.predecessor_rule === null || v.predecessor_rule === "");
   const passed = codes.findIndex((c) => PASSED.has(c));
 
   const isLate = (code: string) => {
     const i = codes.indexOf(code);
 
-    return !opts.lateUnavailable && passed !== -1 && i > ownStart && i >= passed;
+    return (opts.lateUnavailable ?? "") === "" && passed !== -1 && i > ownStart && i >= passed;
   };
 
   const elements = new Map<string, { el: Element; path: string; hash: string }[]>();
 
   const elementsOf = async (code: string) => {
-    if (!elements.has(code)) {
+    let found = elements.get(code);
+
+    if (found === undefined) {
       const secs = await secsOf(code);
-      elements.set(
-        code,
-        sectionElements(await textOfVersion(code)).map((x, i) => ({ ...x, hash: secs[i]?.hash ?? "" })),
-      );
+      found = sectionElements(await textOfVersion(code)).map((x, i) => ({ ...x, hash: secs[i]?.hash ?? "" }));
+      elements.set(code, found);
     }
 
-    return elements.get(code)!;
+    return found;
   };
 
   const out: SectionPart[] = [];
 
-  for (const s of long) {
-    const last = lastOf(s);
+  for (const { s, last, url } of long) {
     const step = stepAt(s, last);
-    const el = step && find(await elementsOf(last), step)?.el;
+    const el = step === undefined ? undefined : findStep(await elementsOf(last), step)?.el;
 
     if (!el) {
       continue;
@@ -251,7 +239,14 @@ export async function sectionParts(
       const n = (seen.get(key) ?? 0) + 1;
       seen.set(key, n);
       const sh = shingles(p.text);
-      const first = codes.find((c) => before.has(c) && carriedShare(sh, before.get(c)!) >= PARTS.carried) ?? last;
+
+      const first =
+        codes.find((c) => {
+          const prior = before.get(c);
+
+          return prior !== undefined && carriedShare(sh, prior) >= PARTS.carried;
+        }) ?? last;
+
       out.push({
         ...p,
         id: `${s.id}${p.enum}${p.leadIn ? "~lead" : ""}${n > 1 ? `~${n}` : ""}`,
@@ -260,7 +255,7 @@ export async function sectionParts(
         firstVersion: first,
         late: isLate(first),
         version: last,
-        url: urlOf.get(last)!,
+        url,
       });
     }
   }

@@ -2,28 +2,17 @@ import { figureEstimates, sectionFigure } from "@antibody/core";
 import type { BillId, Row } from "@antibody/core";
 import type { ReachKind } from "./reach.ts";
 
-/**
- * The buried score, one formula for every bill and party. Every constant is here and in SCORE_TEXT.
- */
 export const SCORE = {
   version: "buried-v5",
-  /** $1M → 0, $1B → 0.5, $1T → 1 (log scale). */
   dollarsFullAt: 1_000_000,
-  /** 1 firm → 0.15, 10 → 0.52, 100 → 1 (log scale). */
   firmsFullAt: 100,
-  /** Stakes of a section whose text has reach (reach-v2): as big as $10B or 21 firms, whatever its price. */
   reachStakes: 2 / 3,
-  /** Largest late bonus; scaled down by the share of the bill that arrived late (a rewrite is not a sneak). */
   lateBonus: 0.25,
   offTopicBonus: 0.25,
-  /** headline: top tenth by attention, with at least this many articles. */
   headlinePct: 0.9,
   headlineMinHits: 3,
-  /** costly: stakes of at least this much, which is $10B in CBO's figure for the section itself (the smaller one when CBO printed it against two baselines), 21 lobbying firms, or reach. */
   costlyMin: 2 / 3,
-  /** quiet: fewer than this share of the bill's relevant articles (each side weighted equally) discussed the section. */
   quietShare: 0.01,
-  /** A shorter bill has nothing for a section to be buried among. */
   minSections: 10,
 } as const;
 
@@ -42,41 +31,31 @@ export const SCORE_RULE = `${SCORE.version}: ${SCORE_TEXT.join(" ")}`;
 const log01 = (x: number, full: number) => Math.min(1, Math.max(0, Math.log10(1 + Math.abs(x)) / Math.log10(1 + full)));
 
 export interface Components {
-  /** Dollars from an even split of a grouped CBO line are shown but do not count toward stakes: CBO never gave that section a number. */
   dollarsSplit?: "exact" | "even_split" | null;
-  /** Share of the bill's final sections that arrived late, after the counterpart check; scales the late bonus. */
   lateShare?: number;
-  /** Distinct committee titles or divisions among the final sections; off-topic distance only counts in a bill with one. */
   titles?: number;
-  /** Final sections in the bill; a bill shorter than `SCORE.minSections` has nothing to bury a section in. */
   sections?: number;
-  /** The section only names the bill (a short title); articles that name the bill do not make it a headline. */
   namesBill?: boolean;
-  /** The section this one pays for: it cuts what the other spends, to the dollar, so it is not a finding of its own. */
   offsets?: string | null;
   dollarsMusd: number | null;
   attentionPct: number | null;
-  /** Share of the bill's relevant articles that discuss the section, each side weighted equally (null when the bill's sections are not ranked). */
   attentionShare?: number | null;
   late: boolean;
   offTopic: number | null;
-  /** Distinct lobbying firms with a report naming the section. */
   lobbyingFirms: number;
-  /** Kinds of reach the section's text has (reach-v2). */
-  reach?: ReachKind[];
+  reach?: ReachKind[] | undefined;
 }
 
 export function stakes(c: Pick<Components, "dollarsMusd" | "dollarsSplit" | "lobbyingFirms" | "reach">): number {
   return Math.max(
     c.dollarsMusd === null || c.dollarsSplit === "even_split" ? 0 : log01(c.dollarsMusd, SCORE.dollarsFullAt),
     log01(c.lobbyingFirms, SCORE.firmsFullAt),
-    c.reach?.length ? SCORE.reachStakes : 0,
+    (c.reach?.length ?? 0) > 0 ? SCORE.reachStakes : 0,
   );
 }
 
-/** 1 when no sampled article discussed the section, 0 at `SCORE.quietShare` or more; null when attention is unranked. */
 export function quiet(c: Pick<Components, "attentionPct" | "attentionShare">): number | null {
-  if (c.attentionPct === null || c.attentionShare == null) {
+  if (c.attentionPct === null || c.attentionShare === null || c.attentionShare === undefined) {
     return null;
   }
 
@@ -99,16 +78,21 @@ export function buried(c: Components): number | null {
   return Number((stakes(c) * q * sneak).toFixed(4));
 }
 
-export const NAMES_BILL = /^(short title|table of contents)\b/i;
+export const NAMES_BILL = /^(short title|table of contents)\b/iu;
 
 export function label(c: Components, hits: number): Row<"section_scores">["label"] {
-  if (!c.namesBill && c.attentionPct !== null && c.attentionPct >= SCORE.headlinePct && hits >= SCORE.headlineMinHits) {
+  if (
+    c.namesBill !== true &&
+    c.attentionPct !== null &&
+    c.attentionPct >= SCORE.headlinePct &&
+    hits >= SCORE.headlineMinHits
+  ) {
     return "headline";
   }
 
   const long = (c.sections ?? SCORE.minSections) >= SCORE.minSections;
 
-  if (long && !c.offsets && stakes(c) >= SCORE.costlyMin && (quiet(c) ?? 0) > 0) {
+  if (long && (c.offsets ?? "") === "" && stakes(c) >= SCORE.costlyMin && (quiet(c) ?? 0) > 0) {
     return "buried";
   }
 
@@ -116,11 +100,9 @@ export function label(c: Components, hits: number): Row<"section_scores">["label
 }
 
 export interface SectionDollars {
-  /** The figure that counts: the smaller one when CBO printed the section against two baselines. */
   musd: number;
   split: "exact" | "even_split";
   baseline: Row<"cbo_estimates">["baseline"];
-  /** Lines of every figure considered, not only the one that counts. */
   lineIds: string[];
   measure: string;
   estimateId: string;
@@ -132,11 +114,6 @@ export interface SectionDollars {
   }[];
 }
 
-/**
- * Dollars per section from CBO's latest per-section estimates (see `sectionFigure` in core, which the site uses too):
- * one per baseline CBO printed for the same text, the smaller figure counting. Signed as a deficit effect (positive
- * adds to the deficit). Group lines are left out: their even shares are already section lines that rest on them.
- */
 export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cbo_lines">[]) {
   const out = new Map<string, SectionDollars>();
 
@@ -151,8 +128,11 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
   const bySection = new Map<string, Row<"cbo_lines">[]>();
 
   for (const l of lines) {
-    if (l.line_kind === "section")
-      for (const sid of l.section_ids) bySection.set(sid, [...(bySection.get(sid) ?? []), l]);
+    if (l.line_kind === "section") {
+      for (const sid of l.section_ids) {
+        bySection.set(sid, [...(bySection.get(sid) ?? []), l]);
+      }
+    }
   }
 
   for (const [sid, ls] of bySection) {
@@ -167,7 +147,7 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
       known,
     );
 
-    if (f?.fromLatest) {
+    if (f?.fromLatest === true) {
       out.set(sid, {
         musd: f.musd,
         split: f.split,
@@ -190,13 +170,9 @@ export function sectionDollars(estimates: Row<"cbo_estimates">[], lines: Row<"cb
   return { estimates: estimates.filter((e) => used.has(e.id)), bySection: out };
 }
 
-/**
- * Pay-fors: a section whose exact CBO figure is the opposite, to the million dollars, of another section's figure in the
- * same title or division, and that cuts what the other spends. Only figures big enough to be costly are paired.
- */
-export function payFors(sections: Row<"sections">[], dollars: ReturnType<typeof sectionDollars>) {
-  const parent = (s: Row<"sections">) => s.path.split("/").slice(0, -1).join("/");
+const parentPath = (s: Row<"sections">) => s.path.split("/").slice(0, -1).join("/");
 
+export function payFors(sections: Row<"sections">[], dollars: ReturnType<typeof sectionDollars>) {
   const big = sections.flatMap((s) => {
     const d = dollars.bySection.get(s.id);
 
@@ -205,26 +181,21 @@ export function payFors(sections: Row<"sections">[], dollars: ReturnType<typeof 
       : [];
   });
 
-  const spends = new Map(big.filter((b) => b.musd > 0).map((b) => [`${parent(b.s)}|${b.musd}`, b.s.id]));
+  const spends = new Map(big.flatMap((b) => (b.musd > 0 ? [[`${parentPath(b.s)}|${b.musd}`, b.s.id] as const] : [])));
 
   return new Map(
     big.flatMap((b) => {
-      const partner = b.musd < 0 ? spends.get(`${parent(b.s)}|${-b.musd}`) : undefined;
+      const partner = b.musd < 0 ? spends.get(`${parentPath(b.s)}|${-b.musd}`) : undefined;
 
-      return partner ? [[b.s.id, partner] as const] : [];
+      return partner === undefined || partner === "" ? [] : [[b.s.id, partner] as const];
     }),
   );
 }
 
 type Filer = Pick<Row<"lda_filings">, "form" | "superseded" | "registrant_id">;
 
-/**
- * Lobbying that names a section by number: the reports (distinct filings) and the firms that filed them. A reference
- * counts when its filing is a live LD-2 (not replaced by an amendment) and the bill match is high or medium: the lines
- * the page counts everywhere else. Stakes count firms, so one firm's line repeated for many clients and quarters is one.
- */
 export function sectionReports(sections: Row<"sections">[], refs: Row<"lda_bill_refs">[], filings: Map<string, Filer>) {
-  const byNum = new Map<string, Row<"lda_bill_refs">[]>();
+  const byNum = new Map<string, { ref: Row<"lda_bill_refs">; firm: string }[]>();
 
   for (const r of refs) {
     const f = filings.get(r.filing_id);
@@ -234,7 +205,7 @@ export function sectionReports(sections: Row<"sections">[], refs: Row<"lda_bill_
     }
 
     for (const n of r.section_nums) {
-      byNum.set(n, [...(byNum.get(n) ?? []), r]);
+      byNum.set(n, [...(byNum.get(n) ?? []), { ref: r, firm: f.registrant_id }]);
     }
   }
 
@@ -245,9 +216,9 @@ export function sectionReports(sections: Row<"sections">[], refs: Row<"lda_bill_
       return [
         s.id,
         {
-          filings: [...new Set(rs.map((r) => r.filing_id))],
-          firms: [...new Set(rs.map((r) => filings.get(r.filing_id)!.registrant_id))],
-          refs: rs.map((r) => r.id),
+          filings: [...new Set(rs.map(({ ref }) => ref.filing_id))],
+          firms: [...new Set(rs.map(({ firm }) => firm))],
+          refs: rs.map(({ ref }) => ref.id),
         },
       ];
     }),
@@ -256,14 +227,9 @@ export function sectionReports(sections: Row<"sections">[], refs: Row<"lda_bill_
 
 export type Reports = ReturnType<typeof sectionReports>;
 
-/** Boilerplate sections get no off-topic value: a short title is always unlike the rest of a bill. */
 export const BOILERPLATE =
-  /^(short title|table of contents|definitions?|effective dates?|severability|rules? of construction|references?|(clerical|conforming|technical)( and (clerical|conforming|technical))* amendments?|authorization of appropriations|sense of (congress|the senate|the house))\b/i;
+  /^(short title|table of contents|definitions?|effective dates?|severability|rules? of construction|references?|(clerical|conforming|technical)( and (clerical|conforming|technical))* amendments?|authorization of appropriations|sense of (congress|the senate|the house))\b/iu;
 
-/**
- * Late sections a model-paired counterpart shows are not new text: the pair's older section (renumbered or rewritten
- * since) was already in the text before a chamber passed it. Where several pairs qualify the most confident wins.
- */
 export function clearedLate(sections: Row<"sections">[], counterparts: Row<"counterparts">[]) {
   const byId = new Map(sections.map((s) => [s.id, s]));
   const cleared = new Map<string, Row<"counterparts">>();
@@ -272,7 +238,7 @@ export function clearedLate(sections: Row<"sections">[], counterparts: Row<"coun
     const added = byId.get(c.added_section_id);
     const older = byId.get(c.removed_section_id);
 
-    if (added?.late && older && !older.late && !cleared.has(added.id)) {
+    if (added?.late === true && older !== undefined && !older.late && !cleared.has(added.id)) {
       cleared.set(added.id, c);
     }
   }
@@ -293,30 +259,43 @@ export function scoreRows(
   parts: Row<"section_parts">[] = [],
 ): Row<"section_scores">[] {
   const reachOf = Map.groupBy(reachRows, (r) => r.part_id ?? r.section_id);
-  const att = new Map(attention.filter((a) => a.section_id).map((a) => [a.part_id ?? a.section_id!, a]));
+
+  const att = new Map(
+    attention.flatMap((a) =>
+      a.section_id === null || a.section_id === "" ? [] : [[a.part_id ?? a.section_id, a] as const],
+    ),
+  );
+
   const checked = new Map(checks.map((c) => [c.part_id ?? c.section_id, c]));
   const final = sections.filter((s) => s.in_final);
   const cleared = clearedLate(sections, counterparts);
   const lateOf = (s: Row<"sections">) => s.late && !cleared.has(s.id);
   const lateShare = final.length ? final.filter(lateOf).length / final.length : 0;
   const pays = payFors(final, dollars);
-  const titles = new Set(final.map((s) => s.path.split("/")[0]).filter((p) => /^(title|division):/.test(p!))).size;
+
+  const titles = new Set(
+    final.flatMap((s) => {
+      const top = s.path.split("/")[0] ?? "";
+
+      return /^(title|division):/u.test(top) ? [top] : [];
+    }),
+  ).size;
 
   const sectionRows = final.map((s) => {
     const a = att.get(s.id);
     const check = checked.get(s.id);
 
-    const share =
-      check?.share ?? (a && a.pct !== null ? Number((a.evidence as { balanced_share: number }).balanced_share) : null);
-
+    const share = check?.share ?? (a && a.pct !== null ? Number(a.evidence.balanced_share) : null);
     const d = dollars.bySection.get(s.id) ?? null;
     const { filings, firms, refs } = reports.get(s.id) ?? { filings: [], firms: [], refs: [] };
     const pair = cleared.get(s.id);
     const tags = reachOf.get(s.id) ?? [];
+    const reach = tags.map((t) => t.kind);
+    const offsets = pays.get(s.id) ?? null;
 
     const c: Components = {
       namesBill: NAMES_BILL.test(s.heading.trim()),
-      offsets: pays.get(s.id) ?? null,
+      offsets,
       dollarsMusd: d ? Number(d.musd.toFixed(1)) : null,
       dollarsSplit: d?.split ?? null,
       attentionPct: a?.pct ?? null,
@@ -327,14 +306,18 @@ export function scoreRows(
       titles,
       offTopic: offTopic.get(s.id) ?? null,
       lobbyingFirms: firms.length,
-      reach: tags.map((t) => t.kind),
+      reach,
     };
+
+    const q = quiet(c);
 
     const restsOn = [
       `sections/${s.id}`,
       ...(a ? [`attention/${a.id}`] : []),
       ...(d?.lineIds.map((id) => `cbo_lines/${id}`) ?? []),
-      ...(c.offsets ? (dollars.bySection.get(c.offsets)?.lineIds.map((id) => `cbo_lines/${id}`) ?? []) : []),
+      ...(offsets === null || offsets === ""
+        ? []
+        : (dollars.bySection.get(offsets)?.lineIds.map((id) => `cbo_lines/${id}`) ?? [])),
       ...refs.map((id) => `lda_bill_refs/${id}`),
       ...(check ? [`attention_checks/${check.id}`] : []),
       ...(pair ? [`counterparts/${pair.id}`] : []),
@@ -358,8 +341,8 @@ export function scoreRows(
       off_topic: c.offTopic,
       lobbying_reports: filings.length,
       lobbying_firms: firms.length,
-      offsets_section_id: c.offsets ?? null,
-      reach: c.reach!,
+      offsets_section_id: offsets,
+      reach,
       rule: SCORE_RULE,
       confidence: d?.split === "even_split" ? 0.5 : 0.7,
       rests_on: restsOn,
@@ -369,7 +352,7 @@ export function scoreRows(
         late_in_lineage: s.late,
         titles,
         stakes: Number(stakes(c).toFixed(4)),
-        quiet: quiet(c) === null ? null : Number(quiet(c)!.toFixed(4)),
+        quiet: q === null ? null : Number(q.toFixed(4)),
         dollars_measure: d?.measure ?? null,
         dollars_baseline: d?.baseline ?? null,
         dollars_by_baseline: d?.byBaseline ?? [],
@@ -382,36 +365,38 @@ export function scoreRows(
 
   const finalIds = new Set(final.map((s) => s.id));
 
-  const partRows = parts
-    .filter((p) => finalIds.has(p.section_id))
-    .map((p): Row<"section_scores"> => {
-      const a = att.get(p.id);
-      const check = checked.get(p.id);
+  const partRows = parts.flatMap((p): Row<"section_scores">[] => {
+    if (!finalIds.has(p.section_id)) {
+      return [];
+    }
 
-      const share =
-        check?.share ??
-        (a && a.pct !== null ? Number((a.evidence as { balanced_share: number }).balanced_share) : null);
+    const a = att.get(p.id);
+    const check = checked.get(p.id);
+    const share = check?.share ?? (a && a.pct !== null ? Number(a.evidence.balanced_share) : null);
+    const pair = cleared.get(p.section_id);
+    const tags = reachOf.get(p.id) ?? [];
+    const reach = tags.map((t) => t.kind);
 
-      const pair = cleared.get(p.section_id);
-      const tags = reachOf.get(p.id) ?? [];
+    const c: Components = {
+      namesBill: false,
+      offsets: null,
+      dollarsMusd: null,
+      dollarsSplit: null,
+      attentionPct: a?.pct ?? null,
+      attentionShare: share,
+      sections: final.length,
+      late: p.late && !pair,
+      lateShare,
+      titles,
+      offTopic: null,
+      lobbyingFirms: 0,
+      reach,
+    };
 
-      const c: Components = {
-        namesBill: false,
-        offsets: null,
-        dollarsMusd: null,
-        dollarsSplit: null,
-        attentionPct: a?.pct ?? null,
-        attentionShare: share,
-        sections: final.length,
-        late: p.late && !pair,
-        lateShare,
-        titles,
-        offTopic: null,
-        lobbyingFirms: 0,
-        reach: tags.map((t) => t.kind),
-      };
+    const q = quiet(c);
 
-      return {
+    return [
+      {
         id: `${bill}:${p.id}`,
         bill_id: bill,
         section_id: p.section_id,
@@ -429,7 +414,7 @@ export function scoreRows(
         lobbying_reports: 0,
         lobbying_firms: 0,
         offsets_section_id: null,
-        reach: c.reach!,
+        reach,
         rule: SCORE_RULE,
         confidence: 0.7,
         rests_on: [
@@ -447,7 +432,7 @@ export function scoreRows(
           late_in_lineage: p.late,
           titles,
           stakes: Number(stakes(c).toFixed(4)),
-          quiet: quiet(c) === null ? null : Number(quiet(c)!.toFixed(4)),
+          quiet: q === null ? null : Number(q.toFixed(4)),
           dollars_measure: null,
           dollars_baseline: null,
           dollars_by_baseline: [],
@@ -455,8 +440,9 @@ export function scoreRows(
           lobbying_filings: [],
           attention_hits: (a?.hits ?? 0) + (check?.article_ids.length ?? 0),
         },
-      };
-    });
+      },
+    ];
+  });
 
   return [...sectionRows, ...partRows];
 }

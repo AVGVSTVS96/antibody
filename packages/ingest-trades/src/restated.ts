@@ -13,15 +13,9 @@ const groupKey = (t: Trade) =>
 const amountsOf = (rows: Trade[]) =>
   rows
     .map((t) => t.amount)
-    .sort()
+    .toSorted()
     .join(";");
 
-/**
- * One row per trade: when a later filing reports the same trades again, only one filing's rows stay.
- * The same filer, owner, asset, date and type form a group. Within a group, an amended filing replaces the rows of
- * every earlier filing, and a later filing with exactly the same amounts is a re-filing and is dropped. A filing that
- * differs and is not an amendment is kept beside the earlier one. Kept rows list what they replaced in `raw`.
- */
 export function collapseRestated(trades: Trade[], docs: Map<string, Filed>): Trade[] {
   const groups = new Map<string, Map<string, Trade[]>>();
 
@@ -49,17 +43,15 @@ export function collapseRestated(trades: Trade[], docs: Map<string, Filed>): Tra
 
     const filed = (d: string) => docs.get(d)?.filedOn ?? "";
 
-    const order = [...byDoc.keys()].sort(
-      (a, b) => filed(a).localeCompare(filed(b)) || a.localeCompare(b, undefined, { numeric: true }),
+    const order = [...byDoc].toSorted(
+      ([a], [b]) => filed(a).localeCompare(filed(b)) || a.localeCompare(b, undefined, { numeric: true }),
     );
 
-    const kept: string[] = [];
+    const kept: [string, Trade[]][] = [];
 
-    for (const doc of order) {
-      const rows = byDoc.get(doc) as Trade[];
-
-      if (docs.get(doc)?.amended && kept.length) {
-        const replaced = kept.splice(0).flatMap((k) => byDoc.get(k) as Trade[]);
+    for (const [doc, rows] of order) {
+      if (docs.get(doc)?.amended === true && kept.length) {
+        const replaced = kept.splice(0).flatMap(([, r]) => r);
 
         for (const r of replaced) {
           dropped.add(r.id);
@@ -70,29 +62,31 @@ export function collapseRestated(trades: Trade[], docs: Map<string, Filed>): Tra
           "restates",
           replaced.map((r) => r.id),
         );
-        kept.push(doc);
+        kept.push([doc, rows]);
         continue;
       }
 
-      const twin = kept.find((k) => amountsOf(byDoc.get(k) as Trade[]) === amountsOf(rows));
+      const twin = kept.find(([, r]) => amountsOf(r) === amountsOf(rows));
 
       if (twin) {
         for (const r of rows) {
           dropped.add(r.id);
         }
 
-        note(byDoc.get(twin) as Trade[], "also_filed_in", [doc]);
+        note(twin[1], "also_filed_in", [doc]);
       } else {
-        kept.push(doc);
+        kept.push([doc, rows]);
       }
     }
   }
 
-  return trades
-    .filter((t) => !dropped.has(t.id))
-    .map((t) => {
-      const extra = notes.get(t.id);
+  return trades.flatMap((t) => {
+    if (dropped.has(t.id)) {
+      return [];
+    }
 
-      return extra ? { ...t, raw: { ...(t.raw as object), ...extra } } : t;
-    });
+    const extra = notes.get(t.id);
+
+    return [extra ? { ...t, raw: { ...t.raw, ...extra } } : t];
+  });
 }

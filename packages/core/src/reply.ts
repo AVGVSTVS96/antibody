@@ -1,12 +1,9 @@
-/**
- * The first JSON value in a model reply. The model sometimes wraps it in a code fence, adds a sentence or a second
- * answer after it, or leaves a trailing comma before a closing bracket (matching a long bill's articles failed on
- * every retry that way).
- */
-export function parseJson<T>(text: string): T {
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text);
-  const body = (fenced ? fenced[1]! : text).trim();
-  const start = body.search(/[[{]/);
+import type { z } from "zod";
+
+export function parseJson<T>(text: string, schema: z.ZodType<T>): T {
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/u.exec(text)?.[1];
+  const body = (fenced ?? text).trim();
+  const start = body.search(/[[{]/u);
   let depth = 0;
   let quoted = false;
   let end = body.length;
@@ -33,8 +30,12 @@ export function parseJson<T>(text: string): T {
   const json = body.slice(start, end);
 
   try {
-    return JSON.parse(json) as T;
-  } catch {
-    return JSON.parse(json.replaceAll(/,(\s*[\]}])/g, "$1")) as T;
+    return schema.parse(JSON.parse(json));
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) {
+      throw error;
+    }
+
+    return schema.parse(JSON.parse(json.replaceAll(/,(\s*[\]}])/gu, "$1")));
   }
 }

@@ -29,7 +29,6 @@ function boxOf(x: number, baseline: number, anchor: Label["anchor"], text: strin
   return { x0, x1: x0 + w, y0: baseline - size * 0.82, y1: baseline + size * 0.28 };
 }
 
-/** A label just outside a ring at `angle`, left-aligned on the right half and right-aligned on the left. */
 export function outside(id: string, text: string, angle: number, r: number, size: number): Label {
   const [x, y] = pt(angle, r);
   const c = Math.cos(angle);
@@ -39,7 +38,6 @@ export function outside(id: string, text: string, angle: number, r: number, size
   return { id, text, x, y: y + dy, anchor, box: boxOf(x, y + dy, anchor, text, size) };
 }
 
-/** A label just inside a ring, text running toward the centre on each side. */
 export function inside(id: string, text: string, angle: number, r: number, size: number): Label {
   const [x, y] = pt(angle, r);
   const c = Math.cos(angle);
@@ -55,7 +53,6 @@ const overlap = (a: Box, b: Box, pad: number) =>
 const inView = (b: Box, pad = 4) =>
   b.x0 >= VIEW.x + pad && b.x1 <= VIEW.x + VIEW.w - pad && b.y0 >= VIEW.y + pad && b.y1 <= VIEW.y + VIEW.h - pad;
 
-/** In priority order, keep each label that stays inside the picture and clears every box already kept. */
 export function fit(candidates: Label[], avoid: Box[], max: number, pad: number): Label[] {
   const kept: Label[] = [];
   const boxes = [...avoid];

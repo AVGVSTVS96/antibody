@@ -2,13 +2,6 @@ import type { Bundle, Claim, ClaimId } from "@antibody/core";
 
 export const EDGE_CLAIM_CAP = 6;
 
-/**
- * Keeps a bounded set of claims on each edge and drops every claim nothing points at. A lobbying edge can rest on
- * hundreds of filings and a funding edge on thousands of contributions; the edge's props carry the totals,
- * `moreClaims` says how many are not listed, and the kept claims link to the source records.
- * Inference claims come first, so an inference edge always shows its rule; within each group claims go by id, so
- * the kept set is the same on every build.
- */
 export function trimEvidence(b: Bundle, cap = EDGE_CLAIM_CAP): Bundle {
   for (const e of b.edges) {
     if (e.claims.length <= cap) {
@@ -28,36 +21,39 @@ export function trimEvidence(b: Bundle, cap = EDGE_CLAIM_CAP): Bundle {
   return b;
 }
 
-/** The claims some part of the bundle points at, directly or through another claim's `restsOn`. */
 function reachable(b: Bundle): Record<ClaimId, Claim> {
-  const seen = new Set<ClaimId>();
-  const queue: ClaimId[] = [];
+  const claims = new Map<unknown, [ClaimId, Claim]>(Object.entries(b.claims).map((entry) => [entry[0], entry]));
+  const reached = new Map<ClaimId, Claim>();
+  const queue: Claim[] = [];
 
-  const take = (id: unknown) => {
-    if (typeof id === "string" && id in b.claims && !seen.has(id)) {
-      seen.add(id);
-      queue.push(id);
-    }
-  };
+  const take = (ids: unknown[]) => {
+    for (const ref of ids) {
+      const found = claims.get(ref);
 
-  const walk = (v: unknown, top: boolean) => {
-    if (Array.isArray(v)) {
-      for (const x of v) walk(x, false);
-    } else if (v && typeof v === "object") {
-      for (const [k, x] of Object.entries(v)) {
-        if (top && k === "claims") continue;
-
-        if (k === "claim" || k === "claims" || k.endsWith("Claim")) for (const id of [x].flat()) take(id);
-        walk(x, false);
+      if (found && !reached.has(found[0])) {
+        reached.set(...found);
+        queue.push(found[1]);
       }
     }
   };
 
-  walk(b, true);
+  const walk = (entries: [string, unknown][]) => {
+    for (const [k, x] of entries) {
+      if (k === "claim" || k === "claims" || k.endsWith("Claim")) {
+        take([x].flat());
+      }
 
-  for (let id = queue.pop(); id; id = queue.pop()) {
-    for (const r of b.claims[id]!.restsOn) take(r);
+      if (x instanceof Object) {
+        walk(Object.entries(x));
+      }
+    }
+  };
+
+  walk(Object.entries(b).filter(([k]) => k !== "claims"));
+
+  for (let claim = queue.pop(); claim; claim = queue.pop()) {
+    take(claim.restsOn);
   }
 
-  return Object.fromEntries([...seen].map((id) => [id, b.claims[id]!]));
+  return Object.fromEntries(reached);
 }

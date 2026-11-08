@@ -6,6 +6,14 @@ const KEY = "antibody-theme";
 const media = matchMedia("(prefers-color-scheme: dark)");
 const listeners = new Set<() => void>();
 
+function fromStorage<T>(act: (storage: Storage) => T): T | null {
+  try {
+    return act(localStorage);
+  } catch {
+    return null;
+  }
+}
+
 const notify = () => {
   for (const l of listeners) {
     l();
@@ -14,11 +22,7 @@ const notify = () => {
 
 export function initTheme() {
   const q = new URLSearchParams(location.search).get("theme");
-  let saved: string | null = null;
-
-  try {
-    saved = localStorage.getItem(KEY);
-  } catch {}
+  const saved = fromStorage((s) => s.getItem(KEY));
 
   const t = q === "light" || q === "dark" ? q : saved === "light" || saved === "dark" ? saved : null;
 
@@ -43,15 +47,15 @@ export function toggleTheme() {
     notify();
   };
 
-  if (document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if ("startViewTransition" in document && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     document.startViewTransition(apply);
   } else {
     apply();
   }
 
-  try {
-    localStorage.setItem(KEY, next);
-  } catch {}
+  fromStorage((s) => {
+    s.setItem(KEY, next);
+  });
 }
 
 const subscribe = (fn: () => void) => {

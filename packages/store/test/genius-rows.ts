@@ -1,9 +1,4 @@
-/**
- * A small slice of the GENIUS Act (S.1582, 119th) as contract table rows, from the Phase 0 spike records:
- * BILLSTATUS, GovInfo text versions, CBO's estimate, LD-2 filings, House/Senate PTRs, FEC and congress-legislators.
- * One R and one D member on each side of each kind of edge, so wording can be compared across parties. Rows for
- * "Test" people, the paper filing and roll call 310 are stand-ins for cases the GENIUS records don't happen to show.
- */
+import type { Row, TableName } from "@antibody/core";
 
 const BILL = "119-s-1582";
 const BS = "https://www.govinfo.gov/bulkdata/BILLSTATUS/119/s/BILLSTATUS-119s1582.xml";
@@ -14,7 +9,14 @@ const text = (code: string) =>
 
 const fact = (url: string, locator: string | null = null) => ({ source_url: url, source_locator: locator });
 
-const member = (id: string, name: string, party: string, state: string, chamber: string, district: number | null) => ({
+const member = (
+  id: string,
+  name: string,
+  party: Row<"members">["party"],
+  state: string,
+  chamber: Row<"members">["chamber"],
+  district: number | null,
+): Row<"members"> => ({
   id,
   name,
   party,
@@ -30,7 +32,7 @@ const member = (id: string, name: string, party: string, state: string, chamber:
       end: chamber === "Senate" ? "2031-01-03" : "2027-01-03",
       state,
       district,
-      party: { R: "Republican", D: "Democrat", I: "Independent" }[party]!,
+      party: { R: "Republican", D: "Democrat", I: "Independent" }[party],
       caucus: null,
     },
   ],
@@ -50,7 +52,12 @@ const history = (code: string, path: string, heading: string, words: number) => 
   },
 });
 
-const section = (first: string, num: string, heading: string, extra: Record<string, unknown> = {}) => ({
+const section = (
+  first: string,
+  num: string,
+  heading: string,
+  extra: Partial<Row<"sections">> = {},
+): Row<"sections"> => ({
   id: `${BILL}@${first}:sec:${num}`,
   bill_id: BILL,
   num,
@@ -80,7 +87,7 @@ const filing = (
   registrant: string,
   registrantId: string,
   amount: number,
-) => ({
+): Row<"lda_filings"> => ({
   id,
   url: `https://lda.gov/filings/public/filing/${id}/print/`,
   api_url: `https://lda.gov/api/v1/filings/${id}/`,
@@ -90,7 +97,7 @@ const filing = (
   posted_at: "2025-04-18T10:00:00-04:00",
   registrant_id: registrantId,
   registrant_name: registrant,
-  client_key: client.toLowerCase().split(/[ ,]/)[0]!,
+  client_key: client.toLowerCase().replace(/[ ,].*/su, ""),
   lda_client_id: clientId,
   client_name: client,
   client_description: null,
@@ -108,17 +115,17 @@ const trade = (
   id: string,
   bioguide: string,
   filer: string,
-  chamber: string,
-  owner: string,
-  type: string,
+  chamber: Row<"trades">["chamber"],
+  owner: Row<"trades">["owner"],
+  type: Row<"trades">["type"],
   ticker: string,
   asset: string,
   on: string,
   amount: string,
   url: string,
-) => ({
+): Row<"trades"> => ({
   id,
-  document_id: id.split("#")[0]!,
+  document_id: id.replace(/#.*/su, ""),
   bioguide,
   filer_name: filer,
   chamber,
@@ -140,7 +147,9 @@ const trade = (
   ...fact(url, "page 1"),
 });
 
-export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
+export type Fixture = { [T in TableName]?: Row<T>[] };
+
+export const GENIUS_ROWS = {
   bills: [
     {
       id: BILL,
@@ -156,6 +165,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       law_on: "2025-07-18",
       latest_action: "Became Public Law No: 119-27.",
       url: "https://www.congress.gov/bill/119th-congress/senate-bill/1582",
+      late_unavailable: null,
       ...fact(BS),
     },
   ],
@@ -329,16 +339,18 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       ...fact("https://www.cbo.gov/publication/61551", "page 1"),
     },
   ],
-  cbo_lines: [
-    { id: "s1582-es:outlays", measure: "outlays", total_musd: 59, rests_on: [] },
-    { id: "s1582-es:revenues", measure: "revenues", total_musd: -61, rests_on: [] },
-    {
-      id: "s1582-es:deficit",
-      measure: "deficit",
-      total_musd: 120,
-      rests_on: ["cbo_lines/s1582-es:outlays", "cbo_lines/s1582-es:revenues"],
-    },
-  ].map((l) => ({
+  cbo_lines: (
+    [
+      { id: "s1582-es:outlays", measure: "outlays", total_musd: 59, rests_on: [] },
+      { id: "s1582-es:revenues", measure: "revenues", total_musd: -61, rests_on: [] },
+      {
+        id: "s1582-es:deficit",
+        measure: "deficit",
+        total_musd: 120,
+        rests_on: ["cbo_lines/s1582-es:outlays", "cbo_lines/s1582-es:revenues"],
+      },
+    ] satisfies Pick<Row<"cbo_lines">, "id" | "measure" | "total_musd" | "rests_on">[]
+  ).map((l): Row<"cbo_lines"> => ({
     estimate_id: "s1582-es",
     bill_id: BILL,
     line_kind: "whole-bill",
@@ -350,6 +362,7 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
     split: "exact",
     spending: l.measure === "outlays" ? "direct" : null,
     archive_url: null,
+    join: null,
     ...fact("https://www.cbo.gov/system/files/2025-07/s1582table1.xlsx", "Table 1"),
     ...l,
   })),
@@ -385,17 +398,19 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       ...fact("https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00310.xml"),
     },
   ],
-  member_votes: [
-    ["senate-119-1-318", "H000601", "Yea"],
-    ["senate-119-1-318", "G000555", "Yea"],
-    ["senate-119-1-318", "W000817", "Nay"],
-    ["senate-119-1-310", "W000817", "Nay"],
-  ].map(([roll, b, vote]) => ({
+  member_votes: (
+    [
+      ["senate-119-1-318", "H000601", "Yea"],
+      ["senate-119-1-318", "G000555", "Yea"],
+      ["senate-119-1-318", "W000817", "Nay"],
+      ["senate-119-1-310", "W000817", "Nay"],
+    ] as const
+  ).map(([roll, b, vote]) => ({
     id: `${roll}:${b}`,
     roll_id: roll,
     bioguide: b,
     vote,
-    ...fact(`https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00${roll!.slice(-3)}.xml`),
+    ...fact(`https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00${roll.slice(-3)}.xml`),
   })),
   members: [
     member("H000601", "Bill Hagerty", "R", "TN", "Senate", null),
@@ -734,4 +749,8 @@ export const GENIUS_ROWS: Record<string, Record<string, unknown>[]> = {
       ...fact("https://docquery.fec.gov/cgi-bin/fecimg/?202509159790059717"),
     },
   ],
-};
+} satisfies Fixture;
+
+export type GeniusRows = Fixture & { [T in Extract<keyof typeof GENIUS_ROWS, TableName>]: Row<T>[] };
+
+export const geniusRows = (): GeniusRows => structuredClone(GENIUS_ROWS);

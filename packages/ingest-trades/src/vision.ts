@@ -26,7 +26,6 @@ const VisionRow = z.object({
   date: z.string(),
   notified: z.string().nullable(),
   amount: z.string(),
-  /** Models sometimes explain ("date: last digit smudged"); keep the field name, drop the rest. */
   uncertain: z
     .array(z.string())
     .transform((xs) => [...new Set(xs.flatMap((x) => FIELDS.filter((f) => x.trim().toLowerCase().startsWith(f))))]),
@@ -36,7 +35,6 @@ const VisionRow = z.object({
 export type VisionRow = z.infer<typeof VisionRow>;
 
 const PageRead = z.object({
-  /** Degrees the page's text is turned clockwise from upright. Scanned forms often sit sideways. */
   rotation: z.union([z.literal(0), z.literal(90), z.literal(180), z.literal(270)]).catch(0),
   page_kind: z.enum(["form", "statement", "cover", "other"]),
   filer_name: z.string().nullable(),
@@ -51,24 +49,37 @@ const Recheck = z.object({
 
 export type Recheck = z.infer<typeof Recheck>;
 
-export interface Call {
-  costUsd: number;
-  ms: number;
-  inputTokens: number;
-  outputTokens: number;
-}
+const Call = z.object({ costUsd: z.number(), ms: z.number(), inputTokens: z.number(), outputTokens: z.number() });
 
-/** One page's vision result, cached at data/trades/vision/reads/<doc>/<page>.json. */
-export interface PageResult {
-  doc: string;
-  page: number;
-  model: string;
-  /** Set when the page image was turned upright before this read. */
-  rotated?: number | null;
-  read: PageRead;
-  recheck: Recheck | null;
-  calls: Call[];
-}
+export type Call = z.infer<typeof Call>;
+
+const PageResult = z.object({
+  doc: z.string(),
+  page: z.number(),
+  model: z.string(),
+  rotated: z.number().nullable().optional(),
+  read: PageRead,
+  recheck: Recheck.nullable(),
+  calls: z.array(Call),
+});
+
+export type PageResult = z.infer<typeof PageResult>;
+
+const ResultLine = z.object({
+  type: z.literal("result"),
+  is_error: z.boolean().optional(),
+  result: z.string().optional(),
+  total_cost_usd: z.number().optional(),
+  duration_ms: z.number().optional(),
+  usage: z
+    .object({
+      input_tokens: z.number().optional(),
+      cache_creation_input_tokens: z.number().optional(),
+      cache_read_input_tokens: z.number().optional(),
+      output_tokens: z.number().optional(),
+    })
+    .optional(),
+});
 
 const READ_PROMPT = `You transcribe one scanned page of a US congressional Periodic Transaction Report (a member of Congress disclosing stock and other securities trades). The page may be a House or Senate paper form (a grid where the transaction type and the amount range are marked with an X in a column), a handwritten or typed list, or an attached brokerage statement. It may be rotated.
 
@@ -101,16 +112,15 @@ const imagePath = (doc: string, page: number) => join(visionRoot(), "img", doc, 
 export async function cachedRead(doc: string, page: number): Promise<PageResult | null> {
   const f = Bun.file(readPath(doc, page));
 
-  return (await f.exists()) ? ((await f.json()) as PageResult) : null;
+  return (await f.exists()) ? PageResult.parse(await f.json()) : null;
 }
 
 export async function cachedPages(doc: string): Promise<number[]> {
-  const files = await readdir(join(visionRoot(), "reads", doc)).catch(() => [] as string[]);
+  const files = await readdir(join(visionRoot(), "reads", doc)).catch((): string[] => []);
 
   return files.filter((f) => f.endsWith(".json")).map((f) => Number(f.slice(0, -5)));
 }
 
-/** Renders a scanned PDF (all pages) or one page image into grayscale PNGs, long edge 1650 px. */
 export async function prepare(doc: string, src: string, page?: number) {
   const dir = join(visionRoot(), "img", doc);
   await mkdir(dir, { recursive: true });
@@ -127,7 +137,12 @@ export async function prepare(doc: string, src: string, page?: number) {
   await heavy(["uv", "run", "-q", "--project", PKG, "python", "-I", join(PKG, "py/prep_image.py"), ...args]);
 }
 
-async function ask(image: string, system: string, text: string): Promise<{ answer: unknown; call: Call }> {
+async function ask<T>(
+  image: string,
+  system: string,
+  text: string,
+  schema: z.ZodType<T>,
+): Promise<{ answer: T; call: Call }> {
   const data = Buffer.from(await Bun.file(image).arrayBuffer()).toString("base64");
 
   const message = {
@@ -174,20 +189,22 @@ async function ask(image: string, system: string, text: string): Promise<{ answe
 
   const result = out
     .split("\n")
-    .filter(Boolean)
-    .map((l) => JSON.parse(l))
-    .find((m) => m.type === "result");
+    .filter((l) => l !== "")
+    .map((l) => ResultLine.safeParse(JSON.parse(l)))
+    .find((m) => m.success)?.data;
 
-  if (!result || result.is_error) {
+  if (result === undefined || result.is_error === true) {
     throw new Error(`claude -p failed: ${result?.result ?? (await new Response(proc.stderr).text())}`);
   }
 
-  if (!/[[{]/.test(String(result.result))) {
-    throw new Error(`no JSON in answer: ${String(result.result).slice(0, 200)}`);
+  const answer = result.result ?? "";
+
+  if (!/[[{]/u.test(answer)) {
+    throw new Error(`no JSON in answer: ${answer.slice(0, 200)}`);
   }
 
   return {
-    answer: parseJson(String(result.result)),
+    answer: parseJson(answer, schema),
     call: {
       costUsd: result.total_cost_usd ?? 0,
       ms: result.duration_ms ?? 0,
@@ -205,22 +222,23 @@ async function retry<T>(fn: () => Promise<T>, tries = 2): Promise<T> {
     try {
       return await fn();
     } catch (error) {
-      if (i >= tries) throw error;
+      if (i >= tries) {
+        throw error;
+      }
     }
   }
 }
 
-/** Reads one page image, turned upright first when the model says it was scanned sideways; uncertain cells get a second read. */
 export async function readPage(doc: string, page: number): Promise<PageResult> {
   let image = imagePath(doc, page);
   const calls: Call[] = [];
 
   const transcribe = async () =>
-    retry(async () => {
-      const { answer, call } = await ask(image, READ_PROMPT, "Transcribe this page.");
+    await retry(async () => {
+      const { answer, call } = await ask(image, READ_PROMPT, "Transcribe this page.", PageRead);
       calls.push(call);
 
-      return PageRead.parse(answer);
+      return answer;
     });
 
   let read = await transcribe();
@@ -228,7 +246,7 @@ export async function readPage(doc: string, page: number): Promise<PageResult> {
 
   if (read.rotation) {
     rotated = read.rotation;
-    const upright = image.replace(/\.png$/, `.r${rotated}.png`);
+    const upright = image.replace(/\.png$/u, `.r${rotated}.png`);
     await heavy([
       "uv",
       "run",
@@ -256,11 +274,12 @@ export async function readPage(doc: string, page: number): Promise<PageResult> {
         image,
         RECHECK_PROMPT,
         `Rows on this page (for locating): ${JSON.stringify(rows)}\nCells to check: ${JSON.stringify(cells)}`,
+        Recheck,
       );
 
       calls.push(call);
 
-      return Recheck.parse(answer);
+      return answer;
     });
   }
 
@@ -276,7 +295,6 @@ export interface VisionJob {
   page: number;
 }
 
-/** Reads the given pages, `workers` at a time, skipping cached ones. Returns per-page results and failures. */
 export async function readPages(jobs: VisionJob[], workers: number, log: (m: string) => void) {
   const done: PageResult[] = [];
   const failed: { job: VisionJob; error: string }[] = [];

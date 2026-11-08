@@ -3,13 +3,8 @@ import { basename, dirname, join } from "node:path";
 import { billRef, billstatusUrl } from "@antibody/core";
 import type { BillId } from "@antibody/core";
 import { paths } from "@antibody/core/node";
+import { z } from "zod";
 import type { Listing } from "./estimates.ts";
-
-/**
- * cbo.gov answers every script with a DataDome 403, so files come from the Internet Archive's copy
- * (`web.archive.org/web/<ts>id_/<url>` returns the original bytes). Claims cite the cbo.gov URL and keep the
- * archive URL as the copy we read. When nothing is archived yet, Save Page Now is asked for a capture.
- */
 
 const UA = "antibody/1.0 (+https://github.com/AVGVSTVS96/antibody)";
 const SPACING_MS = 1000;
@@ -26,6 +21,8 @@ export interface Fetched {
   file: string;
 }
 
+const ArchivedCopy = z.object({ url: z.string(), archiveUrl: z.string().nullable() });
+
 async function get(url: string, signal?: AbortSignal, timeoutMs = 60_000): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     const wait = nextAt - Date.now();
@@ -36,14 +33,20 @@ async function get(url: string, signal?: AbortSignal, timeoutMs = 60_000): Promi
 
     nextAt = Date.now() + SPACING_MS;
 
-    const res = await fetch(url, {
-      headers: { "user-agent": UA },
-      signal: AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(signal ? [signal] : [])]),
-    }).catch((error) => {
-      if (signal?.aborted) throw error;
+    let res: Response | null;
 
-      return null;
-    });
+    try {
+      res = await fetch(url, {
+        headers: { "user-agent": UA },
+        signal: AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(signal ? [signal] : [])]),
+      });
+    } catch (error) {
+      if (signal?.aborted === true) {
+        throw error;
+      }
+
+      res = null;
+    }
 
     if (res && res.status !== 429 && res.status < 500) {
       return res;
@@ -86,10 +89,9 @@ async function save(file: string, data: string | Uint8Array) {
 export async function billstatus(bill: BillId, opts: Opts): Promise<string> {
   const url = billstatusUrl(bill);
 
-  return cached(join(paths.raw("cbo"), "billstatus", basename(url)), url, opts);
+  return await cached(join(paths.raw("cbo"), "billstatus", basename(url)), url, opts);
 }
 
-/** Newest first. A capture can be DataDome's challenge page served with a 200, so callers try a few. */
 async function captures(url: string, signal?: AbortSignal): Promise<string[]> {
   const q = `https://web.archive.org/cdx/search/cdx?url=${encodeURIComponent(url)}&filter=statuscode:200&fl=timestamp&limit=-${CAPTURES}`;
   const res = await get(q, signal);
@@ -101,8 +103,8 @@ async function captures(url: string, signal?: AbortSignal): Promise<string[]> {
   return (await res.text())
     .split("\n")
     .map((t) => t.trim())
-    .filter((t) => /^\d{14}$/.test(t))
-    .reverse();
+    .filter((t) => /^\d{14}$/u.test(t))
+    .toReversed();
 }
 
 async function saveNow(url: string, signal?: AbortSignal) {
@@ -113,43 +115,38 @@ const CAPTURES = 4;
 const text = (b: Uint8Array) => new TextDecoder().decode(b.slice(0, 8192));
 
 const VALID: [RegExp, (b: Uint8Array) => boolean][] = [
-  [/\.pdf$/i, (b) => text(b).startsWith("%PDF-")],
-  [/\.xlsx?$/i, (b) => (b[0] === 0x50 && b[1] === 0x4b) || (b[0] === 0xd0 && b[1] === 0xcf)],
+  [/\.pdf$/iu, (b) => text(b).startsWith("%PDF-")],
+  [/\.xlsx?$/iu, (b) => (b[0] === 0x50 && b[1] === 0x4b) || (b[0] === 0xd0 && b[1] === 0xcf)],
   [
-    /\.html$/i,
-    (b) => /<html/i.test(text(b)) && !/captcha-delivery|enable JS and disable any ad blocker/i.test(text(b)),
+    /\.html$/iu,
+    (b) => /<html/iu.test(text(b)) && !/captcha-delivery|enable JS and disable any ad blocker/iu.test(text(b)),
   ],
 ];
 
-/**
- * A real archived copy of a cbo.gov URL, saved under data/cbo/ with a sidecar naming the archive URL.
- * Replay redirects to the capture nearest a timestamp, so the capture nearest `near` (the publication date) and
- * the newest are tried first; the CDX listing is slow (often 40s), so it is the fallback, then Save Page Now.
- */
 export async function archived(url: string, file: string, opts: Opts & { near?: string }): Promise<Fetched | null> {
   const meta = Bun.file(`${file}.json`);
 
   if (!opts.refresh && (await meta.exists()) && (await Bun.file(file).exists())) {
-    return { ...((await meta.json()) as Omit<Fetched, "file">), file };
+    return { ...ArchivedCopy.parse(await meta.json()), file };
   }
 
   const valid = VALID.find(([re]) => re.test(file))?.[1] ?? (() => true);
   const tried = new Set<string>();
 
   const attempt = async (stamp: string): Promise<Fetched | null> => {
-    // The Wayback Machine sometimes answers a replay with a status of its own (900) after every retry; that capture
-    // is unreadable, not the whole estimate.
-    const res = await get(`https://web.archive.org/web/${stamp}id_/${url}`, opts.signal, 180_000).catch((error) => {
-      if (opts.signal?.aborted) throw error;
+    let res: Response;
 
-      return null;
-    });
+    try {
+      res = await get(`https://web.archive.org/web/${stamp}id_/${url}`, opts.signal, 180_000);
+    } catch (error) {
+      if (opts.signal?.aborted === true) {
+        throw error;
+      }
 
-    if (!res) {
       return null;
     }
 
-    const ts = /\/web\/(\d{14})id_\//.exec(res.url)?.[1] ?? stamp;
+    const ts = /\/web\/(\d{14})id_\//u.exec(res.url)?.[1] ?? stamp;
 
     if (tried.has(ts)) {
       return null;
@@ -174,7 +171,7 @@ export async function archived(url: string, file: string, opts: Opts & { near?: 
     return { ...fetched, file };
   };
 
-  for (const stamp of [opts.near, "2099"].filter((x): x is string => !!x)) {
+  for (const stamp of [opts.near ?? "", "2099"].filter((x) => x !== "")) {
     const got = await attempt(stamp);
 
     if (got) {
@@ -199,9 +196,9 @@ export async function archived(url: string, file: string, opts: Opts & { near?: 
   return null;
 }
 
-const FILE_LINK = /(?:https?:\/\/www\.cbo\.gov)?\/system\/files\/(\d{4}-\d{2})\/([^"'?#\s<>]+?\.(?:pdf|xlsx|xls))/gi;
+const FILE_LINK =
+  /(?:https?:\/\/www\.cbo\.gov)?\/system\/files\/(?<month>\d{4}-\d{2})\/(?<name>[^"'?#\s<>]+?\.(?:pdf|xlsx|xls))/giu;
 
-/** The PDF and Excel files of one CBO publication, read from its archived page (or the month's archived files). */
 export async function publicationFiles(listing: Listing, bill: BillId, opts: Opts): Promise<Fetched[]> {
   const dir = paths.raw("cbo");
   const near = listing.pubDate.slice(0, 10).replaceAll("-", "");
@@ -210,7 +207,7 @@ export async function publicationFiles(listing: Listing, bill: BillId, opts: Opt
 
   if (page) {
     const html = await Bun.file(page.file).text();
-    links = [...html.matchAll(FILE_LINK)].map(([, month, name]) => fileUrl(month!, name!));
+    links = [...html.matchAll(FILE_LINK)].map(({ groups }) => fileUrl(groups?.month ?? "", groups?.name ?? ""));
   }
 
   if (!links.length) {
@@ -219,7 +216,7 @@ export async function publicationFiles(listing: Listing, bill: BillId, opts: Opt
 
   const out: Fetched[] = [];
 
-  for (const url of [...new Set(links)]) {
+  for (const url of new Set(links)) {
     const got = await archived(url, localFile(url), { ...opts, near });
 
     if (got) {
@@ -230,21 +227,25 @@ export async function publicationFiles(listing: Listing, bill: BillId, opts: Opt
   return out;
 }
 
-/** Where a cbo.gov file lives on disk: data/cbo/files/<yyyy-mm>/<name>, the month keeping same-named files apart. */
 export function localFile(url: string): string {
-  const [, month, name] = /files\/(\d{4}-\d{2})\/(.+)$/.exec(url)!;
+  const groups = /files\/(?<month>\d{4}-\d{2})\/(?<name>.+)$/u.exec(url)?.groups;
+  const month = groups?.month;
+  const name = groups?.name;
 
-  return join(paths.raw("cbo"), "files", month!, decodeURIComponent(name!));
+  if (month === undefined || name === undefined) {
+    throw new Error(`not a cbo.gov file URL: ${url}`);
+  }
+
+  return join(paths.raw("cbo"), "files", month, decodeURIComponent(name));
 }
 
 function fileUrl(month: string, name: string) {
   return `https://www.cbo.gov/system/files/${month}/${name}`;
 }
 
-/** Fallback when the publication page itself was never archived: files in its month whose name carries the bill. */
 async function monthFiles(listing: Listing, bill: BillId, { signal }: Opts): Promise<string[]> {
   const { type, number } = billRef(bill);
-  const own = new RegExp(`(^|[^a-z])${type}${number}([^0-9]|$)`, "i");
+  const own = new RegExp(`(^|[^a-z])${type}${number}([^0-9]|$)`, "iu");
   const month = listing.pubDate.slice(0, 7);
   const q = `https://web.archive.org/cdx/search/cdx?url=cbo.gov/system/files/${month}/&matchType=prefix&filter=statuscode:200&fl=original&collapse=urlkey`;
   const res = await get(q, signal);
@@ -254,9 +255,9 @@ async function monthFiles(listing: Listing, bill: BillId, { signal }: Opts): Pro
   }
 
   return (await res.text()).split("\n").flatMap((original) => {
-    const name = original.trim().split("?")[0]!.split("/").at(-1) ?? "";
-    const ours = own.test(name.replaceAll(/[-_\s]/g, "")) || name.startsWith(`${listing.pubId}-`);
+    const name = original.trim().replace(/\?.*$/su, "").split("/").at(-1) ?? "";
+    const ours = own.test(name.replaceAll(/[-_\s]/gu, "")) || name.startsWith(`${listing.pubId}-`);
 
-    return /\.(pdf|xlsx?)$/i.test(name) && ours ? [fileUrl(month, name)] : [];
+    return /\.(pdf|xlsx?)$/iu.test(name) && ours ? [fileUrl(month, name)] : [];
   });
 }

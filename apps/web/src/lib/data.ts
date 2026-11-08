@@ -1,55 +1,98 @@
 import type { Bundle, BundleIndex, Claim } from "@antibody/core";
+import { useCallback, useSyncExternalStore } from "react";
 
-/**
- * Bundles are validated when store publishes them (and in this app's tests), so the browser reads them as typed JSON
- * and never ships zod.
- */
-const cache = new Map<string, Promise<unknown>>();
+interface Cached<K, T> {
+  (key: K): Promise<T>;
+  peek: (key: K) => T | undefined;
+}
 
-async function load<T>(url: string): Promise<T> {
-  let p = cache.get(url);
+function cachedBy<K, T>(start: (key: K) => Promise<T>): Cached<K, T> {
+  const pending = new Map<K, Promise<T>>();
+  const done = new Map<K, T>();
 
-  if (!p) {
-    p = fetch(url).then(async (r) => {
-      if (!r.ok) {
-        throw new Error(`${r.status} ${url}`);
+  // oxlint-disable-next-line typescript/promise-function-async -- returns the cached promise itself, so React's use() sees the same thenable on every render
+  const get = (key: K): Promise<T> => {
+    let p = pending.get(key);
+
+    if (!p) {
+      p = start(key).then((value) => {
+        done.set(key, value);
+
+        return value;
+      });
+      p.catch(() => pending.delete(key));
+      pending.set(key, p);
+    }
+
+    return p;
+  };
+
+  return Object.assign(get, { peek: (key: K) => done.get(key) });
+}
+
+function useLoaded<K, T>(source: Cached<K, T>, key: K | null): T | undefined {
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      let live = true;
+
+      if (key !== null) {
+        source(key)
+          .finally(() => {
+            if (live) {
+              notify();
+            }
+          })
+          .catch(() => null);
       }
 
-      return r.json();
-    });
-    p.catch(() => cache.delete(url));
-    cache.set(url, p);
+      return () => {
+        live = false;
+      };
+    },
+    [source, key],
+  );
+
+  return useSyncExternalStore(subscribe, () => (key === null ? undefined : source.peek(key)));
+}
+
+async function published<T extends BundleIndex | Bundle | Record<string, Claim>>(url: string): Promise<T> {
+  const r = await fetch(url);
+
+  if (!r.ok) {
+    throw new Error(`${r.status} ${url}`);
   }
 
-  return p as Promise<T>;
+  // SAFETY: store validates every published file with zod; claims files run to 30 MB, too big to parse again in a browser.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SAFETY above
+  return (await r.json()) as T;
 }
 
-export const loadIndex = async () => load<BundleIndex>("/bundles/index.json");
+const INDEX = "/bundles/index.json";
+const indexAt = cachedBy(async (url: string) => await published<BundleIndex>(url));
 
-const bundles = new Map<string, Promise<Bundle | null>>();
+// oxlint-disable-next-line typescript/promise-function-async -- returns the cached promise itself, so React's use() sees the same thenable on every render
+export const loadIndex = (): Promise<BundleIndex> => indexAt(INDEX);
 
-/** One promise per bill, so React's `use` sees the same thenable on every render. */
-export async function loadBundle(id: string): Promise<Bundle | null> {
-  let p = bundles.get(id);
+export const useIndex = () => useLoaded(indexAt, INDEX);
 
-  if (!p) {
-    p = loadIndex().then((index) => {
-      const entry = index.bills.find((b) => b.id === id);
+export const loadBundle = cachedBy(async (id: string): Promise<Bundle | null> => {
+  const entry = (await loadIndex()).bills.find((b) => b.id === id);
 
-      return entry ? load<Bundle>(`/bundles/${entry.file}`) : null;
-    });
-    p.catch(() => bundles.delete(id));
-    bundles.set(id, p);
+  return entry ? await published<Bundle>(`/bundles/${entry.file}`) : null;
+});
+
+export const prefetchBundle = (id: string) => {
+  loadBundle(id).catch(() => null);
+};
+
+export const loadClaims = cachedBy(async (id: string): Promise<Record<string, Claim> | null> => {
+  try {
+    const file = (await loadIndex()).bills.find((b) => b.id === id)?.claimsFile ?? "";
+
+    return file === "" ? null : await published<Record<string, Claim>>(`/bundles/${file}`);
+  } catch {
+    return null;
   }
+});
 
-  return p;
-}
-
-export const prefetchBundle = (id: string) => void loadBundle(id).catch(() => {});
-
-export async function loadClaims(id: string): Promise<Record<string, Claim> | null> {
-  const index = await loadIndex();
-  const entry = index.bills.find((b) => b.id === id);
-
-  return entry?.claimsFile ? await load<Record<string, Claim>>(`/bundles/${entry.claimsFile}`) : null;
-}
+export const useClaimsFile = (id: string | null) => useLoaded(loadClaims, id);

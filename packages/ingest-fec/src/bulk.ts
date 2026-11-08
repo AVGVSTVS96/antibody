@@ -1,10 +1,12 @@
 import { join } from "node:path";
 import { heavy, paths } from "@antibody/core/node";
 
-/** The two election cycles that matter for a Congress: the one that seated it and the one it serves in (119th → 2024, 2026). */
-export const cyclesFor = (congress: number) => [1786 + 2 * congress, 1788 + 2 * congress];
+export const cyclesFor = (congress: number) => {
+  const seatedBy = 1786 + 2 * congress;
 
-/** FEC bulk file names: pas2 (committee → candidate), cm (committees), cn (candidates), ccl (linkages), indiv (itemized). */
+  return [seatedBy, seatedBy + 2];
+};
+
 export type BulkFile = "pas2" | "cm" | "cn" | "ccl" | "indiv";
 
 const MEMBER: Record<BulkFile, string> = {
@@ -18,7 +20,6 @@ const MEMBER: Record<BulkFile, string> = {
 export const bulkUrl = (file: BulkFile, cycle: number) =>
   `https://www.fec.gov/files/bulk-downloads/${cycle}/${file}${String(cycle).slice(2)}.zip`;
 
-/** Downloads a bulk zip into data/fec/ once (resumable; indiv files are 2-6 GB). */
 export async function bulkZip(file: BulkFile, cycle: number, dir = paths.raw("fec"), refresh = false): Promise<string> {
   const zip = join(dir, `${file}${String(cycle).slice(2)}.zip`);
 
@@ -33,14 +34,10 @@ export async function bulkZip(file: BulkFile, cycle: number, dir = paths.raw("fe
   return zip;
 }
 
-/**
- * Streams a bulk file straight out of its zip as `|`-split fields, never holding the file in memory. With `firstField`,
- * a line is decoded only when its first field is in the set: indiv files are 30-70M lines, and we keep a few million.
- */
 export async function* rows(
   file: BulkFile,
   cycle: number,
-  { firstField, dir }: { firstField?: Set<string>; dir?: string } = {},
+  { firstField, dir }: { firstField?: Set<string>; dir?: string | undefined } = {},
 ): AsyncGenerator<string[]> {
   const zip = await bulkZip(file, cycle, dir);
   const proc = Bun.spawn(["unzip", "-p", zip, MEMBER[file]], { stdout: "pipe", stderr: "inherit" });
@@ -55,7 +52,7 @@ export async function* rows(
       if (firstField) {
         const bar = chunk.indexOf(BAR, start);
 
-        if (bar === -1 || bar > nl || !firstField.has(String.fromCharCode(...chunk.subarray(start, bar)))) {
+        if (bar === -1 || bar > nl || !firstField.has(String.fromCodePoint(...chunk.subarray(start, bar)))) {
           continue;
         }
       }
@@ -78,9 +75,8 @@ export async function* rows(
 
 const [NL, CR, BAR] = [10, 13, 124];
 
-/** FEC writes dates as MMDDYYYY. */
-export function fecDate(s: string | undefined): string | null {
-  const m = s?.match(/^(\d{2})(\d{2})(\d{4})$/);
+export function fecDate(mmddyyyy: string | undefined): string | null {
+  const m = mmddyyyy?.match(/^(\d{2})(\d{2})(\d{4})$/u);
 
   if (!m) {
     return null;
@@ -90,5 +86,17 @@ export function fecDate(s: string | undefined): string | null {
 
   return Number.isNaN(Date.parse(iso)) ? null : iso;
 }
+
+export function column(fields: string[], index: number): string {
+  const value = fields[index];
+
+  if (value === undefined) {
+    throw new RangeError(`FEC bulk line has ${fields.length} columns, column ${index} missing: ${fields.join("|")}`);
+  }
+
+  return value;
+}
+
+export const blankToNull = (value: string | undefined) => (value === undefined || value === "" ? null : value);
 
 export const imageUrl = (imageNum: string) => `https://docquery.fec.gov/cgi-bin/fecimg/?${imageNum}`;

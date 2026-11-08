@@ -15,14 +15,12 @@ export type Deploy =
   | { status: "failed"; error: string };
 
 export interface Site {
-  /** X-rayed watcher bills copied into the published folder this run. */
   published: BillId[];
   deploy: Deploy;
 }
 
 const curated = new Set<string>(CURATED.map((p) => p.id));
 
-/** The x-ray's bundle goes to the site only if it parses and every claim and edge resolves; curated bills are left as they are. */
 export async function publishBundle(id: BillId, from = paths.bundles, to = paths.published): Promise<string | null> {
   if (curated.has(id)) {
     return null;
@@ -49,14 +47,10 @@ export const deployDisabled = () => process.env.ANTIBODY_WATCH_DEPLOY === "0";
 
 type Run = (cmd: string[], cwd: string, signal: AbortSignal) => Promise<string>;
 
-const run: Run = async (cmd, cwd, signal) => heavy(cmd, { cwd, signal });
+const run: Run = async (cmd, cwd, signal) => await heavy(cmd, { cwd, signal });
 
-const withoutStamp = (index: string) => index.replace(/"generatedAt": "[^"]*"/, "");
+const withoutStamp = (index: string) => index.replace(/"generatedAt": "[^"]*"/u, "");
 
-/**
- * The Vercel project's root directory is apps/web, so the CLI has to run from the repo root, where the project is
- * linked too: the link is copied once from apps/web/.vercel (both are gitignored).
- */
 async function linkProject(root: string) {
   const link = Bun.file(join(root, ".vercel/project.json"));
   const from = Bun.file(join(root, "apps/web/.vercel/project.json"));
@@ -69,7 +63,6 @@ async function linkProject(root: string) {
 interface Where {
   root: string;
   published: string;
-  /** The index of the last successful deploy; a deploy is skipped while the new index matches it. */
   deployedIndex: string;
 }
 
@@ -79,11 +72,6 @@ const here = (): Where => ({
   deployedIndex: join(paths.raw("watch"), "deployed-index.json"),
 });
 
-/**
- * Rebuilds the index with this run's picks, then builds the site and puts it on production unless the index is
- * the same as at the last deploy (apart from generatedAt). Never throws: a failure comes back as a problem and
- * the previous live site stays, because Vercel only switches production once the new deploy is ready.
- */
 export async function updateSite(
   site: Site,
   { deploy = !deployDisabled(), exec = run, where = here(), minutes = 20 } = {},
@@ -97,7 +85,10 @@ export async function updateSite(
       CURATED.map((p) => p.id),
     );
   } catch (error) {
-    site.deploy = { status: "failed", error: `index not rebuilt: ${(error as Error).message}` };
+    site.deploy = {
+      status: "failed",
+      error: `index not rebuilt: ${error instanceof Error ? error.message : String(error)}`,
+    };
 
     return { index, problems: [`site: ${site.deploy.error}`] };
   }
@@ -127,13 +118,18 @@ export async function updateSite(
     await linkProject(where.root);
     await exec(["bunx", "vercel", "build", "--prod", "--yes"], where.root, signal);
     const out = await exec(["bunx", "vercel", "deploy", "--prebuilt", "--prod", "--yes"], where.root, signal);
-    const url = out.match(/https:\/\/[^\s"',]+/g)?.at(-1) ?? SITE_URL;
+    const url = out.match(/https:\/\/[^\s"',]+/gu)?.at(-1) ?? SITE_URL;
     await mkdir(dirname(where.deployedIndex), { recursive: true });
     await Bun.write(`${where.deployedIndex}.tmp`, text);
     await rename(`${where.deployedIndex}.tmp`, where.deployedIndex);
     site.deploy = { status: "deployed", url };
   } catch (error_) {
-    const error = signal.aborted ? `stopped after ${minutes} min` : (error_ as Error).message;
+    const error = signal.aborted
+      ? `stopped after ${minutes} min`
+      : error_ instanceof Error
+        ? error_.message
+        : String(error_);
+
     site.deploy = { status: "failed", error };
     problems.push(`site deploy failed, the previous live site is unchanged and the next run retries: ${error}`);
   }

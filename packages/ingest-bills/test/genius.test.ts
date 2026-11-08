@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { must } from "@antibody/core";
 import { amendmentStatus, attribute, versionStep } from "../src/amendments.ts";
 import { parseBillStatus } from "../src/billstatus.ts";
 import { amendmentFrom } from "../src/crec.ts";
@@ -8,7 +9,6 @@ import { isLate, trace } from "../src/lineage.ts";
 import { parseSections } from "../src/sections.ts";
 import { textVersions } from "../src/versions.ts";
 
-/** Real GovInfo files for S.1582 (GENIUS Act) and its predecessor S.394, gzipped. */
 const fixture = (name: string) =>
   new TextDecoder().decode(Bun.gunzipSync(readFileSync(join(import.meta.dir, "fixtures", `${name}.gz`))));
 
@@ -21,7 +21,11 @@ const versions = [
 ];
 
 const { lineages, steps } = trace("119-s-1582", versions);
-const sec19 = lineages.find((l) => l.id === "119-s-1582@es:sec:19")!;
+
+const sec19 = must(
+  lineages.find((l) => l.id === "119-s-1582@es:sec:19"),
+  "sec. 19",
+);
 
 test("BILLSTATUS: titles, sponsor, law and the four text versions in order", () => {
   expect(status.shortTitle).toBe("GENIUS Act");
@@ -34,7 +38,7 @@ test("BILLSTATUS: titles, sponsor, law and the four text versions in order", () 
     ["enr", "2025-07-17"],
     ["plaw", "2025-07-18"],
   ]);
-  expect(refs.at(-1)!.url).toBe("https://www.govinfo.gov/content/pkg/PLAW-119publ27/uslm/PLAW-119publ27.xml");
+  expect(refs.at(-1)?.url).toBe("https://www.govinfo.gov/content/pkg/PLAW-119publ27/uslm/PLAW-119publ27.xml");
 });
 
 test("lineage: 59/59 sections carried from committee text to law, one added on the Senate floor", () => {
@@ -45,8 +49,8 @@ test("lineage: 59/59 sections carried from committee text to law, one added on t
     ["enr", "plaw", 0, 0],
   ]);
   expect(steps.slice(1).reduce((n, s) => n + Object.values(s.matched).reduce((a, b) => a + b, 0), 0)).toBe(59);
-  expect(steps[2]!.matched).toEqual({ identical: 20 });
-  expect(sec19.history.es!.heading).toBe("Disclosure relating to payment stablecoins");
+  expect(steps[2]?.matched).toEqual({ identical: 20 });
+  expect(sec19.history.es?.heading).toBe("Disclosure relating to payment stablecoins");
   expect(sec19.last.text).toContain("aggregating $5,000 or less");
 });
 
@@ -55,12 +59,16 @@ test("late: only sec. 19 (first in the Senate-passed text); predecessor and comm
 });
 
 test("sec. 19 came in through Hagerty's substitute SA 2307, read from its printed text", () => {
-  const sa = status.amendments.find((a) => a.number === "2307")!;
+  const sa = must(
+    status.amendments.find((a) => a.number === "2307"),
+    "SA 2307",
+  );
+
   expect(amendmentStatus(sa)).toBe("agreed");
   const dated = refs.map((r) => ({ code: r.code, date: r.date }));
 
   const agreed = status.amendments.filter(
-    (a) => amendmentStatus(a) === "agreed" && versionStep(a.latestAction!.date, dated) === "pcs->es",
+    (a) => amendmentStatus(a) === "agreed" && versionStep(a.latestAction?.date ?? null, dated) === "pcs->es",
   );
 
   expect(agreed.map((a) => a.number)).toEqual(["2307"]);
@@ -90,5 +98,5 @@ test("sec. 19 came in through Hagerty's substitute SA 2307, read from its printe
     effect: "inserted",
     rests_on: ["amendments/119-samdt-2307", `sections/${sec19.id}`],
   });
-  expect(rows[0]!.evidence.sourceUrl).toBe(url);
+  expect(rows[0]?.evidence.sourceUrl).toBe(url);
 });

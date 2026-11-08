@@ -5,7 +5,6 @@ import type { RingData } from "./select.ts";
 export interface TieShape {
   member: string;
   d: string;
-  /** Position in draw order: nearest member first, so the route grows outward from the company. */
   order: number;
   width: number;
   inference: boolean;
@@ -28,7 +27,6 @@ export interface TieSet {
 const CORNER = 4;
 export const TIE_STEP = 2.6;
 
-/** One route: out from the company along its spoke to a shared track, around the ring to the member's angle, then out to the member. */
 export function tiePath(a0: number, rStart: number, a1: number, rEnd: number, rb: number): string {
   const d = wrapPi(a1 - a0);
   const arc = Math.abs(d) * rb;
@@ -52,10 +50,6 @@ export function tiePath(a0: number, rStart: number, a1: number, rEnd: number, rb
   ].join("");
 }
 
-/**
- * Every tie of one company, routed so the ones that travel furthest run on the innermost track: shorter routes
- * peel off outside them and never cross. Each direction around the ring has its own set of tracks.
- */
 export function tieSet(data: RingData, layout: RingLayout, companyId: string): TieSet {
   const co = layout.company.get(companyId);
   const ties = data.byCompany.get(companyId) ?? [];
@@ -74,11 +68,11 @@ export function tieSet(data: RingData, layout: RingLayout, companyId: string): T
     return mem ? [{ t, mem, d: wrapPi(mem.angle - co.angle) }] : [];
   });
 
-  const byDistance = [...placed].sort((a, b) => Math.abs(a.d) - Math.abs(b.d));
+  const byDistance = placed.toSorted((a, b) => Math.abs(a.d) - Math.abs(b.d));
   const track = new Map<string, number>();
 
   for (const dir of [1, -1]) {
-    const side = placed.filter((p) => (p.d >= 0 ? 1 : -1) === dir).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+    const side = placed.filter((p) => (p.d >= 0 ? 1 : -1) === dir).toSorted((a, b) => Math.abs(b.d) - Math.abs(a.d));
     const step = Math.min(TIE_STEP, (R.trackEnd - R.track) / Math.max(side.length - 1, 1));
 
     for (const [i, p] of side.entries()) {
@@ -88,7 +82,8 @@ export function tieSet(data: RingData, layout: RingLayout, companyId: string): T
 
   const shapes = byDistance.map<TieShape>((p, order) => ({
     member: p.t.member,
-    d: tiePath(co.angle, rStart, p.mem.angle, rMember - p.mem.size - 1.5, track.get(p.t.member)!),
+    d: tiePath(co.angle, rStart, p.mem.angle, rMember - p.mem.size - 1.5, track.get(p.t.member) ?? R.track),
+
     order,
     width: data.view === "trades" ? 1 : 0.6 + Math.sqrt(p.t.weight / peak) * 1.1,
     inference: p.t.inference,

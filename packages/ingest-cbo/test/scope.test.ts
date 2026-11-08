@@ -1,17 +1,25 @@
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { TABLES } from "@antibody/core";
-import type { Row } from "@antibody/core";
-import { python } from "@antibody/core/node";
+import { TABLES, must } from "@antibody/core";
 import { buildLines, reconcile } from "../src/lines.ts";
-import type { Parsed } from "../src/parsed.ts";
+import { readTables } from "../src/parsed.ts";
 import { scopeFromText, scopeRows } from "../src/scope.ts";
 import { sectionIndex } from "../src/sections.ts";
+import type { SectionRow } from "../src/sections.ts";
 
 const fixture = (name: string) => resolve(import.meta.dir, "fixtures", name);
-const letter = (await Bun.file(fixture("fra-letter.json")).json()) as string[];
+
+const isText = (value: unknown): value is string => typeof value === "string";
+const isPages = (value: unknown): value is string[] => Array.isArray(value) && value.every(isText);
+
+const letterJson: unknown = await Bun.file(fixture("fra-letter.json")).json();
+
+if (!isPages(letterJson)) {
+  throw new Error("fra-letter.json is not a list of pages");
+}
+
+const letter = letterJson;
 const uv = Bun.which("uv") !== null;
-const PKG = resolve(import.meta.dir, "..");
 
 test("a label's scope is what CBO's paragraph under that heading says: its first 'Title X of division Y'", () => {
   expect(scopeFromText(["Funding for the Internal Revenue Service and Related Agencies"], letter)).toMatchObject({
@@ -39,8 +47,10 @@ test("a label that matches no heading, or the pages of tables, gives no scope", 
   expect(scopeFromText(["Interest on the Public Debt"], letter)).toBeUndefined();
 });
 
-const section = (id: string, path: string, heading: string) =>
-  ({ id, history: { eh: { path, heading } } }) as unknown as Row<"sections">;
+const section = (id: string, path: string, heading: string): SectionRow => ({
+  id,
+  history: { eh: { path, heading } },
+});
 
 const fra = [
   section(
@@ -61,12 +71,12 @@ const fra = [
   ),
 ];
 
-// Fiscal Responsibility Act, CBO publication 59225, Table 4 (a sheet printed in billions)
+// https://www.cbo.gov/publication/59225
 test.skipIf(!uv)(
   "a sheet in billions is read in millions, joined through the letter's scope, and cites the conversion",
   async () => {
-    const parsed = JSON.parse(await python(PKG, "cbo.py", ["xlsx", fixture("fra-table4.xlsx")])) as Parsed;
-    const sheet = parsed.sheets[0]!;
+    const parsed = await readTables("xlsx", fixture("fra-table4.xlsx"));
+    const sheet = must(parsed.sheets[0], "sheet");
     expect(sheet.unit).toBe("billions");
     expect(reconcile(parsed.sheets).failing).toEqual([]);
     const programs = sheet.rows.filter((r) => r.line_kind === "program" && r.measure_kind === "outlays");
@@ -92,6 +102,8 @@ test.skipIf(!uv)(
       archiveUrl: null,
       pdfUrl: null,
       pdfArchiveUrl: null,
+      numbering: null,
+      carried: null,
     };
 
     const { lines } = buildLines(src, parsed, null, index.join, index.places);
@@ -112,7 +124,11 @@ test.skipIf(!uv)(
     );
     expect(irs[0]?.source_locator).toContain("CBO's text says (page 5) \"Title II of division B would rescind");
 
-    const snap = lines.find((l) => l.title === "Supplemental Nutrition Assistance Program" && l.measure === "outlays")!;
+    const snap = must(
+      lines.find((l) => l.title === "Supplemental Nutrition Assistance Program" && l.measure === "outlays"),
+      "snap",
+    );
+
     expect(snap).toMatchObject({ line_kind: "group", section_ids: [], total_musd: 2100 });
     expect(snap.source_locator).toContain("more than 8 sections");
     expect(lines.some((l) => l.line_kind === "section" && l.total_musd === 2100)).toBe(false);

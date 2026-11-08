@@ -1,11 +1,10 @@
 import type { ChildNode } from "domhandler";
+import { ElementType } from "htmlparser2";
 import { canon, citations, norm, normEnum, shingles, words } from "./text.ts";
 import { child, descendant, isElement, kids, local, parseXml, textOf } from "./xml.ts";
 import type { Element } from "./xml.ts";
 
-/** One section of one text version. */
 export interface Sec {
-  /** `title:VII/subtitle:A/chapter:1/sec:70114` */
   path: string;
   heading: string;
   text: string;
@@ -19,18 +18,16 @@ export interface Sec {
 const CONTAINERS = new Set(["division", "title", "subtitle", "part", "subpart", "chapter", "subchapter"]);
 const TEXT_SKIP = new Set(["toc", "page", "sidenote", "footnote", "endnote", "note", "notes"]);
 
-/** Quoted blocks hold the text a section inserts into other law; their inner sections aren't the bill's own. */
 const SKIP = new Set([...TEXT_SKIP, "quoted-block", "quotedContent"]);
 const LABELS = new Set(["enum", "num", "header", "heading"]);
 
 const deleted = (e: Element) => e.attribs.changed === "deleted";
 
-/** A provision's own text, its label and heading left out (they are read apart). */
-export function sectionText(section: Element): string {
+export function sectionText(section: Pick<Element, "children">): string {
   const out: string[] = [];
 
   const rec = (n: ChildNode) => {
-    if (n.type === "text") {
+    if (n.type === ElementType.Text) {
       out.push(n.data);
     } else if (isElement(n)) {
       const name = local(n);
@@ -44,20 +41,18 @@ export function sectionText(section: Element): string {
   };
 
   for (const n of section.children) {
-    if (!(isElement(n) && LABELS.has(local(n)))) rec(n);
+    if (!(isElement(n) && LABELS.has(local(n)))) {
+      rec(n);
+    }
   }
 
   return norm(out.join(" "));
 }
 
-export class PartialAmendment extends Error {}
+export class PartialAmendmentError extends Error {
+  override name = "PartialAmendmentError";
+}
 
-/** Where a version's own provisions live: the bill body, the law's main, or a full-substitute amendment's block. */
-/**
- * The elements that can hold a text's sections. A reported bill can carry more than one body: two committees' texts
- * (H.R.3633 as reported in the House), or the House text with every title struck and then the Senate committee's
- * substitute (H.R.3633 as reported to the Senate).
- */
 function bodies(root: Element): Element[] {
   const name = local(root);
 
@@ -65,8 +60,8 @@ function bodies(root: Element): Element[] {
     const block = descendant(root, "amendment-block");
     const instruction = norm(textOf(descendant(root, "amendment-instruction") ?? root)).toLowerCase();
 
-    if (!block || !/strike (out )?all after/.test(instruction)) {
-      throw new PartialAmendment("amendment is not a full substitute; page-and-line amendments aren't split yet");
+    if (!block || !/strike (out )?all after/u.test(instruction)) {
+      throw new PartialAmendmentError("amendment is not a full substitute; page-and-line amendments aren't split yet");
     }
 
     return [block];
@@ -102,7 +97,6 @@ export function hashSection(heading: string, text: string): string {
     .slice(0, 16);
 }
 
-/** The sections of the first body that has any. */
 export function parseSections(xml: string): Sec[] {
   return sectionElements(xml).map(({ el, path }) => {
     const heading = headerOf(el);
@@ -121,7 +115,6 @@ export function parseSections(xml: string): Sec[] {
   });
 }
 
-/** The section elements of the first body that has any, with their paths (`title:VII/subtitle:A/sec:70114`). */
 export function sectionElements(xml: string): { el: Element; path: string }[] {
   for (const b of bodies(parseXml(xml))) {
     const secs = sectionsOf(b);
@@ -163,7 +156,6 @@ function sectionsOf(root: Element): { el: Element; path: string }[] {
   return out;
 }
 
-/** `sec:70114` → `70114` */
 export function sectionNum(path: string): string {
   return path.slice(path.lastIndexOf("sec:") + 4);
 }

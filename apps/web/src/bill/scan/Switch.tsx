@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import type { MapView } from "./layout.ts";
 
 export const VIEWS: { id: MapView; label: string }[] = [
@@ -14,38 +14,40 @@ interface Props {
   equal?: boolean;
 }
 
-/** Three labels and a pill that slides under the chosen one; views with nothing in them stay pickable and explain themselves. */
 export function Switch({ view, onChange, empty, equal = false }: Props) {
-  const box = useRef<HTMLFieldSetElement>(null);
   const name = useId();
   const [pill, setPill] = useState<{ x: number; w: number } | null>(null);
   const [ready, setReady] = useState(false);
 
-  useLayoutEffect(() => {
-    const place = () => {
-      const el = box.current?.querySelector<HTMLElement>(`[data-view="${view}"]`);
-
-      if (el) {
-        setPill({ x: el.offsetLeft, w: el.offsetWidth });
+  const box = useCallback(
+    (fieldset: HTMLFieldSetElement | null) => {
+      if (!fieldset) {
+        return;
       }
-    };
 
-    place();
-    const ro = new ResizeObserver(place);
+      const place = () => {
+        const label = fieldset.querySelector(`[data-view="${view}"]`);
 
-    if (box.current) {
-      ro.observe(box.current);
-    }
+        if (label instanceof HTMLElement) {
+          setPill({ x: label.offsetLeft, w: label.offsetWidth });
+        }
+      };
 
-    const raf = requestAnimationFrame(() => {
-      setReady(true);
-    });
+      place();
+      const ro = new ResizeObserver(place);
+      ro.observe(fieldset);
 
-    return () => {
-      ro.disconnect();
-      cancelAnimationFrame(raf);
-    };
-  }, [view]);
+      const raf = requestAnimationFrame(() => {
+        setReady(true);
+      });
+
+      return () => {
+        ro.disconnect();
+        cancelAnimationFrame(raf);
+      };
+    },
+    [view],
+  );
 
   return (
     <fieldset ref={box} className={`sc-switch${equal ? " sc-equal" : ""}${ready ? " sc-ready" : ""}`} data-keep>
@@ -54,7 +56,12 @@ export function Switch({ view, onChange, empty, equal = false }: Props) {
         <span className="sc-pill" style={{ transform: `translateX(${pill.x}px)`, width: pill.w }} aria-hidden="true" />
       )}
       {VIEWS.map((v) => (
-        <label key={v.id} data-view={v.id} data-empty={empty[v.id] ? "" : undefined} title={empty[v.id] ?? undefined}>
+        <label
+          key={v.id}
+          data-view={v.id}
+          data-empty={(empty[v.id] ?? "") === "" ? undefined : ""}
+          title={empty[v.id] ?? undefined}
+        >
           <input
             type="radio"
             name={name}

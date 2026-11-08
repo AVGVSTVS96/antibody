@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { count } from "../../lib/format.ts";
+import { useSeenOnce, useWindowEvent } from "../../lib/hooks.ts";
 import { useMedia } from "../../lib/media.ts";
 import type { BillModel } from "../../lib/model.ts";
 import { Card, CompactCard } from "./Card.tsx";
@@ -10,7 +11,7 @@ import { buildScenes, emptiness, itemIds, present } from "./layout.ts";
 import type { MapView, Scenes } from "./layout.ts";
 import { Ring } from "./Ring.tsx";
 import type { RingHandle } from "./Ring.tsx";
-import { Sheet } from "./Sheet.tsx";
+import { Sheet, SheetClose } from "./Sheet.tsx";
 import { CARD_SPRING, springEasing } from "./spring.ts";
 import { Switch } from "./Switch.tsx";
 import "./scan.css";
@@ -70,9 +71,9 @@ interface Pick {
 
 function picksFor(m: BillModel, s: Scenes, view: MapView): Pick[] {
   if (view === "sections") {
-    return [...s.groups]
+    return s.groups
       .map((g) => groupCard(g))
-      .sort((a, b) => Math.abs(b.netMusd) - Math.abs(a.netMusd))
+      .toSorted((a, b) => Math.abs(b.netMusd) - Math.abs(a.netMusd))
       .slice(0, 5)
       .map((c) => ({ id: c.id, name: c.name, meta: count(c.count, "section") }));
   }
@@ -144,35 +145,6 @@ function copyFor(m: BillModel, s: Scenes, view: MapView): Copy {
   };
 }
 
-function useReveal(ref: React.RefObject<Element | null>, reduced: boolean): boolean {
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-
-    if (!el || seen) {
-      return;
-    }
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setSeen(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.3 },
-    );
-
-    io.observe(el);
-
-    return () => {
-      io.disconnect();
-    };
-  }, [ref, seen]);
-
-  return seen || reduced;
-}
-
 interface SlotProps {
   id: string | null;
   instant: boolean;
@@ -181,35 +153,45 @@ interface SlotProps {
   idle: ReactNode;
 }
 
-/** The card slot: a card grows out of the mark that was clicked, and the one it replaces fades away underneath. */
+interface Shown {
+  id: string;
+  node: ReactNode;
+}
+
 function CardSlot({ id, instant, originOf, render, idle }: SlotProps) {
-  const last = useRef<{ id: string; node: ReactNode } | null>(null);
-  const [leaving, setLeaving] = useState<{ id: string; node: ReactNode }[]>([]);
-  const node = id ? render(id) : null;
+  const node = id === null ? null : render(id);
+  const live = id !== null && node !== null && node !== false ? { id, node } : null;
+  const [shown, setShown] = useState<Shown | null>(live);
+  const [leaving, setLeaving] = useState<Shown[]>([]);
 
-  useLayoutEffect(() => {
-    const was = last.current;
-
-    if (was && was.id !== id) {
-      setLeaving((l) => [...l, was]);
-      setTimeout(() => {
-        setLeaving((l) => l.filter((x) => x !== was));
-      }, 170);
+  if (shown?.id !== live?.id) {
+    if (shown) {
+      setLeaving((l) => [...l, shown]);
     }
 
-    last.current = id && node ? { id, node } : null;
-  });
+    setShown(live);
+  }
 
   return (
     <div className="sc-slot" data-keep>
       {leaving.map((l) => (
-        <div key={`out-${l.id}`} className="sc-card-wrap sc-leaving" aria-hidden="true" inert>
+        <div
+          key={`out-${l.id}`}
+          className="sc-card-wrap sc-leaving"
+          aria-hidden="true"
+          inert
+          onAnimationEnd={(e) => {
+            if (e.target === e.currentTarget) {
+              setLeaving((all) => all.filter((x) => x !== l));
+            }
+          }}
+        >
           {l.node}
         </div>
       ))}
-      {id && node ? (
-        <Enter key={id} id={id} instant={instant} originOf={originOf}>
-          {node}
+      {live ? (
+        <Enter key={live.id} id={live.id} instant={instant} originOf={originOf}>
+          {live.node}
         </Enter>
       ) : (
         <div className="sc-card-wrap sc-fade">{idle}</div>
@@ -229,31 +211,31 @@ function Enter({
   originOf: SlotProps["originOf"];
   children: ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
+  const ref = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el || instant) {
+        return;
+      }
 
-    if (!el || instant) {
-      return;
-    }
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "linear" });
 
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 150, easing: "linear" });
+        return;
+      }
 
-      return;
-    }
-
-    const o = originOf(id);
-    const box = el.getBoundingClientRect();
-    el.style.transformOrigin = o ? `${Math.round(o.x - box.left)}px ${Math.round(o.y - box.top)}px` : "50% 0";
-    el.animate(
-      [
-        { transform: "scale(0.96)", opacity: 0, filter: "blur(6px)" },
-        { transform: "scale(1)", opacity: 1, filter: "blur(0px)" },
-      ],
-      { duration: CARD_EASE.duration, easing: CARD_EASE.easing },
-    );
-  }, [id, instant, originOf]);
+      const o = originOf(id);
+      const box = el.getBoundingClientRect();
+      el.style.transformOrigin = o ? `${Math.round(o.x - box.left)}px ${Math.round(o.y - box.top)}px` : "50% 0";
+      el.animate(
+        [
+          { transform: "scale(0.96)", opacity: 0, filter: "blur(6px)" },
+          { transform: "scale(1)", opacity: 1, filter: "blur(0px)" },
+        ],
+        { duration: CARD_EASE.duration, easing: CARD_EASE.easing },
+      );
+    },
+    [id, instant, originOf],
+  );
 
   return (
     <div ref={ref} className="sc-card-wrap">
@@ -266,7 +248,7 @@ function Picks({
   picks,
   view,
   onPick,
-  compact,
+  compact = false,
 }: {
   picks: Pick[];
   view: MapView;
@@ -311,6 +293,8 @@ function Nothing({ reason }: { reason: string }) {
   );
 }
 
+const reason = (why: string | null) => (why === "" ? null : why);
+
 const announce = (c: CardData | null) =>
   c
     ? c.kind === "trades"
@@ -324,117 +308,113 @@ const announce = (c: CardData | null) =>
 
 export function Scan(props: ScanProps) {
   const phone = useMedia("(max-width: 760px)");
-  const { m, focus, setFocus, setMapView } = props;
-  const mustRef = useRef(focus ? [focus] : []);
-  const scenes = useMemo(() => buildScenes(m, mustRef.current), [m]);
-  const empty = useMemo(() => emptiness(scenes), [scenes]);
-  const view: MapView = props.mapView in empty ? props.mapView : "trades";
+  const reduced = useMedia("(prefers-reduced-motion: reduce)");
+  const { m, setFocus, setMapView } = props;
+  // oxlint-disable-next-line react/hook-use-state -- the focus a deep link arrived with stays in the layout for the map's life, so later pins don't rebuild it
+  const [must] = useState(() => (props.focus === null ? [] : [props.focus]));
+  const scenes = useMemo(() => buildScenes(m, must), [m, must]);
 
-  const fallback = (["trades", "pac", "sections"] as const).find((v) => !empty[v]) ?? null;
-  const settled = useRef(false);
-  useEffect(() => {
-    if (settled.current) {
-      return;
-    }
+  const empty = useMemo(() => {
+    const e = emptiness(scenes);
 
-    settled.current = true;
+    return { trades: reason(e.trades), pac: reason(e.pac), sections: reason(e.sections) };
+  }, [scenes]);
 
-    if (empty[view] && fallback && fallback !== view) {
-      setMapView(fallback);
-    }
-  }, [empty, view, fallback, setMapView]);
+  const fallback = (["trades", "pac", "sections"] as const).find((v) => empty[v] === null) ?? null;
+  const [picked, setPicked] = useState(false);
 
-  useEffect(() => {
-    if (focus && !present(scenes, view, focus)) {
-      setFocus(null);
-    }
-  }, [focus, scenes, view, setFocus]);
+  const requested: MapView = props.mapView in empty ? props.mapView : "trades";
+  const view = !picked && empty[requested] !== null && fallback !== null ? fallback : requested;
+  const focus = props.focus !== null && present(scenes, view, props.focus) ? props.focus : null;
+  const [via, setVia] = useState<"pointer" | "key">("pointer");
+  const instant = via === "key";
 
-  const via = useRef<"pointer" | "key">("pointer");
+  const pickView = useCallback(
+    (v: MapView) => {
+      setPicked(true);
+      setMapView(v);
+    },
+    [setMapView],
+  );
 
   const pin = useCallback(
     (id: string | null, how: "pointer" | "key" = "pointer") => {
-      via.current = how;
+      setVia(how);
       setFocus(id);
     },
     [setFocus],
   );
 
-  useEffect(() => {
-    if (!focus || phone) {
-      return;
-    }
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !e.defaultPrevented) {
-        pin(null, "key");
-      }
-    };
-
-    addEventListener("keydown", onKey);
-
-    return () => {
-      removeEventListener("keydown", onKey);
-    };
-  }, [focus, phone, pin]);
+  useWindowEvent(
+    "keydown",
+    useCallback(
+      (e: KeyboardEvent) => {
+        if (focus !== null && !phone && e.key === "Escape" && !e.defaultPrevented) {
+          pin(null, "key");
+        }
+      },
+      [focus, phone, pin],
+    ),
+  );
 
   const ring = useRef<RingHandle | null>(null);
   const originOf = useCallback((id: string) => ring.current?.originOf(id) ?? null, []);
-  const card = useMemo(() => (focus ? cardFor(m, scenes, view, focus) : null), [m, scenes, view, focus]);
+  const card = useMemo(() => (focus === null ? null : cardFor(m, scenes, view, focus)), [m, scenes, view, focus]);
   const picks = useMemo(() => picksFor(m, scenes, view), [m, scenes, view]);
   const copy = useMemo(() => copyFor(m, scenes, view), [m, scenes, view]);
-
-  const root = useRef<HTMLElement>(null);
-  const reduced = useMedia("(prefers-reduced-motion: reduce)");
-  const revealed = useReveal(root, reduced);
+  const [revealRef, seen] = useSeenOnce(0.3);
+  const revealed = seen || reduced;
 
   const titleId = useId();
-  const say = announce(focus ? card : null);
+  const say = announce(card);
 
   const swipe = useCallback(
     (dir: 1 | -1) => {
       const ids = itemIds(scenes, view);
+      const at = focus === null ? -1 : ids.indexOf(focus);
+      const next = ids[at < 0 ? (dir === 1 ? 0 : ids.length - 1) : (at + dir + ids.length) % ids.length];
 
-      if (!ids.length) {
-        return;
+      if (next !== undefined) {
+        pin(next, "pointer");
       }
-
-      const at = focus ? ids.indexOf(focus) : -1;
-      pin(ids[at < 0 ? (dir === 1 ? 0 : ids.length - 1) : (at + dir + ids.length) % ids.length]!, "pointer");
     },
     [scenes, view, focus, pin],
   );
 
-  const style = {
+  const style: CSSProperties & Record<"--sw-ease" | "--sw-dur", string> = {
     "--sw-ease": SWITCH_EASE.easing,
     "--sw-dur": `${SWITCH_EASE.duration}ms`,
-  } as React.CSSProperties;
+  };
 
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!phone) {
-      setOpen(false);
-    }
-  }, [phone]);
 
-  const idle = empty[view] ? (
-    <Nothing reason={empty[view]} />
-  ) : (
-    <Picks
-      picks={picks}
-      view={view}
-      onPick={(id) => {
-        pin(id, "pointer");
-      }}
-    />
-  );
+  if (open && !phone) {
+    setOpen(false);
+  }
+
+  const closeSheet = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  const idle =
+    empty[view] === null ? (
+      <Picks
+        picks={picks}
+        view={view}
+        onPick={(id) => {
+          pin(id, "pointer");
+        }}
+      />
+    ) : (
+      <Nothing reason={empty[view]} />
+    );
 
   if (phone) {
     const none = !fallback;
-    const teaserView = empty[view] && fallback ? fallback : view;
+    const teaserView = empty[view] !== null && fallback !== null ? fallback : view;
 
     return (
-      <section id="map" ref={root} className="scan scan-m" style={style} aria-labelledby={titleId}>
+      <section id="map" ref={revealRef} className="scan scan-m" style={style} aria-labelledby={titleId}>
         <div className="sc-teaser">
           <div className="sc-teaser-head">
             <h2 id={titleId}>Who is tied to this bill</h2>
@@ -460,103 +440,86 @@ export function Scan(props: ScanProps) {
           )}
         </div>
         {open && (
-          <Sheet
-            titleId={`${titleId}-sheet`}
-            onClose={() => {
-              setOpen(false);
-            }}
-            onSwipe={swipe}
-          >
-            {(close) => (
-              <>
-                <div className="sheet-drag">
-                  <div className="sc-grab" aria-hidden="true" />
-                  <div className="sheet-head">
-                    <h2 id={`${titleId}-sheet`}>{copy.title}</h2>
-                    <button
-                      type="button"
-                      className="sheet-close"
-                      aria-label="Close the x-ray"
-                      onClick={close}
-                      data-nodrag
-                    >
-                      <svg viewBox="0 0 12 12" aria-hidden="true">
-                        <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />
-                      </svg>
-                    </button>
-                  </div>
-                  <Switch view={view} onChange={setMapView} empty={empty} equal />
-                  <div className="sheet-ring">
-                    <Ring
-                      handle={ring}
-                      m={m}
-                      scenes={scenes}
-                      view={view}
-                      pinned={focus}
-                      onPin={pin}
-                      revealed
-                      compact
-                      coarse
-                      instant={via.current === "key"}
-                      empty={empty[view]}
-                    />
-                  </div>
+          <Sheet titleId={`${titleId}-sheet`} onClose={closeSheet} onSwipe={swipe}>
+            <>
+              <div className="sheet-drag">
+                <div className="sc-grab" aria-hidden="true" />
+                <div className="sheet-head">
+                  <h2 id={`${titleId}-sheet`}>{copy.title}</h2>
+                  <SheetClose label="Close the x-ray" />
                 </div>
-                <div className="sheet-list" aria-live="off">
-                  <CardSlot
-                    id={focus && card ? focus : null}
-                    instant={via.current === "key"}
-                    originOf={originOf}
-                    render={() =>
-                      card && (
-                        <CompactCard
-                          data={card}
-                          more={itemIds(scenes, view).length > 1}
-                          onClear={() => {
-                            pin(null);
-                          }}
-                        />
-                      )
-                    }
-                    idle={
-                      empty[view] ? (
-                        <Nothing reason={empty[view]} />
-                      ) : (
-                        <Picks
-                          picks={picks}
-                          view={view}
-                          onPick={(id) => {
-                            pin(id);
-                          }}
-                          compact
-                        />
-                      )
-                    }
+                <Switch view={view} onChange={pickView} empty={empty} equal />
+                <div className="sheet-ring">
+                  <Ring
+                    handle={ring}
+                    m={m}
+                    scenes={scenes}
+                    view={view}
+                    pinned={focus}
+                    onPin={pin}
+                    revealed
+                    compact
+                    coarse
+                    instant={instant}
+                    empty={empty[view]}
                   />
                 </div>
-              </>
-            )}
+              </div>
+              <div className="sheet-list" aria-live="off">
+                <CardSlot
+                  id={focus !== null && card !== null ? focus : null}
+                  instant={instant}
+                  originOf={originOf}
+                  render={() =>
+                    card && (
+                      <CompactCard
+                        data={card}
+                        more={itemIds(scenes, view).length > 1}
+                        onClear={() => {
+                          pin(null);
+                        }}
+                      />
+                    )
+                  }
+                  idle={
+                    empty[view] === null ? (
+                      <Picks
+                        picks={picks}
+                        view={view}
+                        onPick={(id) => {
+                          pin(id);
+                        }}
+                        compact
+                      />
+                    ) : (
+                      <Nothing reason={empty[view]} />
+                    )
+                  }
+                />
+              </div>
+            </>
           </Sheet>
         )}
-        <div className="sc-sr" role="status" aria-live="polite">
+        <output className="sc-sr" aria-live="polite">
           {say}
-        </div>
+        </output>
       </section>
     );
   }
 
   const onAway = (e: React.MouseEvent) => {
-    if (focus && !(e.target as HTMLElement).closest("[data-keep]")) {
+    const kept = e.target instanceof Element && e.target.closest("[data-keep]") !== null;
+
+    if (focus !== null && !kept) {
       pin(null, "pointer");
     }
   };
 
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: Esc on the ring already clears the pin; this is the pointer shortcut
-    // biome-ignore lint/a11y/noStaticElementInteractions: same
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- clicking the band's background is the pointer shortcut for Esc, which already clears the pin
     <section
       id="map"
-      ref={root}
+      ref={revealRef}
       className="scan"
       data-view={view}
       style={style}
@@ -580,10 +543,10 @@ export function Scan(props: ScanProps) {
                 ))}
               </div>
             </header>
-            <Switch view={view} onChange={setMapView} empty={empty} />
+            <Switch view={view} onChange={pickView} empty={empty} />
             <CardSlot
-              id={focus && card ? focus : null}
-              instant={via.current === "key"}
+              id={focus !== null && card !== null ? focus : null}
+              instant={instant}
               originOf={originOf}
               render={() =>
                 card && (
@@ -607,15 +570,15 @@ export function Scan(props: ScanProps) {
               pinned={focus}
               onPin={pin}
               revealed={revealed}
-              instant={via.current === "key"}
+              instant={instant}
               empty={empty[view]}
             />
           </div>
         </div>
       </div>
-      <div className="sc-sr" role="status" aria-live="polite">
+      <output className="sc-sr" aria-live="polite">
         {say}
-      </div>
+      </output>
     </section>
   );
 }

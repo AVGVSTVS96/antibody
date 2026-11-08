@@ -1,8 +1,10 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { filled } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 import { askJson, MODEL, pool } from "./claude.ts";
 import { tokenSet } from "./fuzzy.ts";
+import { isNumber, isObject, isText, isTextOrNull } from "./is.ts";
 import type { CompanyIndex, Match, Queued } from "./match.ts";
 import { norm, normTicker } from "./normalize.ts";
 
@@ -42,12 +44,48 @@ export interface Verdict {
   reason: string;
 }
 
+const RELATIONS: readonly unknown[] = ["same", "subsidiary", "none"] satisfies Verdict["relation"][];
+
+type Answer = Omit<Verdict, "cik" | "parent_name" | "parent_ticker"> & {
+  cik?: string | number | null;
+  parent_name?: string | null;
+  parent_ticker?: string | null;
+};
+
+const isAnswer = (v: unknown): v is Answer =>
+  isObject(v) &&
+  "key" in v &&
+  isText(v.key) &&
+  "relation" in v &&
+  RELATIONS.includes(v.relation) &&
+  "confidence" in v &&
+  isNumber(v.confidence) &&
+  "reason" in v &&
+  isText(v.reason) &&
+  (!("cik" in v) || isTextOrNull(v.cik) || isNumber(v.cik)) &&
+  (!("parent_name" in v) || isTextOrNull(v.parent_name)) &&
+  (!("parent_ticker" in v) || isTextOrNull(v.parent_ticker));
+
+const isVerdict = (v: unknown): v is Verdict =>
+  isAnswer(v) && "cik" in v && isTextOrNull(v.cik) && isTextOrNull(v.parent_name) && isTextOrNull(v.parent_ticker);
+
 interface Cached {
   key: string;
   verdict: Verdict;
   model: string;
   at: string;
 }
+
+const isCached = (v: unknown): v is Cached =>
+  isObject(v) &&
+  "key" in v &&
+  isText(v.key) &&
+  "verdict" in v &&
+  isVerdict(v.verdict) &&
+  "model" in v &&
+  isText(v.model) &&
+  "at" in v &&
+  isText(v.at);
 
 const cacheFile = () => join(paths.raw("entities"), "resolve", "review-verdicts.jsonl");
 
@@ -61,7 +99,12 @@ async function loadCache(): Promise<Map<string, Cached>> {
 
   for (const line of (await f.text()).split("\n")) {
     if (line) {
-      const c = JSON.parse(line) as Cached;
+      const c: unknown = JSON.parse(line);
+
+      if (!isCached(c)) {
+        throw new Error(`${cacheFile()}: not a cached verdict: ${line.slice(0, 200)}`);
+      }
+
       out.set(c.key, c);
     }
   }
@@ -86,7 +129,6 @@ function itemKey(q: Queued): string {
 
 const squash = (s: string) => norm(s).replaceAll(" ", "");
 
-/** A proposed parent's name against SEC's: "Exxon Mobil Corporation" is "ExxonMobil Holdings Corp" once the spaces go. */
 export function sameCompanyName(proposed: string, sec: string): boolean {
   const a = squash(proposed);
   const b = squash(sec);
@@ -96,7 +138,6 @@ export function sameCompanyName(proposed: string, sec: string): boolean {
   );
 }
 
-/** Accept a verdict only at this confidence or above; the spike's 0.6 "TALOS → Talos Energy" fell below it. */
 export const ACCEPT = 0.8;
 
 export interface ReviewStats {
@@ -109,10 +150,6 @@ export interface ReviewStats {
   failedBatches: number;
 }
 
-/**
- * The model judges each queued name against its candidates (or names a public parent outside them, which must
- * exist in SEC's ticker list under a matching name). Verdicts are cached per item, so reruns only ask about new names.
- */
 export async function review(
   queued: Queued[],
   index: CompanyIndex,
@@ -121,7 +158,7 @@ export async function review(
   const t0 = performance.now();
   const cache = await loadCache();
   const keyed = queued.map((q) => ({ q, key: itemKey(q) }));
-  const todo = [...new Map(keyed.filter((k) => !cache.has(k.key)).map((k) => [k.key, k])).values()];
+  const todo = [...new Map(keyed.map((k) => [k.key, k])).values()].filter((k) => !cache.has(k.key));
   const size = opts.batch ?? 30;
   const batches = Array.from({ length: Math.ceil(todo.length / size) }, (_, i) => todo.slice(i * size, (i + 1) * size));
 
@@ -159,39 +196,45 @@ export async function review(
           items: verdicts,
           costUsd,
           model,
-        } = await askJson<Verdict>(PROMPT + JSON.stringify(items, null, 0), opts.signal);
+        } = await askJson(PROMPT + JSON.stringify(items, null, 0), isAnswer, opts.signal);
 
         stats.calls++;
         stats.costUsd += costUsd;
         const at = new Date().toISOString();
 
-        const lines = verdicts
+        const fresh = verdicts
           .filter((v) => batch.some((b) => b.key === v.key))
-          .map((v) =>
-            JSON.stringify({
-              key: v.key,
-              verdict: { ...v, cik: v.cik == null ? null : String(v.cik) },
-              model,
-              at,
-            } satisfies Cached),
-          );
+          .map((v): Cached => ({
+            key: v.key,
+            verdict: {
+              ...v,
+              cik: v.cik === null || v.cik === undefined ? null : String(v.cik),
+              parent_name: v.parent_name ?? null,
+              parent_ticker: v.parent_ticker ?? null,
+            },
+            model,
+            at,
+          }));
 
-        if (lines.length) {
-          await appendFile(cacheFile(), `${lines.join("\n")}\n`);
+        if (fresh.length) {
+          await appendFile(cacheFile(), `${fresh.map((c) => JSON.stringify(c)).join("\n")}\n`);
         }
 
-        for (const l of lines) {
-          const c = JSON.parse(l) as Cached;
+        for (const c of fresh) {
           cache.set(c.key, c);
         }
 
         opts.log(
-          `review batch ${i + 1}/${batches.length}: ${lines.length}/${batch.length} verdicts, $${costUsd.toFixed(3)}`,
+          `review batch ${i + 1}/${batches.length}: ${fresh.length}/${batch.length} verdicts, $${costUsd.toFixed(3)}`,
         );
 
         return;
       } catch (error) {
-        opts.log(`review batch ${i + 1} attempt ${attempt} failed: ${(error as Error).message.slice(0, 200)}`);
+        if (!(error instanceof Error)) {
+          throw error;
+        }
+
+        opts.log(`review batch ${i + 1} attempt ${attempt} failed: ${error.message.slice(0, 200)}`);
       }
     }
 
@@ -220,7 +263,7 @@ export async function review(
       continue;
     }
 
-    const picked = v.cik ? q.candidates.find((x) => x.cik === v.cik) : undefined;
+    const picked = filled(v.cik) ? q.candidates.find((x) => x.cik === v.cik) : undefined;
 
     if (picked) {
       matches.push({
@@ -233,8 +276,10 @@ export async function review(
       continue;
     }
 
-    const parent = q.mayProposeParent && v.parent_ticker ? index.byTicker.get(normTicker(v.parent_ticker)) : undefined;
-    const agrees = parent && v.parent_name ? sameCompanyName(v.parent_name, parent.name) : false;
+    const parent =
+      q.mayProposeParent && filled(v.parent_ticker) ? index.byTicker.get(normTicker(v.parent_ticker)) : undefined;
+
+    const agrees = parent && filled(v.parent_name) ? sameCompanyName(v.parent_name, parent.name) : false;
 
     if (parent && agrees) {
       matches.push({
@@ -256,7 +301,7 @@ export async function review(
     rejected.push({
       q,
       verdict: v,
-      why: v.cik ? "model picked a CIK outside the candidates" : "proposed parent not confirmed in SEC's list",
+      why: filled(v.cik) ? "model picked a CIK outside the candidates" : "proposed parent not confirmed in SEC's list",
     });
   }
 

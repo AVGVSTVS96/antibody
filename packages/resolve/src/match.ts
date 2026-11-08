@@ -1,23 +1,21 @@
+import type { Row } from "@antibody/core";
+import { filled } from "@antibody/core";
 import { aliasFor } from "./aliases.ts";
 import type { Company } from "./edgar.ts";
 import { tokenSet, tokenSort, typoClose } from "./fuzzy.ts";
 import { CORPORATE, NON_COMPANY, norm, normTicker, parseAsset, tokens } from "./normalize.ts";
 
-/** One organization name found in a record, to be resolved to an SEC company. */
 export interface Mention {
-  /** What is being resolved: client:<key>, pac:<FEC id>, employer:<employer key>, trade:<trades row id>. Also the resolution row id. */
   src: string;
   source: "client" | "pac" | "employer" | "trade";
   name: string;
-  /** Only PTR lines carry a ticker; lobbying and PAC names never do ("(EPC)" there is an acronym). */
   ticker: string | null;
-  /** Shown to the reviewer: the PAC's name, the client's self-description. */
   context: string | null;
-  /** Claim ids of the record the name comes from. */
   restsOn: string[];
-  /** False keeps a name out of model review (small donor employers): only deterministic matches count for it. */
   reviewable?: boolean;
 }
+
+export type Evidence = Row<"resolutions">["evidence"];
 
 export type Method = "ticker" | "name_exact" | "fuzzy" | "alias" | "llm_same" | "llm_subsidiary" | "llm_parent";
 
@@ -26,7 +24,7 @@ export interface Match {
   cik: string;
   method: Method;
   confidence: number;
-  evidence: Record<string, unknown>;
+  evidence: Evidence;
 }
 
 export interface Candidate {
@@ -41,7 +39,6 @@ export interface Queued {
   mention: Mention;
   normalized: string;
   candidates: Candidate[];
-  /** Lobbying clients and corporate PACs may be a subsidiary of a parent outside the candidates. */
   mayProposeParent: boolean;
   why: string;
 }
@@ -51,7 +48,6 @@ export type Outcome =
   | { kind: "queue"; queued: Queued }
   | { kind: "none"; why: string; normalized: string; best: Candidate | null };
 
-/** SEC companies indexed by ticker, normalized name, and name token (with IDF weights) for candidate lookup. */
 export class CompanyIndex {
   readonly byCik = new Map<string, Company>();
   readonly byTicker = new Map<string, Company>();
@@ -99,7 +95,6 @@ export class CompanyIndex {
     return this.byNorm.get(normalized) ?? [];
   }
 
-  /** Up to `limit` SEC names sharing the rarest words with `normalized`, scored token-sort and token-set. */
   candidates(normalized: string, limit = 6): Candidate[] {
     const ts = [...new Set(tokens(normalized))];
     const weight = (t: string) => this.idf.get(t) ?? this.maxIdf;
@@ -107,13 +102,15 @@ export class CompanyIndex {
     const overlap = new Map<string, number>();
 
     for (const t of ts) {
-      for (const n of this.byToken.get(t) ?? []) overlap.set(n, (overlap.get(n) ?? 0) + weight(t) / total);
+      for (const n of this.byToken.get(t) ?? []) {
+        overlap.set(n, (overlap.get(n) ?? 0) + weight(t) / total);
+      }
     }
 
-    const pool = [...overlap].sort((a, b) => b[1] - a[1]).slice(0, 40);
+    const pool = [...overlap].toSorted((a, b) => b[1] - a[1]).slice(0, 40);
 
     const scored = pool.flatMap(([n]) =>
-      this.byNorm.get(n)!.map((c) => ({
+      (this.byNorm.get(n) ?? []).map((c) => ({
         cik: c.cik,
         name: c.name,
         tickers: c.tickers,
@@ -122,12 +119,16 @@ export class CompanyIndex {
       })),
     );
 
-    const bySort = [...scored].sort((a, b) => b.sort - a.sort);
-    const bySet = [...scored].sort((a, b) => b.set - a.set);
+    const bySort = scored.toSorted((a, b) => b.sort - a.sort);
+    const bySet = scored.toSorted((a, b) => b.set - a.set);
     const picked = new Map<string, Candidate>();
 
     for (let i = 0; picked.size < limit && i < scored.length; i++) {
-      for (const c of [bySort[i], bySet[i]]) if (c && picked.size < limit) picked.set(c.cik, c);
+      for (const c of [bySort[i], bySet[i]]) {
+        if (c && picked.size < limit) {
+          picked.set(c.cik, c);
+        }
+      }
     }
 
     return [...picked.values()];
@@ -136,7 +137,6 @@ export class CompanyIndex {
 
 const round = (x: number) => Math.round(x * 10) / 10;
 
-/** Ticker names that agree, loosely: a PTR's "Alphabet Inc. - Class A" against EDGAR's "Alphabet Inc.". */
 function namesAgree(a: string, b: string): boolean {
   const na = norm(a);
   const nb = norm(b);
@@ -148,18 +148,13 @@ function namesAgree(a: string, b: string): boolean {
   return tokenSet(na, nb) >= 60 || tokens(na)[0] === tokens(nb)[0];
 }
 
-/**
- * Deterministic keys first, then fuzzy, then the review queue. Accepts only what needs no judgment:
- * a disclosed ticker whose company name agrees, a unique multi-word normalized name, or a near-identical name
- * with a clear margin and the same first word. Everything plausible but uncertain goes to review with candidates.
- */
 export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
   const asset = m.source === "trade" ? parseAsset(m.name) : null;
   const raw = asset ? asset.name : m.name;
   const ticker = asset ? (m.ticker ?? asset.ticker) : null;
   const normalized = norm(raw);
 
-  if (ticker) {
+  if (filled(ticker)) {
     const c = index.byTicker.get(normTicker(ticker));
 
     if (c && namesAgree(raw, c.name)) {
@@ -186,8 +181,10 @@ export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
   const exact = index.exact(normalized);
   const single = tokens(normalized).length === 1;
 
-  if (exact.length === 1 && !single) {
-    return match(m, exact[0]!.cik, "name_exact", 0.95, { normalized, edgarName: exact[0]!.name });
+  const [only] = exact;
+
+  if (exact.length === 1 && only !== undefined && !single) {
+    return match(m, only.cik, "name_exact", 0.95, { normalized, edgarName: only.name });
   }
 
   const cands = index.candidates(normalized);
@@ -199,7 +196,7 @@ export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
     return queue(m, normalized, [...exact.map((e) => toCandidate(e, normalized)), ...others], canPropose(m), why);
   }
 
-  const bySort = [...cands].sort((a, b) => b.sort - a.sort);
+  const bySort = cands.toSorted((a, b) => b.sort - a.sort);
   const best = bySort[0] ?? null;
   const margin = best ? best.sort - (bySort[1]?.sort ?? 0) : 0;
   const sameHead = best ? tokens(norm(best.name))[0] === tokens(normalized)[0] : false;
@@ -231,7 +228,6 @@ export function resolveMention(m: Mention, index: CompanyIndex): Outcome {
   return { kind: "none", why: "no close SEC name", normalized, best };
 }
 
-/** A lobbying client or PAC sponsor whose name is plainly a business may be a subsidiary of a public parent. */
 function canPropose(m: Mention): boolean {
   return (
     (m.source === "client" || m.source === "pac") && CORPORATE.test(m.name) && !NON_COMPANY.test(m.name.toUpperCase())
@@ -250,13 +246,7 @@ function toCandidate(c: Company, normalized: string): Candidate {
   };
 }
 
-const match = (
-  mention: Mention,
-  cik: string,
-  method: Method,
-  confidence: number,
-  evidence: Record<string, unknown>,
-): Outcome => ({
+const match = (mention: Mention, cik: string, method: Method, confidence: number, evidence: Evidence): Outcome => ({
   kind: "match",
   match: { mention, cik, method, confidence, evidence },
 });

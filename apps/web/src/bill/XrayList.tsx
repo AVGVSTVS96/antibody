@@ -23,7 +23,6 @@ const FILTERS: [Filter, string][] = [
 const TOP = 25;
 const PAGE = 50;
 
-/** A part of a long section shown on its own row (parts-v1): its own label, or added late into a section that was not. */
 const partBuried = (v: SectionView) => (v.s.parts ?? []).some((p) => p.score?.label === "buried");
 const partLate = (v: SectionView) => !isLate(v.s) && (v.s.parts ?? []).some((p) => p.score?.components.late ?? p.late);
 
@@ -44,19 +43,18 @@ const sorter: Record<Sort, (a: SectionView, b: SectionView) => number> = {
   buried: (a, b) => (b.s.score?.buried ?? -1) - (a.s.score?.buried ?? -1),
 };
 
-const figureNote = (v: SectionView) =>
-  v.figure
+const figureNote = ({ figure }: SectionView) =>
+  figure
     ? [
-        `${v.figure.estimate.versionScored}; ${v.figure.estimate.baselineLabel}`,
-        ...v.figure.byBaseline
-          .filter((b) => b.baseline !== v.figure!.baseline)
+        `${figure.estimate.versionScored}; ${figure.estimate.baselineLabel}`,
+        ...figure.byBaseline
+          .filter((b) => b.baseline !== figure.baseline)
           .map((b) => `also ${musd(b.musd)} against ${baselineWords(b.baseline)}; the smaller figure counts`),
       ].join("; ")
     : "";
 
 const matches = (f: Filter, v: SectionView, top: Set<string>) => (f === "top" ? top.has(v.s.id) : keep[f](v));
 
-/** What a reader should see first: buried candidates, headline sections, then late and lobbied ones, by news rank. */
 const priority = (v: SectionView) =>
   (v.kind === "buried" || partBuried(v) ? 4 : v.kind === "headline" ? 3 : 0) +
   (isLate(v.s) || partLate(v) ? 2 : 0) +
@@ -69,7 +67,7 @@ export function XrayList({ m }: { m: BillModel }) {
       new Set(
         m.sections
           .filter((v) => v.s.inFinal)
-          .sort((a, b) => priority(b) - priority(a))
+          .toSorted((a, b) => priority(b) - priority(a))
           .slice(0, TOP)
           .map((v) => v.s.id),
       ),
@@ -82,7 +80,7 @@ export function XrayList({ m }: { m: BillModel }) {
   const [open, setOpen] = useState<string | null>(null);
 
   const all = useMemo(
-    () => m.sections.filter((v) => matches(filter, v, topIds)).sort(sorter[sort]),
+    () => m.sections.filter((v) => matches(filter, v, topIds)).toSorted(sorter[sort]),
     [m, filter, sort, topIds],
   );
 
@@ -131,7 +129,7 @@ export function XrayList({ m }: { m: BillModel }) {
           if (
             (f !== "all" && f !== "top" && !n) ||
             (f === "top" && m.sections.length <= TOP) ||
-            (f === "late" && m.b.bill.lateUnavailable)
+            (f === "late" && (m.b.bill.lateUnavailable ?? "") !== "")
           ) {
             return null;
           }
@@ -199,7 +197,10 @@ export function XrayList({ m }: { m: BillModel }) {
               const s = v.s;
               const isOpen = open === s.id;
               const cls = s.inFinal ? (v.kind === "headline" || v.kind === "buried" ? v.kind : "") : "removed";
-              const grouped = sort === "num" && (i === 0 || rows[i - 1]!.stage !== v.stage);
+              const grouped = sort === "num" && (i === 0 || rows[i - 1]?.stage !== v.stage);
+              const { figure } = v;
+              const pct = s.attention?.pct ?? null;
+              const buried = s.score?.buried ?? null;
 
               return (
                 <Fragment key={s.id}>
@@ -207,7 +208,7 @@ export function XrayList({ m }: { m: BillModel }) {
                     <tr className="grp">
                       <td colSpan={6}>
                         {i === 0 && v.stage === 0 ? "In the first text: " : "First appear in "}
-                        <b>{v.stageName.replace(/ \(.*\)$/, "")}</b>
+                        <b>{v.stageName.replace(/ \(.*\)$/u, "")}</b>
                         <span className="dim">
                           {" "}
                           · {count(rows.filter((x) => x.stage === v.stage).length, "section")}
@@ -238,7 +239,7 @@ export function XrayList({ m }: { m: BillModel }) {
                         ))}
                       {!s.inFinal && (
                         <span className="pill removed">
-                          {s.mergedInto ? "merged" : s.splitInto.length ? "split" : "dropped"}
+                          {(s.mergedInto ?? "") === "" ? (s.splitInto.length ? "split" : "dropped") : "merged"}
                         </span>
                       )}
                     </td>
@@ -246,43 +247,43 @@ export function XrayList({ m }: { m: BillModel }) {
                       {sort === "num" ? (
                         <span className={`stagecode${isLate(s) ? " late" : ""}`}>{isLate(s) ? "late" : ""}</span>
                       ) : (
-                        <span className="stagecode">{v.stageName.replace(/ \(.*\)$/, "")}</span>
+                        <span className="stagecode">{v.stageName.replace(/ \(.*\)$/u, "")}</span>
                       )}
                     </td>
                     <td className="loud">
-                      {s.attention?.pct == null ? (
+                      {pct === null ? (
                         <span className="miss" title="Too little news coverage on this bill to rank sections">
                           {s.attention ? count(articlesOf(s) ?? 0, "article") : "—"}
                         </span>
                       ) : (
                         <div className="att" title={`${count(articlesOf(s) ?? 0, "article")} matched this section`}>
                           <div className="bar">
-                            <i style={{ width: `${s.attention.pct * 100}%` }} />
+                            <i style={{ width: `${pct * 100}%` }} />
                           </div>
                           <span>
-                            {rank(s.attention.pct)} <span className="dim">· {articlesOf(s)}</span>
+                            {rank(pct)} <span className="dim">· {articlesOf(s)}</span>
                           </span>
                         </div>
                       )}
                     </td>
                     <td className="cbo" data-l="CBO 10-yr $">
-                      {v.dollarsMusd == null ? (
+                      {v.dollarsMusd === null ? (
                         <span className="miss">—</span>
                       ) : (
                         <span className="money" title={figureNote(v)}>
                           {musd(v.dollarsMusd)}
-                          {v.figure?.byBaseline.some((b) => b.musd !== v.figure!.musd) && (
-                            <span className="dim base">against {baselineWords(v.figure.baseline)}</span>
+                          {figure !== null && figure.byBaseline.some((b) => b.musd !== figure.musd) && (
+                            <span className="dim base">against {baselineWords(figure.baseline)}</span>
                           )}
                           {!s.inFinal && <span className="dim"> est. for an earlier version</span>}
                         </span>
                       )}
                     </td>
                     <td className="bur" data-l="Quiet score">
-                      {s.score?.buried == null ? (
+                      {buried === null ? (
                         <span className="dim">—</span>
                       ) : (
-                        <span className="num">{s.score.buried.toFixed(2)}</span>
+                        <span className="num">{buried.toFixed(2)}</span>
                       )}
                     </td>
                   </tr>
@@ -355,10 +356,6 @@ function SortBtn({ s, cur, set, children }: { s: Sort; cur: Sort; set: (s: Sort)
   );
 }
 
-/**
- * A part of a long section on its own row, right under its section: its own label, reach and news, so a rider written
- * into a big section is not hidden by the section's heading. CBO and lobbying name whole sections, so it has neither.
- */
 function PartRows({
   p,
   v,
@@ -376,6 +373,8 @@ function PartRows({
   const late = p.score?.components.late ?? p.late;
   const lateInOld = late && !isLate(v.s);
   const hits = p.attention ? p.attention.hits + (p.score?.components.attentionChecked ?? 0) : null;
+  const pct = p.attention?.pct ?? null;
+  const buried = p.score?.buried ?? null;
 
   return (
     <>
@@ -404,15 +403,15 @@ function PartRows({
           </span>
         </td>
         <td className="loud">
-          {p.attention?.pct == null ? (
-            <span className="miss">{hits == null ? "—" : count(hits, "article")}</span>
+          {pct === null ? (
+            <span className="miss">{hits === null ? "—" : count(hits, "article")}</span>
           ) : (
             <div className="att" title={`${count(hits ?? 0, "article")} matched this part`}>
               <div className="bar">
-                <i style={{ width: `${p.attention.pct * 100}%` }} />
+                <i style={{ width: `${pct * 100}%` }} />
               </div>
               <span>
-                {rank(p.attention.pct)} <span className="dim">· {hits}</span>
+                {rank(pct)} <span className="dim">· {hits}</span>
               </span>
             </div>
           )}
@@ -423,11 +422,7 @@ function PartRows({
           </span>
         </td>
         <td className="bur" data-l="Quiet score">
-          {p.score?.buried == null ? (
-            <span className="dim">—</span>
-          ) : (
-            <span className="num">{p.score.buried.toFixed(2)}</span>
-          )}
+          {buried === null ? <span className="dim">—</span> : <span className="num">{buried.toFixed(2)}</span>}
         </td>
       </tr>
       {open && (
@@ -443,7 +438,7 @@ function PartRows({
             </div>
             {p.reach.map((r) => (
               <div className="row-meta" key={r.claim}>
-                <b>{REACH_WORDS[r.kind].replace(/^./, (x) => x.toUpperCase())}</b>: {quoted(r.quote)}{" "}
+                <b>{REACH_WORDS[r.kind].replace(/^./u, (x) => x.toUpperCase())}</b>: {quoted(r.quote)}{" "}
                 <Src id={r.claim} label="text" />
               </div>
             ))}
@@ -465,40 +460,44 @@ function SectionDetail({ m, v }: { m: BillModel; v: SectionView }) {
         {s.preview}…
       </div>
       <div className="hist">
-        {m.versions
-          .filter((x) => s.history[x.code])
-          .map((x) => {
-            const h = s.history[x.code]!;
+        {m.versions.map((x) => {
+          const h = s.history[x.code];
 
-            return (
-              <div className="h" key={x.code}>
-                <div className="c">{x.name.replace(/ \(.*\)$/, "")}</div>
-                <div>
-                  {h.path.replace("sec:", "§")} · {h.words.toLocaleString("en-US")} words
-                </div>
-                {h.similarity != null && h.match !== "identical" && (
-                  <div className="dim">
-                    {h.match} match {Math.round(h.similarity * 100)}%
-                    {h.wordsAdded != null && ` · +${h.wordsAdded} −${h.wordsRemoved ?? 0}`}
-                  </div>
-                )}
-                {h.match === "identical" && <div className="dim">unchanged</div>}
-                {h.largestInserts.slice(0, 2).map((t) => (
-                  <div key={t}>
-                    <span className="ins">{t.length > 90 ? `${t.slice(0, 90)}…` : t}</span>
-                  </div>
-                ))}
+          if (!h) {
+            return null;
+          }
+
+          return (
+            <div className="h" key={x.code}>
+              <div className="c">{x.name.replace(/ \(.*\)$/u, "")}</div>
+              <div>
+                {h.path.replace("sec:", "§")} · {h.words.toLocaleString("en-US")} words
               </div>
-            );
-          })}
+              {h.similarity !== null && h.match !== "identical" && (
+                <div className="dim">
+                  {h.match} match {Math.round(h.similarity * 100)}%
+                  {h.wordsAdded !== null && ` · +${h.wordsAdded} −${h.wordsRemoved ?? 0}`}
+                </div>
+              )}
+              {h.match === "identical" && <div className="dim">unchanged</div>}
+              {h.largestInserts.slice(0, 2).map((t) => (
+                <div key={t}>
+                  <span className="ins">{t.length > 90 ? `${t.slice(0, 90)}…` : t}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
       {s.reach.map((r) => (
         <div className="row-meta" key={r.claim}>
-          <b>{REACH_WORDS[r.kind].replace(/^./, (x) => x.toUpperCase())}</b>: {quoted(r.quote)}{" "}
+          <b>{REACH_WORDS[r.kind].replace(/^./u, (x) => x.toUpperCase())}</b>: {quoted(r.quote)}{" "}
           <Src id={r.claim} label="text" />
         </div>
       ))}
-      {s.splitFrom && <div className="row-meta">Split out of an older section, so it is not counted as added.</div>}
+      {(s.splitFrom ?? "") !== "" && (
+        <div className="row-meta">Split out of an older section, so it is not counted as added.</div>
+      )}
       {s.splitInto.length > 0 && (
         <div className="row-meta">Split into {count(s.splitInto.length, "section")} in a later version.</div>
       )}

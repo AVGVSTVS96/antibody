@@ -1,50 +1,38 @@
 import { STEPS } from "./events.ts";
 import type { Step, Tally } from "./events.ts";
 
-/**
- * The numbers a bill is ranked on. Nothing here knows the sponsor's party: the same facts give the same score
- * for every party. `null` means not measured (shown as "—", counted as 0).
- */
 export interface Facts {
   step: Step;
-  /** Words in the newest text version, and whether they were counted or estimated from the file size. */
   words: number | null;
   wordsCounted: boolean;
-  /** Largest whole-bill deficit effect CBO gives, $ millions, on the current-law baseline. */
   deficitMusd: number | null;
-  /** LD-2 filings that name the bill. */
   lobbyingFilings: number | null;
-  /** Sections first seen late: the x-ray lineage when it ran, else sections new in the newest version. */
   lateSections: number | null;
   daysToVote: number | null;
   closedRule: boolean;
   closestVote: Tally | null;
-  /** Sections the x-ray labeled buried (big money, lobbying or legal reach, little news attention). */
   buriedSections: number | null;
-  /** News stories naming the bill in the counted outlets, each side of the list weighted equally. */
   newsStories: number | null;
 }
 
-export type Signal =
-  | "moving"
-  | "attention"
-  | "size"
-  | "dollars"
-  | "lobbying"
-  | "late"
-  | "rushed"
-  | "buried"
-  | "divisive";
+export const SIGNALS = [
+  "moving",
+  "attention",
+  "size",
+  "dollars",
+  "lobbying",
+  "late",
+  "rushed",
+  "buried",
+  "divisive",
+] as const;
+
+export type Signal = (typeof SIGNALS)[number];
 
 export type SubScores = Record<Signal, number | null>;
 
 export const RULES_VERSION = "watch-v3";
 
-/**
- * A bill is flagged when its score reaches the cutoff, at most MAX_FLAGGED of them; a quiet week flags none.
- * Moving is worth at most 15 points, so a bill that only moved never clears 25: it needs 10 points from the press,
- * size, money, lobbying, lateness, haste, burial or a close vote.
- */
 export const FLAG_CUTOFF = 25;
 export const MAX_FLAGGED = 25;
 
@@ -60,7 +48,6 @@ export const WEIGHTS: Record<Signal, number> = {
   divisive: 0.1,
 };
 
-/** Plain-English rule per signal, printed in every digest. */
 export const RULE_TEXT: Record<Signal, string> = {
   moving:
     "How far the bill has got in its whole record (the window only decides which bills are looked at): became law 1, enrolled/presented/vetoed 0.95, second chamber or conference 0.9, passed a chamber 0.75, floor vote 0.6, other floor action 0.5, reported 0.4, new text 0.35, CBO estimate or calendar 0.3.",
@@ -97,18 +84,21 @@ export function subScores(f: Facts): SubScores {
     divisive: v && v.yeas + v.nays > 0 ? 1 - Math.abs(v.yeas - v.nays) / (v.yeas + v.nays) : null,
   };
 
-  for (const k of Object.keys(s) as Signal[]) {
-    if (s[k] !== null) s[k] = round(s[k]);
+  for (const k of SIGNALS) {
+    const value = s[k];
+
+    if (value !== null) {
+      s[k] = round(value);
+    }
   }
 
   return s;
 }
 
-/** 0-100: the weighted sum of the sub-scores. */
 export function score(s: SubScores): number {
   let total = 0;
 
-  for (const k of Object.keys(WEIGHTS) as Signal[]) {
+  for (const k of SIGNALS) {
     total += WEIGHTS[k] * (s[k] ?? 0);
   }
 

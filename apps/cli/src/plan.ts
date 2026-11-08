@@ -5,29 +5,36 @@ export interface Registered extends Stage {
   package: string;
 }
 
-/** Flattens the registry and checks the contract: unique names, known needs, writes only to tables the package owns. */
 export function register(packages: Record<string, Stage[]>): Map<string, Registered> {
   const all = new Map<string, Registered>();
 
   for (const [pkg, stages] of Object.entries(packages)) {
     for (const s of stages) {
-      if (all.has(s.name)) throw new Error(`stage "${s.name}" is defined twice`);
+      if (all.has(s.name)) {
+        throw new Error(`stage "${s.name}" is defined twice`);
+      }
 
-      for (const t of s.writes)
-        if (TABLES[t].owner !== pkg)
+      for (const t of s.writes) {
+        if (TABLES[t].owner !== pkg) {
           throw new Error(`${pkg} stage "${s.name}" writes ${t}, owned by ${TABLES[t].owner}`);
+        }
+      }
+
       all.set(s.name, { ...s, package: pkg });
     }
   }
 
   for (const s of all.values()) {
-    for (const n of s.needs) if (!all.has(n)) throw new Error(`stage "${s.name}" needs unknown stage "${n}"`);
+    for (const n of s.needs) {
+      if (!all.has(n)) {
+        throw new Error(`stage "${s.name}" needs unknown stage "${n}"`);
+      }
+    }
   }
 
   return all;
 }
 
-/** The given stages plus everything they need, dependencies first. */
 export function order(all: Map<string, Registered>, targets: string[]): Registered[] {
   const out: Registered[] = [];
   const state = new Map<string, "visiting" | "done">();

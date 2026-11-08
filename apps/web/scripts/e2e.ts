@@ -1,17 +1,11 @@
-/**
- * Headless end-to-end check of the built site: the index lists the published bills, every bill page renders its
- * sections and map without errors or horizontal overflow, chips link to real record URLs, and a sample of those URLs answers.
- * `bun apps/web/scripts/e2e.ts <base url>` (default http://localhost:4870, a `vite preview` of apps/web/dist).
- */
 import { readdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Bundle, BundleIndex } from "@antibody/core";
+import { Bundle, BundleIndex } from "@antibody/core";
 import { chromium } from "playwright-core";
 
 const base = process.argv[2] ?? "http://localhost:4870";
 const bundlesDir = join(import.meta.dir, "../public/bundles");
-const index = (await Bun.file(join(bundlesDir, "index.json")).json()) as BundleIndex;
+const index = BundleIndex.parse(await Bun.file(join(bundlesDir, "index.json")).json());
 const failures: string[] = [];
 
 const check = (ok: boolean, what: string) => {
@@ -22,10 +16,7 @@ const check = (ok: boolean, what: string) => {
   }
 };
 
-const browser = await chromium.launch({
-  executablePath: `${homedir()}/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome`,
-  args: [],
-});
+const browser = await chromium.launch();
 
 async function open(path: string, width = 1440) {
   const page = await browser.newPage({ viewport: { width, height: 900 } });
@@ -67,7 +58,7 @@ async function open(path: string, width = 1440) {
 }
 
 const ids = index.bills.map((b) => b.id);
-const sample = ["119-s-1582", ids.find((i) => i === "117-hr-5376") ?? ids[1]].filter(Boolean) as string[];
+const sample = ["119-s-1582", ids.find((i) => i === "117-hr-5376") ?? ids[1]].filter((i) => i !== undefined);
 
 for (const id of ids) {
   const { page, errors } = await open(`/bill/${id}`);
@@ -86,11 +77,14 @@ for (const id of ids) {
   if (sample.includes(id)) {
     const shift = await page.evaluate(
       async () =>
-        new Promise<number>((resolve) => {
+        // oxlint-disable-next-line promise/avoid-new -- runs inside the page, where setTimeout is the only timer
+        await new Promise<number>((resolve) => {
           let total = 0;
           new PerformanceObserver((list) => {
-            for (const e of list.getEntries() as (PerformanceEntry & { value: number; hadRecentInput: boolean })[]) {
-              if (!e.hadRecentInput) total += e.value;
+            for (const e of list.getEntries()) {
+              if ("value" in e && "hadRecentInput" in e && e.hadRecentInput !== true) {
+                total += Number(e.value);
+              }
             }
           }).observe({ type: "layout-shift", buffered: true });
           setTimeout(() => {
@@ -105,8 +99,8 @@ for (const id of ids) {
     check((await page.locator("table tbody tr").count()) > 0, `${id} section list has rows`);
     await page.goto(`${base}/bill/${id}`, { waitUntil: "load" });
     await page.waitForSelector("a.src[href]", { timeout: 20_000 });
-    const hrefs = await page.$$eval("a.src[href]", (as) => as.map((a) => (a as HTMLAnchorElement).href));
-    const bad = hrefs.filter((h) => !/^https:\/\/[^/]+\/./.test(h));
+    const hrefs = await page.$$eval("a.src[href]", (as: HTMLAnchorElement[]) => as.map((a) => a.href));
+    const bad = hrefs.filter((h) => !/^https:\/\/[^/]+\/./u.test(h));
     check(hrefs.length > 5 && bad.length === 0, `${id} ${hrefs.length} source links, ${bad.length} malformed`);
   }
 
@@ -127,16 +121,16 @@ await browser.close();
 
 const urls = new Map<string, string>();
 
-for (const f of readdirSync(bundlesDir).filter((f) => f.endsWith(".claims.json"))) {
-  const claims = Object.values((await Bun.file(join(bundlesDir, f)).json()) as Bundle["claims"]);
+for (const name of readdirSync(bundlesDir).filter((f) => f.endsWith(".claims.json"))) {
+  const claims = Object.values(Bundle.shape.claims.parse(await Bun.file(join(bundlesDir, name)).json()));
   const step = Math.max(1, Math.floor(claims.length / 6));
 
-  for (let i = 0; i < claims.length; i += step) {
-    urls.set(claims[i]!.sourceUrl, claims[i]!.id);
+  for (const c of claims.filter((_, i) => i % step === 0)) {
+    urls.set(c.sourceUrl, c.id);
   }
 }
 
-const picked = [...urls.keys()].sort(() => 0.5 - Math.random()).slice(0, 40);
+const picked = [...urls.keys()].toSorted(() => 0.5 - Math.random()).slice(0, 40);
 let ok = 0;
 const blocked: string[] = [];
 
@@ -160,8 +154,9 @@ await Promise.all(
 
         return;
       } catch (error) {
-        if (attempt === 2) blocked.push(`ERR ${(error as Error).message} ${u}`);
-        else {
+        if (attempt === 2) {
+          blocked.push(`ERR ${error instanceof Error ? error.message : String(error)} ${u}`);
+        } else {
           await Bun.sleep(1500);
         }
       }
@@ -175,7 +170,7 @@ for (const b of blocked) {
   console.log(`  ${b}`);
 }
 
-const hard = blocked.filter((b) => /^(404|410|5\d\d|ERR)/.test(b));
+const hard = blocked.filter((b) => /^(404|410|5\d\d|ERR)/u.test(b));
 
 check(hard.length === 0, `no sampled source URL is gone or erroring (${hard.length})`);
 

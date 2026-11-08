@@ -13,7 +13,7 @@ test.each([
   ["BILLSTATUS-119s1582.xml", "119-s-1582"],
   ["https://www.congress.gov/bill/117th-congress/house-bill/5376/text", "117-hr-5376"],
 ])("parseBillId(%p)", (input, expected) => {
-  expect(parseBillId(input)).toBe(expected as never);
+  expect<string>(parseBillId(input)).toBe(expected);
 });
 
 test("rejects junk", () => {

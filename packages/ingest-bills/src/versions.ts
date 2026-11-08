@@ -1,7 +1,6 @@
 import type { BillStatus } from "./billstatus.ts";
 
 export interface VersionRef {
-  /** GovInfo version code: ih, rh, eh, pcs, eas, enr … and `plaw` for the public law. */
   code: string;
   name: string;
   date: string | null;
@@ -9,7 +8,6 @@ export interface VersionRef {
   file: string;
 }
 
-/** Order of stages when two versions carry the same date. */
 const STAGE = [
   ["ih", "is", "iph", "ips"],
   ["rih", "ris", "rh", "rs", "rch", "rcs", "rdh", "rds", "rfh", "rfs", "rah", "ras", "rth", "rts", "cph", "cps"],
@@ -26,30 +24,28 @@ const rank = (code: string) => {
 };
 
 function pick(urls: string[]): { url: string; file: string; code: string } | null {
-  const plaw = urls.find((u) => u.includes("\/uslm\/PLAW-"));
+  const plaw = urls.find((u) => u.includes("/uslm/PLAW-"));
 
-  if (plaw) {
+  if (plaw !== undefined && plaw !== "") {
     return { url: plaw, file: versionFile(plaw), code: "plaw" };
   }
 
-  const url = urls.find((u) => u.includes("\/xml\/BILLS-")) ?? urls.find((u) => u.includes("\/uslm\/BILLS-"));
-  const m = url?.match(/BILLS-\d+[a-z]+?\d+([a-z]+)\.xml$/);
+  const url = urls.find((u) => u.includes("/xml/BILLS-")) ?? urls.find((u) => u.includes("/uslm/BILLS-"));
+  const code = url?.match(/BILLS-\d+[a-z]+?\d+(?<code>[a-z]+)\.xml$/u)?.groups?.code;
 
-  if (!url || !m) {
+  if (url === undefined || url === "" || code === undefined) {
     return null;
   }
 
-  return { url, file: versionFile(url), code: m[1]! };
+  return { url, file: versionFile(url), code };
 }
 
-/** The file a version's XML is cached as in data/bills/raw (bill XML and USLM XML share a name, so USLM is prefixed). */
 export function versionFile(url: string): string {
   const name = url.slice(url.lastIndexOf("/") + 1);
 
   return url.includes("/uslm/BILLS-") ? `USLM-${name}` : name;
 }
 
-/** Every text version BILLSTATUS lists with an XML file, oldest first; the enrolled bill and then the law go last. */
 export function textVersions(status: BillStatus): VersionRef[] {
   const presented = status.actions.find((a) => a.text.startsWith("Presented to President"))?.date ?? null;
   const out: VersionRef[] = [];
@@ -62,13 +58,18 @@ export function textVersions(status: BillStatus): VersionRef[] {
     }
 
     const date = hit.code === "plaw" ? (status.lawOn ?? v.date) : hit.code === "enr" ? (v.date ?? presented) : v.date;
-    const name = hit.code === "plaw" && status.law ? `Public Law ${status.law.replace(/^\S+ /, "")}` : v.name;
+
+    const name =
+      hit.code === "plaw" && status.law !== null && status.law !== ""
+        ? `Public Law ${status.law.replace(/^\S+ /u, "")}`
+        : v.name;
+
     out.push({ ...hit, name, date });
   }
 
   const tier = (v: VersionRef) => (v.code === "plaw" ? 2 : v.code === "enr" ? 1 : 0);
 
-  return out.sort(
+  return out.toSorted(
     (a, b) => tier(a) - tier(b) || (a.date ?? "").localeCompare(b.date ?? "") || rank(a.code) - rank(b.code),
   );
 }

@@ -12,14 +12,19 @@ export function Money({ m }: { m: BillModel }) {
 
   const clients = m.actors
     .filter((a) => a.lobbied.length)
-    .sort((x, y) => y.reports - x.reports || x.label.localeCompare(y.label));
+    .toSorted((x, y) => y.reports - x.reports || x.label.localeCompare(y.label));
 
   const top = clients.slice(0, 6);
   const peak = Math.max(1, ...top.map((a) => a.reports));
   const pac = pacByParty(m);
   const tallest = Math.max(1, ...pac.map((p) => p.got / (p.of || 1)));
   const [all, setAll] = useState(false);
-  const moving = rows[0]!;
+  const [moving, , afterLaw] = rows;
+
+  if (moving === undefined || afterLaw === undefined) {
+    throw new Error("phases() returns the bill, enactment and law rows");
+  }
+
   const filled = rows.filter((r) => r.n > 0);
 
   return (
@@ -27,7 +32,7 @@ export function Money({ m }: { m: BillModel }) {
       <p className="lead narrow">
         Lobbyists file a report every quarter listing the bills they worked on. {count(L.clients, "client")} named this
         one in {L.reports.toLocaleString("en-US")} reports.{" "}
-        {total > 0 && rows[2]!.pct >= 60 && b.bill.law
+        {total > 0 && afterLaw.pct >= 60 && (b.bill.law ?? "") !== ""
           ? "Almost all of those reports came after it was signed, when agencies were writing the rules."
           : total > 0 && moving.pct >= 60
             ? "Most of those reports were filed while the bill was moving."
@@ -41,6 +46,7 @@ export function Money({ m }: { m: BillModel }) {
           </div>
           <div
             className="timing-bar"
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a bar of colored segments has no <img> source; role="img" gives the chart one accessible name
             role="img"
             aria-label={filled.map((r) => `${r.pct}% ${r.title.toLowerCase()}`).join(", ")}
           >

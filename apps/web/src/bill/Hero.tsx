@@ -16,7 +16,7 @@ export const jump = (id: string) => (e: React.MouseEvent) => {
   history.replaceState(null, "", `${location.pathname}${location.search}#${id}`);
 };
 
-export function Hero({ m, entry }: { m: BillModel; entry?: BundleIndex["bills"][number] }) {
+export function Hero({ m, entry }: { m: BillModel; entry: BundleIndex["bills"][number] | undefined }) {
   const { b } = m;
   const steps = timeline(m);
   const kicker = `${b.bill.display}, ${b.bill.congress}th Congress`;
@@ -27,20 +27,20 @@ export function Hero({ m, entry }: { m: BillModel; entry?: BundleIndex["bills"][
         <p className="kicker">
           <span>{kicker}</span>
           <span className="kicker-phone">
-            {b.bill.lawOn ? `${b.bill.display}, signed ${day(b.bill.lawOn)}` : kicker}
+            {b.bill.lawOn === null ? kicker : `${b.bill.display}, signed ${day(b.bill.lawOn)}`}
           </span>
         </p>
         <h1>{b.bill.shortTitle ?? b.bill.title}</h1>
         <p className="lead">{introLine(m)}</p>
         <p className="bmeta">
-          {b.bill.shortTitle && <>{b.bill.title.replace(/\.+$/, "")}. </>}
+          {(b.bill.shortTitle ?? "") !== "" && <>{b.bill.title.replace(/\.+$/u, "")}. </>}
           {m.sponsor &&
-            (b.bill.vehicle ? (
+            ((b.bill.vehicle ?? "") === "" ? (
+              <>Sponsor {m.sponsor.label}. </>
+            ) : (
               <>
                 Vehicle bill introduced by {m.sponsor.label}. {b.bill.vehicle}{" "}
               </>
-            ) : (
-              <>Sponsor {m.sponsor.label}. </>
             ))}
           {b.bill.claims.length ? (
             <Sources ids={b.bill.claims} />
@@ -52,7 +52,7 @@ export function Hero({ m, entry }: { m: BillModel; entry?: BundleIndex["bills"][
         </p>
         {entry?.origin === "watcher" && (
           <p className="watched">
-            <b>Added by the watch{entry.addedOn ? ` on ${day(entry.addedOn)}` : ""}.</b> {entry.note}
+            <b>Added by the watch{entry.addedOn === null ? "" : ` on ${day(entry.addedOn)}`}.</b> {entry.note}
           </p>
         )}
       </div>

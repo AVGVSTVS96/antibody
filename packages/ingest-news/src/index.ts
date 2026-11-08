@@ -7,7 +7,21 @@ export { countsBySource } from "./mediacloud.ts";
 
 export { articleText, defaultTerms, SAMPLE, searchPlan, termsFor } from "./news.ts";
 
-export * from "./outlets.ts";
+export {
+  COUNTED,
+  midpoint,
+  OUTLET_LIST,
+  outletFor,
+  outletRows,
+  OUTLETS,
+  PARTISAN_GROUPS,
+  SIDE_NAMES,
+  SIDES,
+  sideOf,
+  TRADE_LEGAL,
+} from "./outlets.ts";
+
+export type { Group, Outlet, Partisan, Side } from "./outlets.ts";
 
 export const stages: Stage[] = [
   {

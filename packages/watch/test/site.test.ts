@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Bundle } from "@antibody/core";
+import { Bundle } from "@antibody/core";
 import fixture from "../../core/fixtures/genius-mini.bundle.json";
 import { pageUrl } from "../src/digest.ts";
 import { publishBundle, updateSite } from "../src/site.ts";
@@ -10,12 +10,14 @@ import type { Site } from "../src/site.ts";
 
 const dir = await mkdtemp(join(tmpdir(), "antibody-site-"));
 
-afterAll(async () => rm(dir, { recursive: true, force: true }));
+afterAll(async () => {
+  await rm(dir, { recursive: true, force: true });
+});
 
 const withId = (id: string): Bundle => {
-  const b = fixture as unknown as Bundle;
+  const b = Bundle.parse(fixture);
 
-  return JSON.parse(JSON.stringify(b).replaceAll(b.bill.id, id).replaceAll("S.1582", "S.9999"));
+  return Bundle.parse(JSON.parse(JSON.stringify(b).replaceAll(b.bill.id, id).replaceAll("S.1582", "S.9999")));
 };
 
 async function folders(name: string) {
@@ -39,7 +41,13 @@ test("a sound x-ray bundle is published with its claims sidecar", async () => {
 test("a bundle with a dangling claim is not published and the reason comes back", async () => {
   const f = await folders("broken");
   const broken = withId("119-s-9998");
-  broken.edges.push({ ...broken.edges[0]!, id: "x", dst: "member:NOPE" } as never);
+  const [edge] = broken.edges;
+
+  if (!edge) {
+    throw new Error("the fixture bundle has no edges");
+  }
+
+  broken.edges.push({ ...edge, id: "x", dst: "member:NOPE" });
   await Bun.write(join(f.local, "119-s-9998.json"), JSON.stringify(broken));
   expect(await publishBundle("119-s-9998", f.local, f.published)).toContain("checkBundle problems");
   expect(await Bun.file(join(f.published, "119-s-9998.json")).exists()).toBe(false);
@@ -56,9 +64,10 @@ const site = (): Site => ({ published: [], deploy: { status: "pending" } });
 
 async function setup(name: string) {
   const f = await folders(name);
-  await Bun.write(join(f.published, "119-s-1582.json"), JSON.stringify({ ...(fixture as object), claims: {} }));
+  await Bun.write(join(f.published, "119-s-1582.json"), JSON.stringify({ ...fixture, claims: {} }));
   const calls: string[][] = [];
 
+  // oxlint-disable-next-line eslint/require-await -- stands in for the async exec; promise-function-async wants it async
   const exec = async (cmd: string[]) => {
     calls.push(cmd);
 
@@ -93,6 +102,7 @@ test("a failed deploy is a problem, keeps the old snapshot, and the next run ret
   const s = site();
 
   const { problems } = await updateSite(s, {
+    // oxlint-disable-next-line eslint/require-await -- stands in for the async exec; promise-function-async wants it async
     exec: async () => {
       throw new Error("failed (1): bunx vercel build");
     },

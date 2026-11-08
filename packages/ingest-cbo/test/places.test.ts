@@ -1,13 +1,14 @@
 import { expect, test } from "bun:test";
-import { TABLES } from "@antibody/core";
-import type { Row } from "@antibody/core";
+import { TABLES, must } from "@antibody/core";
 import { buildLines, EVEN_SPLIT_MAX } from "../src/lines.ts";
 import type { Parsed, ParsedRow } from "../src/parsed.ts";
 import { sectionIndex, sectionMap } from "../src/sections.ts";
-import type { Labelled } from "../src/sections.ts";
+import type { Labelled, SectionRow } from "../src/sections.ts";
 
-const section = (id: string, path: string, heading: string) =>
-  ({ id, history: { enr: { path, heading } } }) as unknown as Row<"sections">;
+const section = (id: string, path: string, heading: string): SectionRow => ({
+  id,
+  history: { enr: { path, heading } },
+});
 
 const divisionI = [
   section("i1", "division:I/sec:90001", "EXTENSION OF DIRECT SPENDING REDUCTIONS THROUGH FISCAL YEAR 2031."),
@@ -153,6 +154,8 @@ const src = {
   archiveUrl: null,
   pdfUrl: null,
   pdfArchiveUrl: null,
+  numbering: null,
+  carried: null,
 };
 
 const table = (...rows: ParsedRow[]): Parsed => ({
@@ -161,7 +164,7 @@ const table = (...rows: ParsedRow[]): Parsed => ({
   sheets: [{ sheet: "Table 2", years, rows }],
 });
 
-const build = (parsed: Parsed, sections: Row<"sections">[], evidence: Labelled[] = []) => {
+const build = (parsed: Parsed, sections: SectionRow[], evidence: Labelled[] = []) => {
   const index = sectionIndex(sections, null, evidence);
   const built = buildLines(src, parsed, null, index.join, index.places);
 
@@ -183,7 +186,11 @@ test("a provision row joined by heading is exact in dollars, marked as a heading
     divisionI,
   );
 
-  const line = lines.find((l) => l.id === `${src.estimateId}:sI.90008:outlays`)!;
+  const line = must(
+    lines.find((l) => l.id === `${src.estimateId}:sI.90008:outlays`),
+    "line",
+  );
+
   expect(line).toMatchObject({
     line_kind: "section",
     join: "heading",
@@ -291,29 +298,34 @@ test("two rows that would take the same section take neither", () => {
 const titleSections = (n: number) =>
   Array.from({ length: n }, (_, i) => section(`s${i}`, `division:D/title:VII/sec:${40_700 + i}`, `Provision ${i}`));
 
-test("a title with one section is that section's figure; a few sections share it evenly, labelled and resting on the title's line", () => {
-  const title = (d: number) =>
-    row(
-      {
-        line: 1,
-        line_kind: "title",
-        measure_kind: "outlays",
-        section_title: "Abandoned Mine Land Reclamation",
-        division: "D",
-        title_no: "VII",
-      },
-      d,
-    );
+const mineTitle = (d: number) =>
+  row(
+    {
+      line: 1,
+      line_kind: "title",
+      measure_kind: "outlays",
+      section_title: "Abandoned Mine Land Reclamation",
+      division: "D",
+      title_no: "VII",
+    },
+    d,
+  );
 
-  const one = build(table(title(1243)), titleSections(1));
+test("a title with one section is that section's figure; a few sections share it evenly, labelled and resting on the title's line", () => {
+  const one = build(table(mineTitle(1243)), titleSections(1));
   expect(one.find((l) => l.line_kind === "section")).toMatchObject({ join: "title", split: "exact", total_musd: 1243 });
 
-  const four = build(table(title(1000)), titleSections(4));
-  const group = four.find((l) => l.line_kind === "group")!;
+  const four = build(table(mineTitle(1000)), titleSections(4));
+
+  const group = must(
+    four.find((l) => l.line_kind === "group"),
+    "group",
+  );
+
   const shares = four.filter((l) => l.line_kind === "section" && l.measure === "outlays");
   expect(group).toMatchObject({ join: "title", total_musd: 1000, section_nums: ["40700", "40701", "40702", "40703"] });
   expect(shares.map((l) => [l.split, l.total_musd, l.rests_on])).toEqual(
-    Array(4).fill(["even_split", 250, [`cbo_lines/${group.id}`]]),
+    Array.from({ length: 4 }, () => ["even_split", 250, [`cbo_lines/${group.id}`]]),
   );
   expect(shares[0]?.source_locator).toContain("all of division D title VII, which has 4 sections");
 });
@@ -337,7 +349,12 @@ test(`a title of more than ${EVEN_SPLIT_MAX} sections stays one group line: an e
   );
 
   expect(lines.filter((l) => l.line_kind === "section")).toEqual([]);
-  const group = lines.find((l) => l.line_kind === "group")!;
+
+  const group = must(
+    lines.find((l) => l.line_kind === "group"),
+    "group",
+  );
+
   expect(group).toMatchObject({ section_ids: [], section_nums: [], total_musd: 149_931, join: "title" });
   expect(group.source_locator).toContain(`more than ${EVEN_SPLIT_MAX} sections`);
 });
@@ -388,9 +405,14 @@ test("a footnote on a provision row that names one section ties the row to it, w
     row({ line: 4, line_kind: "total", measure_kind: "outlays", section_title: "Total", division: "D" }, 3799),
   );
 
-  parsed.sheets[0]!.notes = notes;
+  must(parsed.sheets[0], "the table").notes = notes;
   const lines = build(parsed, divisionI);
-  const named = lines.find((l) => l.id.endsWith(":sD.40106:outlays"))!;
+
+  const named = must(
+    lines.find((l) => l.id.endsWith(":sD.40106:outlays")),
+    "named",
+  );
+
   expect(named).toMatchObject({ join: "number", split: "exact", total_musd: 3785, section_ids: ["d40106"] });
   expect(named.source_locator).toContain(
     'CBO\'s note g on this row names section 40106: "CBO estimates that implementing section 40106 would increase net direct spending by $3.8 billion."',
@@ -442,6 +464,24 @@ test("a repeated section number in two divisions makes two lines, not one summed
   ]);
 });
 
+const printedGroup = (members: string[]) =>
+  table(
+    row(
+      { line: 1, line_kind: "section", measure_kind: "outlays", section_title: "Group member 0", sections: ["100"] },
+      5,
+    ),
+    row(
+      {
+        line: 2,
+        line_kind: "section",
+        measure_kind: "outlays",
+        section_title: "Some other wording",
+        sections: members,
+      },
+      600,
+    ),
+  );
+
 test("a group CBO printed is split only up to the same size limit, and its members carry the sections the group resolved", () => {
   const sections = Array.from({ length: 10 }, (_, i) =>
     section(`g${i}`, `title:I/sec:${100 + i}`, `Group member ${i}`),
@@ -449,26 +489,8 @@ test("a group CBO printed is split only up to the same size limit, and its membe
 
   const nums = sections.map((_, i) => String(100 + i));
 
-  const printed = (members: string[]) =>
-    table(
-      row(
-        { line: 1, line_kind: "section", measure_kind: "outlays", section_title: "Group member 0", sections: ["100"] },
-        5,
-      ),
-      row(
-        {
-          line: 2,
-          line_kind: "section",
-          measure_kind: "outlays",
-          section_title: "Some other wording",
-          sections: members,
-        },
-        600,
-      ),
-    );
-
   const verified = [{ num: "100", title: "Group member 0" }];
-  const small = build(printed(nums.slice(1, 4)), sections, verified);
+  const small = build(printedGroup(nums.slice(1, 4)), sections, verified);
   expect(
     small
       .filter((l) => l.split === "even_split" && l.measure === "outlays")
@@ -478,7 +500,7 @@ test("a group CBO printed is split only up to the same size limit, and its membe
     [1, 200],
     [1, 200],
   ]);
-  const large = build(printed(nums.slice(1)), sections, verified);
+  const large = build(printedGroup(nums.slice(1)), sections, verified);
   expect(large.filter((l) => l.split === "even_split")).toEqual([]);
   expect(large.find((l) => l.line_kind === "group")).toMatchObject({ join: "number", total_musd: 600 });
 });

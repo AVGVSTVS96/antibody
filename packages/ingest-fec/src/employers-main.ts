@@ -2,7 +2,6 @@ import { writeRows } from "@antibody/core/node";
 import { memberLookup } from "@antibody/ingest-members";
 import { aggregateEmployers, EMPLOYER_MIN_USD, memberCommittees } from "./employers.ts";
 
-/** Run by the fec-employers stage under a memory cap: `bun employers-main.ts <cycle>`. Prints its stats as JSON. */
 const cycle = Number(Bun.argv[2]);
 const { byFec } = await memberLookup();
 const committees = await memberCommittees(cycle, byFec);

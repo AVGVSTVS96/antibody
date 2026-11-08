@@ -2,7 +2,6 @@ import { billRef, congressGovUrl, parseBillId } from "@antibody/core";
 import type { BillId } from "@antibody/core";
 import type { Action, BillStatus, TextVersion } from "./billstatus.ts";
 
-/** How far along a bill moved, strongest first. The weight is the `moving` sub-score. */
 export const STEPS = {
   law: { weight: 1, label: "became law" },
   vetoed: { weight: 0.95, label: "was vetoed" },
@@ -38,34 +37,41 @@ export interface BillEvent {
   tally: Tally | null;
 }
 
-const TALLY = /(?:Yeas and Nays|recorded vote|Yea-Nay Vote)\.?:?\s*(?:\(2\/3 required\):?\s*)?(\d+)\s*-\s*(\d+)/i;
+const TALLY = /(?:Yeas and Nays|recorded vote|Yea-Nay Vote)\.?:?\s*(?:\(2\/3 required\):?\s*)?(\d+)\s*-\s*(\d+)/iu;
 
-/** The question an action's vote was on, without the tally: "On motion to commit Failed". */
-export const voteQuestion = (text: string): string | null =>
-  text
+export function voteQuestion(text: string): string | null {
+  const question = text
     .slice(0, Math.max(0, text.search(TALLY)))
-    .replace(/[\s,:]*(?:by(?: the)?)?[\s,:]*$/i, "")
-    .trim() || null;
+    .replace(/[\s,:]*(?:by(?: the)?)?[\s,:]*$/iu, "")
+    .trim();
+
+  return question === "" ? null : question;
+}
 
 export function tally(text: string): Tally | null {
   const m = TALLY.exec(text);
 
-  return m ? { yeas: +m[1]!, nays: +m[2]! } : null;
+  if (!m) {
+    return null;
+  }
+
+  const [, yeas = "", nays = ""] = m;
+
+  return { yeas: +yeas, nays: +nays };
 }
 
-/** A recorded floor vote's count; committee markup votes are left out. */
 const floorTally = (a: Action) => (a.type === "Committee" ? null : tally(a.text));
 
-const passedIn = (a: Action) => /^Passed(?:\/agreed to in)? (House|Senate)\b/.exec(a.text)?.[1] ?? null;
+const passedIn = (a: Action) => /^Passed(?:\/agreed to in)? (House|Senate)\b/u.exec(a.text)?.[1] ?? null;
 
 export function classify(a: Action, passedBefore: Set<string>): Step | null {
   const t = a.text;
 
-  if (a.type === "BecameLaw" || /Became (Public|Private) Law/.test(t)) {
+  if (a.type === "BecameLaw" || /Became (Public|Private) Law/u.test(t)) {
     return "law";
   }
 
-  if (a.type === "Veto" || /Vetoed by President/i.test(t)) {
+  if (a.type === "Veto" || /Vetoed by President/iu.test(t)) {
     return "vetoed";
   }
 
@@ -73,34 +79,34 @@ export function classify(a: Action, passedBefore: Set<string>): Step | null {
     return "presented";
   }
 
-  if (a.type === "ResolvingDifferences" || /conference report|Resolving differences/i.test(t)) {
+  if (a.type === "ResolvingDifferences" || /conference report|Resolving differences/iu.test(t)) {
     return "resolving";
   }
 
   const chamber = passedIn(a);
 
-  if (chamber) {
+  if (chamber !== null) {
     return [...passedBefore].some((c) => c !== chamber) ? "passed_second" : "passed";
   }
 
-  if (/^Failed of passage|^Failed to pass|motion to proceed rejected|cloture .*not invoked/i.test(t)) {
+  if (/^Failed of passage|^Failed to pass|motion to proceed rejected|cloture .*not invoked/iu.test(t)) {
     return "failed";
   }
 
-  if (a.votes.length || floorTally(a)) {
+  if (a.votes.length > 0 || floorTally(a) !== null) {
     return "vote";
   }
 
   if (
     a.type === "Floor" &&
-    !/amendment submitted|^Received in the|^Held at the desk|^Message on|read twice and referred|referred to the (sub)?committee/i.test(
+    !/amendment submitted|^Received in the|^Held at the desk|^Message on|read twice and referred|referred to the (sub)?committee/iu.test(
       t,
     )
   ) {
     return "floor";
   }
 
-  if (a.type === "Committee" && /reported|ordered to be reported/i.test(t)) {
+  if (a.type === "Committee" && /reported|ordered to be reported/iu.test(t)) {
     return "reported";
   }
 
@@ -111,11 +117,6 @@ export function classify(a: Action, passedBefore: Set<string>): Step | null {
   return null;
 }
 
-/**
- * Everything that happened to the bill on or after `since`: floor and committee actions, recorded votes,
- * new text versions and CBO estimates. `published` holds GovInfo publication dates for text packages
- * (enrolled bills carry no date in BILLSTATUS).
- */
 export function billEvents(s: BillStatus, since: string, published = new Map<string, string>()): BillEvent[] {
   const byKey = new Map<string, BillEvent>();
 
@@ -131,20 +132,20 @@ export function billEvents(s: BillStatus, since: string, published = new Map<str
   const passed = new Set<string>();
   const actionsUrl = `${congressGovUrl(s.id)}/all-actions`;
 
-  for (const a of [...s.actions].sort((x, y) => x.date.localeCompare(y.date))) {
+  for (const a of s.actions.toSorted((x, y) => x.date.localeCompare(y.date))) {
     const step = classify(a, passed);
     const chamber = passedIn(a);
 
-    if (chamber) {
+    if (chamber !== null) {
       passed.add(chamber);
     }
 
-    if (!step || a.date < since) {
+    if (step === null || a.date < since) {
       continue;
     }
 
     const vote = a.votes[0];
-    const key = vote ? `${vote.chamber[0]!.toLowerCase()}${vote.roll}` : step;
+    const key = vote ? `${vote.chamber.charAt(0).toLowerCase()}${vote.roll}` : step;
     add({
       id: `${s.id}/${vote ? "floor_vote" : "action"}/${a.date}/${key}`,
       bill: s.id,
@@ -160,7 +161,7 @@ export function billEvents(s: BillStatus, since: string, published = new Map<str
   for (const v of s.versions) {
     const date = v.date ?? published.get(`BILLS-${packageStem(s.id)}${v.code}`) ?? null;
 
-    if (!date || date < since || INTRODUCED.has(v.code)) {
+    if (date === null || date === "" || date < since || INTRODUCED.has(v.code)) {
       continue;
     }
 
@@ -178,65 +179,60 @@ export function billEvents(s: BillStatus, since: string, published = new Map<str
   }
 
   for (const c of s.cbo) {
-    if (c.publishedOn >= since)
+    if (c.publishedOn >= since) {
       add({
-        id: `${s.id}/cbo_estimate/${c.url.split("/").pop()}`,
+        id: `${s.id}/cbo_estimate/${c.url.split("/").at(-1) ?? ""}`,
         bill: s.id,
         kind: "cbo_estimate",
         step: "cbo_estimate",
         date: c.publishedOn,
-        text: `CBO: ${c.title}${c.description ? ` (${c.description})` : ""}`,
+        text: `CBO: ${c.title}${c.description === null || c.description === "" ? "" : ` (${c.description})`}`,
         url: c.url,
         tally: null,
       });
+    }
   }
 
-  const rolled = new Set([...byKey.values()].filter((e) => e.kind === "floor_vote").map(voteKey));
+  const rolled = new Set([...byKey.values()].flatMap((e) => (e.kind === "floor_vote" ? [voteKey(e)] : [])));
 
   return [...byKey.values()]
     .filter((e) => e.kind !== "action" || !e.tally || !rolled.has(voteKey(e)))
-    .sort((a, b) => b.date.localeCompare(a.date) || STEPS[b.step].weight - STEPS[a.step].weight);
+    .toSorted((a, b) => b.date.localeCompare(a.date) || STEPS[b.step].weight - STEPS[a.step].weight);
 }
 
 const INTRODUCED = new Set(["ih", "is", "iph", "ips"]);
 
-/** The text the first chamber passed (engrossed in the chamber the bill started in). */
 export function passedVersion(s: BillStatus): TextVersion | null {
-  const code = s.id.split("-")[1]!.startsWith("h") ? "eh" : "es";
+  const code = billRef(s.id).type.startsWith("h") ? "eh" : "es";
 
   return s.versions.find((v) => v.code === code) ?? null;
 }
 
-/**
- * The last text before the first chamber's floor: the newest dated version older than the first-passed one (the
- * reported or introduced text). "Late" is measured against it, as the x-ray's lineage does, so a section a rule or a
- * floor substitute added on the way to passage counts. Null until a chamber has passed the bill.
- */
 export function beforeFloor(s: BillStatus): TextVersion | null {
-  const passed = passedVersion(s);
+  const passedOn = passedVersion(s)?.date ?? "";
 
-  if (!passed?.date) {
+  if (passedOn === "") {
     return null;
   }
 
   return (
-    s.versions.filter((v) => v.date && v.date < passed.date!).sort((a, b) => b.date!.localeCompare(a.date!))[0] ?? null
+    s.versions
+      .filter((v) => v.date !== null && v.date !== "" && v.date < passedOn)
+      .toSorted((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))[0] ?? null
   );
 }
 
-const voteKey = (e: BillEvent) => `${e.date}/${e.tally?.yeas}-${e.tally?.nays}`;
+const voteKey = (e: BillEvent) => `${e.date}/${String(e.tally?.yeas)}-${String(e.tally?.nays)}`;
 
 export const packageStem = (id: BillId) => id.replaceAll("-", "");
 
-/** True when a House rule in the bill's actions brings it up under a closed rule (no floor amendments). */
 export function closedRule(s: BillStatus, since: string): boolean {
   return s.actions.some((a) => a.date >= since && closedRuleBills(a.text, s.id).includes(s.id));
 }
 
-const RULE = /under an? (closed|structured|open|modified[- ](?:open|closed)) rule/gi;
-const BILL_REF = /\b(H\.\s?R\.|S\.|H\.\s?J\.\s?Res\.|S\.\s?J\.\s?Res\.)\s?(\d+)/g;
+const RULE = /under an? (closed|structured|open|modified[- ](?:open|closed)) rule/giu;
+const BILL_REF = /\b(H\.\s?R\.|S\.|H\.\s?J\.\s?Res\.|S\.\s?J\.\s?Res\.)\s?(\d+)/gu;
 
-/** Bills a rule's text puts "under a closed rule": those named between the previous rule clause and this one. */
 export function closedRuleBills(text: string, of: BillId): BillId[] {
   const congress = billRef(of).congress;
   const out: BillId[] = [];
@@ -245,8 +241,10 @@ export function closedRuleBills(text: string, of: BillId): BillId[] {
   for (const m of text.matchAll(RULE)) {
     const start = Math.max(from, text.lastIndexOf("consideration of", m.index));
 
-    if (m[1]!.toLowerCase() === "closed") {
-      for (const b of text.slice(start, m.index).matchAll(BILL_REF)) out.push(parseBillId(`${b[1]} ${b[2]}`, congress));
+    if (m[1]?.toLowerCase() === "closed") {
+      for (const [, type = "", number = ""] of text.slice(start, m.index).matchAll(BILL_REF)) {
+        out.push(parseBillId(`${type} ${number}`, congress));
+      }
     }
 
     from = m.index + m[0].length;
@@ -257,35 +255,26 @@ export function closedRuleBills(text: string, of: BillId): BillId[] {
 
 export interface VoteClock {
   days: number;
-  /** What started the clock: the bill's introduction or a substitute amendment (e.g. "samdt2307"). */
-  from: "introduced" | string;
+  from: string;
   startedOn: string;
   voteOn: string;
 }
 
-/**
- * Days between the text the chamber voted on becoming public (introduction, or a later substitute amendment)
- * and the first recorded floor vote among `events`. null when no recorded vote happened: passage by unanimous
- * consent or voice vote is open to any one member's objection, so its speed is not counted as rushed.
- */
 export function voteClock(s: BillStatus, events: BillEvent[]): VoteClock | null {
-  const voteOn = events
-    .filter((e) => e.tally)
-    .map((e) => e.date)
-    .sort()[0];
+  const voteOn = events.flatMap((e) => (e.tally === null ? [] : [e.date])).toSorted()[0];
 
-  if (!voteOn) {
+  if (voteOn === undefined || voteOn === "") {
     return null;
   }
 
   const starts = [
     { from: "introduced", on: s.introducedOn },
     ...s.amendments
-      .filter((a) => /nature of a substitute/i.test(a.purpose ?? ""))
+      .filter((a) => /nature of a substitute/iu.test(a.purpose ?? ""))
       .map((a) => ({ from: a.id, on: a.submittedOn })),
-  ].filter((x): x is { from: string; on: string } => !!x.on && x.on <= voteOn);
+  ].flatMap(({ from, on }) => (on !== null && on !== "" && on <= voteOn ? [{ from, on }] : []));
 
-  const start = starts.sort((a, b) => a.on.localeCompare(b.on)).pop();
+  const start = starts.toSorted((a, b) => a.on.localeCompare(b.on)).at(-1);
 
   if (!start) {
     return null;

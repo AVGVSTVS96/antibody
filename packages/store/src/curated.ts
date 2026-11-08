@@ -3,17 +3,11 @@ import type { BillId } from "@antibody/core";
 export interface CuratedBill {
   id: BillId;
   name: string;
-  /** Party of the sponsor of the bill that became law, per its BILLSTATUS record. */
   ledBy: "R" | "D";
   sponsor: string;
   law: string;
 }
 
-/**
- * The bills `antibody build` x-rays for the site: seven led by each party, alternating. "Led by" is the sponsor's
- * party on the measure that became law (a vehicle bill's sponsor counts, as BILLSTATUS records it). Every id,
- * sponsor and law number was checked against GovInfo BILLSTATUS on 2026-10-13 (the last two on 2026-10-14).
- */
 export const CURATED: CuratedBill[] = [
   { id: "119-s-1582", name: "GENIUS Act", ledBy: "R", sponsor: "Sen. Hagerty [R-TN]", law: "119-27" },
   {

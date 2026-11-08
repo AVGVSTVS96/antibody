@@ -9,12 +9,6 @@ import { resolveAll } from "./resolve.ts";
 
 export { RULES } from "./rules.ts";
 
-/**
- * companies: SEC's ticker list as `companies` rows (id = CIK).
- * resolve: every lobbying client, PAC sponsor, donors' employer and stock trade → a company, as `resolutions` rows (id = the src).
- *   Runs per bill so new clients get resolved, but resolves everything incrementally: the model only sees new names.
- * benefits: companies tied to the bill (decision tied-stock): lobbied on it, or named in its text.
- */
 export const stages: Stage[] = [
   {
     name: "companies",
@@ -59,7 +53,12 @@ export const stages: Stage[] = [
     needs: ["resolve"],
     writes: ["benefits"],
     async run(ctx) {
-      const bill = ctx.bill!;
+      const { bill } = ctx;
+
+      if (bill === null) {
+        throw new Error("benefits runs per bill");
+      }
+
       const sections = (await readRows("sections")).filter((s) => s.bill_id === bill);
       const versions = (await readRows("versions")).filter((v) => v.bill_id === bill);
       const refs = (await readRows("lda_bill_refs")).filter((r) => r.bill_id === bill);
@@ -69,11 +68,12 @@ export const stages: Stage[] = [
       const lobbied = lobbiedBenefits(bill, refs, filings, resolutions, sections);
       const named = await namedBenefits(bill, versions, sections, await loadEdgar(), ctx.log, ctx.signal);
       await writeRows("benefits", bill, [...lobbied, ...named]);
-      const companies = (rows: { company_id: string }[]) => new Set(rows.map((r) => r.company_id)).size;
-      ctx.log(`${companies(lobbied)} companies lobbied on it, ${companies(named)} named in its text`);
+      ctx.log(`${companyCount(lobbied)} companies lobbied on it, ${companyCount(named)} named in its text`);
     },
   },
 ];
+
+const companyCount = (rows: { company_id: string }[]) => new Set(rows.map((r) => r.company_id)).size;
 
 export { norm, parseAsset, tokens } from "./normalize.ts";
 

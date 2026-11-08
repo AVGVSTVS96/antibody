@@ -5,7 +5,7 @@ import type { MovedBill, PartyAudit } from "./audit.ts";
 import { STEPS } from "./events.ts";
 import type { BillEvent } from "./events.ts";
 import { isSpecialRule } from "./rules.ts";
-import { FLAG_CUTOFF, MAX_FLAGGED, RULE_TEXT, RULES_VERSION, WEIGHTS } from "./score.ts";
+import { FLAG_CUTOFF, MAX_FLAGGED, RULE_TEXT, RULES_VERSION, SIGNALS, WEIGHTS } from "./score.ts";
 import type { Signal } from "./score.ts";
 import { SITE_URL } from "./site.ts";
 import type { Deploy } from "./site.ts";
@@ -17,57 +17,54 @@ export interface Reason {
   url: string;
 }
 
-/**
- * Bills at the cutoff, best first, at most `max`. A House rule is never flagged on its score: its votes are
- * party-line and a day after it is filed by design, so it is listed only for its riders (`withRiders`).
- */
 export const flaggedOf = (cs: Candidate[], max = MAX_FLAGGED) =>
   cs.filter((c) => !isSpecialRule(c.status) && c.score >= FLAG_CUTOFF).slice(0, max);
 
-/** The cap keeps a day's digest readable; a sweep of a whole Congress flags every bill at the cutoff. */
-export const flagCap = (r: { sweep?: number | null }) => (r.sweep ? Number.POSITIVE_INFINITY : MAX_FLAGGED);
+const isSweep = (sweep: number | null | undefined) => sweep !== undefined && sweep !== null && sweep !== 0;
 
-/** House rules with a section that does more than set up debate, newest first. */
+export const flagCap = (r: { sweep?: number | null }) => (isSweep(r.sweep) ? Number.POSITIVE_INFINITY : MAX_FLAGGED);
+
 export const withRiders = (cs: Candidate[]) =>
   cs
-    .filter((c) => c.evidence.riders?.length)
-    .sort(
+    .filter((c) => (c.evidence.riders?.length ?? 0) > 0)
+    .toSorted(
       (a, b) =>
         (b.events[0]?.date ?? "").localeCompare(a.events[0]?.date ?? "") || a.status.id.localeCompare(b.status.id),
     );
 
-/** What happened to a rule on the floor: its strongest step, with the vote. */
+const stepLine = (e: BillEvent) =>
+  `${STEPS[e.step].label} on ${fmtDate(e.date)}${e.tally ? ` (${e.tally.yeas}-${e.tally.nays})` : ""}`;
+
 const ruleOutcome = (c: Candidate) => {
   const top = c.events.find((e) => e.step === c.facts.step);
 
-  return top
-    ? `${STEPS[top.step].label} on ${fmtDate(top.date)}${top.tally ? ` (${top.tally.yeas}-${top.tally.nays})` : ""}`
-    : "no floor action";
+  return top ? stepLine(top) : "no floor action";
 };
+
+const partyOf = (c: Candidate) => {
+  const party = c.status.sponsor?.party ?? "";
+
+  return party === "" ? "unknown" : party;
+};
+
+const isLink = (url: string | null | undefined): url is string => url !== undefined && url !== null && url !== "";
 
 export const movedBills = (cs: Candidate[], max = MAX_FLAGGED): MovedBill[] => {
   const flagged = new Set(flaggedOf(cs, max));
 
-  return cs
-    .filter((c) => !isSpecialRule(c.status))
-    .map((c) => ({
-      bill: c.status.id,
-      party: c.status.sponsor?.party || "unknown",
-      score: c.score,
-      flagged: flagged.has(c),
-    }));
+  return cs.flatMap((c) =>
+    isSpecialRule(c.status) ? [] : [{ bill: c.status.id, party: partyOf(c), score: c.score, flagged: flagged.has(c) }],
+  );
 };
 
 export const DETAILED = 5;
 
-const SIGNALS = Object.keys(WEIGHTS) as Signal[];
 const num = (n: number) => n.toLocaleString("en-US");
 
 const fmtDate = (d: string) =>
   new Date(`${d}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-/** samdt2307 → S.Amdt.2307, hamdt12 → H.Amdt.12 */
-const amendmentDisplay = (id: string) => id.replace(/^samdt/, "S.Amdt.").replace(/^hamdt/, "H.Amdt.");
+const amendmentDisplay = (id: string) => id.replace(/^samdt/u, "S.Amdt.").replace(/^hamdt/u, "H.Amdt.");
 
 export function money(musd: number): string {
   const abs = Math.abs(musd);
@@ -76,7 +73,6 @@ export function money(musd: number): string {
   return `${musd < 0 ? "−" : "+"}${s}`;
 }
 
-/** A whole-bill deficit figure in words; under half a million dollars is no measurable effect, not "+$0M". */
 export function deficitEffect(musd: number): string {
   if (Math.abs(musd) < 0.5) {
     return "no measurable effect on the deficit";
@@ -85,20 +81,24 @@ export function deficitEffect(musd: number): string {
   return `${musd < 0 ? "cuts the deficit by" : "adds"} ${money(Math.abs(musd)).slice(1)}${musd < 0 ? "" : " to the deficit"}`;
 }
 
-/** Why the bill was flagged, one line per signal that fired, each with its source. Same templates for every bill. */
 export function reasons(c: Candidate): Reason[] {
   const { facts: f, evidence: ev, status: s } = c;
   const out: Reason[] = [];
 
-  const step = (e: BillEvent) =>
-    `${STEPS[e.step].label} on ${fmtDate(e.date)}${e.tally ? ` (${e.tally.yeas}-${e.tally.nays})` : ""}`;
+  const top = c.events.find((e) => e.step === f.step);
 
-  const top = c.events.find((e) => e.step === f.step)!;
-  const now = c.events.filter((e) => c.fresh.has(e.id)).sort((a, b) => STEPS[b.step].weight - STEPS[a.step].weight)[0];
-  const text = `${step(top)}${now && !c.fresh.has(top.id) ? `; new: ${step(now)}` : ""}`;
-  out.push({ signal: "moving", text: `${text[0]!.toUpperCase()}${text.slice(1)}`, url: top.url });
+  if (!top) {
+    throw new Error(`${s.id}: no event at its step "${f.step}"`);
+  }
 
-  if (f.newsStories && ev.news) {
+  const now = c.events
+    .filter((e) => c.fresh.has(e.id))
+    .toSorted((a, b) => STEPS[b.step].weight - STEPS[a.step].weight)[0];
+
+  const text = `${stepLine(top)}${now && !c.fresh.has(top.id) ? `; new: ${stepLine(now)}` : ""}`;
+  out.push({ signal: "moving", text: `${text.charAt(0).toUpperCase()}${text.slice(1)}`, url: top.url });
+
+  if (f.newsStories !== null && f.newsStories !== 0 && ev.news) {
     out.push({
       signal: "attention",
       text: `${num(f.newsStories)} news ${f.newsStories === 1 ? "story names" : "stories name"} it (left ${num(ev.news.bySide.left)}, center ${num(ev.news.bySide.center)}, right ${num(ev.news.bySide.right)}; sides weighted equally), ${fmtDate(ev.news.start)} to ${fmtDate(ev.news.end)}`,
@@ -115,38 +115,50 @@ export function reasons(c: Candidate): Reason[] {
   }
 
   const buried = ev.xray?.buried ?? [];
+  const [lead] = buried;
 
-  if (buried.length) {
+  if (lead) {
     out.push({
       signal: "buried",
-      text: `${buried.length} section${buried.length > 1 ? "s" : ""} labeled buried (inference), led by ${sectionLine(buried[0]!)}`,
-      url: buried[0]!.url || congressGovUrl(s.id),
+      text: `${buried.length} section${buried.length > 1 ? "s" : ""} labeled buried (inference), led by ${sectionLine(lead)}`,
+      url: isLink(lead.url) ? lead.url : congressGovUrl(s.id),
     });
   }
 
-  if (f.lateSections) {
+  if (f.lateSections !== null && f.lateSections !== 0) {
     const x = ev.xray?.lateSections;
-    out.push(
-      ev.lateFrom === "x-ray" && x
-        ? {
-            signal: "late",
-            text: `${f.lateSections} section${f.lateSections > 1 ? "s first appear" : " first appears"} after the first chamber passed it${x[0] ? `, e.g. Sec. ${x[0].num} "${x[0].heading}"` : ""}`,
-            url: x[0]?.url || ev.newest?.xmlUrl || congressGovUrl(s.id),
-          }
-        : {
-            signal: "late",
-            text: `${f.lateSections} section${f.lateSections > 1 ? "s" : ""} in the ${ev.newest!.name} text have headings not in the ${ev.before!.name} text, the last before the first floor vote${ev.newSectionSamples[0] ? `, e.g. Sec. ${ev.newSectionSamples[0]}` : ""}`,
-            url: ev.newest!.xmlUrl,
-          },
-    );
+
+    if (ev.lateFrom === "x-ray" && x) {
+      const [example] = x;
+
+      out.push({
+        signal: "late",
+        text: `${f.lateSections} section${f.lateSections > 1 ? "s first appear" : " first appears"} after the first chamber passed it${example ? `, e.g. Sec. ${example.num} "${example.heading}"` : ""}`,
+        url: [example?.url, ev.newest?.xmlUrl].find(isLink) ?? congressGovUrl(s.id),
+      });
+    } else {
+      const { newest, before } = ev;
+
+      if (!newest || !before) {
+        throw new Error(`${s.id}: late sections from a text diff need its newest and before-floor texts`);
+      }
+
+      const [sample = ""] = ev.newSectionSamples;
+
+      out.push({
+        signal: "late",
+        text: `${f.lateSections} section${f.lateSections > 1 ? "s" : ""} in the ${newest.name} text have headings not in the ${before.name} text, the last before the first floor vote${sample === "" ? "" : `, e.g. Sec. ${sample}`}`,
+        url: newest.xmlUrl,
+      });
+    }
   }
 
-  if (f.lobbyingFilings) {
+  if (f.lobbyingFilings !== null && f.lobbyingFilings !== 0) {
     out.push({
       signal: "lobbying",
       text:
         ev.lobbyingFrom === "x-ray"
-          ? `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} name${f.lobbyingFilings === 1 ? "s" : ""} it${ev.lobbyingClients !== null ? ` (${num(ev.lobbyingClients)} client${ev.lobbyingClients === 1 ? "" : "s"})` : ""}`
+          ? `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} name${f.lobbyingFilings === 1 ? "s" : ""} it${ev.lobbyingClients === null ? "" : ` (${num(ev.lobbyingClients)} client${ev.lobbyingClients === 1 ? "" : "s"})`}`
           : `${num(f.lobbyingFilings)} lobbying filing${f.lobbyingFilings === 1 ? "" : "s"} cite${f.lobbyingFilings === 1 ? "s" : ""} its number (read ${num(ev.lobbyingChecked?.checked ?? 0)} of ${num(ev.lobbyingChecked?.searched ?? 0)} search hits${ev.lobbyingChecked && ev.lobbyingChecked.checked < ev.lobbyingChecked.searched ? `, so at least ${num(f.lobbyingFilings)}` : ""}; the x-ray also matches names)`,
       url: ev.lobbyingUrls.at(-1) ?? congressGovUrl(s.id),
     });
@@ -173,12 +185,12 @@ export function reasons(c: Candidate): Reason[] {
   if (f.closestVote && c.sub.divisive !== null && c.sub.divisive >= 0.8) {
     out.push({
       signal: "divisive",
-      text: `Close vote: ${f.closestVote.yeas}-${f.closestVote.nays}${ev.closestVoteOn ? ` (${ev.closestVoteOn})` : ""}`,
+      text: `Close vote: ${f.closestVote.yeas}-${f.closestVote.nays}${isLink(ev.closestVoteOn) ? ` (${ev.closestVoteOn})` : ""}`,
       url: ev.closestVoteUrl ?? congressGovUrl(s.id),
     });
   }
 
-  if (f.words && f.words >= 20_000) {
+  if (f.words !== null && f.words >= 20_000) {
     out.push({
       signal: "size",
       text: `${f.wordsCounted ? "" : "about "}${num(f.words)} words in the ${ev.newest?.name ?? "newest"} text`,
@@ -209,7 +221,6 @@ export interface Links {
   text: string | null;
 }
 
-/** The bill's page on the live site once its bundle is published; ANTIBODY_PAGE_URL (with `{id}`) overrides the address. */
 export const pageUrl = (id: BillId, published = true) =>
   published ? (process.env.ANTIBODY_PAGE_URL ?? `${SITE_URL}/bill/{id}`).replace("{id}", id) : null;
 
@@ -229,7 +240,7 @@ const byParty = (cs: Candidate[]) => {
   const out: Record<string, number> = {};
 
   for (const c of cs) {
-    const p = c.status.sponsor?.party || "unknown";
+    const p = partyOf(c);
     out[p] = (out[p] ?? 0) + 1;
   }
 
@@ -253,7 +264,7 @@ export function digestJson(r: WatchResult, earlier: MovedBill[][] = []) {
     alreadyReported: r.alreadyReported,
     xrayed: r.xrayed,
     site: r.site,
-    cutoff: { score: FLAG_CUTOFF, max: r.sweep ? null : MAX_FLAGGED },
+    cutoff: { score: FLAG_CUTOFF, max: isSweep(r.sweep) ? null : MAX_FLAGGED },
     belowCutoff: r.candidates.length - flagged.length,
     highestBelow: best && { display: billDisplay(best.status.id), score: best.score },
     movedBills: moved,
@@ -262,7 +273,7 @@ export function digestJson(r: WatchResult, earlier: MovedBill[][] = []) {
       display: billDisplay(c.status.id),
       title: c.status.title,
       outcome: ruleOutcome(c),
-      riders: c.evidence.riders!,
+      riders: c.evidence.riders ?? [],
       links: links(c),
     })),
     partyAudit: auditParties([...earlier, moved]),
@@ -308,7 +319,7 @@ export type Digest = ReturnType<typeof digestJson>;
 
 const tally = (counts: Record<string, number>) =>
   Object.entries(counts)
-    .sort(([a], [b]) => a.localeCompare(b))
+    .toSorted(([a], [b]) => a.localeCompare(b))
     .map(([p, n]) => `${p} ${n}`)
     .join(" · ") || "none";
 
@@ -344,6 +355,12 @@ const deployText = (d: Deploy) => {
     case "failed": {
       return `deploy failed (${d.error}), the previous live site is unchanged`;
     }
+
+    default: {
+      const unknown: never = d;
+
+      return unknown;
+    }
   }
 };
 
@@ -355,7 +372,7 @@ const cell = (v: number | null) => (v === null ? "—" : v.toFixed(2));
 export function digestMarkdown(d: Digest): string {
   const L: string[] = [];
 
-  if (d.sweep) {
+  if (isSweep(d.sweep)) {
     L.push(
       `# antibody sweep · ${d.sweep}th Congress · ${d.date}`,
       "",
@@ -391,7 +408,7 @@ export function digestMarkdown(d: Digest): string {
   for (const b of d.flagged.slice(0, DETAILED)) {
     L.push("", `## ${b.rank}. ${b.display} · ${b.shortTitle ?? b.title}`, "");
     const sponsor = b.sponsor ? b.sponsor.name : "no sponsor listed";
-    L.push(`Score **${b.score}** · ${sponsor}${b.policyArea ? ` · ${b.policyArea}` : ""}`, "");
+    L.push(`Score **${b.score}** · ${sponsor}${isLink(b.policyArea) ? ` · ${b.policyArea}` : ""}`, "");
 
     for (const r of b.reasons) {
       L.push(`- ${r.text} ([source](${r.url}))`);
@@ -402,7 +419,7 @@ export function digestMarkdown(d: Digest): string {
     if (b.xray) {
       L.push(
         b.xray.ok
-          ? `X-ray: done in ${b.xray.seconds}s${b.xray.headlineHits !== null ? ` · ${b.xray.headlineHits} news articles on the bill as a whole` : ""}${b.xray.bundle ? ` · bundle ${b.xray.bundle}` : " · no bundle yet"}`
+          ? `X-ray: done in ${b.xray.seconds}s${b.xray.headlineHits === null ? "" : ` · ${b.xray.headlineHits} news articles on the bill as a whole`}${isLink(b.xray.bundle) ? ` · bundle ${b.xray.bundle}` : " · no bundle yet"}`
           : `X-ray: failed (${b.xray.error}) · log ${b.xray.log}`,
       );
     }
@@ -411,10 +428,10 @@ export function digestMarkdown(d: Digest): string {
     L.push(
       "",
       [
-        l.page ? `[page](${l.page})` : "page: not published yet",
+        isLink(l.page) ? `[page](${l.page})` : "page: not published yet",
         `[congress.gov](${l.congress})`,
         `[actions](${l.actions})`,
-        l.text ? `[newest text](${l.text})` : null,
+        isLink(l.text) ? `[newest text](${l.text})` : null,
         `[BILLSTATUS](${l.billstatus})`,
       ]
         .filter(Boolean)

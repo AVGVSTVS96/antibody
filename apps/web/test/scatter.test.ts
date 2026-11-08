@@ -1,10 +1,22 @@
 import { expect, test } from "bun:test";
+import { Bundle, must } from "@antibody/core";
+import genius from "../fixtures/119-s-1582.bundle.json";
 import type { Dot } from "../src/lib/derive.ts";
+import { buildModel } from "../src/lib/model.ts";
 import { frameFor, notes } from "../src/lib/scatter.ts";
 import type { Placed } from "../src/lib/scatter.ts";
 
-const point = (id: string, kind: Dot["kind"], cx: number, cy: number, hits: number, musd: number) =>
-  ({ v: { s: { id, num: id, late: false, score: null } }, kind, cx, cy, hits, musd, r: 7 }) as unknown as Placed;
+const view = must(buildModel(Bundle.parse(genius)).sections[0], "a fixture section");
+
+const point = (id: string, kind: Dot["kind"], cx: number, cy: number, hits: number, musd: number): Placed => ({
+  v: { ...view, s: { ...view.s, id, num: id, late: false, score: null } },
+  kind,
+  cx,
+  cy,
+  hits,
+  musd,
+  r: 7,
+});
 
 test("a note never lands on the chart's title lines or the quiet-and-costly label", () => {
   for (const width of [390, 1000]) {

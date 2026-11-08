@@ -1,7 +1,9 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { BillId, Row } from "@antibody/core";
+import { must } from "@antibody/core";
 import { paths } from "@antibody/core/node";
+import { z } from "zod";
 import type { Lineage } from "./lineage.ts";
 import { headingWords, intersect } from "./text.ts";
 
@@ -47,17 +49,16 @@ export interface CounterpartStep {
 }
 
 const preview = (l: Lineage, code: string, chars = 700) => {
-  const s = l.history[code]!;
+  const s = must(l.history[code], `${l.id}'s step in ${code}`);
 
   return `${s.path} "${s.heading}": ${l.last.text.slice(0, chars)}`;
 };
 
-/** Added sections worth showing the model for one removed section: shared heading words, cited law or wording. */
 export function candidates(r: Lineage, added: Lineage[], top = 6): Lineage[] {
   const hw = headingWords(r.last.heading);
 
   return added
-    .map((a) => {
+    .flatMap((a) => {
       const ahw = headingWords(a.last.heading);
       const shared = intersect(hw, ahw);
       const heading = shared / Math.max(1, hw.size + ahw.size - shared);
@@ -65,30 +66,42 @@ export function candidates(r: Lineage, added: Lineage[], top = 6): Lineage[] {
       const small = Math.min(r.last.sh.size, a.last.sh.size);
       const wording = small ? intersect(r.last.sh, a.last.sh) / small : 0;
 
-      return { a, score: heading + cites + wording, any: shared > 0 || cites > 0 || wording >= 0.1 };
+      return shared > 0 || cites > 0 || wording >= 0.1 ? [{ a, score: heading + cites + wording }] : [];
     })
-    .filter((c) => c.any)
-    .sort((x, y) => y.score - x.score)
+    .toSorted((x, y) => y.score - x.score)
     .slice(0, top)
     .map((c) => c.a);
 }
 
-interface Answer {
-  pairs: Pick[];
-  costUsd: number | null;
-}
+const Pick = z.object({
+  removed: z.string(),
+  added: z.string().nullable(),
+  confidence: z.number(),
+  reason: z.string(),
+});
 
-/** One model call, cached by its exact prompt in data/bills/llm/ so a rerun never pays twice. */
+type Pick = z.infer<typeof Pick>;
+
+const Answer = z.object({ pairs: z.array(Pick), costUsd: z.number().nullable() });
+
+type Answer = z.infer<typeof Answer>;
+
+const Result = z.object({
+  structured_output: z.object({ pairs: z.array(Pick) }),
+  is_error: z.boolean().optional(),
+  total_cost_usd: z.number().optional(),
+});
+
 async function ask(prompt: string, cacheKey: string): Promise<Answer & { fresh: boolean }> {
   const file = join(CACHE, `${cacheKey}.json`);
 
   if (await Bun.file(file).exists()) {
-    return { ...(await Bun.file(file).json()), fresh: false };
+    return { ...Answer.parse(await Bun.file(file).json()), fresh: false };
   }
 
-  let res: { structured_output?: { pairs: Pick[] }; total_cost_usd?: number; is_error?: boolean } = {};
+  let answer: Answer | undefined;
 
-  for (let attempt = 1; ; attempt++) {
+  for (let attempt = 1; answer === undefined; attempt++) {
     const proc = Bun.spawn(
       [
         "claude",
@@ -118,41 +131,25 @@ async function ask(prompt: string, cacheKey: string): Promise<Answer & { fresh: 
 
     const [out, err] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
 
-    if ((await proc.exited) === 0) {
-      res = JSON.parse(out);
+    const result = (await proc.exited) === 0 ? Result.safeParse(JSON.parse(out)).data : undefined;
 
-      if (res.structured_output && !res.is_error) {
-        break;
-      }
-    }
-
-    if (attempt >= 3) {
+    if (result && result.is_error !== true) {
+      answer = { pairs: result.structured_output.pairs, costUsd: result.total_cost_usd ?? null };
+    } else if (attempt >= 3) {
       throw new Error(`claude -p failed ${attempt}x: ${(err || out).slice(0, 500)}`);
+    } else {
+      await Bun.sleep(5000 * attempt);
     }
-
-    await Bun.sleep(5000 * attempt);
   }
 
-  const answer: Answer = { pairs: res.structured_output?.pairs ?? [], costUsd: res.total_cost_usd ?? null };
   await mkdir(CACHE, { recursive: true });
   await Bun.write(file, JSON.stringify(answer));
 
   return { ...answer, fresh: true };
 }
 
-interface Pick {
-  removed: string;
-  added: string | null;
-  confidence: number;
-  reason: string;
-}
+export const canRun = () => Bun.which("claude") !== null && (process.env.CI === undefined || process.env.CI === "");
 
-export const canRun = () => Bun.which("claude") !== null && !process.env.CI;
-
-/**
- * Pairs removed sections with added ones that rewrite them, which text matching misses (House SNAP work rules → the
- * Senate's). Each pair is an inference resting on both sections, with the model's reason as evidence.
- */
 export async function counterparts(
   bill: BillId,
   steps: CounterpartStep[],
@@ -197,14 +194,16 @@ export async function counterparts(
     const prompt = `Earlier version: ${step.fromName}. Later version: ${step.toName}.\n\n${blocks.join("\n\n")}`;
     const key = new Bun.CryptoHasher("sha256").update(`${MODEL}\n${SYSTEM}\n${prompt}`).digest("hex").slice(0, 24);
 
-    const answer = await ask(prompt, `${bill}-${key}`).catch((error: Error) => {
+    let answer: Awaited<ReturnType<typeof ask>>;
+
+    try {
+      answer = await ask(prompt, `${bill}-${key}`);
+    } catch (error) {
       failed++;
-      log(`counterparts: one batch of ${items.length} left unpaired: ${error.message}`);
+      log(
+        `counterparts: one batch of ${items.length} left unpaired: ${error instanceof Error ? error.message : String(error)}`,
+      );
 
-      return null;
-    });
-
-    if (!answer) {
       return;
     }
 
@@ -214,9 +213,9 @@ export async function counterparts(
 
     for (const p of answer.pairs) {
       const r = keys.get(p.removed);
-      const a = p.added ? keys.get(p.added) : undefined;
+      const a = p.added === null ? undefined : keys.get(p.added);
 
-      if (!r || !a || !p.added?.startsWith(`${p.removed}.`) || p.confidence < 0.5) {
+      if (!r || !a || p.added?.startsWith(`${p.removed}.`) !== true || p.confidence < 0.5) {
         continue;
       }
 
@@ -232,7 +231,10 @@ export async function counterparts(
           model: MODEL,
           reason: p.reason,
           step: `${step.from}->${step.to}`,
-          candidates: items.find((x) => x.r === r)!.cands.map((c) => c.id),
+          candidates: must(
+            items.find((x) => x.r === r),
+            "the batch item a pair came from",
+          ).cands.map((c) => c.id),
         },
       });
     }

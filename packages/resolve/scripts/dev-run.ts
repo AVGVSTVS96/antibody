@@ -1,20 +1,42 @@
-/**
- * Runs the resolver over dev-mentions.json and writes the outcomes for measurement.
- *   bun packages/resolve/scripts/dev-run.ts [--no-llm]
- */
 import { join } from "node:path";
 import { paths } from "@antibody/core/node";
 import { loadEdgar } from "../src/edgar.ts";
+import { isBoolean, isObject, isText, isTextOrNull } from "../src/is.ts";
 import { CompanyIndex } from "../src/match.ts";
 import type { Mention } from "../src/match.ts";
 import { resolveAll } from "../src/resolve.ts";
 
 const dir = join(paths.raw("entities"), "resolve");
-const all = (await Bun.file(join(dir, "dev-mentions.json")).json()) as Mention[];
+const SOURCES: readonly unknown[] = ["client", "pac", "employer", "trade"] satisfies Mention["source"][];
+
+const isMention = (v: unknown): v is Mention =>
+  isObject(v) &&
+  "src" in v &&
+  isText(v.src) &&
+  "source" in v &&
+  SOURCES.includes(v.source) &&
+  "name" in v &&
+  isText(v.name) &&
+  "ticker" in v &&
+  isTextOrNull(v.ticker) &&
+  "context" in v &&
+  isTextOrNull(v.context) &&
+  "restsOn" in v &&
+  Array.isArray(v.restsOn) &&
+  v.restsOn.every(isText) &&
+  (!("reviewable" in v) || isBoolean(v.reviewable));
+
+const parsed: unknown = await Bun.file(join(dir, "dev-mentions.json")).json();
+
+if (!Array.isArray(parsed) || !parsed.every(isMention)) {
+  throw new Error("dev-mentions.json: expected the Mention[] dev-mentions.ts prints");
+}
+
+const all = parsed;
 const sampleArg = process.argv.indexOf("--sample");
 
 const mentions =
-  sampleArg > 0 ? all.filter((_, i) => i % Math.ceil(all.length / +process.argv[sampleArg + 1]!) === 0) : all;
+  sampleArg > 0 ? all.filter((_, i) => i % Math.ceil(all.length / Number(process.argv[sampleArg + 1])) === 0) : all;
 
 const t0 = performance.now();
 const index = new CompanyIndex(await loadEdgar());
@@ -41,7 +63,7 @@ for (const o of r.outcomes) {
 
 console.error(
   [...tally]
-    .sort()
+    .toSorted(([a], [b]) => (a < b ? -1 : 1))
     .map(([k, v]) => `${k}: ${v}`)
     .join("\n"),
 );

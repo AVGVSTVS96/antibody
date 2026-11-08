@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { TABLES } from "@antibody/core";
+import { TABLES, must } from "@antibody/core";
 import { buildLines, locator, reconcile } from "../src/lines.ts";
 import type { Glance, Parsed, ParsedRow } from "../src/parsed.ts";
 
@@ -82,6 +82,8 @@ const src = {
   archiveUrl: "https://web.archive.org/web/20250701000000/https://www.cbo.gov/system/files/2025-07/hr9.xlsx",
   pdfUrl: null,
   pdfArchiveUrl: null,
+  numbering: null,
+  carried: null,
 };
 
 const ids = (n: string) => `119-hr-9@ih:sec:${n}`;
@@ -100,16 +102,31 @@ test("every line is a valid cbo_lines row", () => {
 
 test("a grouped CBO line stays a fact; its even split per section is marked and rests on it, sign kept", () => {
   const { lines } = buildLines(src, parsed, null, ids);
-  const group = lines.find((l) => l.line_kind === "group" && l.measure === "outlays")!;
+
+  const group = must(
+    lines.find((l) => l.line_kind === "group" && l.measure === "outlays"),
+    "group",
+  );
+
   expect(group).toMatchObject({ section_nums: ["102", "103"], total_musd: -21, split: "exact" });
-  const s102 = lines.find((l) => l.id === "119-hr-9.cbo-1:s102:outlays")!;
+
+  const s102 = must(
+    lines.find((l) => l.id === "119-hr-9.cbo-1:s102:outlays"),
+    "s102",
+  );
+
   expect(s102).toMatchObject({ split: "even_split", total_musd: -10.5, rests_on: [`cbo_lines/${group.id}`] });
   expect(s102.section_ids).toEqual(["119-hr-9@ih:sec:102"]);
 });
 
 test("a section's deficit rests on its outlay and revenue lines and cites every range it adds", () => {
   const { lines } = buildLines(src, parsed, null, ids);
-  const d = lines.find((l) => l.id === "119-hr-9.cbo-1:s101:deficit")!;
+
+  const d = must(
+    lines.find((l) => l.id === "119-hr-9.cbo-1:s101:deficit"),
+    "d",
+  );
+
   expect(d.total_musd).toBe(-45);
   expect(d.rests_on).toEqual(["cbo_lines/119-hr-9.cbo-1:s101:outlays", "cbo_lines/119-hr-9.cbo-1:s101:revenues"]);
   expect(d.source_locator).toBe("Title I sheet, cells A10:O11; Title I sheet, cells A30:O31");
@@ -118,7 +135,7 @@ test("a section's deficit rests on its outlay and revenue lines and cites every 
 
 test("a title that doesn't reconcile ships CBO's total as a group, not per-section numbers", () => {
   const broken = structuredClone(parsed);
-  broken.sheets[0]!.rows[3]!.values = v(0, -99);
+  must(must(broken.sheets[0], "the sheet").rows[3], "the fourth row").values = v(0, -99);
   const { lines, reconcile: r } = buildLines(src, broken, null, ids);
   expect(r.failing).toEqual(["Title I|direct_spending|outlays"]);
   expect(lines.some((l) => l.id.endsWith(":s101:outlays"))).toBe(false);

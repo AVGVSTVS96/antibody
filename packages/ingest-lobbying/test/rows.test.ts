@@ -55,6 +55,14 @@ test("a later amendment for the same registrant, client and period supersedes th
   expect(rows.map((r) => r.superseded)).toEqual([true, false, false]);
 });
 
+const line = (id: string, filing_id: string) => ({
+  id,
+  filing_id,
+  phase: "bill" as const,
+  quote: "S.1582",
+  section_nums: [],
+});
+
 test("spend counts in-house expenses over outside income per client-quarter, and the share is an inference", () => {
   const filings = new Map(
     [
@@ -65,14 +73,6 @@ test("spend counts in-house expenses over outside income per client-quarter, and
       filing("other", { client_key: "tether", lda_client_id: "c9", amount_usd: null, amount_kind: null }),
     ].map((f) => [f.id, f]),
   );
-
-  const line = (id: string, filing_id: string) => ({
-    id,
-    filing_id,
-    phase: "bill" as const,
-    quote: "S.1582",
-    section_nums: [],
-  });
 
   const rows = spendRows("119-s-1582", filings, [
     line("inhouse#0#119-s-1582", "inhouse"),
@@ -87,18 +87,18 @@ test("spend counts in-house expenses over outside income per client-quarter, and
     expect(TABLES.lda_spend.schema.safeParse(r).success).toBe(true);
   }
 
-  const visa = rows.find((r) => r.client_key === "visa")!;
-  expect(visa.reports).toBe(3);
-  expect(visa.quarters).toBe(2);
-  expect(visa.total_usd).toBe(1_100_000);
-  expect(visa.share_usd).toBe(225_000);
-  expect(visa.total_rests_on).toEqual(["lda_filings/inhouse", "lda_filings/q2"]);
-  const tether = rows.find((r) => r.client_key === "tether")!;
-  expect(tether.total_usd).toBeNull();
-  const whole = rows.find((r) => r.client_key === null)!;
-  expect(whole.total_usd).toBe(1_100_000);
-  expect(whole.reports).toBe(4);
-  expect(whole.rests_on).toEqual(["lda_spend/119-s-1582:visa#share", "lda_spend/119-s-1582:tether#total"]);
+  const visa = rows.find((r) => r.client_key === "visa");
+  expect(visa?.reports).toBe(3);
+  expect(visa?.quarters).toBe(2);
+  expect(visa?.total_usd).toBe(1_100_000);
+  expect(visa?.share_usd).toBe(225_000);
+  expect(visa?.total_rests_on).toEqual(["lda_filings/inhouse", "lda_filings/q2"]);
+  const tether = rows.find((r) => r.client_key === "tether");
+  expect(tether?.total_usd).toBeNull();
+  const whole = rows.find((r) => r.client_key === null);
+  expect(whole?.total_usd).toBe(1_100_000);
+  expect(whole?.reports).toBe(4);
+  expect(whole?.rests_on).toEqual(["lda_spend/119-s-1582:visa#share", "lda_spend/119-s-1582:tether#total"]);
 });
 
 test("BILLSTATUS: current and portion titles, law and enactment date", () => {

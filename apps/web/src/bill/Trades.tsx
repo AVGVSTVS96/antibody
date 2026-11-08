@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { isPassage, layMarks, memberLine, monthly, monthName, niceMax, passageDate, traders } from "../lib/derive.ts";
+import { useMemo, useState } from "react";
+import { isPassage, layMarks, memberLine, monthly, monthName, niceMax, traders } from "../lib/derive.ts";
 import { count, day } from "../lib/format.ts";
 import { useWidth } from "../lib/hooks.ts";
 import type { BillModel } from "../lib/model.ts";
@@ -13,18 +13,18 @@ export function Trades({ m }: { m: BillModel }) {
   const top = all.slice(0, 6);
   const peak = Math.max(1, ...top.map((t) => t.v.tradeCount));
   const unread = m.unread.R + m.unread.D + m.unread.I;
-  const cut = passageDate(m);
   const own = m.b.votes.some((r) => isPassage(r));
   const [open, setOpen] = useState(false);
   const [shown, setShown] = useState(40);
   const span = m.span;
 
-  const widest = all.length
-    ? [all.flatMap((t) => t.v.trades.flatMap((x) => x.props.events.map((e) => e.date))).sort()]
-    : [];
+  const law = (m.b.bill.law ?? "") !== "";
+  const dates = all.flatMap((t) => t.v.trades.flatMap((x) => x.props.events.map((e) => e.date))).toSorted();
+  const [earliest] = dates;
+  const latest = dates.at(-1);
 
-  const dates = widest[0] ?? [];
-  const range = dates.length ? `${monthShort(dates[0]!)} to ${monthShort(dates.at(-1)!)}` : "";
+  const range =
+    earliest === undefined || latest === undefined ? "" : `${monthShort(earliest)} to ${monthShort(latest)}`;
 
   return (
     <Section id="trades" title="Members who traded tied stock">
@@ -38,7 +38,7 @@ export function Trades({ m }: { m: BillModel }) {
             {m.tradersDuring} of {SEATS}
           </p>
           <p className="seat-l">
-            members traded a tied stock between the first text and {m.b.bill.law ? "signing" : "the latest action"}.
+            members traded a tied stock between the first text and {law ? "signing" : "the latest action"}.
           </p>
           <SeatGrid filled={m.tradersDuring} />
           <p className="fine">
@@ -58,7 +58,7 @@ export function Trades({ m }: { m: BillModel }) {
           <p className="bar-key">
             <span>
               <i className="b" />
-              Before {own ? "the vote" : m.b.bill.law ? "signing" : "the latest action"}
+              Before {own ? "the vote" : law ? "signing" : "the latest action"}
             </span>
             <span>
               <i className="a" />
@@ -141,8 +141,7 @@ const monthShort = (iso: string) =>
   });
 
 function SeatGrid({ filled }: { filled: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const w = useWidth(ref, 350);
+  const [ref, w] = useWidth(350);
   const pitch = 10.6;
   const cols = Math.max(10, Math.floor((w + 2) / pitch));
   const rows = Math.ceil(SEATS / cols);
@@ -154,12 +153,12 @@ function SeatGrid({ filled }: { filled: number }) {
         width={w}
         height={rows * step}
         viewBox={`0 0 ${w} ${rows * step}`}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an inline <svg> chart has no <img> source; role="img" gives it one accessible name
         role="img"
         aria-label={`${filled} of ${SEATS} seats filled`}
       >
         {Array.from({ length: SEATS }, (_, i) => (
           <circle
-            // biome-ignore lint/suspicious/noArrayIndexKey: seats are positional
             key={i}
             cx={(i % cols) * step + step / 2}
             cy={Math.floor(i / cols) * step + step / 2}
@@ -174,8 +173,7 @@ function SeatGrid({ filled }: { filled: number }) {
 
 function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
   const { months, total } = useMemo(() => monthly(m), [m]);
-  const box = useRef<HTMLDivElement>(null);
-  const w = useWidth(box, 1200);
+  const [box, w] = useWidth(1200);
   const [hover, setHover] = useState<number | null>(null);
 
   if (!months.length) {
@@ -189,19 +187,19 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
   const top = niceMax(Math.max(...months.map((x) => x.n)));
   const bw = (w - L - R) / months.length;
   const X = (i: number) => L + i * bw;
-  const peak = months.reduce((a, x) => (x.n > a.n ? x : a), months[0]!);
+  const peak = months.reduce((a, x) => (x.n > a.n ? x : a));
   const idx = (iso: string) => months.findIndex((x) => x.key === iso.slice(0, 7));
-  const firstPass = m.b.votes.filter(isPassage).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const firstPass = m.b.votes.filter(isPassage).toSorted((a, b) => a.date.localeCompare(b.date))[0];
 
   const marks = [
-    span && { at: span[0], label: `First text, ${day(span[0]).replace(/, \d{4}$/, "")}` },
+    span && { at: span[0], label: `First text, ${day(span[0]).replace(/, \d{4}$/u, "")}` },
     firstPass && {
       at: firstPass.date,
-      label: `${firstPass.chamber} passes, ${day(firstPass.date).replace(/, \d{4}$/, "")}`,
+      label: `${firstPass.chamber} passes, ${day(firstPass.date).replace(/, \d{4}$/u, "")}`,
     },
     span && {
       at: span[1],
-      label: `${m.b.bill.law ? "Signed" : "Latest action"}, ${day(span[1]).replace(/, \d{4}$/, "")}`,
+      label: `${(m.b.bill.law ?? "") === "" ? "Latest action" : "Signed"}, ${day(span[1]).replace(/, \d{4}$/u, "")}`,
     },
   ].filter((x): x is { at: string; label: string } => !!x && idx(x.at) >= 0);
 
@@ -231,6 +229,7 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
         width={w}
         height={H}
         viewBox={`0 0 ${w} ${H}`}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an inline <svg> chart has no <img> source; role="img" gives it one accessible name
         role="img"
         aria-label={`Trades per month, ${months.length} months, ${total} trades`}
       >
@@ -260,7 +259,7 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
             height={base - Y(x.n)}
             rx="1.5"
             fill={x.during || !span ? "var(--ink)" : "var(--quiet-dot)"}
-            opacity={hover == null || hover === i ? 1 : 0.55}
+            opacity={hover === null || hover === i ? 1 : 0.55}
             onPointerEnter={() => {
               setHover(i);
             }}
@@ -272,16 +271,20 @@ function Monthly({ m, span }: { m: BillModel; span: [string, string] | null }) {
           </rect>
         ))}
         <line x1={L} x2={w - R} y1={base} y2={base} stroke="var(--ink-3)" />
-        {years.map(({ x, i }, k) => (
-          <g key={x.key}>
-            <line x1={X(i)} x2={X(i)} y1={base} y2={base + 5} stroke="var(--ink-3)" />
-            {!(i === 0 && years[k + 1] && (years[k + 1]!.i - i) * bw < 64) && (
-              <text x={X(i) + 4} y={base + 20} className="ax">
-                {i === 0 && !x.key.endsWith("-01") ? monthShort(`${x.key}-01`) : x.key.slice(0, 4)}
-              </text>
-            )}
-          </g>
-        ))}
+        {years.map(({ x, i }, k) => {
+          const next = years[k + 1];
+
+          return (
+            <g key={x.key}>
+              <line x1={X(i)} x2={X(i)} y1={base} y2={base + 5} stroke="var(--ink-3)" />
+              {!(i === 0 && next && (next.i - i) * bw < 64) && (
+                <text x={X(i) + 4} y={base + 20} className="ax">
+                  {i === 0 && !x.key.endsWith("-01") ? monthShort(`${x.key}-01`) : x.key.slice(0, 4)}
+                </text>
+              )}
+            </g>
+          );
+        })}
         {laid.map((k) => (
           <g key={k.at + k.label} pointerEvents="none">
             <line x1={k.x} x2={k.x} y1={4 + k.row * 16} y2={base} stroke="var(--ink)" strokeDasharray="1 3" />

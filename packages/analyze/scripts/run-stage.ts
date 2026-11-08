@@ -11,7 +11,7 @@ if (!stage) {
 }
 
 await stage.run({
-  bill: bill ? parseBillId(bill) : null,
+  bill: bill === undefined || bill === "" ? null : parseBillId(bill),
   refresh: Bun.argv.includes("--refresh"),
   log: (m) => {
     console.log(`  ${name}: ${m}`);

@@ -7,9 +7,10 @@ import { namedMembers } from "./staff.ts";
 
 export type Phase = Row<"lda_bill_refs">["phase"];
 
-/** Before the quarter of enactment, that quarter, or after. A bill that never became law is always "bill". */
+const nonEmpty = (s: string | null | undefined) => (s === null || s === undefined || s === "" ? null : s);
+
 export function phaseOf(start: string, end: string, enactedOn: string | null): Phase {
-  if (!enactedOn || end < enactedOn) {
+  if (enactedOn === null || enactedOn === "" || end < enactedOn) {
     return "bill";
   }
 
@@ -21,23 +22,19 @@ export function phaseOf(start: string, end: string, enactedOn: string | null): P
 }
 
 const SUFFIXES =
-  /\b(THE|INC|INCORPORATED|LLC|L L C|LP|LLP|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HOLDINGS?|GROUP|N A|NA|USA|U S A|US|U S|AND AFFILIATES|AFFILIATES|AND ITS SUBSIDIARIES|AND VARIOUS SUBSIDIARIES|SUBSIDIARIES)\b/g;
+  /\b(THE|INC|INCORPORATED|LLC|L L C|LP|LLP|CORP|CORPORATION|CO|COMPANY|LTD|LIMITED|PLC|HOLDINGS?|GROUP|N A|NA|USA|U S A|US|U S|AND AFFILIATES|AFFILIATES|AND ITS SUBSIDIARIES|AND VARIOUS SUBSIDIARIES|SUBSIDIARIES)\b/gu;
 
-/**
- * lda.gov gives every registrant/client pair its own client id, so one company shows up under many ids.
- * Clients merge on this key: the name without legal suffixes or an "on behalf of" prefix, as a slug ("visa").
- */
 export function clientKey(name: string, ldaClientId: number | string): string {
   const key = name
     .toUpperCase()
-    .replace(/^.*\b(?:OBO|ON BEHALF OF|O\/B\/O)\b/, "")
-    .replaceAll(/\(.*?\)/g, " ")
+    .replace(/^.*\b(?:OBO|ON BEHALF OF|O\/B\/O)\b/u, "")
+    .replaceAll(/\(.*?\)/gu, " ")
     .replaceAll("&", " AND ")
-    .replaceAll(/[^A-Z0-9 ]+/g, " ")
+    .replaceAll(/[^A-Z0-9 ]+/gu, " ")
     .replaceAll(SUFFIXES, " ")
     .trim()
     .toLowerCase()
-    .replaceAll(/\s+/g, "-");
+    .replaceAll(/\s+/gu, "-");
 
   return key || `lda-${ldaClientId}`;
 }
@@ -46,10 +43,10 @@ const lobbyistName = ({ lobbyist: l }: LdaLobbyist) =>
   [l.prefix_display, l.first_name, l.middle_name, l.last_name, l.suffix_display].filter(Boolean).join(" ");
 
 const amountOf = (f: LdaFiling): [number | null, "income" | "expenses" | null] =>
-  f.income == null
-    ? f.expenses != null
-      ? [Number(f.expenses), "expenses"]
-      : [null, null]
+  f.income === null
+    ? f.expenses === null
+      ? [null, null]
+      : [Number(f.expenses), "expenses"]
     : [Number(f.income), "income"];
 
 export function filingRow(f: LdaFiling): Row<"lda_filings"> {
@@ -72,7 +69,7 @@ export function filingRow(f: LdaFiling): Row<"lda_filings"> {
     client_key: clientKey(f.client.name, f.client.id),
     lda_client_id: String(f.client.id),
     client_name: f.client.name,
-    client_description: f.client.general_description || null,
+    client_description: nonEmpty(f.client.general_description),
     amount_usd: amount,
     amount_kind: kind,
     issue_lines: f.lobbying_activities.length,
@@ -89,10 +86,6 @@ export interface Extracted {
   clients: Row<"lda_clients">[];
 }
 
-/**
- * Reads every issue line of every pulled filing against the bill's aliases. A line that names the bill becomes
- * an lda_bill_refs row (low matches kept, held out downstream); its lobbyists get the bill on their row.
- */
 export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSections?: Set<string>): Extracted {
   const out: Extracted = { filings: [], refs: [], lobbyists: [], clients: [] };
   const namedFilings: LdaFiling[] = [];
@@ -113,9 +106,16 @@ export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSection
       }
 
       const earlier = earlierBill(bill, p.end, text);
-      const ref = earlier ? { ...found, level: "low" as const, why: `Held out: ${earlier}.` } : found;
+
+      const ref =
+        earlier !== null && earlier !== "" ? { ...found, level: "low" as const, why: `Held out: ${earlier}.` } : found;
+
       named = true;
-      const sections = sectionNums(text, m).filter((s) => !knownSections?.size || knownSections.has(s));
+
+      const sections = sectionNums(text, m).filter(
+        (s) => (knownSections?.size ?? 0) === 0 || knownSections?.has(s) === true,
+      );
+
       out.refs.push({
         id: `${f.filing_uuid}#${i}#${bill}`,
         filing_id: f.filing_uuid,
@@ -140,14 +140,14 @@ export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSection
       for (const l of a.lobbyists) {
         const id = `${f.filing_uuid}:${l.lobbyist.id}`;
         const prev = lobbyists.get(id);
-        const position = prev?.covered_position ?? (l.covered_position?.trim() || null);
+        const position = prev?.covered_position ?? nonEmpty(l.covered_position?.trim());
         lobbyists.set(id, {
           id,
           filing_id: f.filing_uuid,
           lobbyist_id: String(l.lobbyist.id),
           name: lobbyistName(l),
           covered_position: position,
-          named_members: position ? namedMembers(position) : [],
+          named_members: position !== null && position !== "" ? namedMembers(position) : [],
           bill_ids: [bill],
           source_url: f.filing_document_url,
           source_locator: `issue line ${i + 1} of ${lines.length}, lobbyist ${lobbyistName(l)}`,
@@ -169,7 +169,6 @@ export function extract(bill: BillId, all: LdaFiling[], m: Matcher, knownSection
   return out;
 }
 
-/** One row per merged client key, with every lda.gov client id and name spelling seen. */
 export function clientRows(filings: LdaFiling[]): Row<"lda_clients">[] {
   const out = new Map<string, Row<"lda_clients">>();
 
@@ -185,7 +184,7 @@ export function clientRows(filings: LdaFiling[]): Row<"lda_clients">[] {
       c.names.push(f.client.name);
     }
 
-    c.description ??= f.client.general_description || null;
+    c.description ??= nonEmpty(f.client.general_description);
     out.set(key, c);
   }
 
@@ -201,9 +200,8 @@ export function mergeClient(old: Row<"lda_clients">, next: Row<"lda_clients">): 
   };
 }
 
-const posted = (r: Row<"lda_filings">) => (r.posted_at ? Date.parse(r.posted_at) : 0);
+const posted = (r: Row<"lda_filings">) => (r.posted_at !== null && r.posted_at !== "" ? Date.parse(r.posted_at) : 0);
 
-/** Among LD-2 reports for the same registrant, client and period, the latest posted replaces the rest. */
 export function markSuperseded(rows: Row<"lda_filings">[]): Row<"lda_filings">[] {
   const latest = new Map<string, Row<"lda_filings">>();
 

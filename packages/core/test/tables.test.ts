@@ -4,7 +4,7 @@ import { TABLE_NAMES, TABLES } from "../src/tables.ts";
 
 test("every table has an owner package and an id column", () => {
   for (const t of TABLE_NAMES) {
-    expect(TABLES[t].owner).toMatch(/^@antibody\//);
+    expect(TABLES[t].owner).toMatch(/^@antibody\//u);
     expect(columns(t)[0]).toEqual(["id", "VARCHAR"]);
   }
 });

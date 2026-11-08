@@ -17,13 +17,13 @@ type Trade = Row<"trades">;
 export interface Built {
   documents: Doc[];
   trades: Trade[];
-  /** Rows a reader saw but could not store (no readable type or owner), per document. */
   dropped: { document: string; row: unknown; why: string }[];
 }
 
 const houseDocId = (docId: string) => `h-${docId}`;
 const senateDocId = (uuid: string) => `s-${uuid}`;
-const clean = (s: string) => s.replaceAll(/\s+/g, " ").trim();
+const clean = (s: string) => s.replaceAll(/\s+/gu, " ").trim();
+const blankToNull = (s: string | undefined) => (s === undefined || s === "" ? null : s);
 
 function amounts(amount: string) {
   const { min, max } = amountRange(amount);
@@ -31,10 +31,6 @@ function amounts(amount: string) {
   return { amount: clean(amount), amount_min: min, amount_max: max };
 }
 
-/**
- * A vision row after its recheck: a rechecked cell replaces the first reading only when the first had unreadable
- * characters ("_" or empty) and the recheck could read it. The row stays flagged either way.
- */
 export function settle(r: VisionRow, index: number, page: PageResult) {
   const checks = page.recheck?.cells.filter((c) => c.row === index) ?? [];
   const values: Record<(typeof FIELDS)[number], string | null> = { ...r };
@@ -73,7 +69,7 @@ function visionTrades(
       const own = owner(values.owner);
       const type = tradeType(values.type ?? "");
 
-      if (!type && !values.date?.trim() && !values.amount?.trim()) {
+      if (type === null && (values.date?.trim() ?? "") === "" && (values.amount?.trim() ?? "") === "") {
         continue;
       }
 
@@ -83,7 +79,13 @@ function visionTrades(
       }
 
       const src = sourceFor(page.page);
-      const incomplete = !isoDate(values.date) || amountRange(values.amount ?? "").min === null;
+      const raw: Trade["raw"] = { as_read: r, rechecked: checks, page_kind: page.read.page_kind, model: page.model };
+
+      if (r.note !== undefined && r.note !== null && r.note !== "") {
+        raw.note = r.note;
+      }
+
+      const incomplete = isoDate(values.date) === null || amountRange(values.amount ?? "").min === null;
       out.push({
         id: `${docId}-p${page.page}-${i + 1}`,
         document_id: docId,
@@ -91,7 +93,7 @@ function visionTrades(
         owner: own,
         asset: clean(values.asset ?? ""),
         asset_type: null,
-        ticker: values.ticker?.trim() || null,
+        ticker: blankToNull(values.ticker?.trim()),
         type,
         traded_on: isoDate(values.date),
         notified_on: isoDate(values.notified),
@@ -100,13 +102,7 @@ function visionTrades(
         read_by: "vision",
         confidence,
         needs_second_read: flagged || incomplete,
-        raw: {
-          as_read: r,
-          rechecked: checks,
-          page_kind: page.read.page_kind,
-          model: page.model,
-          ...(r.note ? { note: r.note } : {}),
-        },
+        raw,
         source_url: src.url,
         source_locator: `${src.where}, row ${i + 1} (vision read${flagged ? ", uncertain cells" : incomplete ? ", date or amount unreadable" : ""})`,
       });
@@ -119,7 +115,7 @@ function visionTrades(
 async function visionPages(doc: string) {
   const pages: PageResult[] = [];
 
-  for (const n of (await cachedPages(doc)).sort((a, b) => a - b)) {
+  for (const n of (await cachedPages(doc)).toSorted((a, b) => a - b)) {
     const read = await cachedRead(doc, n);
 
     if (read) {
@@ -148,7 +144,7 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
     let read = 0;
     let lost = false;
 
-    if (!f.scanned && doc && !doc.error) {
+    if (!f.scanned && doc !== undefined && (doc.error === null || doc.error === "")) {
       read = pages ?? 1;
       const perPage = new Map<number, number>();
 
@@ -195,7 +191,7 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       lost = built.dropped.length > before;
     }
 
-    if (doc?.trades.some((t) => t.details?.filing_status === "Amended")) {
+    if (doc?.trades.some((t) => t.details.filing_status === "Amended") === true) {
       amended.add(id);
     }
 
@@ -218,11 +214,11 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
   for (const r of senate) {
     const id = senateDocId(r.id);
     const filed = isoDate(r.filed);
-    const last = r.office.includes(",") ? r.office.split(",")[0]! : r.last;
+    const last = r.office.includes(",") ? (r.office.split(",")[0] ?? r.last) : r.last;
 
     const filer_name = clean(`${r.first} ${r.last}`).replaceAll(
-      /\b([A-Z])([A-Z]+)\b/g,
-      (_, a, b) => a + b.toLowerCase(),
+      /\b([A-Z])([A-Z]+)\b/gu,
+      (_: string, a: string, b: string) => a + b.toLowerCase(),
     );
 
     const base = { bioguide: match.senate(last, r.first, filed), filer_name, chamber: "Senate" as const };
@@ -235,7 +231,7 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
         .text()
         .catch(() => null);
 
-      if (html) {
+      if (html !== null && html !== "") {
         pages = 1;
         read = 1;
 
@@ -247,6 +243,16 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
             built.dropped.push({ document: id, row: t, why: own ? `type "${t.type}"` : `owner "${t.owner}"` });
             lost = true;
             continue;
+          }
+
+          const raw: Trade["raw"] = { owner: t.owner, type: t.type, date: t.date };
+
+          if (t.assetDetail !== null && t.assetDetail !== "") {
+            raw.asset_detail = t.assetDetail;
+          }
+
+          if (t.comment !== null && t.comment !== "") {
+            raw.comment = t.comment;
           }
 
           built.trades.push({
@@ -265,13 +271,7 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
             read_by: "html",
             confidence: 1,
             needs_second_read: false,
-            raw: {
-              owner: t.owner,
-              type: t.type,
-              date: t.date,
-              ...(t.assetDetail ? { asset_detail: t.assetDetail } : {}),
-              ...(t.comment ? { comment: t.comment } : {}),
-            },
+            raw,
             source_url: r.url,
             source_locator: `transaction #${t.n}`,
           });
@@ -279,7 +279,7 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       }
     } else {
       pages =
-        (await readdir(imageDir(r.id)).catch(() => [] as string[])).filter((f) => f.endsWith(".gif")).length || null;
+        (await readdir(imageDir(r.id)).catch((): string[] => [])).filter((f) => f.endsWith(".gif")).length || null;
       const vp = await visionPages(id);
       read = vp.length;
       const before = built.dropped.length;
@@ -287,7 +287,7 @@ export async function buildRows(house: HouseFiling[], parsed: Map<string, Parsed
       lost = built.dropped.length > before;
     }
 
-    if (/\(Amendment/i.test(r.title)) {
+    if (/\(Amendment/iu.test(r.title)) {
       amended.add(id);
     }
 

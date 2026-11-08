@@ -1,12 +1,13 @@
 import { appendFile, mkdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { BillId, Row } from "@antibody/core";
-import { billRef } from "@antibody/core";
+import { billRef, filled } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 import { findNames, splitSections } from "./benefits.ts";
 import type { TextHit } from "./benefits.ts";
 import { askJson } from "./claude.ts";
 import type { Company } from "./edgar.ts";
+import { isBoolean, isNumber, isObject, isText } from "./is.ts";
 import { norm } from "./normalize.ts";
 import { ACCEPT } from "./review.ts";
 
@@ -27,9 +28,19 @@ interface Verdict {
   reason: string;
 }
 
+const isVerdict = (v: unknown): v is Verdict =>
+  isObject(v) &&
+  "key" in v &&
+  isText(v.key) &&
+  "named" in v &&
+  isBoolean(v.named) &&
+  "confidence" in v &&
+  isNumber(v.confidence) &&
+  "reason" in v &&
+  isText(v.reason);
+
 const cacheFile = () => join(paths.raw("entities"), "resolve", "named-verdicts.jsonl");
 
-/** The bill's text versions: the ones ingest-bills downloaded, else fetched from GovInfo into resolve's cache. */
 async function versionTexts(
   bill: BillId,
   versions: Row<"versions">[],
@@ -42,10 +53,10 @@ async function versionTexts(
     : await (async () => {
         const { congress, type, number } = billRef(bill);
         const glob = new Bun.Glob(`BILLS-${congress}${type}${number}[a-z]*.xml`);
-        const files = await Array.fromAsync(glob.scan({ cwd: raw })).catch(() => [] as string[]);
+        const files = await Array.fromAsync(glob.scan({ cwd: raw })).catch((): string[] => []);
 
         return files.map((f) => ({
-          code: f.replaceAll(/^BILLS-\d+[a-z]+?\d+|\.xml$/g, ""),
+          code: f.replaceAll(/^BILLS-\d+[a-z]+?\d+|\.xml$/gu, ""),
           id: null,
           url: null,
           file: f,
@@ -54,10 +65,12 @@ async function versionTexts(
 
   const read = async (v: (typeof list)[number]) => {
     for (const f of [join(raw, v.file), join(own, v.file)]) {
-      if (await Bun.file(f).exists()) return await Bun.file(f).text();
+      if (await Bun.file(f).exists()) {
+        return await Bun.file(f).text();
+      }
     }
 
-    if (!v.url) {
+    if (!filled(v.url)) {
       return null;
     }
 
@@ -79,7 +92,7 @@ async function versionTexts(
   for (const v of list) {
     const xml = await read(v);
 
-    if (xml) {
+    if (filled(xml)) {
       out.push({ code: v.code, id: v.id, xml });
     }
   }
@@ -87,10 +100,6 @@ async function versionTexts(
   return out;
 }
 
-/**
- * Rule "named-in-text": an SEC company written into any version of the bill, confirmed by the reviewer
- * (most capitalized look-alikes are agencies, programs and places). One row per company and section.
- */
 export async function namedBenefits(
   bill: BillId,
   versions: Row<"versions">[],
@@ -103,8 +112,9 @@ export async function namedBenefits(
   const hits: (TextHit & { code: string; versionId: string | null })[] = [];
 
   for (const t of texts) {
-    for (const h of findNames(splitSections(t.xml), companies, norm))
+    for (const h of findNames(splitSections(t.xml), companies, norm)) {
       hits.push({ ...h, code: t.code, versionId: t.id });
+    }
   }
 
   log(`named-in-text: ${hits.length} candidate mentions in ${texts.length} text versions`);
@@ -113,21 +123,20 @@ export async function namedBenefits(
     return [];
   }
 
-  const keyOf = (h: TextHit) => {
-    const x = new Bun.CryptoHasher("sha1");
-    x.update(JSON.stringify(["named-1", h.cik, h.matched, h.context]));
-
-    return x.digest("hex").slice(0, 16);
-  };
-
   const cache = new Map<string, Verdict>();
 
   if (await Bun.file(cacheFile()).exists()) {
-    for (const l of (await Bun.file(cacheFile()).text()).split("\n"))
+    for (const l of (await Bun.file(cacheFile()).text()).split("\n")) {
       if (l) {
-        const v = JSON.parse(l) as Verdict;
+        const v: unknown = JSON.parse(l);
+
+        if (!isVerdict(v)) {
+          throw new Error(`${cacheFile()}: not a verdict: ${l.slice(0, 200)}`);
+        }
+
         cache.set(v.key, v);
       }
+    }
   }
 
   const todo = [...new Map(hits.map((h) => [keyOf(h), h])).entries()].filter(([k]) => !cache.has(k));
@@ -137,7 +146,7 @@ export async function namedBenefits(
       .slice(i, i + 30)
       .map(([key, h]) => ({ key, company: h.name, written: h.matched, passage: h.context }));
 
-    const { items: verdicts } = await askJson<Verdict>(PROMPT + JSON.stringify(items), signal);
+    const { items: verdicts } = await askJson(PROMPT + JSON.stringify(items), isVerdict, signal);
     const mine = verdicts.filter((v) => items.some((x) => x.key === v.key));
     await mkdir(join(paths.raw("entities"), "resolve"), { recursive: true });
 
@@ -151,17 +160,17 @@ export async function namedBenefits(
   }
 
   const sectionId = (code: string, num: string | null) => {
-    if (!num) {
+    if (!filled(num)) {
       return null;
     }
 
     const found = sections.filter((s) => {
-      const h = (s.history as Record<string, { path?: string }>)[code];
+      const h = s.history[code];
 
-      return h?.path?.split("/").at(-1) === `sec:${num}`;
+      return isObject(h) && "path" in h && isText(h.path) && h.path.split("/").at(-1) === `sec:${num}`;
     });
 
-    return found.length === 1 ? found[0]!.id : null;
+    return found.length === 1 ? (found[0]?.id ?? null) : null;
   };
 
   const rows = new Map<string, Row<"benefits">>();
@@ -169,12 +178,12 @@ export async function namedBenefits(
   for (const h of hits) {
     const v = cache.get(keyOf(h));
 
-    if (!v?.named || v.confidence < ACCEPT) {
+    if (v?.named !== true || v.confidence < ACCEPT) {
       continue;
     }
 
     const section = sectionId(h.code, h.num);
-    const id = `${bill}:named-in-text:${h.cik}${section ? `:${section}` : ""}`;
+    const id = `${bill}:named-in-text:${h.cik}${filled(section) ? `:${section}` : ""}`;
 
     if (rows.has(id)) {
       continue;
@@ -189,7 +198,7 @@ export async function namedBenefits(
       rule: "tied-stock",
       confidence: v.confidence,
       rests_on: [
-        section ? `sections/${section}` : h.versionId ? `versions/${h.versionId}` : `bills/${bill}`,
+        filled(section) ? `sections/${section}` : filled(h.versionId) ? `versions/${h.versionId}` : `bills/${bill}`,
         `companies/${h.cik}`,
       ],
       evidence: { written: h.matched, quote: h.context, version: h.code, sectionNum: h.num, reason: v.reason },
@@ -197,4 +206,11 @@ export async function namedBenefits(
   }
 
   return [...rows.values()];
+}
+
+function keyOf(h: TextHit): string {
+  const x = new Bun.CryptoHasher("sha1");
+  x.update(JSON.stringify(["named-1", h.cik, h.matched, h.context]));
+
+  return x.digest("hex").slice(0, 16);
 }

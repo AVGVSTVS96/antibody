@@ -1,7 +1,3 @@
-/**
- * Publishes the fixture bundles to apps/web/public/bundles with an index, so the site renders real bills
- * before @antibody/store writes its own. Store's publish replaces these files.
- */
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Bundle, BundleIndex, billStats, checkBundle } from "@antibody/core";

@@ -1,26 +1,33 @@
-import { billRef } from "@antibody/core";
+import { BILL_TYPES, billRef } from "@antibody/core";
 import type { BillId, BillType } from "@antibody/core";
+import { z } from "zod";
 
 export type Level = "high" | "medium" | "low";
 
-/** Everything a filing might call the bill, built from BILLSTATUS (see aliases.ts). */
-export interface Aliases {
-  bill: BillId;
-  congress: number;
-  /** The bill's own number plus earlier bills that carried the same short title (S.394 and S.919 for S.1582). */
-  numbers: { id: BillId; introduced: string | null; why: string }[];
-  /** `since` is the earliest introduction of a bill carrying the name; before it, the name meant an agenda. */
-  names: { text: string; title: string; level: Exclude<Level, "low">; since: string | null; why: string }[];
-  /** Public law numbers, "119-27". */
-  laws: string[];
-  introduced: string | null;
-  enactedOn: string | null;
-  /** Titles and laws of bills that reused one of our numbers in another Congress (H.R.1 was TCJA in the 115th). */
-  rivals: string[];
-  /** Measures the official title cites, and "reconciliation" when it says so. */
-  support: string[];
-  years: number[];
-}
+const BillIdJson = z.templateLiteral([z.number(), "-", z.enum(BILL_TYPES), "-", z.number()]);
+
+export const Aliases = z.object({
+  bill: BillIdJson,
+  congress: z.number(),
+  numbers: z.array(z.object({ id: BillIdJson, introduced: z.string().nullable(), why: z.string() })),
+  names: z.array(
+    z.object({
+      text: z.string(),
+      title: z.string(),
+      level: z.enum(["high", "medium"]),
+      since: z.string().nullable(),
+      why: z.string(),
+    }),
+  ),
+  laws: z.array(z.string()),
+  introduced: z.string().nullable(),
+  enactedOn: z.string().nullable(),
+  rivals: z.array(z.string()),
+  support: z.array(z.string()),
+  years: z.array(z.number()),
+});
+
+export type Aliases = z.infer<typeof Aliases>;
 
 export interface Ref {
   how: "number" | "name" | "public-law";
@@ -35,17 +42,17 @@ export interface Period {
   end: string;
 }
 
-const PERIODS: Record<string, [string, string]> = {
-  first_quarter: ["01-01", "03-31"],
-  second_quarter: ["04-01", "06-30"],
-  third_quarter: ["07-01", "09-30"],
-  fourth_quarter: ["10-01", "12-31"],
-  mid_year: ["01-01", "06-30"],
-  year_end: ["07-01", "12-31"],
-};
+const PERIODS = new Map<string, [string, string]>([
+  ["first_quarter", ["01-01", "03-31"]],
+  ["second_quarter", ["04-01", "06-30"]],
+  ["third_quarter", ["07-01", "09-30"]],
+  ["fourth_quarter", ["10-01", "12-31"]],
+  ["mid_year", ["01-01", "06-30"]],
+  ["year_end", ["07-01", "12-31"]],
+]);
 
 export function period(year: number, code: string): Period {
-  const [start, end] = PERIODS[code] ?? ["01-01", "12-31"];
+  const [start, end] = PERIODS.get(code) ?? ["01-01", "12-31"];
 
   return { year, start: `${year}-${start}`, end: `${year}-${end}` };
 }
@@ -53,71 +60,79 @@ export function period(year: number, code: string): Period {
 export const congressOf = (year: number) => Math.floor((year - 1789) / 2) + 1;
 
 const TYPE = String.raw`(H\.?\s?J\.?\s?Res|S\.?\s?J\.?\s?Res|H\.?\s?Con\.?\s?Res|S\.?\s?Con\.?\s?Res|H\.?\s?Res|S\.?\s?Res|H\.?\s?R|S)`;
-const NUMBER = new RegExp(String.raw`(?<![A-Za-z.'’])${TYPE}[.,]?\s?(\d{1,5})(?!\d|-\d)`, "gi");
-const LAW = /\b(?:P\.?\s?L\.?|Pub(?:lic|\.)?\s+L(?:aw|\.)?)\s*(?:No[.:]?\s*)?(\d{2,3})\s*[-–]\s*(\d{1,3})\b/gi;
-const OTHER_ACT = /\b[A-Z][\w'’-]*(?:\s+(?:[A-Z][\w'’-]*|of|the|and|for|to|in|on))*\s+Act\b/;
-const CONGRESS = /\b(1\d\d)(?:th|st|nd|rd)\s+Congress/i;
+const NUMBER = new RegExp(String.raw`(?<![A-Za-z.'’])${TYPE}[.,]?\s?(\d{1,5})(?!\d|-\d)`, "giu");
+const LAW = /\b(?:P\.?\s?L\.?|Pub(?:lic|\.)?\s+L(?:aw|\.)?)\s*(?:No[.:]?\s*)?(\d{2,3})\s*[-–]\s*(\d{1,3})\b/giu;
+const OTHER_ACT = /\b[A-Z][\w'’-]*(?:\s+(?:[A-Z][\w'’-]*|of|the|and|for|to|in|on))*\s+Act\b/u;
+const CONGRESS = /\b(1\d\d)(?:th|st|nd|rd)\s+Congress/iu;
 
 const SECTION =
-  /\bSec(?:tion)?s?\.?\s*(\d{1,6}[A-Za-z]?)((?:\s*(?:,|and|&|through|to|-|–)\s*(?:Sec(?:tion)?s?\.?\s*)?\d{1,6}[A-Za-z]?)*)/gi;
+  /\bSec(?:tion)?s?\.?\s*(\d{1,6}[A-Za-z]?)((?:\s*(?:,|and|&|through|to|-|–)\s*(?:Sec(?:tion)?s?\.?\s*)?\d{1,6}[A-Za-z]?)*)/giu;
 
-const typeOf = (raw: string): BillType => raw.toLowerCase().replaceAll(/[^a-z]/g, "") as BillType;
+function typeOf(raw: string): BillType {
+  const letters = raw.toLowerCase().replaceAll(/[^a-z]/gu, "");
+  const type = BILL_TYPES.find((t) => t === letters);
 
-/** Every bill number in a text, with its position. A bare "S" must be capital: "America's 1" is not S.1. */
-export function billNumbers(text: string) {
-  return [...text.matchAll(NUMBER)]
-    .filter((m) => !(m[1] === "s"))
-    .map((m) => ({ type: typeOf(m[1]!), number: Number(m[2]), index: m.index, text: m[0] }));
+  if (type === undefined) {
+    throw new Error(`not a bill type: ${raw}`);
+  }
+
+  return type;
 }
 
-/** The clause around a match: up to the neighbouring bill numbers, cut at `;` and line breaks. */
+export function billNumbers(text: string) {
+  return [...text.matchAll(NUMBER)].flatMap((m) =>
+    m[1] === "s" || m[1] === undefined
+      ? []
+      : [{ type: typeOf(m[1]), number: Number(m[2]), index: m.index, text: m[0] }],
+  );
+}
+
 export function clause(text: string, start: number, end: number, prevEnd = 0, nextStart = text.length) {
   const before = text
     .slice(Math.max(start - 70, prevEnd), start)
-    .split(/[;\n]/)
-    .pop()!;
+    .split(/[;\n]/u)
+    .at(-1);
 
-  const after = text.slice(end, Math.min(end + 90, nextStart)).split(/[;\n]/)[0]!;
+  const after = text.slice(end, Math.min(end + 90, nextStart)).split(/[;\n]/u)[0];
 
-  return before + text.slice(start, end) + after;
+  return (before ?? "") + text.slice(start, end) + (after ?? "");
 }
 
-const escapeRe = (s: string) => s.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRe = (s: string) => s.replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 
-/** Adjacent-letter swaps of a long all-caps word: GENIUS → GENUIS. Filers make these typos. */
 export function transpositions(word: string): string[] {
   const out: string[] = [];
 
   for (let i = 0; i < word.length - 1; i++) {
-    if (word[i] !== word[i + 1]) out.push(word.slice(0, i) + word[i + 1] + word[i] + word.slice(i + 2));
+    if (word[i] !== word[i + 1]) {
+      out.push(word.slice(0, i) + word[i + 1] + word[i] + word.slice(i + 2));
+    }
   }
 
   return out;
 }
 
-const isAcronymWord = (w: string) => /^[A-Z]{5,}$/.test(w);
+const isAcronymWord = (w: string) => /^[A-Z]{5,}$/u.test(w);
 
-/** "Guiding … for U.S. Stablecoins" → a regex that tolerates punctuation, spacing and acronym typos. */
 export function nameRegex(name: string): RegExp {
-  const words = name.split(/\s+/).map((w) => {
-    if (/^U\.?S\.?$/i.test(w)) {
+  const words = name.split(/\s+/u).map((w) => {
+    if (/^U\.?S\.?$/iu.test(w)) {
       return String.raw`U\.?\s?S\.?`;
     }
 
-    const bare = w.replace(/[.,:;]+$/, "");
+    const bare = w.replace(/[.,:;]+$/u, "");
     const forms = isAcronymWord(bare) ? [bare, ...transpositions(bare)] : [bare];
 
     return `(?:${forms.map(escapeRe).join("|")})[.,:]?`;
   });
 
-  return new RegExp(String.raw`(?<![A-Za-z])${words.join(String.raw`[\s,.\-–]+`)}(?![A-Za-z])`, "i");
+  return new RegExp(String.raw`(?<![A-Za-z])${words.join(String.raw`[\s,.\-–]+`)}(?![A-Za-z])`, "iu");
 }
 
-/** "One Big Beautiful Bill Act" → OBBBA (and OBBB): only for 4+ capitalized words, so IRA never collides. */
 export function acronyms(name: string): string[] {
-  const words = name.split(/\s+/);
+  const words = name.split(/\s+/u);
 
-  if (words.length < 4 || !words.every((w) => /^[A-Z]/.test(w)) || words.some((w) => isAcronymWord(w))) {
+  if (words.length < 4 || !words.every((w) => /^[A-Z]/u.test(w)) || words.some((w) => isAcronymWord(w))) {
     return [];
   }
 
@@ -126,12 +141,11 @@ export function acronyms(name: string): string[] {
   return name.endsWith("Act") ? [full, full.slice(0, -1)] : [full];
 }
 
-/** The forms of a name we search and match: the title without "of 2025", and without "Act" when 3+ words remain. */
 export function nameForms(title: string): string[] {
-  const base = title.replace(/\s+of\s+(?:19|20)\d\d$/i, "").trim();
-  const noAct = base.replace(/\s+Act$/i, "");
+  const base = title.replace(/\s+of\s+(?:19|20)\d\d$/iu, "").trim();
+  const noAct = base.replace(/\s+Act$/iu, "");
 
-  return noAct !== base && noAct.split(/\s+/).length >= 3 ? [noAct] : [base];
+  return noAct !== base && noAct.split(/\s+/u).length >= 3 ? [noAct] : [base];
 }
 
 export interface Matcher {
@@ -150,7 +164,7 @@ export function matcher(a: Aliases): Matcher {
 
     for (const [i, ac] of acronyms(n.title).entries()) {
       names.push({
-        re: new RegExp(`(?<![A-Za-z])${ac}(?![A-Za-z])`),
+        re: new RegExp(`(?<![A-Za-z])${ac}(?![A-Za-z])`, "u"),
         level: i === 0 ? n.level : "medium",
         since: n.since,
         why: `acronym of "${n.title}"`,
@@ -171,19 +185,23 @@ export function matcher(a: Aliases): Matcher {
     aliases: a,
     names,
     rivals: a.rivals.map((r) => nameRegex(r)),
-    support: a.support.map((s) => (/^[a-z]+$/.test(s) ? new RegExp(`\\b${s}\\b`, "i") : supportNumberRegex(s))),
+    support: a.support.map((s) => (/^[a-z]+$/u.test(s) ? new RegExp(`\\b${s}\\b`, "iu") : supportNumberRegex(s))),
     numbers,
   };
 }
 
 function supportNumberRegex(display: string): RegExp {
-  const m = /^(.*?)(\d+)$/.exec(display)!;
-  const letters = m[1]!.replaceAll(/[^A-Za-z]/g, "").split(/(?=[A-Z])/);
+  const m = /^(.*?)(\d+)$/u.exec(display);
 
-  return new RegExp(`(?<![A-Za-z])${letters.map(escapeRe).join(String.raw`\.?\s?`)}\\.?\\s?${m[2]}(?!\\d)`, "i");
+  if (m === null) {
+    throw new Error(`not a bill number: ${display}`);
+  }
+
+  const letters = (m[1] ?? "").replaceAll(/[^A-Za-z]/gu, "").split(/(?=[A-Z])/u);
+
+  return new RegExp(`(?<![A-Za-z])${letters.map(escapeRe).join(String.raw`\.?\s?`)}\\.?\\s?${m[2] ?? ""}(?!\\d)`, "iu");
 }
 
-/** Every way an issue line refers to the bill, each labeled with how sure we are and why. */
 export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
   const a = m.aliases;
   const refs: Ref[] = [];
@@ -199,23 +217,25 @@ export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
 
     const end = n.index + n.text.length;
 
+    const prev = nums[i - 1];
+
     const c = clause(
       text,
       n.index,
       end,
-      nums[i - 1] && nums[i - 1]!.index + nums[i - 1]!.text.length,
+      prev === undefined ? undefined : prev.index + prev.text.length,
       nums[i + 1]?.index,
     );
 
     const named = names(c);
     const explicit = CONGRESS.exec(c);
     const congress = explicit ? Number(explicit[1]) : congressOf(p.year);
-    const rival = m.rivals.map((r) => c.match(r)).find(Boolean);
-    const support = m.support.map((r) => c.match(r)).find(Boolean);
+    const rival = m.rivals.map((r) => c.match(r)).find((x) => x !== null);
+    const support = m.support.map((r) => c.match(r)).find((x) => x !== null);
     let level: Level;
     let why: string;
 
-    if (!named && /^\s\d{1,4}\b/.test(text.slice(end))) {
+    if (!named && /^\s\d{1,4}\b/u.test(text.slice(end))) {
       level = "low";
       why = "digits right after the number look like a split bill number";
     } else if (congress !== a.congress) {
@@ -225,9 +245,9 @@ export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
       ];
     } else if (rival && !named) {
       [level, why] = ["low", `the clause names another bill with this number: "${rival[0]}"`];
-    } else if (!named && /companion/i.test(c) && OTHER_ACT.test(c)) {
-      [level, why] = ["low", `the clause calls it the companion of another bill: "${OTHER_ACT.exec(c)![0]}"`];
-    } else if (hit.introduced && p.end < hit.introduced) {
+    } else if (!named && /companion/iu.test(c) && OTHER_ACT.test(c)) {
+      [level, why] = ["low", `the clause calls it the companion of another bill: "${OTHER_ACT.exec(c)?.[0] ?? ""}"`];
+    } else if (hit.introduced !== null && hit.introduced !== "" && p.end < hit.introduced) {
       [level, why] = ["low", `period ends ${p.end}, before ${n.text.trim()} was introduced ${hit.introduced}`];
     } else if (named) {
       [level, why] = ["high", "the number sits next to the bill's name or public law"];
@@ -247,22 +267,23 @@ export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
       continue;
     }
 
-    const early = n.since && p.end < n.since;
+    const early = n.since !== null && n.since !== "" && p.end < n.since;
 
     const labeledBy = billNumbers(text.slice(0, hit.index))
       .filter((x) => !m.numbers.has(`${x.type}${x.number}`))
       .map((x) => ({ ...x, between: text.slice(x.index + x.text.length, hit.index) }))
       .at(-1);
 
-    const other = labeledBy && labeledBy.between.length <= 50 && !/[.;]\s|\n|\band\b/i.test(labeledBy.between);
+    const other =
+      labeledBy !== undefined && labeledBy.between.length <= 50 && !/[.;]\s|\n|\band\b/iu.test(labeledBy.between);
 
-    const [level, why] = early
+    const [level, why]: [Level, string] = early
       ? ["low", `period ends ${p.end}, before any bill carried the name (${n.since}): it meant an agenda`]
       : other
-        ? ["low", `the name is the title of another bill: "${labeledBy.text.trim()}"`]
+        ? ["low", `the name is the title of another bill: "${labeledBy?.text.trim() ?? ""}"`]
         : [n.level, n.why];
 
-    refs.push({ how: "name", text: hit[0], level: level as Level, why });
+    refs.push({ how: "name", text: hit[0], level, why });
   }
 
   let lawCited = false;
@@ -290,10 +311,11 @@ export function findRefs(text: string, p: Period, m: Matcher): Ref[] {
 
   if (!lawCited) {
     for (const law of a.laws) {
-      const hit = new RegExp(`(?<![\\d-])${law}(?![\\d-])`).exec(text);
+      const hit = new RegExp(`(?<![\\d-])${law}(?![\\d-])`, "u").exec(text);
 
-      if (hit && !conflict(hit.index!, hit[0].length))
+      if (hit && !conflict(hit.index, hit[0].length)) {
         refs.push({ how: "public-law", text: hit[0], level: "medium", why: "bare public law number" });
+      }
     }
   }
 
@@ -306,16 +328,9 @@ export function best(refs: Ref[]): Ref | null {
   return refs.reduce<Ref | null>((b, r) => (!b || RANK[r.level] > RANK[b.level] ? r : b), null);
 }
 
-const BEFORE = /^[\s\-–—,:([]*(?:(?:the\s+)?provisions?\s+(?:in|of)\s+)?$/i;
-const AFTER = /^\s*(?:\([^)]*\)\s*)*(?:of|in|to|under|from)\s+(?:the\s+)?$/i;
+const BEFORE = /^[\s\-–—,:([]*(?:(?:the\s+)?provisions?\s+(?:in|of)\s+)?$/iu;
+const AFTER = /^\s*(?:\([^)]*\)\s*)*(?:of|in|to|under|from)\s+(?:the\s+)?$/iu;
 
-/**
- * Section numbers the line cites for this bill. A section counts only when the text ties it to the bill:
- * "H.R. 1 - Section 70531", "Sec. 70402 of H.R. 1", "Section 112025 in H.R.1", or the bill's name or public law
- * after the section ("Sec. 4 of the GENIUS Act"); a name before it ("the GENIUS Act - Section 16(a)") is not enough, since it may be the Exchange Act's. A section next to another bill, an earlier bill that shared the title (its sections
- * are numbered differently), another law, or nothing at all is left out; store keeps only numbers that exist in
- * the bill.
- */
 export function sectionNums(text: string, m: Matcher): string[] {
   const own = billRef(m.aliases.bill);
   const anchors: { start: number; end: number; ours: boolean; number: boolean }[] = [];
@@ -330,13 +345,15 @@ export function sectionNums(text: string, m: Matcher): string[] {
   }
 
   for (const n of m.names) {
-    for (const h of text.matchAll(new RegExp(n.re.source, `${n.re.flags.replace("g", "")}g`)))
+    for (const h of text.matchAll(new RegExp(n.re.source, `${n.re.flags.replace("g", "")}g`))) {
       anchors.push({ start: h.index, end: h.index + h[0].length, ours: true, number: false });
+    }
   }
 
   for (const law of m.aliases.laws) {
-    for (const h of text.matchAll(new RegExp(`(?<![\\d-])${law}(?![\\d-])`, "g")))
+    for (const h of text.matchAll(new RegExp(`(?<![\\d-])${law}(?![\\d-])`, "gu"))) {
       anchors.push({ start: h.index, end: h.index + law.length, ours: true, number: false });
+    }
   }
 
   const out = new Set<string>();
@@ -351,16 +368,16 @@ export function sectionNums(text: string, m: Matcher): string[] {
 
     const after = anchors.find((a) => a.start >= end && a.start <= end + 60 && AFTER.test(text.slice(end, a.start)));
     const tail = text.slice(end, end + 90);
-    const elsewhere = /^\s*(?:\([^)]*\)\s*)*(?:of\s|(?:U\.?S\.?C|IRC|I\.R\.C))/i.test(tail) && !after;
+    const elsewhere = /^\s*(?:\([^)]*\)\s*)*(?:of\s|(?:U\.?S\.?C|IRC|I\.R\.C))/iu.test(tail) && !after;
     const anchor = after ?? before;
 
-    if (elsewhere || !anchor?.ours) {
+    if (elsewhere || anchor?.ours !== true || s[1] === undefined) {
       continue;
     }
 
-    out.add(s[1]!);
+    out.add(s[1]);
 
-    for (const more of (s[2] ?? "").matchAll(/\d{1,6}[A-Za-z]?/g)) {
+    for (const more of (s[2] ?? "").matchAll(/\d{1,6}[A-Za-z]?/gu)) {
       out.add(more[0]);
     }
   }

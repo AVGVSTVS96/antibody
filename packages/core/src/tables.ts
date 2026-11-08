@@ -1,15 +1,6 @@
 import { z } from "zod";
 import { SourceUrl } from "./claim.ts";
 
-/**
- * DuckDB tables. Each table has one owning package, which writes its rows as JSONL shards to
- * `data/out/<table>/<shard>.jsonl` (via `writeRows` from `@antibody/core/node`); `@antibody/store` loads them.
- * Columns are snake_case. A row's claim id is `<table>/<id>`.
- *
- * Fact rows carry `source_url` + `source_locator`. Inference rows carry `rule`, `confidence`, `rests_on`
- * (claim ids) and `evidence` (method, scores, candidates, the model's reason).
- */
-
 const date = z.iso.date();
 const json = z.record(z.string(), z.unknown());
 const fact = { source_url: SourceUrl, source_locator: z.string().nullable() };
@@ -21,7 +12,7 @@ const inference = {
   evidence: json,
 };
 
-const billId = z.string().regex(/^\d+-[a-z]+-\d+$/);
+const billId = z.string().regex(/^\d+-[a-z]+-\d+$/u);
 const Party = z.enum(["R", "D", "I"]);
 const Chamber = z.enum(["House", "Senate"]);
 const Baseline = z.enum(["current-law", "current-policy"]);
@@ -37,7 +28,6 @@ const table = <S extends z.ZodRawShape>(owner: string, shape: S) => ({
 });
 
 export const TABLES = {
-  // ── @antibody/ingest-bills: GovInfo BILLSTATUS + bill XML per version ──
   bills: table("@antibody/ingest-bills", {
     congress: z.number().int(),
     type: z.string(),
@@ -50,7 +40,6 @@ export const TABLES = {
     law: z.string().nullable(),
     law_on: date.nullable(),
     latest_action: z.string().nullable(),
-    /** Why `sections.late` is withheld for this bill (it began as a shell, or was rewritten wholesale); null when late flags stand. */
     late_unavailable: z.string().nullable().default(null),
     url: z.url(),
     ...fact,
@@ -63,7 +52,6 @@ export const TABLES = {
     url: z.url(),
     sections: z.number().int(),
     words: z.number().int(),
-    /** A predecessor bill's version (S.394 before S.1582) is an inference stage; its rule says why. */
     predecessor_rule: z.string().nullable(),
     ...fact,
   }),
@@ -75,23 +63,15 @@ export const TABLES = {
     first_version: z.string(),
     in_final: z.boolean(),
     changed_in: z.array(z.string()),
-    /** The version where this lineage ends; when `split_into` is non-empty it was split there, not dropped. */
     removed_in: z.string().nullable(),
     revived_in: z.array(z.string()),
     split_from: z.string().nullable(),
-    /** Sections later split out of this one (lineage ids). */
     split_into: z.array(z.string()),
     merged_into: z.string().nullable(),
-    /**
-     * First appears in the first chamber-passed version or later (a floor amendment, the other chamber, conference),
-     * and is not just split out of an older section. Lineage only, a fact: an LLM counterpart (see `counterparts`) never
-     * sets it here; the scores stage reads the pairs and clears the flag on `section_scores.late` instead.
-     */
     late: z.boolean(),
     words: z.number().int(),
     text_url: z.url(),
     preview: z.string(),
-    /** Per version: path, heading, hash, words, match method, similarity, words added/removed, largest inserts. */
     history: json,
     ...fact,
   }),
@@ -114,7 +94,6 @@ export const TABLES = {
     number: z.string(),
     chamber: Chamber,
     sponsor_bioguide: z.string().nullable(),
-    /** Thomas code when a committee offered it (House Rules Committee substitutes have no member sponsor). */
     sponsor_committee: z.string().nullable(),
     purpose: z.string().nullable(),
     status: z.enum(["agreed", "failed", "withdrawn", "no_action", "other"]),
@@ -128,13 +107,10 @@ export const TABLES = {
   amendment_sections: table("@antibody/ingest-bills", {
     amendment_id: z.string(),
     section_id: z.string(),
-    /** text: the amendment's printed text holds the section; inferred: it's the only agreed amendment that step. */
     how: z.enum(["text", "inferred"]),
-    /** inserted becomes an `inserted` edge from the sponsor; struck and changed are shown on the amendment only. */
     effect: z.enum(["inserted", "struck", "changed"]),
     ...inference,
   }),
-  /** LLM-paired functional rewrites between a removed and an added section (Senate rewrites of House text). */
   counterparts: table("@antibody/ingest-bills", {
     bill_id: billId,
     removed_section_id: z.string(),
@@ -142,7 +118,6 @@ export const TABLES = {
     ...inference,
   }),
 
-  // ── @antibody/ingest-cbo: CBO estimates, dollars per section ──
   cbo_estimates: table("@antibody/ingest-cbo", {
     bill_id: billId,
     url: z.url(),
@@ -156,7 +131,6 @@ export const TABLES = {
     per_section: z.boolean(),
     mandate_private: z.string().nullable(),
     mandate_intergovernmental: z.string().nullable(),
-    /** The estimate's PDF (mandate box, prose that cbo_notes quote by page) and the archive copy we read. */
     pdf_url: z.url().nullable(),
     pdf_archive_url: z.url().nullable(),
     ...fact,
@@ -169,24 +143,13 @@ export const TABLES = {
     section_ids: z.array(z.string()),
     title: z.string().nullable(),
     measure: Measure,
-    /** direct = mandatory spending (counts toward the deficit); discretionary = subject to future appropriation. Null for revenues and deficit. */
     spending: Spending.nullable(),
     period: z.string(),
-    /** $ millions, sign as CBO prints it. Deficit: positive = adds to the deficit. */
     total_musd: z.number(),
     values: json,
-    /** even_split = a CBO group line divided evenly over its sections (CBO never made that split): an inference. */
     split: z.enum(["exact", "even_split"]),
-    /**
-     * How CBO's row was tied to the sections. number (or null, rows written before this column): CBO printed the section
-     * number and its label matches the section heading. heading: CBO printed no number; the row's label matches
-     * exactly one section heading under the division and title it sits in. title: CBO printed the figure for a whole
-     * title and the sections are all those under it. heading and title are inferences; the line's source_locator
-     * says what they rest on.
-     */
     join: z.enum(["number", "heading", "title"]).nullable().default(null),
     archive_url: z.url().nullable(),
-    /** A derived deficit line rests on the outlay and revenue lines it adds up. */
     rests_on: z.array(z.string()),
     ...fact,
   }),
@@ -199,12 +162,9 @@ export const TABLES = {
     ...inference,
   }),
 
-  // ── @antibody/ingest-lobbying: lda.gov LD-1/LD-2 filings that name a bill ──
-  /** One row per filing, shared by every bill it names (sharded by filing year). */
   lda_filings: table("@antibody/ingest-lobbying", {
     url: z.url(),
     api_url: z.url(),
-    /** LD-1 registration or LD-2 quarterly report; spend and counts use LD-2 only. */
     form: z.enum(["LD-1", "LD-2"]),
     type: z.string(),
     year: z.number().int(),
@@ -220,9 +180,7 @@ export const TABLES = {
     client_description: z.string().nullable(),
     amount_usd: z.number().nullable(),
     amount_kind: z.enum(["income", "expenses"]).nullable(),
-    /** Issue lines on the whole filing; the bill-share estimate divides by it. */
     issue_lines: z.number().int(),
-    /** A later amendment for the same registrant, client and period replaced it. */
     superseded: z.boolean(),
     ...fact,
   }),
@@ -232,26 +190,20 @@ export const TABLES = {
     names: z.array(z.string()),
     description: z.string().nullable(),
   }),
-  /** One row per issue line that names the bill: `<filing uuid>#<0-based line index>#<bill id>`. */
   lda_bill_refs: table("@antibody/ingest-lobbying", {
     filing_id: z.string(),
     bill_id: billId,
-    /** 1-based issue line on the filing. */
     line: z.number().int(),
     section_nums: z.array(z.string()),
     issue_code: z.string(),
-    /** The whole issue line, as filed. */
     quote: z.string(),
-    /** The words that named the bill, e.g. "S.1582" or "GENIUS Act". */
     matched: z.string(),
     how: z.enum(["number", "name", "public-law"]),
-    /** high + medium count as naming the bill; low is held out (another Congress, another bill, before it existed). */
     match: z.enum(["high", "medium", "low"]),
     why: z.string(),
     phase: z.enum(["bill", "enactment-quarter", "law"]),
     ...fact,
   }),
-  /** Issue lines that describe the bill's subject without naming any bill: drawn dashed, off by default. */
   lda_topic_refs: table("@antibody/ingest-lobbying", {
     filing_id: z.string(),
     bill_id: billId,
@@ -263,24 +215,15 @@ export const TABLES = {
     ...fact,
     ...inference,
   }),
-  /** One row per filing and lobbyist, quoting the covered (former government) position as filed. */
   lda_lobbyists: table("@antibody/ingest-lobbying", {
     filing_id: z.string(),
     lobbyist_id: z.string(),
     name: z.string(),
-    /** Quoted exactly as filed. */
     covered_position: z.string().nullable(),
-    /** Members the covered position names, as written ("Rep. David Kustoff"), for resolve to match to bioguide ids. */
     named_members: z.array(z.string()),
-    /** Bills named on the issue lines this lobbyist is listed on. */
     bill_ids: z.array(billId),
     ...fact,
   }),
-  /**
-   * Spend per bill and client (`<bill id>:<client key>`), plus the whole bill (`<bill id>:*`, client_key null).
-   * `#total` is a derived fact: the client's reported spend in quarters whose filings named the bill, summed from
-   * `total_rests_on`. `#share` is an inference: that total times the share of issue lines naming the bill.
-   */
   lda_spend: table("@antibody/ingest-lobbying", {
     bill_id: billId,
     client_key: z.string().nullable(),
@@ -293,13 +236,11 @@ export const TABLES = {
     total_usd: z.number().nullable(),
     share_usd: z.number().nullable(),
     total_rests_on: z.array(z.string()),
-    /** The issue line that names the bill most specifically (sections first), for the edge label. */
     issue_quote: z.string().nullable(),
     section_nums: z.array(z.string()),
     ...inference,
   }),
 
-  // ── @antibody/ingest-trades: House Clerk PTRs + Senate eFD, vision for paper filings ──
   ptr_documents: table("@antibody/ingest-trades", {
     chamber: Chamber,
     filer_name: z.string(),
@@ -324,7 +265,6 @@ export const TABLES = {
     type: z.enum(["purchase", "sale", "sale_partial", "exchange"]),
     traded_on: date.nullable(),
     notified_on: date.nullable(),
-    /** As filed. Dates and amounts are kept as written; *_on are null when the filing's date doesn't parse. */
     amount: z.string(),
     amount_min: z.number().nullable(),
     amount_max: z.number().nullable(),
@@ -336,7 +276,6 @@ export const TABLES = {
     ...fact,
   }),
 
-  // ── @antibody/ingest-members: congress-legislators, committees, roll calls ──
   members: table("@antibody/ingest-members", {
     name: z.string(),
     party: Party,
@@ -345,7 +284,6 @@ export const TABLES = {
     chamber: Chamber,
     fec_candidate_ids: z.array(z.string()),
     lis_id: z.string().nullable(),
-    /** Every term, oldest first, so a bill can show the party, state and chamber a member had at the time. */
     terms: z.array(
       z.strictObject({
         chamber: Chamber,
@@ -353,9 +291,7 @@ export const TABLES = {
         end: date,
         state: z.string(),
         district: z.number().int().nullable(),
-        /** As congress-legislators spells it: "Democrat", "Republican", "Independent", "Libertarian". */
         party: z.string(),
-        /** The party an independent caucuses with, when the record says. */
         caucus: z.string().nullable(),
       }),
     ),
@@ -396,7 +332,6 @@ export const TABLES = {
     ...fact,
   }),
 
-  // ── @antibody/ingest-fec: FEC bulk PAC → candidate money ──
   pacs: table("@antibody/ingest-fec", {
     name: z.string(),
     connected_org: z.string().nullable(),
@@ -404,12 +339,10 @@ export const TABLES = {
     designation: z.string().nullable(),
     ...fact,
   }),
-  /** Direct PAC money to a member's campaign: FEC transaction types 24K (cash) and 24Z (in-kind). One row per transaction. */
   contributions: table("@antibody/ingest-fec", {
     pac_id: z.string(),
     bioguide: z.string().nullable(),
     candidate_id: z.string(),
-    /** The campaign committee that received it (FEC OTHER_ID); with pac_id it makes the fec.gov link to every such payment. */
     recipient_committee_id: z.string().nullable(),
     amount_usd: z.number(),
     date,
@@ -417,27 +350,20 @@ export const TABLES = {
     transaction_type: z.string(),
     ...fact,
   }),
-  /** Outside money: a committee's independent expenditure for (24E) or against (24A) a member. Not a contribution. */
   independent_expenditures: table("@antibody/ingest-fec", {
     pac_id: z.string(),
     bioguide: z.string(),
     candidate_id: z.string(),
     support: z.enum(["support", "oppose"]),
     amount_usd: z.number(),
-    /** About 1 in 10 independent expenditures in the bulk file carry no date. */
     date: date.nullable(),
     cycle: z.number().int(),
     ...fact,
   }),
-  /**
-   * Itemized individual contributions to a member's campaign committees, summed per cycle and employer
-   * (employer as filed, grouped by a normalized key). Source: FEC bulk indiv file; the URL reproduces the sum on fec.gov.
-   */
   employer_contributions: table("@antibody/ingest-fec", {
     bioguide: z.string(),
     cycle: z.number().int(),
     committee_ids: z.array(z.string()).min(1),
-    /** The spelling filed most often; `spellings` lists up to 5 by amount. */
     employer: z.string(),
     employer_key: z.string(),
     spellings: z.array(z.string()),
@@ -446,12 +372,10 @@ export const TABLES = {
     first: date,
     last: date,
     largest_usd: z.number(),
-    /** The filing image of the largest single contribution. */
     largest_url: z.url(),
     ...fact,
   }),
 
-  // ── @antibody/ingest-news: Media Cloud + Google News fallback, published outlet list ──
   outlets: table("@antibody/ingest-news", {
     name: z.string(),
     domain: z.string(),
@@ -470,7 +394,6 @@ export const TABLES = {
     ...fact,
   }),
 
-  // ── @antibody/resolve: SEC companies, entity resolution, tied stock ──
   companies: table("@antibody/resolve", {
     name: z.string(),
     tickers: z.array(z.string()),
@@ -479,7 +402,6 @@ export const TABLES = {
     ...fact,
   }),
   resolutions: table("@antibody/resolve", {
-    /** Node id being resolved: client:<key> or pac:<fec id>. */
     src: z.string(),
     company_id: z.string(),
     method: z.string(),
@@ -493,12 +415,9 @@ export const TABLES = {
     ...inference,
   }),
 
-  // ── @antibody/analyze: attention, headline vs buried ──
   attention: table("@antibody/analyze", {
     bill_id: billId,
-    /** null = the "bill as a whole" bucket, which also feeds the outside-the-text lane. */
     section_id: z.string().nullable(),
-    /** The part of a long section the row is about (`section_parts`); null for the section as a whole. */
     part_id: z.string().nullable().default(null),
     hits: z.number().int(),
     hits_by_group: json,
@@ -507,107 +426,65 @@ export const TABLES = {
     example_article_ids: z.array(z.string()),
     ...inference,
   }),
-  /** A second look at sections that are costly and look quiet: news passages closest in meaning to the section, judged by a model. */
   attention_checks: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
-    /** The part of a long section the row is about (`section_parts`); null for the section as a whole. */
     part_id: z.string().nullable().default(null),
-    /** News passages put to the model for this section (one per article, the closest in meaning). */
     passages: z.number().int(),
-    /** Articles from counted outlets the model said describe the section that the section matcher had not matched to it. */
     article_ids: z.array(z.string()),
-    /** The section's share of the bill's relevant articles with those added (sides weighted equally). */
     share: z.number(),
     ...inference,
   }),
-  /**
-   * The parts a long section is read in (parts-v1 in docs/rules.md): its own labeled subsections, paragraphs and so on,
-   * split while a piece is over 1,000 words, so a provision buried in a giant section is scored on its own. Read from
-   * the text the section was last seen in, dropped sections included (only final sections' parts are scored).
-   * A fact: the part's enum, heading and words are the final text's; `first_version` and `late` come from the
-   * section's earlier texts by the published rule, as `sections.late` comes from the lineage.
-   */
   section_parts: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
-    /** `4(a)(12)`: the section number and the part's enums. */
     num: z.string(),
-    /** Position among the section's parts, in text order. */
     ord: z.number().int(),
-    /** `(a)(12)`; empty for the opening words of the section itself. */
     enum: z.string(),
     heading: z.string(),
-    /** Headings of the pieces the part sits in, outermost first (the section's own heading left out). */
     trail: z.array(z.string()),
-    /** `subsection:a/paragraph:12` inside the section. */
     path: z.string(),
-    /** The words of a split piece outside its subdivisions (its lead-in or closing text), not a subdivision. */
     lead_in: z.boolean(),
     words: z.number().int(),
     preview: z.string(),
-    /** The earliest version with at least half of the part's wording in the section (or the one it was split from). */
     first_version: z.string(),
-    /** first_version is the first chamber-passed text or later (withheld when the bill's late flags are). */
     late: z.boolean(),
-    /** The version the part is read from: the final text, or the last one a dropped section was in. */
     version: z.string(),
     ...fact,
   }),
-  /**
-   * Wording in a section's text that reaches past its price (reach-v2 in docs/rules.md): it limits courts, overrides
-   * state law, opens lawsuits, skips public review or blocks an agency rule. A fact: the sentence quoted from the
-   * version text the section was last seen in, removed sections included. One row per section and kind, and one per
-   * part of a long final section (`part_id`) and kind, so a rider's sentence is pinned to the part it sits in.
-   */
   section_reach: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
-    /** The part of a long section the row is about (`section_parts`); null for the section as a whole. */
     part_id: z.string().nullable().default(null),
     kind: ReachKind,
-    /** The published pattern that matched. */
     pattern: z.string(),
-    /** The sentence it matched, the text's own words (cut around the match when long). */
     quote: z.string().min(1),
-    /** The text version quoted. */
     version: z.string(),
     ...fact,
   }),
   section_scores: table("@antibody/analyze", {
     bill_id: billId,
     section_id: z.string(),
-    /** The part of a long section the row is about (`section_parts`); null for the section as a whole. */
     part_id: z.string().nullable().default(null),
     label: z.enum(["headline", "buried", "normal"]),
     buried: z.number().nullable(),
     dollars_musd: z.number().nullable(),
     dollars_split: z.enum(["exact", "even_split"]).nullable(),
     attention_pct: z.number().nullable(),
-    /** Share of the bill's relevant articles that discuss the section (sides weighted equally); null when the bill's sections are not ranked. */
     attention_share: z.number().nullable().default(null),
-    /** Articles the second look added to the section's matcher hits; null when the section was not given one. */
     attention_checked: z.number().int().nullable().default(null),
-    /** Late after the counterpart check: a section a model paired with an older section that was not late is not new text. */
     late: z.boolean(),
-    /** The older section whose pairing cleared `late` (the lineage flag stays on `sections`); null when nothing was cleared. */
     late_cleared_by: z.string().nullable().default(null),
     off_topic: z.number().nullable(),
-    /** Distinct reports (one filing per registrant, client and period, no low-confidence match) that name the section. */
     lobbying_reports: z.number().int(),
-    /** Distinct lobbying firms (registrants) with such a report: the number stakes count, so one firm's repeated line is one voice. */
     lobbying_firms: z.number().int().default(0),
-    /** The section this one pays for: CBO prints exactly the opposite figure for both in the same title, so it is not a finding of its own. */
     offsets_section_id: z.string().nullable().default(null),
-    /** Kinds of reach the section's text has (`section_reach`); any one gives it stakes enough for the buried label. */
     reach: z.array(ReachKind).default([]),
     ...inference,
   }),
 
-  // ── @antibody/watch: the daily watcher ──
   watch_events: table("@antibody/watch", {
     bill_id: billId,
-    /** hot = the watcher flagged the bill that day; detail holds its score, sub-scores and reasons. */
     kind: z.enum(["new_version", "enrolled", "new_bill", "floor_vote", "action", "cbo_estimate", "hot"]),
     seen_at: z.iso.datetime({ offset: true }),
     url: z.url(),
@@ -619,4 +496,4 @@ export type TableName = keyof typeof TABLES;
 
 export type Row<T extends TableName> = z.infer<(typeof TABLES)[T]["schema"]>;
 
-export const TABLE_NAMES = Object.keys(TABLES) as TableName[];
+export const TABLE_NAMES = Object.keys(TABLES).filter((k): k is TableName => Object.hasOwn(TABLES, k));

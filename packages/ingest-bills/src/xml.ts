@@ -1,7 +1,7 @@
 import type { ChildNode, Element } from "domhandler";
-import { parseDocument } from "htmlparser2";
+import { ElementType, parseDocument } from "htmlparser2";
 
-export type { Element };
+export type { Element } from "domhandler";
 
 export function parseXml(xml: string): Element {
   const doc = parseDocument(xml, { xmlMode: true });
@@ -15,10 +15,9 @@ export function parseXml(xml: string): Element {
 }
 
 export function isElement(n: ChildNode): n is Element {
-  return n.type === "tag";
+  return n.type === ElementType.Tag;
 }
 
-/** Tag name without a namespace prefix. */
 export function local(e: Element): string {
   const i = e.name.indexOf(":");
 
@@ -37,7 +36,6 @@ export function children(e: Element, name: string): Element[] {
   return kids(e).filter((c) => local(c) === name);
 }
 
-/** Follows a `a/b/c` path of child names; the last step returns every match. */
 export function all(e: Element, path: string): Element[] {
   let level = [e];
 
@@ -69,7 +67,7 @@ export function descendant(e: Element, name: string): Element | undefined {
 }
 
 export function textOf(n: ChildNode): string {
-  if (n.type === "text") {
+  if (n.type === ElementType.Text) {
     return n.data;
   }
 
@@ -80,7 +78,6 @@ export function textOf(n: ChildNode): string {
   return "";
 }
 
-/** Trimmed text at a child path, or null when it's missing or empty. */
 export function at(e: Element, path: string): string | null {
   const hit = first(e, path);
   const s = hit ? textOf(hit).trim() : "";

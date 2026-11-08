@@ -5,8 +5,7 @@ import { cyclesFor, fecDate } from "../src/bulk.ts";
 import { aggregateEmployers, employerKey, memberCommittees } from "../src/employers.ts";
 import { givingUrl, readPacs, readPas2 } from "../src/pas2.ts";
 
-/** Real FEC bulk lines for Rep. Sean Casten (H8IL06139, committee C00648493), plus a few edge cases, zipped like the originals. */
-const dir = join(import.meta.dir, "fixtures/fec");
+const castenAndEdgeCasesZipped = join(import.meta.dir, "fixtures/fec");
 
 const byFec = new Map([
   ["H8IL06139", "C001117"],
@@ -36,13 +35,13 @@ test("cycles, dates and employer keys", () => {
 });
 
 test("pas2: direct PAC money and outside spending land in separate tables; memo and undated lines are counted", async () => {
-  const { contributions, independent, skipped } = await readPas2(2026, byFec, dir);
+  const { contributions, independent, skipped } = await readPas2(2026, byFec, castenAndEdgeCasesZipped);
   expect(contributions.map((c) => [c.pac_id, c.bioguide, c.amount_usd, c.date])).toEqual([
     ["C00165589", "C001117", 2000, "2025-07-22"],
     ["C00165589", "C001117", 2000, "2026-03-26"],
   ]);
-  expect(contributions[0]!.recipient_committee_id).toBe("C00648493");
-  expect(independent).toEqual([expect.objectContaining({ pac_id: "C00030718", support: "support", amount_usd: 4287 })]);
+  expect(contributions[0]?.recipient_committee_id).toBe("C00648493");
+  expect(independent).toMatchObject([{ pac_id: "C00030718", support: "support", amount_usd: 4287 }]);
   expect(skipped).toEqual({ memo: 1, badDate: 1 });
 
   for (const r of contributions) {
@@ -55,16 +54,15 @@ test("pas2: direct PAC money and outside spending land in separate tables; memo 
 
   expect(givingUrl("C00165589", "C00648493", "H8IL06139", 2026)).toContain("recipient_committee_id=C00648493");
 
-  const pacs = await readPacs([2026], new Set(["C00165589"]), dir);
-  expect(pacs).toEqual([expect.objectContaining({ id: "C00165589", connected_org: "HUNTINGTON BANCSHARES INC." })]);
+  const pacs = await readPacs([2026], new Set(["C00165589"]), castenAndEdgeCasesZipped);
+  expect(pacs).toMatchObject([{ id: "C00165589", connected_org: "HUNTINGTON BANCSHARES INC." }]);
 });
 
 test("indiv: spellings of one employer are summed per member, memo lines and non-employers left out", async () => {
-  const committees = await memberCommittees(2026, byFec, dir);
+  const committees = await memberCommittees(2026, byFec, castenAndEdgeCasesZipped);
   expect([...committees]).toEqual([["C00648493", "C001117"]]);
-  const { rows, stats } = await aggregateEmployers(2026, committees, 0, dir);
-  const crowe = rows.find((r) => r.employer_key === "CROWE")!;
-  expect(crowe).toMatchObject({
+  const { rows, stats } = await aggregateEmployers(2026, committees, 0, castenAndEdgeCasesZipped);
+  expect(rows.find((r) => r.employer_key === "CROWE")).toMatchObject({
     id: "2026:C001117:CROWE",
     amount_usd: 1300,
     contributions: 3,
@@ -74,15 +72,16 @@ test("indiv: spellings of one employer are summed per member, memo lines and non
     last: "2025-06-23",
     largest_usd: 900,
   });
-  expect(rows.map((r) => r.employer_key).sort()).toEqual(["BRATTLE GROUP", "CROWE"]);
+  expect(rows.map((r) => r.employer_key).toSorted()).toEqual(["BRATTLE GROUP", "CROWE"]);
   expect(stats).toMatchObject({ kept: 5, noEmployer: 1, belowMin: 0 });
 
   for (const r of rows) {
     expect(TABLES.employer_contributions.schema.safeParse(r).success).toBe(true);
   }
 
-  expect((await aggregateEmployers(2026, committees, 1000, dir)).rows.map((r) => r.employer_key).sort()).toEqual([
-    "BRATTLE GROUP",
-    "CROWE",
-  ]);
+  expect(
+    (await aggregateEmployers(2026, committees, 1000, castenAndEdgeCasesZipped)).rows
+      .map((r) => r.employer_key)
+      .toSorted(),
+  ).toEqual(["BRATTLE GROUP", "CROWE"]);
 });

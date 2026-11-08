@@ -1,4 +1,4 @@
-import { billRef, billstatusUrl, congressGovUrl } from "@antibody/core";
+import { billRef, billstatusUrl, congressGovUrl, TABLE_NAMES, must } from "@antibody/core";
 import type { BillId, Row, TableName } from "@antibody/core";
 import { writeRows } from "@antibody/core/node";
 import {
@@ -17,21 +17,19 @@ import type { BillStatus } from "./billstatus.ts";
 import { canRun, counterparts } from "./counterparts.ts";
 import type { CounterpartStep } from "./counterparts.ts";
 import type { AmendmentText } from "./crec.ts";
-import { cached, NotFound } from "./fetch.ts";
+import { cached, NotFoundError } from "./fetch.ts";
 import { isLate, PURE_SPLIT, trace, wholesaleReason } from "./lineage.ts";
 import type { Lineage, ParsedVersion } from "./lineage.ts";
 import { findPredecessor } from "./predecessor.ts";
-import { PartialAmendment, parseSections, sectionNum } from "./sections.ts";
+import { PartialAmendmentError, parseSections, sectionNum } from "./sections.ts";
 import type { Sec } from "./sections.ts";
 import { textVersions } from "./versions.ts";
 import type { VersionRef } from "./versions.ts";
 
 export interface IngestOptions {
   refresh?: boolean;
-  /** Run the LLM counterpart pass (needs the `claude` CLI). */
   llm?: boolean;
   log?: (m: string) => void;
-  /** Write rows to data/out (off in tests). */
   write?: boolean;
 }
 
@@ -45,14 +43,13 @@ export type BillRows = { [T in TableName]?: Row<T>[] };
 const locator = (path: string) =>
   path
     .split("/")
-    .map((p) => p.replace(":", " ").replace(/^sec /, "sec. "))
+    .map((p) => p.replace(":", " ").replace(/^sec /u, "sec. "))
     .join(", ");
 
-/** The last heading that isn't in all caps (enrolled bills and laws print some headings in caps). */
 const heading = (l: Lineage) =>
   Object.values(l.history)
     .map((s) => s.heading)
-    .reverse()
+    .toReversed()
     .find((h) => h !== h.toUpperCase()) ?? l.last.heading;
 
 export async function loadStatus(bill: BillId, refresh = false): Promise<BillStatus> {
@@ -66,9 +63,8 @@ export async function loadStatus(bill: BillId, refresh = false): Promise<BillSta
 
 const loadSections = async (ref: VersionRef): Promise<Sec[]> => parseSections(await cached(ref.url, ref.file));
 
-/** Every text version, its sections and their lineage, the sponsors, committees and amendments of one bill, as rows. */
 export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
-  const log = opts.log ?? (() => {});
+  const log = (m: string) => opts.log?.(m);
   const status = await loadStatus(bill, opts.refresh);
   const skipped: { code: string; why: string }[] = [];
   const own: Version[] = [];
@@ -77,7 +73,10 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
     try {
       own.push({ ref, code: ref.code, secs: await loadSections(ref), predecessor: false, predecessorRule: null });
     } catch (error) {
-      if (!(error instanceof PartialAmendment || error instanceof NotFound)) throw error;
+      if (!(error instanceof PartialAmendmentError || error instanceof NotFoundError)) {
+        throw error;
+      }
+
       skipped.push({ code: ref.code, why: error.message });
       log(`skipped ${ref.code}: ${error.message}`);
     }
@@ -104,10 +103,10 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   const { lineages, steps } = trace(bill, versions);
   const byCode = new Map(versions.map((v) => [v.code, v]));
   const lateUnavailable = wholesaleReason(lineages, versions);
-  const late = new Map(lineages.map((l) => [l.id, !lateUnavailable && isLate(l, versions)]));
-  log(`${lineages.length} section lineages, ${[...late.values()].filter(Boolean).length} late`);
+  const flaggedLate = (l: Lineage) => lateUnavailable === null && isLate(l, versions);
+  log(`${lineages.length} section lineages, ${lineages.filter(flaggedLate).length} late`);
 
-  if (lateUnavailable) {
+  if (lateUnavailable !== null) {
     log(`late flags withheld: ${lateUnavailable}`);
   }
 
@@ -152,7 +151,7 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
 
   const final = versions.at(-1)?.code;
   rows.sections = lineages.map((l) => {
-    const firstPath = l.history[l.firstVersion]!.path;
+    const firstPath = must(l.history[l.firstVersion], `${l.id}'s first step`).path;
 
     return {
       id: l.id,
@@ -168,12 +167,12 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
       split_from: l.splitFrom?.id ?? null,
       split_into: l.splitInto,
       merged_into: l.mergedInto?.id ?? null,
-      late: late.get(l.id)!,
+      late: flaggedLate(l),
       words: l.last.words,
-      text_url: byCode.get(l.lastVersion)!.ref.url,
+      text_url: must(byCode.get(l.lastVersion), `version ${l.lastVersion}`).ref.url,
       preview: l.last.text.slice(0, 200),
       history: l.history,
-      source_url: byCode.get(l.firstVersion)!.ref.url,
+      source_url: must(byCode.get(l.firstVersion), `version ${l.firstVersion}`).ref.url,
       source_locator: locator(firstPath),
     };
   });
@@ -185,7 +184,8 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
     id: `${bill}:${c.code}`,
     bill_id: bill,
     committee_id: c.code,
-    activity: [...new Set(c.activities.map((a) => a.name).filter((n) => n && n !== "Unknown"))].join(", ") || null,
+    activity:
+      [...new Set(c.activities.map((a) => a.name).filter((n) => n !== "" && n !== "Unknown"))].join(", ") || null,
     source_url: src,
     source_locator: `committees: ${c.name}`,
   }));
@@ -209,7 +209,7 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
     purpose: rec.purpose,
     status: st,
     latest_action: rec.latestAction?.text ?? null,
-    latest_action_on: rec.latestAction?.date || null,
+    latest_action_on: rec.latestAction?.date === "" ? null : (rec.latestAction?.date ?? null),
     roll_id: rollId(rec),
     version_step: step,
     url: amendmentUrl(rec),
@@ -222,26 +222,29 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
   const textOf = async (rec: (typeof amendments)[number]["rec"]) => {
     const key = `${rec.type} ${rec.number}`;
 
-    if (!texts.has(key)) {
-      texts.set(key, await loadText(rec));
+    if (texts.has(key)) {
+      return texts.get(key) ?? null;
     }
 
-    return texts.get(key)!;
+    const text = await loadText(rec);
+    texts.set(key, text);
+
+    return text;
   };
 
   rows.amendment_sections = [];
   const counterpartSteps: CounterpartStep[] = [];
 
   for (const s of steps) {
-    const from = byCode.get(s.from)!;
-    const to = byCode.get(s.to)!;
+    const from = must(byCode.get(s.from), `version ${s.from}`);
+    const to = must(byCode.get(s.to), `version ${s.to}`);
 
     if (from.predecessor) {
       continue;
     }
 
     const added = lineages.filter((l) => l.firstVersion === s.to && !(l.splitFrom && l.splitFrom.share >= PURE_SPLIT));
-    const removed = lineages.filter((l) => l.history[s.from] && l.removedIn === s.to);
+    const removed = lineages.filter((l) => l.history[s.from] !== undefined && l.removedIn === s.to);
     counterpartSteps.push({
       from: s.from,
       to: s.to,
@@ -263,7 +266,7 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
     const amended = new Map<string, AmendmentText | null>();
 
     for (const a of agreed) {
-      if (!a.rec.amends) {
+      if (a.rec.amends === null) {
         continue;
       }
 
@@ -281,19 +284,21 @@ export async function ingestBill(bill: BillId, opts: IngestOptions = {}) {
 
   log(`${rows.amendments.length} amendments, ${rows.amendment_sections.length} section attributions`);
 
-  rows.counterparts = opts.llm && canRun() ? await counterparts(bill, counterpartSteps, log) : [];
+  rows.counterparts = opts.llm === true && canRun() ? await counterparts(bill, counterpartSteps, log) : [];
 
   if (opts.write ?? true) {
-    for (const [table, list] of Object.entries(rows)) await writeRows(table as TableName, bill, list as never[]);
+    for (const table of TABLE_NAMES) {
+      const list = rows[table];
+
+      if (list) {
+        await writeRows(table, bill, list);
+      }
+    }
   }
 
   return { status, versions, lineages, steps, rows, skipped };
 }
 
-/**
- * One row per sponsorship. A member who cosponsored, withdrew and cosponsored again (Sen. Warnock on S.1383) has a
- * row for each time; the later ones carry the date in their id.
- */
 export function sponsorshipRows(
   bill: BillId,
   status: Pick<BillStatus, "sponsor" | "introducedOn" | "cosponsors">,
@@ -302,9 +307,9 @@ export function sponsorshipRows(
   const seen = new Set<string>();
 
   return [
-    ...(status.sponsor
-      ? [{ bioguide: status.sponsor, role: "sponsor" as const, date: status.introducedOn, withdrawnOn: null }]
-      : []),
+    ...(status.sponsor === null || status.sponsor === ""
+      ? []
+      : [{ bioguide: status.sponsor, role: "sponsor" as const, date: status.introducedOn, withdrawnOn: null }]),
     ...status.cosponsors.filter((c) => c.bioguide).map((c) => ({ ...c, role: "cosponsor" as const })),
   ].map((s) => {
     const again = seen.has(s.bioguide);

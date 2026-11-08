@@ -8,10 +8,6 @@ export * from "./index.ts";
 
 export const ROOT = resolve(import.meta.dir, "../../..");
 
-/**
- * Shared data lives in the main checkout's `data/` (gitignored), so every worktree reads the same downloads.
- * Override with ANTIBODY_DATA.
- */
 export const DATA = process.env.ANTIBODY_DATA ?? join(mainCheckout(), "data");
 
 function mainCheckout(): string {
@@ -21,19 +17,13 @@ function mainCheckout(): string {
 }
 
 export const paths = {
-  /** Raw downloads for one source: data/<source>/ (bills, cbo, lobbying, trades, entities, attention, news, fec …). */
   raw: (source: string) => join(DATA, source),
-  /** Contract rows: data/out/<table>/<shard>.jsonl */
   table: (table: TableName) => join(DATA, "out", table),
   db: join(DATA, "antibody.duckdb"),
   bundles: join(DATA, "bundles"),
   published: join(ROOT, "apps/web/public/bundles"),
 };
 
-/**
- * Validates every row against the table's schema and replaces `data/out/<table>/<shard>.jsonl` atomically.
- * Shard by bill id for per-bill tables (`119-s-1582`), by year or source for global ones.
- */
 export async function writeRows<T extends TableName>(table: T, shard: string, rows: Row<T>[]): Promise<string> {
   const schema = TABLES[table].schema;
 
@@ -57,13 +47,16 @@ export async function writeRows<T extends TableName>(table: T, shard: string, ro
   return file;
 }
 
-/** Reads one shard, or every shard of the table, without DuckDB. */
+const isRow = <T extends TableName>(table: T, row: unknown): row is Row<T> =>
+  TABLES[table].schema.safeParse(row).success;
+
 export async function readRows<T extends TableName>(table: T, shard?: string): Promise<Row<T>[]> {
   const dir = paths.table(table);
 
-  const files = shard
-    ? [`${shard}.jsonl`]
-    : (await readdir(dir).catch(() => [] as string[])).filter((f) => f.endsWith(".jsonl"));
+  const files =
+    shard !== undefined && shard !== ""
+      ? [`${shard}.jsonl`]
+      : (await readdir(dir).catch((): string[] => [])).filter((f) => f.endsWith(".jsonl"));
 
   const rows: Row<T>[] = [];
 
@@ -75,7 +68,15 @@ export async function readRows<T extends TableName>(table: T, shard?: string): P
     }
 
     for (const line of (await file.text()).split("\n")) {
-      if (line) rows.push(JSON.parse(line));
+      if (line) {
+        const row: unknown = JSON.parse(line);
+
+        if (!isRow(table, row)) {
+          throw new Error(`${table}/${f}: a row does not match the table's schema`);
+        }
+
+        rows.push(row);
+      }
     }
   }
 
@@ -84,10 +85,6 @@ export async function readRows<T extends TableName>(table: T, shard?: string): P
 
 const canCap = Bun.which("systemd-run") !== null && process.env.CI === undefined;
 
-/**
- * Runs a command, memory-capped with `systemd-run --user --scope -p MemoryMax=<cap>` on the server
- * (plain elsewhere, like CI). Use it for bulk downloads, OCR/vision batches, big parses and DuckDB loads.
- */
 export async function heavy(
   cmd: string[],
   opts: { memoryMax?: string; cwd?: string; signal?: AbortSignal } = {},
@@ -106,7 +103,13 @@ export async function heavy(
       ]
     : cmd;
 
-  const proc = Bun.spawn(full, { cwd: opts.cwd ?? ROOT, stdout: "pipe", stderr: "inherit", signal: opts.signal });
+  const proc = Bun.spawn(full, {
+    cwd: opts.cwd ?? ROOT,
+    stdout: "pipe",
+    stderr: "inherit",
+    signal: opts.signal ?? new AbortController().signal,
+  });
+
   const out = await new Response(proc.stdout).text();
 
   if ((await proc.exited) !== 0) {
@@ -116,14 +119,10 @@ export async function heavy(
   return out;
 }
 
-/**
- * Runs a Python script that lives in a package's `py/` folder, with that package's uv project, in isolated mode
- * (`-I`, so a downloaded file named like a module is never imported). Capped like `heavy`.
- */
 export async function python(pkgDir: string, script: string, args: string[], opts?: { memoryMax?: string }) {
   const models = `FASTEMBED_CACHE_PATH=${join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "fastembed")}`;
 
-  return heavy(
+  return await heavy(
     ["env", models, "uv", "run", "-q", "--project", pkgDir, "python", "-I", join(pkgDir, "py", script), ...args],
     opts,
   );

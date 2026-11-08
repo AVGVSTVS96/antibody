@@ -3,6 +3,7 @@ import type { BillId, Row, Stage, StageContext } from "@antibody/core";
 import { paths, python, readRows, writeRows } from "@antibody/core/node";
 import { PARTS_TEXT, sectionParts, sectionTexts } from "@antibody/ingest-bills";
 import { articleText, OUTLETS, searchPlan } from "@antibody/ingest-news";
+import { z } from "zod";
 import { attention, MIN_TEXT_CHARS } from "./attention.ts";
 import { cachedMatchRun, claudeAvailable, matchArticles, matchEmbed, subjectOf, withParts } from "./match.ts";
 import type { ArticleIn } from "./match.ts";
@@ -31,7 +32,20 @@ export { buried, label, NAMES_BILL, SCORE, SCORE_RULE, SCORE_TEXT, stakes } from
 
 const PKG = join(import.meta.dir, "..");
 
-/** Published rules for the bundle's rules[]. */
+const BalancedShare = z.object({ balanced_share: z.number() });
+
+const OffTopicFile = z.object({ scores: z.record(z.string(), z.number()) });
+
+function billOf(ctx: StageContext): BillId {
+  if (ctx.bill === null) {
+    throw new Error("this stage runs per bill");
+  }
+
+  return ctx.bill;
+}
+
+const isPartRow = (r: { part_id: string | null }) => r.part_id !== null && r.part_id !== "";
+
 export const RULES = [
   {
     id: "attention-v2",
@@ -46,7 +60,6 @@ export const RULES = [
   { id: PARTS_VERSION, version: "1", text: PARTS_TEXT.join(" "), url: null },
 ];
 
-/** What the matcher and the quiet check read for a bill: its sections, the articles read, and the bill's names. */
 async function coverage(bill: BillId) {
   const rows = await readRows("sections", bill);
 
@@ -55,10 +68,13 @@ async function coverage(bill: BillId) {
   }
 
   const unnamed = rows.filter((s) => !s.heading.trim());
-  const texts = unnamed.length ? await sectionTexts(unnamed, await readRows("versions", bill)) : new Map();
+
+  const texts =
+    unnamed.length > 0 ? await sectionTexts(unnamed, await readRows("versions", bill)) : new Map<string, never>();
 
   const sections = rows.map((s) => {
-    const subject = texts.has(s.id) ? subjectOf(texts.get(s.id)!.text) : "";
+    const t = texts.get(s.id);
+    const subject = t === undefined ? "" : subjectOf(t.text);
 
     return subject ? { ...s, heading: `(unnamed; about: ${subject})` } : s;
   });
@@ -67,7 +83,12 @@ async function coverage(bill: BillId) {
   const partById = new Map(partRowsRead.map((r) => [r.id, r]));
 
   const parts = partSections(rows, partRowsRead).map((p) => {
-    const row = partById.get(p.id)!;
+    const row = partById.get(p.id);
+
+    if (row === undefined) {
+      throw new Error(`part ${p.id} has no section_parts row`);
+    }
+
     const subject = row.heading ? "" : subjectOf(row.preview);
 
     return {
@@ -92,13 +113,13 @@ async function coverage(bill: BillId) {
   );
 
   const title = b?.short_title ?? b?.title ?? bill;
-  const names = (await searchPlan(bill)).query.match(/"([^"]+)"/g)?.map((q) => q.slice(1, -1)) ?? [];
+  const names = (await searchPlan(bill)).query.match(/"([^"]+)"/gu)?.map((q) => q.slice(1, -1)) ?? [];
 
   return { sections, parts, partRows: partRowsRead, articles, input, title, names };
 }
 
 async function runAttention(ctx: StageContext) {
-  const bill = ctx.bill as BillId;
+  const bill = billOf(ctx);
   const { sections, parts, partRows: partList, articles, input, title, names } = await coverage(bill);
   const useClaude = process.env.ANTIBODY_MATCHER !== "embed" && (await claudeAvailable());
 
@@ -121,28 +142,23 @@ async function runAttention(ctx: StageContext) {
   ctx.log(`${res.rows.length} attention rows from ${res.relevant} relevant articles (matcher ${run.model})`);
 }
 
-/** The filings a bill's lobbying references point to (the table is sharded by year, so it is read whole and trimmed). */
 async function filingsOf(refs: Row<"lda_bill_refs">[]) {
   const named = new Set(refs.map((r) => r.filing_id));
 
   return new Map((await readRows("lda_filings")).filter((f) => named.has(f.id)).map((f) => [f.id, f]));
 }
 
-/**
- * Stakes of each final section from the bill's CBO figures, lobbying firms and reach, as the scores stage reads them,
- * and of each part of a long section from its own reach (CBO and lobbying name whole sections).
- */
 async function stakesBySection(bill: BillId, sections: Row<"sections">[], parts: Row<"section_parts">[] = []) {
   const tags = await readRows("section_reach", bill);
 
   const reachOf = Map.groupBy(
-    tags.filter((r) => !r.part_id),
+    tags.filter((r) => !isPartRow(r)),
     (r) => r.section_id,
   );
 
   const partReach = Map.groupBy(
-    tags.filter((r) => r.part_id),
-    (r) => r.part_id!,
+    tags.flatMap((r) => (r.part_id === null || r.part_id === "" ? [] : [{ partId: r.part_id, kind: r.kind }])),
+    (r) => r.partId,
   );
 
   const dollars = sectionDollars(await readRows("cbo_estimates", bill), await readRows("cbo_lines", bill));
@@ -177,19 +193,14 @@ async function stakesBySection(bill: BillId, sections: Row<"sections">[], parts:
   return { dollars, reports, stakes: by };
 }
 
-/**
- * A second look at the sections the buried rule would call quiet with big stakes: the matcher picks sections from a
- * shortlist per article, so a provision the press describes in other words (a "$2,000 cap" for a Part D "benefit
- * redesign") can read as untouched. The news passages closest in meaning to each such section go to a model.
- */
 async function runCheck(ctx: StageContext) {
-  const bill = ctx.bill as BillId;
+  const bill = billOf(ctx);
   const { sections, parts, partRows: partList, articles, input, title, names } = await coverage(bill);
   const att = await readRows("attention", bill);
   const final = sections.filter((s) => s.in_final);
   const parentOf = new Map(parts.map((p) => [p.id, p.parent]));
   const run = await cachedMatchRun(bill);
-  const ranked = att.some((a) => a.section_id && a.pct !== null);
+  const ranked = att.some((a) => a.section_id !== null && a.section_id !== "" && a.pct !== null);
 
   if (!run || !ranked || final.length < SCORE.minSections) {
     await writeRows("attention_checks", bill, []);
@@ -202,16 +213,25 @@ async function runCheck(ctx: StageContext) {
 
   const res = attention(bill, sections, articles, run, partList);
   const money = await stakesBySection(bill, sections, partList);
-  const shareOf = new Map(att.flatMap((a) => (a.section_id ? [[a.part_id ?? a.section_id, a] as const] : [])));
 
-  const candidates = [...final, ...parts.filter((p) => p.in_final)].filter((s) => {
+  const shareOf = new Map(
+    att.flatMap((a) => (a.section_id === null || a.section_id === "" ? [] : [[a.part_id ?? a.section_id, a] as const])),
+  );
+
+  const quietCostly = [...final, ...parts.filter((p) => p.in_final)].flatMap((s) => {
     const a = shareOf.get(s.id);
-    const share = a ? (a.evidence as { balanced_share: number }).balanced_share : null;
 
-    return (
-      a && a.pct !== null && share !== null && share < SCORE.quietShare && money.stakes.get(s.id)! >= SCORE.costlyMin
-    );
+    if (a === undefined || a.pct === null) {
+      return [];
+    }
+
+    const share = BalancedShare.safeParse(a.evidence).data?.balanced_share;
+    const costly = (money.stakes.get(s.id) ?? 0) >= SCORE.costlyMin;
+
+    return share !== undefined && share < SCORE.quietShare && costly ? [{ s, a }] : [];
   });
+
+  const candidates = quietCostly.map((c) => c.s);
 
   const countedIds = new Set(res.counted.map((a) => a.id));
   const pool = input.filter((a) => countedIds.has(a.id));
@@ -223,25 +243,30 @@ async function runCheck(ctx: StageContext) {
     signal: ctx.signal,
   });
 
-  const rows = candidates.map((s): Row<"attention_checks"> => {
-    const a = shareOf.get(s.id)!;
-    const had = new Set(a.hits ? a.rests_on.filter((r) => r.startsWith("articles/")).map((r) => r.slice(9)) : []);
-    const r = checked.results[s.id]!;
+  const rows = quietCostly.map(({ s, a }): Row<"attention_checks"> => {
+    const had = new Set(a.hits ? a.rests_on.flatMap((r) => (r.startsWith("articles/") ? [r.slice(9)] : [])) : []);
+    const r = checked.results[s.id];
+
+    if (r === undefined) {
+      throw new Error(`quiet check has no result for ${s.id}`);
+    }
+
     const found = r.yes.filter((id) => countedIds.has(id) && !had.has(id));
     const parent = parentOf.get(s.id);
+    const isPart = parent !== undefined && parent !== "";
 
     return {
       id: `${bill}:${s.id}`,
       bill_id: bill,
       section_id: parent ?? s.id,
-      part_id: parent ? s.id : null,
+      part_id: isPart ? s.id : null,
       passages: r.passages.length,
       article_ids: found,
       share: Number(res.shareOf([...had, ...found]).toFixed(5)),
       rule: CHECK_RULE,
       confidence: 0.7,
       rests_on: [
-        parent ? `section_parts/${s.id}` : `sections/${s.id}`,
+        isPart ? `section_parts/${s.id}` : `sections/${s.id}`,
         `attention/${a.id}`,
         ...found.map((id) => `articles/${id}`),
       ],
@@ -262,11 +287,10 @@ async function runCheck(ctx: StageContext) {
   );
 }
 
-/** Off-topic distance for each final, non-boilerplate section, cached per bill. */
 async function offTopic(bill: BillId, sections: Row<"sections">[]): Promise<Map<string, number>> {
-  const items = sections
-    .filter((s) => s.in_final && !BOILERPLATE.test(s.heading))
-    .map((s) => ({ id: s.id, text: `${s.heading}. ${s.preview}` }));
+  const items = sections.flatMap((s) =>
+    s.in_final && !BOILERPLATE.test(s.heading) ? [{ id: s.id, text: `${s.heading}. ${s.preview}` }] : [],
+  );
 
   if (items.length < 4) {
     return new Map();
@@ -283,17 +307,15 @@ async function offTopic(bill: BillId, sections: Row<"sections">[]): Promise<Map<
     await python(PKG, "offtopic.py", [input, output], { memoryMax: "3G" });
   }
 
-  const raw: Record<string, number> = (await Bun.file(output).json()).scores;
-  const ids = Object.keys(raw);
-  const values = ids.map((id) => raw[id]!).sort((a, b) => a - b);
+  const raw = OffTopicFile.parse(await Bun.file(output).json()).scores;
+  const values = Object.values(raw).toSorted((a, b) => a - b);
   const rank = (v: number) => values.filter((x) => x < v).length / Math.max(values.length - 1, 1);
 
-  return new Map(ids.map((id) => [id, Number(rank(raw[id]!).toFixed(4))]));
+  return new Map(Object.entries(raw).map(([id, v]) => [id, Number(rank(v).toFixed(4))]));
 }
 
-/** Reads every long final section in parts (parts-v1): its own subsections and paragraphs, each with its first version. */
 async function runParts(ctx: StageContext) {
-  const bill = ctx.bill as BillId;
+  const bill = billOf(ctx);
   const sections = await readRows("sections", bill);
 
   if (!sections.length) {
@@ -310,7 +332,7 @@ async function runParts(ctx: StageContext) {
   await writeRows("section_parts", bill, rows);
   const split = new Set(rows.map((r) => r.section_id)).size;
   const late = rows.filter((r) => r.late);
-  const inOld = late.filter((r) => !sections.find((s) => s.id === r.section_id)?.late).length;
+  const inOld = late.filter((r) => sections.find((s) => s.id === r.section_id)?.late !== true).length;
   ctx.log(
     `${split} long sections read in ${rows.length} parts; ${late.length} parts added late${inOld ? ` (${inOld} written into a section that was there before)` : ""}`,
   );
@@ -320,14 +342,10 @@ const sentenceLocator = (path: string) =>
   `${path
     .replaceAll("/", ", ")
     .replaceAll(":", " ")
-    .replace(/\bsec /, "sec. ")}, the sentence quoted`;
+    .replace(/\bsec /u, "sec. ")}, the sentence quoted`;
 
-/**
- * Tags every section the bill ever had, removed ones too, with the reach its last text has (reach-v2), and every part
- * of a long final section with the reach of its own text, so the sentence is pinned to the part it sits in.
- */
 async function runReach(ctx: StageContext) {
-  const bill = ctx.bill as BillId;
+  const bill = billOf(ctx);
   const sections = await readRows("sections", bill);
 
   if (!sections.length) {
@@ -386,7 +404,7 @@ async function runReach(ctx: StageContext) {
 }
 
 async function runScores(ctx: StageContext) {
-  const bill = ctx.bill as BillId;
+  const bill = billOf(ctx);
   const sections = await readRows("sections", bill);
   const att = await readRows("attention", bill);
   const checks = await readRows("attention_checks", bill);
@@ -414,7 +432,7 @@ async function runScores(ctx: StageContext) {
 
   await writeRows("section_scores", bill, rows);
   const n = (l: string) => rows.filter((r) => r.label === l).length;
-  const cleared = rows.filter((r) => r.late_cleared_by).length;
+  const cleared = rows.filter((r) => r.late_cleared_by !== null && r.late_cleared_by !== "").length;
 
   const onReach = rows.filter(
     (r) =>
@@ -424,7 +442,7 @@ async function runScores(ctx: StageContext) {
   ).length;
 
   ctx.log(
-    `${rows.filter((r) => !r.part_id).length} final sections and ${rows.filter((r) => r.part_id).length} parts: ${n("headline")} headline, ${n("buried")} buried${onReach ? ` (${onReach} on reach alone)` : ""}${cleared ? `, ${cleared} not late after the counterpart check` : ""}; ` +
+    `${rows.filter((r) => !isPartRow(r)).length} final sections and ${rows.filter(isPartRow).length} parts: ${n("headline")} headline, ${n("buried")} buried${onReach ? ` (${onReach} on reach alone)` : ""}${cleared ? `, ${cleared} not late after the counterpart check` : ""}; ` +
       `dollars from ${dollars.estimates.map((e) => e.id).join(" and ") || "no per-section CBO estimate"}`,
   );
 }

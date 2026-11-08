@@ -1,8 +1,8 @@
 import { ROOT } from "@antibody/core/node";
+import { z } from "zod";
 
 const API = "https://search.mediacloud.org/api/";
 
-/** Media Cloud allows an API token 2 search calls a minute; directory calls are not limited. */
 const SEARCH_GAP_MS = 31_000;
 let nextSearchAt = 0;
 
@@ -10,47 +10,59 @@ export interface Story {
   id: string;
   url: string;
   title: string;
-  publish_date: string | null;
+  publish_date?: string | null | undefined;
   media_name: string;
   media_url: string;
 }
 
+export const StoryJson: z.ZodType<Story> = z.looseObject({
+  id: z.string(),
+  url: z.string(),
+  title: z.string(),
+  publish_date: z.string().nullish(),
+  media_name: z.string(),
+  media_url: z.string(),
+});
+
 export async function mediacloudKey(): Promise<string | null> {
-  if (process.env.MEDIACLOUD_API_KEY) {
-    return process.env.MEDIACLOUD_API_KEY;
+  const fromEnv = process.env.MEDIACLOUD_API_KEY ?? "";
+
+  if (fromEnv !== "") {
+    return fromEnv;
   }
 
   const env = Bun.file(`${ROOT}/.env`);
-  const fromMain = Bun.file(`${process.env.HOME}/Developer/antibody/.env`);
+  const fromMain = Bun.file(`${process.env.HOME ?? "undefined"}/Developer/antibody/.env`);
 
   for (const f of [env, fromMain]) {
     if (!(await f.exists())) {
       continue;
     }
 
-    const m = /^MEDIACLOUD_API_KEY=(.+)$/m.exec(await f.text());
+    const key = /^MEDIACLOUD_API_KEY=(.+)$/mu.exec(await f.text())?.[1];
 
-    if (m) {
-      return m[1]!.trim();
+    if (key !== undefined) {
+      return key.trim();
     }
   }
 
   return null;
 }
 
-async function call<T>(
+async function call<T extends z.ZodType>(
   path: string,
   params: Record<string, string>,
   search: boolean,
+  schema: T,
   signal?: AbortSignal,
-): Promise<T> {
+): Promise<z.infer<T>> {
   const key = await mediacloudKey();
 
-  if (!key) {
+  if (key === null || key === "") {
     throw new Error("no MEDIACLOUD_API_KEY in the environment or .env");
   }
 
-  const url = `${API}${path}?${new URLSearchParams(params)}`;
+  const url = `${API}${path}?${new URLSearchParams(params).toString()}`;
 
   for (let attempt = 0; ; attempt++) {
     if (search) {
@@ -63,10 +75,10 @@ async function call<T>(
       nextSearchAt = Date.now() + SEARCH_GAP_MS;
     }
 
-    const res = await fetch(url, { headers: { authorization: `Token ${key}` }, signal });
+    const res = await fetch(url, { headers: { authorization: `Token ${key}` }, signal: signal ?? null });
 
     if (res.ok) {
-      return (await res.json()) as T;
+      return schema.parse(await res.json());
     }
 
     const body = await res.text();
@@ -93,10 +105,11 @@ const searchParams = (query: string, sources: number[], w: Window) => ({
 });
 
 export async function storyCount(query: string, sources: number[], w: Window, signal?: AbortSignal) {
-  const r = await call<{ count: { relevant: number } }>(
+  const r = await call(
     "search/total-count",
     searchParams(query, sources, w),
     true,
+    z.object({ count: z.object({ relevant: z.number() }) }),
     signal,
   );
 
@@ -104,38 +117,35 @@ export async function storyCount(query: string, sources: number[], w: Window, si
 }
 
 export async function countsBySource(query: string, sources: number[], w: Window, signal?: AbortSignal) {
-  const r = await call<{ sources: { source: string; count: number }[] }>(
+  const r = await call(
     "search/sources",
     searchParams(query, sources, w),
     true,
+    z.object({ sources: z.array(z.object({ source: z.string(), count: z.number() })) }),
     signal,
   );
 
   return Object.fromEntries(r.sources.map((s) => [s.source, s.count]));
 }
 
-/** Every story matching the query in the given sources (1,000 per page, one rate-limited call per page). */
+const StoryPage = z.object({ stories: z.array(StoryJson), pagination_token: z.string().nullish() });
+
 export async function stories(query: string, sources: number[], w: Window, signal?: AbortSignal): Promise<Story[]> {
   const out: Story[] = [];
-  let token: string | null = null;
+  let token: string | null | undefined = null;
 
   do {
     const params: Record<string, string> = searchParams(query, sources, w);
 
-    if (token) {
+    if (token !== null && token !== undefined && token !== "") {
       params.pagination_token = token;
     }
 
-    const page: { stories: Story[]; pagination_token: string | null } = await call(
-      "search/story-list",
-      params,
-      true,
-      signal,
-    );
+    const page = await call("search/story-list", params, true, StoryPage, signal);
 
     out.push(...page.stories);
     token = page.pagination_token;
-  } while (token);
+  } while (token !== null && token !== undefined && token !== "");
 
   return out;
 }
@@ -143,35 +153,47 @@ export async function stories(query: string, sources: number[], w: Window, signa
 export interface Source {
   id: number;
   name: string;
-  stories_per_week: number | null;
-  stories_total: number | null;
-  media_type: string | null;
+  stories_per_week?: number | null | undefined;
+  stories_total?: number | null | undefined;
+  media_type?: string | null | undefined;
 }
 
+const SourceJson: z.ZodType<Source> = z.looseObject({
+  id: z.number(),
+  name: z.string(),
+  stories_per_week: z.number().nullish(),
+  stories_total: z.number().nullish(),
+  media_type: z.string().nullish(),
+});
+
 export async function sourceByDomain(domain: string): Promise<Source | null> {
-  const r = await call<{ results: Source[] }>(
+  const r = await call(
     "sources/sources/",
     { name: domain, platform: "online_news", limit: "10" },
     false,
+    z.object({ results: z.array(SourceJson) }),
   );
 
   return r.results.find((s) => s.name === domain) ?? null;
 }
+
+const SourcePage = z.object({ results: z.array(SourceJson), next: z.string().nullish() });
 
 export async function collectionSources(collectionId: number): Promise<Source[]> {
   const out: Source[] = [];
   let offset = 0;
 
   for (;;) {
-    const r = await call<{ results: Source[]; next: string | null }>(
+    const r = await call(
       "sources/sources/",
       { collection_id: String(collectionId), limit: "1000", offset: String(offset) },
       false,
+      SourcePage,
     );
 
     out.push(...r.results);
 
-    if (!r.next) {
+    if (r.next === null || r.next === undefined || r.next === "") {
       return out;
     }
 

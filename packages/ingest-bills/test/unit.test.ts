@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtemp, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { must } from "@antibody/core";
 import { amendmentStatus, versionStep } from "../src/amendments.ts";
 import type { AmendmentRecord } from "../src/billstatus.ts";
 import { candidates } from "../src/counterparts.ts";
@@ -33,7 +34,7 @@ describe("text", () => {
     const t =
       "Section 45Y of the Internal Revenue Code of 1986 is amended. The term has the meaning given in section 3 of the Clean Air Act. See 42 U.S.C. 7401.";
 
-    expect([...citations(t)].sort()).toEqual(["irc:45y", "usc:42:7401"]);
+    expect([...citations(t)].toSorted()).toEqual(["irc:45y", "usc:42:7401"]);
   });
 
   test("word diff counts inserted and removed words like difflib", () => {
@@ -59,16 +60,19 @@ describe("sections", () => {
   });
 });
 
-describe("match and lineage", () => {
-  const v = (body: string, code: string) => ({ code, secs: parseSections(bill(body)), predecessor: false });
+const version = (body: string, code: string) => ({ code, secs: parseSections(bill(body)), predecessor: false });
 
+const oneSection = (heading: string, text: string): Sec =>
+  must(parseSections(bill(section("1", heading, text)))[0], "the parsed section");
+
+describe("match and lineage", () => {
   test("a section that keeps its wording matches across renumbering; a new one is added", () => {
-    const a = v(
+    const a = version(
       section("1", "Short title", "This Act may be cited as the X Act.") + section("2", "Grants", LOREM("g")),
       "ih",
     );
 
-    const b = v(
+    const b = version(
       section("1", "Short title", "This Act may be cited as the X Act.") +
         section("2", "Disclosure", LOREM("d")) +
         section("3", "Grants", LOREM("g")),
@@ -76,23 +80,27 @@ describe("match and lineage", () => {
     );
 
     const { lineages, steps } = trace("119-s-1", [a, b]);
-    expect(steps[0]!.matched).toEqual({ identical: 2 });
-    const added = lineages.find((l) => l.firstVersion === "es")!;
-    expect(added.id).toBe("119-s-1@es:sec:2");
-    expect(lineages.find((l) => l.id === "119-s-1@ih:sec:2")!.history.es!.movedFrom).toBe("sec:2");
+    expect(steps[0]?.matched).toEqual({ identical: 2 });
+    expect(lineages.find((l) => l.firstVersion === "es")?.id).toBe("119-s-1@es:sec:2");
+    expect(lineages.find((l) => l.id === "119-s-1@ih:sec:2")?.history.es?.movedFrom).toBe("sec:2");
   });
 
   test("two sections that share a path in one version get distinct ids", () => {
-    const a = v(section("2", "Grants", LOREM("g")) + section("2", "Nutrition", LOREM("n")), "rh");
+    const a = version(section("2", "Grants", LOREM("g")) + section("2", "Nutrition", LOREM("n")), "rh");
     const { lineages } = trace("119-hr-1", [a]);
     expect(lineages.map((l) => l.id)).toEqual(["119-hr-1@rh:sec:2", "119-hr-1@rh:sec:2~2"]);
   });
 
   test("the old side of a split names its pieces", () => {
-    const a = v(section("1", "Safety net", `${LOREM("s", 40)} ${LOREM("d", 40)}`), "pcs");
-    const b = v(section("1", "Sugar", LOREM("s", 40)) + section("2", "Dairy", LOREM("d", 40)), "eas");
+    const a = version(section("1", "Safety net", `${LOREM("s", 40)} ${LOREM("d", 40)}`), "pcs");
+    const b = version(section("1", "Sugar", LOREM("s", 40)) + section("2", "Dairy", LOREM("d", 40)), "eas");
     const { lineages } = trace("119-hr-1", [a, b]);
-    const old = lineages.find((l) => l.firstVersion === "pcs")!;
+
+    const old = must(
+      lineages.find((l) => l.firstVersion === "pcs"),
+      "the old section",
+    );
+
     expect(old.removedIn).toBeNull();
     const pieces = lineages.filter((l) => l.firstVersion === "eas");
     expect(old.splitInto).toEqual(pieces.map((p) => p.id));
@@ -100,30 +108,29 @@ describe("match and lineage", () => {
   });
 
   test("a shared cited law alone doesn't make a same-law match", () => {
-    const sec = (heading: string, text: string): Sec => parseSections(bill(section("1", heading, text)))[0]!;
-    const water = sec("Large scale water reuse", `${LOREM("w")} under 43 U.S.C. 390b.`);
-    const drought = sec("Drought mitigation", `${LOREM("q")} under 43 U.S.C. 390b.`);
+    const water = oneSection("Large scale water reuse", `${LOREM("w")} under 43 U.S.C. 390b.`);
+    const drought = oneSection("Drought mitigation", `${LOREM("q")} under 43 U.S.C. 390b.`);
     expect(match([water], [drought]).size).toBe(0);
     expect(match([water], [drought], { sameLawSimilarity: 0 }).get(0)?.method).toBe("same-law");
   });
 });
 
-describe("amendments", () => {
-  const rec = (text: string | null): AmendmentRecord => ({
-    type: "SAMDT",
-    number: "1",
-    congress: 119,
-    chamber: "Senate",
-    sponsorBioguide: "X000001",
-    sponsorName: null,
-    sponsorCommittee: null,
-    purpose: null,
-    latestAction: text ? { date: "2025-06-12", text } : null,
-    actions: text ? [{ date: "2025-06-12", text, code: null, votes: [] }] : [],
-    submittedOn: "2025-06-05",
-    amends: null,
-  });
+const rec = (text: string | null): AmendmentRecord => ({
+  type: "SAMDT",
+  number: "1",
+  congress: 119,
+  chamber: "Senate",
+  sponsorBioguide: "X000001",
+  sponsorName: null,
+  sponsorCommittee: null,
+  purpose: null,
+  latestAction: text === null ? null : { date: "2025-06-12", text },
+  actions: text === null ? [] : [{ date: "2025-06-12", text, code: null, votes: [] }],
+  submittedOn: "2025-06-05",
+  amends: null,
+});
 
+describe("amendments", () => {
   test("status comes from the latest action's words", () => {
     expect(amendmentStatus(rec("Amendment SA 2307 agreed to in Senate by Yea-Nay Vote. 67 - 30."))).toBe("agreed");
     expect(amendmentStatus(rec("Amendment SA 2851 not agreed to in Senate by Yea-Nay Vote."))).toBe("failed");
@@ -174,7 +181,11 @@ test("counterpart candidates need a shared heading word, cited law or wording", 
     },
   ]);
 
-  const removed = lineages.find((l) => l.firstVersion === "pcs")!;
+  const removed = must(
+    lineages.find((l) => l.firstVersion === "pcs"),
+    "the removed section",
+  );
+
   const added = lineages.filter((l) => l.firstVersion === "eas");
   expect(candidates(removed, added).map((l) => l.last.heading)).toEqual([
     "Modifications to SNAP work requirements for able-bodied adults",
@@ -209,13 +220,15 @@ test("sponsorships: a member who cosponsored twice keeps both rows, with distinc
   expect(rows.map((r) => r.id)).toEqual(["119-s-1383:M001", "119-s-1383:W000790", "119-s-1383:W000790:2025-09-18"]);
 });
 
-test("sections: a reported bill whose first body is all struck reads the substitute after it", () => {
-  const sec = (n: string, h: string) =>
-    `<section><enum>${n}.</enum><header>${h}</header><text>Text of ${h}.</text></section>`;
+const plainSection = (n: string, h: string) =>
+  `<section><enum>${n}.</enum><header>${h}</header><text>Text of ${h}.</text></section>`;
 
-  const xml = `<?xml version="1.0"?><bill><form/><legis-body><title changed="deleted"><enum>I</enum>${sec("101", "House text")}</title></legis-body><legis-body>${sec("1", "Short title")}${sec("2", "Senate text")}</legis-body></bill>`;
+test("sections: a reported bill whose first body is all struck reads the substitute after it", () => {
+  const xml = `<?xml version="1.0"?><bill><form/><legis-body><title changed="deleted"><enum>I</enum>${plainSection("101", "House text")}</title></legis-body><legis-body>${plainSection("1", "Short title")}${plainSection("2", "Senate text")}</legis-body></bill>`;
   expect(parseSections(xml).map((s) => s.heading)).toEqual(["Short title", "Senate text"]);
-  // Two committees' full texts: the first is the one read, as before.
-  const two = `<?xml version="1.0"?><bill><legis-body>${sec("1", "Agriculture")}</legis-body><legis-body>${sec("1", "Financial Services")}</legis-body></bill>`;
+});
+
+test("sections: of two committees' full texts, the first is read", () => {
+  const two = `<?xml version="1.0"?><bill><legis-body>${plainSection("1", "Agriculture")}</legis-body><legis-body>${plainSection("1", "Financial Services")}</legis-body></bill>`;
   expect(parseSections(two).map((s) => s.heading)).toEqual(["Agriculture"]);
 });

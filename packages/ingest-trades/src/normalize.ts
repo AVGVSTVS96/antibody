@@ -4,33 +4,31 @@ export type Owner = Row<"trades">["owner"];
 
 export type TradeType = Row<"trades">["type"];
 
-const OWNERS: Record<string, Owner> = {
-  "": "self",
-  self: "self",
-  sp: "spouse",
-  s: "spouse",
-  j: "joint",
-  spouse: "spouse",
-  jt: "joint",
-  joint: "joint",
-  dc: "dependent",
-  child: "dependent",
-  dependent: "dependent",
-  "dependent child": "dependent",
-};
+const OWNERS = new Map<string, Owner>(
+  Object.entries({
+    "": "self",
+    self: "self",
+    sp: "spouse",
+    s: "spouse",
+    j: "joint",
+    spouse: "spouse",
+    jt: "joint",
+    joint: "joint",
+    dc: "dependent",
+    child: "dependent",
+    dependent: "dependent",
+    "dependent child": "dependent",
+  }),
+);
 
-/**
- * House codes (blank/SP/JT/DC), the Senate paper form's (S)/(J)/(DC), Senate eFD words (Self/Spouse/Joint/Child)
- * and vision output map to one owner. A blank owner cell means the filer, per both forms' instructions.
- */
 export function owner(raw: string | null | undefined): Owner | null {
   return (
-    OWNERS[
+    OWNERS.get(
       (raw ?? "")
         .trim()
         .toLowerCase()
-        .replace(/^\((.*)\)$/, "$1")
-    ] ?? null
+        .replace(/^\((.*)\)$/u, "$1"),
+    ) ?? null
   );
 }
 
@@ -41,15 +39,15 @@ export function tradeType(raw: string): TradeType | null {
     return "sale_partial";
   }
 
-  if (/^(s\b|sale)/.test(t)) {
+  if (/^(s\b|sale)/u.test(t)) {
     return "sale";
   }
 
-  if (/^(p\b|purchase)/.test(t)) {
+  if (/^(p\b|purchase)/u.test(t)) {
     return "purchase";
   }
 
-  if (/^(e\b|exchange)/.test(t)) {
+  if (/^(e\b|exchange)/u.test(t)) {
     return "exchange";
   }
 
@@ -58,19 +56,20 @@ export function tradeType(raw: string): TradeType | null {
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
-/** MM/DD/YYYY (or M/D/YY, with dashes, or D-Mon-YY) to ISO, only when it is a real calendar date; anything else stays as filed and gives null. */
 export function isoDate(raw: string | null | undefined): string | null {
   const s = (raw ?? "").trim();
-  const num = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/.exec(s);
-  const word = /^(\d{1,2})[ -]([A-Za-z]{3})[a-z]*[\s,.-]*(\d{2}|\d{4})$/.exec(s);
+  const num = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/u.exec(s);
+  const word = /^(\d{1,2})[ -]([A-Za-z]{3})[a-z]*[\s,.-]*(\d{2}|\d{4})$/u.exec(s);
+
+  const month = MONTHS.indexOf(word?.[2]?.toLowerCase() ?? "") + 1;
 
   const [mm, dd, yy] = num
-    ? [Number(num[1]), Number(num[2]), num[3]!]
-    : word && MONTHS.includes(word[2]!.toLowerCase())
-      ? [MONTHS.indexOf(word[2]!.toLowerCase()) + 1, Number(word[1]), word[3]!]
-      : [];
+    ? [Number(num[1]), Number(num[2]), num[3] ?? ""]
+    : word && month > 0
+      ? [month, Number(word[1]), word[3] ?? ""]
+      : [0, 0, ""];
 
-  if (!mm || !dd || !yy) {
+  if (!mm || !dd || yy === "") {
     return null;
   }
 
@@ -84,9 +83,8 @@ export function isoDate(raw: string | null | undefined): string | null {
   return d.toISOString().slice(0, 10);
 }
 
-const dollars = (s: string) => Number(s.replaceAll(/[$,\s]/g, ""));
+const dollars = (s: string) => Number(s.replaceAll(/[$,\s]/gu, ""));
 
-/** The statutory value ranges, by upper bound; a printed lower bound that disagrees ("$1,000", "$1,0001") is a form variant or typo for the bucket's real floor. */
 const BUCKET_FLOOR = new Map([
   [15_000, 1001],
   [50_000, 15_001],
@@ -99,31 +97,37 @@ const BUCKET_FLOOR = new Map([
   [50_000_000, 25_000_001],
 ]);
 
-/** Disclosure ranges ("$1,001 - $15,000", "Over $50,000,000", "Spouse/DC Over $1,000,000") or an exact amount as filed. */
-export function amountRange(raw: string): { min: number | null; max: number | null } {
+interface AmountRange {
+  min: number | null;
+  max: number | null;
+}
+
+export function amountRange(raw: string): AmountRange {
   const s = raw
-    .replaceAll(/[\u00AD\u2010-\u2014]/g, "-")
-    .replaceAll(/\s+/g, " ")
+    .replaceAll(/[\u00AD\u2010-\u2014]/gu, "-")
+    .replaceAll(/\s+/gu, " ")
     .trim();
 
-  const range = /\$\s?([\d,]+(?:\.\d+)?)\s?-+\s?\$\s?([\d,]+(?:\.\d+)?)/.exec(s);
+  const range = /\$\s?([\d,]+(?:\.\d+)?)\s?-+\s?\$\s?([\d,]+(?:\.\d+)?)/u.exec(s);
 
   if (range) {
-    const max = dollars(range[2]!);
+    const max = dollars(range[2] ?? "");
 
-    return { min: BUCKET_FLOOR.get(max) ?? dollars(range[1]!), max };
+    return { min: BUCKET_FLOOR.get(max) ?? dollars(range[1] ?? ""), max };
   }
 
-  const over = /over \$\s?([\d,]+)/i.exec(s);
+  const over = /over \$\s?([\d,]+)/iu.exec(s);
 
   if (over) {
-    return { min: dollars(over[1]!) + 1, max: null };
+    return { min: dollars(over[1] ?? "") + 1, max: null };
   }
 
-  const exact = /^\$\s?([\d,]*(?:\.\d+)?)$/.exec(s);
+  const exact = /^\$\s?([\d,]*(?:\.\d+)?)$/u.exec(s);
 
-  if (exact?.[1]) {
-    return { min: dollars(exact[1]), max: dollars(exact[1]) };
+  const amount = exact?.[1];
+
+  if (amount !== undefined && amount !== "") {
+    return { min: dollars(amount), max: dollars(amount) };
   }
 
   return { min: null, max: null };

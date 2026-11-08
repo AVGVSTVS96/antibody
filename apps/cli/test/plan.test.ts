@@ -27,11 +27,11 @@ test("dependencies run first", () => {
 
 test("a stage can only write tables its package owns", () => {
   expect(() => register({ "@antibody/analyze": [stage("x", [], ["trades"])] })).toThrow(
-    /owned by @antibody\/ingest-trades/,
+    /owned by @antibody\/ingest-trades/u,
   );
 });
 
 test("cycles are caught", () => {
   const all = register({ "@antibody/analyze": [stage("a", ["b"]), stage("b", ["a"])] });
-  expect(() => order(all, ["a"])).toThrow(/cycle/);
+  expect(() => order(all, ["a"])).toThrow(/cycle/u);
 });

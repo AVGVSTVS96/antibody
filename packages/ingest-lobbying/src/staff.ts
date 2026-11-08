@@ -1,5 +1,5 @@
 const PREFIX =
-  /\b(Rep|Representative|Congressman|Congresswoman|Cong|Sen|Senator|Speaker|Leader|Whip|Chairman|Chairwoman|Chair)\b\.?\s*/gi;
+  /\b(Rep|Representative|Congressman|Congresswoman|Cong|Sen|Senator|Speaker|Leader|Whip|Chairman|Chairwoman|Chair)\b\.?\s*/giu;
 
 const NOT_A_NAME = new Set(
   (
@@ -10,50 +10,49 @@ const NOT_A_NAME = new Set(
   ).split(" "),
 );
 
-const ROLE: Record<string, string> = {
-  rep: "Rep.",
-  representative: "Rep.",
-  congressman: "Rep.",
-  congresswoman: "Rep.",
-  cong: "Rep.",
-  sen: "Sen.",
-  senator: "Sen.",
-};
+const ROLE = new Map(
+  Object.entries({
+    rep: "Rep.",
+    representative: "Rep.",
+    congressman: "Rep.",
+    congresswoman: "Rep.",
+    cong: "Rep.",
+    sen: "Sen.",
+    senator: "Sen.",
+  }),
+);
 
 const titleCase = (w: string) => (w === w.toUpperCase() && w.length > 2 ? w[0] + w.slice(1).toLowerCase() : w);
 
-/**
- * Members of Congress a covered position names, as written ("Chief of Staff, Rep. David Kustoff" →
- * "Rep. David Kustoff"). Resolve matches these to bioguide ids; the claim always quotes the position itself.
- */
 export function namedMembers(position: string): string[] {
   const out = new Set<string>();
 
   for (const m of position.matchAll(PREFIX)) {
-    const rest = position.slice(m.index + m[0].length).split(/[,;(/\d–—]|\s-\s|\s{2,}/)[0]!;
+    const rest = position.slice(m.index + m[0].length).split(/[,;(/\d–—]|\s-\s|\s{2,}/u)[0] ?? "";
     const words: string[] = [];
 
-    for (const w of rest.trim().split(/\s+/)) {
-      if (!/^[A-Z][A-Za-z'’.-]*$/.test(w) || words.length === 4) {
+    for (const w of rest.trim().split(/\s+/u)) {
+      if (!/^[A-Z][A-Za-z'’.-]*$/u.test(w) || words.length === 4) {
         break;
       }
 
       words.push(w);
     }
 
-    while (words.length > 1 && /^(LD|LA|LC|COS|PSM)$/i.test(words.at(-1)!)) {
+    while (words.length > 1 && /^(LD|LA|LC|COS|PSM)$/iu.test(words.at(-1) ?? "")) {
       words.pop();
     }
 
-    if (!words.length || words.some((w) => NOT_A_NAME.has(w.replace(/[.,]$/, "")))) {
+    if (!words.length || words.some((w) => NOT_A_NAME.has(w.replace(/[.,]$/u, "")))) {
       continue;
     }
 
-    if (words.length === 1 && words[0]!.length < 3) {
+    if (words.length === 1 && (words[0]?.length ?? 0) < 3) {
       continue;
     }
 
-    const role = ROLE[m[1]!.toLowerCase()] ?? titleCase(m[1]!);
+    const title = m[1] ?? "";
+    const role = ROLE.get(title.toLowerCase()) ?? titleCase(title);
     out.add(`${role} ${words.map(titleCase).join(" ")}`);
   }
 

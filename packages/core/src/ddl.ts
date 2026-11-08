@@ -1,100 +1,94 @@
 import { z } from "zod";
+import { isRecord, isText, JsonValue } from "./json.ts";
+import type { Json } from "./json.ts";
 import { TABLES } from "./tables.ts";
 import type { TableName } from "./tables.ts";
 
-interface JsonSchema {
-  type?: string | string[];
-  format?: string;
-  items?: JsonSchema;
-  anyOf?: JsonSchema[];
-  enum?: unknown[];
-  const?: unknown;
-  default?: unknown;
+type JsonSchema = z.core.JSONSchema._JSONSchema;
+
+interface SqlType {
+  type: string;
+  nullable: boolean;
 }
 
-function sqlType(s: JsonSchema): { type: string; nullable: boolean } {
+function sqlType(s: JsonSchema): SqlType {
+  if (s === true || s === false) {
+    return { type: "JSON", nullable: false };
+  }
+
   if (Array.isArray(s.type)) {
     const types = s.type.filter((t) => t !== "null");
-    const one = types.length === 1 ? sqlType({ ...s, type: types[0] }) : { type: "JSON" };
+    const [only] = types;
+    const one = types.length === 1 && only !== undefined ? sqlType({ ...s, type: only }) : { type: "JSON" };
 
     return { type: one.type, nullable: types.length < s.type.length };
   }
 
   if (s.anyOf) {
     const nonNull = s.anyOf.filter((x) => x.type !== "null");
+    const [only] = nonNull;
 
-    if (nonNull.length !== 1) {
+    if (nonNull.length !== 1 || only === undefined) {
       return { type: "JSON", nullable: true };
     }
 
-    return { type: sqlType(nonNull[0]!).type, nullable: nonNull.length < s.anyOf.length };
+    return { type: sqlType(only).type, nullable: nonNull.length < s.anyOf.length };
   }
 
-  switch (s.type) {
-    case "string": {
-      if (s.format === "date") return { type: "DATE", nullable: false };
+  const element = s.items === undefined || Array.isArray(s.items) ? "JSON" : sqlType(s.items).type;
 
-      if (s.format === "date-time") return { type: "TIMESTAMPTZ", nullable: false };
+  const type =
+    s.type === "string"
+      ? s.format === "date"
+        ? "DATE"
+        : s.format === "date-time"
+          ? "TIMESTAMPTZ"
+          : "VARCHAR"
+      : s.type === "integer"
+        ? "BIGINT"
+        : s.type === "number"
+          ? "DOUBLE"
+          : s.type === "boolean"
+            ? "BOOLEAN"
+            : s.type === "array"
+              ? `${element}[]`
+              : "JSON";
 
-      return { type: "VARCHAR", nullable: false };
-    }
-
-    case "integer": {
-      return { type: "BIGINT", nullable: false };
-    }
-
-    case "number": {
-      return { type: "DOUBLE", nullable: false };
-    }
-
-    case "boolean": {
-      return { type: "BOOLEAN", nullable: false };
-    }
-
-    case "array": {
-      return { type: `${s.items ? sqlType(s.items).type : "JSON"}[]`, nullable: false };
-    }
-
-    default: {
-      return { type: "JSON", nullable: false };
-    }
-  }
+  return { type, nullable: false };
 }
 
-/** Column name → DuckDB type, in schema order. */
-export function columns(table: TableName): [string, string][] {
-  const js = z.toJSONSchema(TABLES[table].schema, { io: "input" }) as { properties: Record<string, JsonSchema> };
+const properties = (table: TableName) => z.toJSONSchema(TABLES[table].schema, { io: "input" }).properties ?? {};
 
-  return Object.entries(js.properties).map(([name, s]) => {
+export function columns(table: TableName): [string, string][] {
+  return Object.entries(properties(table)).map(([name, s]) => {
     const { type, nullable } = sqlType(s);
 
     return [name, nullable || name === "id" ? type : `${type} NOT NULL`];
   });
 }
 
-const literal = (v: unknown, type: string): string =>
+const literal = (v: Json, type: string): string =>
   v === null
     ? "NULL"
     : Array.isArray(v)
-      ? `[${v.map((x) => literal(x, type.replace(/\[\]$/, ""))).join(", ")}]::${type}`
-      : typeof v === "string"
+      ? `[${v.map((x) => literal(x, type.replace(/\[\]$/u, ""))).join(", ")}]::${type}`
+      : isText(v)
         ? `'${v.replaceAll("'", "''")}'`
-        : typeof v === "object"
+        : isRecord(v)
           ? `'${JSON.stringify(v).replaceAll("'", "''")}'::JSON`
           : String(v);
 
-/**
- * The SELECT list that reads a table's shards: a column with a default reads as that default where a shard has no
- * value, so a shard written before an additive column existed still loads.
- */
 export function selectList(table: TableName): string {
-  const js = z.toJSONSchema(TABLES[table].schema, { io: "input" }) as { properties: Record<string, JsonSchema> };
+  const props = properties(table);
 
   return columns(table)
     .map(([n, t]) => {
-      const d = js.properties[n]?.default;
+      const prop = props[n];
+      const d = prop === undefined || prop === true || prop === false ? undefined : prop.default;
 
-      return d === undefined ? `"${n}"` : `COALESCE("${n}", ${literal(d, t.replace(" NOT NULL", ""))}) AS "${n}"`;
+      return d === undefined
+        ? `"${n}"`
+        : `COALESCE("${n}", ${literal(JsonValue.parse(d), t.replace(" NOT NULL", ""))}) AS "${n}"`;
     })
     .join(", ");
 }

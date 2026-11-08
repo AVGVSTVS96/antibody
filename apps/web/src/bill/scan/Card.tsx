@@ -1,3 +1,4 @@
+import { filled } from "@antibody/core";
 import { count, musd } from "../../lib/format.ts";
 import { Sources, Src, useClaims } from "../../ui/claims.tsx";
 import { money, monthYear } from "./cards.ts";
@@ -6,11 +7,11 @@ import type { CardData, GroupCard, MemberCardData, PacCard, TradesCard } from ".
 function Linked({ id, label }: { id: string | null; label: string }) {
   const { claim } = useClaims();
 
-  return id && claim(id) ? <Src id={id} label={label} /> : <>{label}</>;
+  return filled(id) && claim(id) ? <Src id={id} label={label} /> : label;
 }
 
 const span = (first: string | null, last: string | null) => {
-  if (!first || !last) {
+  if (!filled(first) || !filled(last)) {
     return "";
   }
 
@@ -27,7 +28,7 @@ const bar = (value: number, max: number, box = 64) => Math.max(4, Math.round((va
 interface Head {
   mark: "co" | "sec" | "mem";
   name: string;
-  tag?: string | null;
+  tag: string | null;
   onClear: () => void;
 }
 
@@ -36,7 +37,8 @@ function Header({ mark, name, tag, onClear }: Head) {
     <div className="sc-card-head">
       <span className={`sc-glyph sc-${mark}`} aria-hidden="true" />
       <h3>{name}</h3>
-      {tag && <span className="sc-tag">{tag}</span>}
+      {filled(tag) && <span className="sc-tag">{tag}</span>}
+
       <button type="button" className="sc-unpin" onClick={onClear} aria-label={`Unpin ${name}`}>
         Pinned
         <svg viewBox="0 0 12 12" aria-hidden="true">

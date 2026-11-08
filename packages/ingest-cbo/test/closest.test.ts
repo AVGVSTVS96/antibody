@@ -1,12 +1,11 @@
 import { expect, test } from "bun:test";
-import type { Row } from "@antibody/core";
 import { closestVersion } from "../src/sections.ts";
+import type { SectionRow } from "../src/sections.ts";
 
-const section = (id: string, history: Record<string, string>) =>
-  ({
-    id,
-    history: Object.fromEntries(Object.entries(history).map(([v, n]) => [v, { path: `sec:${n}` }])),
-  }) as unknown as Row<"sections">;
+const section = (id: string, history: Record<string, string>): SectionRow => ({
+  id,
+  history: Object.fromEntries(Object.entries(history).map(([v, n]) => [v, { path: `sec:${n}` }])),
+});
 
 const sections = [1, 2, 3, 4, 5, 6].map((n) => section(`s${n}`, { eas: `${n}0`, enr: `${n}00` }));
 

@@ -1,19 +1,14 @@
 import type { BillId } from "@antibody/core";
 
-/**
- * Bills whose number belonged to a different bill until a rewrite. Filings from before the rewrite, or that call the
- * bill by its old name, are lobbying on the old bill, so they are held out (match "low") rather than counted.
- */
 const REWRITTEN: Partial<Record<BillId, { on: string; oldName: RegExp; newName: RegExp; was: string }>> = {
   "117-hr-5376": {
     on: "2022-07-27",
-    oldName: /build back better|\bBBB\b/i,
-    newName: /inflation reduction/i,
+    oldName: /build back better|\bBBB\b/iu,
+    newName: /inflation reduction/iu,
     was: "the Build Back Better Act",
   },
 };
 
-/** Why an issue line is about an earlier bill that used this number, or null when it counts. */
 export function earlierBill(bill: BillId, periodEnd: string, text: string): string | null {
   const era = REWRITTEN[bill];
 

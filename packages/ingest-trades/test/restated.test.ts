@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { Row } from "@antibody/core";
 import { collapseRestated } from "../src/restated.ts";
 
-const trade = (id: string, document_id: string, amount: string, over: Partial<Row<"trades">> = {}) => ({
+const trade = (id: string, document_id: string, amount: string, over: Partial<Row<"trades">> = {}): Row<"trades"> => ({
   id,
   document_id,
   bioguide: "X000001",

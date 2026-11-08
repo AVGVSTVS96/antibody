@@ -5,25 +5,19 @@ import { menu, withParts } from "../src/match.ts";
 import type { MatchRun } from "../src/match.ts";
 import { asSection, partLocator, partSections } from "../src/parts.ts";
 import { scoreRows, sectionDollars } from "../src/score.ts";
+import { articleRow, attentionRow, must, reachRow, sectionRow } from "./rows.ts";
 
-const section = (id: string, over: Partial<Row<"sections">> = {}) =>
-  ({
-    id,
-    num: id.replace(/^s/, ""),
-    in_final: true,
-    late: false,
-    heading: `Section ${id}`,
-    path: `title:I/sec:${id.replace(/^s/, "")}`,
-    preview: "p",
-    history: {},
-    ...over,
-  }) as Row<"sections">;
+const section = (id: string, over: Partial<Row<"sections">> = {}) => {
+  const num = id.replace(/^s/u, "");
+
+  return sectionRow(id, { num, path: `title:I/sec:${num}`, ...over });
+};
 
 const part = (id: string, section_id: string, over: Partial<Row<"section_parts">> = {}) => ({
   id,
   bill_id: "119-hr-1",
   section_id,
-  num: `${section_id.replace(/^s/, "")}(c)`,
+  num: `${section_id.replace(/^s/u, "")}(c)`,
   ord: 2,
   enum: "(c)",
   heading: "Moratorium",
@@ -40,8 +34,19 @@ const part = (id: string, section_id: string, over: Partial<Row<"section_parts">
   ...over,
 });
 
-const article = (id: string, outlet: string) =>
-  ({ id, outlet_id: outlet, text_chars: 2000, via: "mediacloud" }) as Row<"articles">;
+const article = (id: string, outlet: string) => articleRow(id, { outlet_id: outlet, text_chars: 2000 });
+
+const loud = (id: string) =>
+  attentionRow(`b:${id}`, { section_id: id, hits: 40, pct: 1, evidence: { balanced_share: 0.4 } });
+
+const tag = (id: string, partId: string | null) =>
+  reachRow(`${id}#states`, {
+    section_id: "s0",
+    part_id: partId,
+    kind: "states",
+    pattern: "no-state-may",
+    quote: "no State or political subdivision thereof may enforce any law or regulation regulating AI",
+  });
 
 test("an article tied to a part counts for its section too, and the part is ranked against the sections", () => {
   const arts = [
@@ -62,46 +67,22 @@ test("an article tied to a part counts for its section too, and the part is rank
 
   const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
   const res = attention("119-hr-1", [section("s1"), section("s2")], arts, run, [part("s1(c)", "s1")]);
-  const own = res.rows.find((r) => r.section_id === "s1" && !r.part_id)!;
-  const p = res.rows.find((r) => r.part_id === "s1(c)")!;
+  const own = must(res.rows.find((r) => r.section_id === "s1" && r.part_id === null));
+  const p = must(res.rows.find((r) => r.part_id === "s1(c)"));
   expect([own.hits, p.hits, p.section_id]).toEqual([24, 2, "s1"]);
   expect(p.rests_on).toEqual(["articles/L0", "articles/R0"]);
-  expect(res.rows.find((r) => r.section_id === "s2")!.hits).toBe(0);
+  expect(res.rows.find((r) => r.section_id === "s2")?.hits).toBe(0);
 });
 
 test("a loud section's quiet part with reach is buried on its own, with no dollars of the section's", () => {
   const sections = Array.from({ length: 12 }, (_, i) => section(`s${i}`));
 
-  const loud = (id: string) =>
-    ({
-      id: `b:${id}`,
-      section_id: id,
-      part_id: null,
-      hits: 40,
-      pct: 1,
-      evidence: { balanced_share: 0.4 },
-      rests_on: [],
-    }) as unknown as Row<"attention">;
-
-  const quietPart = {
-    id: "b:s0(c)",
+  const quietPart = attentionRow("b:s0(c)", {
     section_id: "s0",
     part_id: "s0(c)",
-    hits: 0,
     pct: 0,
     evidence: { balanced_share: 0 },
-    rests_on: [],
-  } as unknown as Row<"attention">;
-
-  const tag = (id: string, part_id: string | null) =>
-    ({
-      id: `${id}#states`,
-      section_id: "s0",
-      part_id,
-      kind: "states",
-      pattern: "no-state-may",
-      quote: "no State or political subdivision thereof may enforce any law or regulation regulating AI",
-    }) as Row<"section_reach">;
+  });
 
   const rows = scoreRows(
     "119-hr-1",
@@ -120,8 +101,8 @@ test("a loud section's quiet part with reach is buried on its own, with no dolla
     [part("s0(c)", "s0", { late: true })],
   );
 
-  const whole = rows.find((r) => r.section_id === "s0" && !r.part_id)!;
-  const p = rows.find((r) => r.part_id === "s0(c)")!;
+  const whole = must(rows.find((r) => r.section_id === "s0" && r.part_id === null));
+  const p = must(rows.find((r) => r.part_id === "s0(c)"));
   expect(whole.label).toBe("headline");
   expect([p.label, p.section_id, p.dollars_musd, p.lobbying_firms, p.reach, p.late]).toEqual([
     "buried",
@@ -132,7 +113,7 @@ test("a loud section's quiet part with reach is buried on its own, with no dolla
     true,
   ]);
   expect(p.rests_on).toEqual(["section_parts/s0(c)", "sections/s0", "attention/b:s0(c)", "section_reach/s0(c)#states"]);
-  expect(rows.filter((r) => !r.part_id)).toHaveLength(12);
+  expect(rows.filter((r) => r.part_id === null)).toHaveLength(12);
 });
 
 test("a part of a dropped section is read but never scored", () => {

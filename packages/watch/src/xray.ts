@@ -10,7 +10,6 @@ export interface XrayRun {
   log: string;
 }
 
-/** Runs `antibody xray <bill>` in its own process (each stage caps its own heavy work), logging to a file. */
 export async function runXray(bill: BillId, logDir: string, signal?: AbortSignal): Promise<XrayRun> {
   await mkdir(logDir, { recursive: true });
   const log = join(logDir, `${bill}.log`);
@@ -38,11 +37,15 @@ export async function runXray(bill: BillId, logDir: string, signal?: AbortSignal
     return { ok: true, error: null, seconds, log };
   }
 
-  const lastLine = stderr.trim().split("\n").filter(Boolean).pop() ?? `exit ${code ?? "killed"}`;
+  const lastLine =
+    stderr
+      .trim()
+      .split("\n")
+      .findLast((l) => l !== "") ?? `exit ${code ?? "killed"}`;
 
   return {
     ok: false,
-    error: proc.signalCode ? `stopped after ${minutes} min (${proc.signalCode})` : lastLine,
+    error: proc.signalCode === null ? lastLine : `stopped after ${minutes} min (${proc.signalCode})`,
     seconds,
     log,
   };
@@ -59,12 +62,10 @@ export interface BuriedSection extends Section {
   dollarsMusd: number | null;
   attentionPct: number | null;
   lobbyingFirms: number;
-  /** Kinds of legal reach in its text (limits courts, overrides state law, …), from reach-v2. */
   reach: string[];
   late: boolean;
 }
 
-/** What the x-ray tables say about a bill, for whichever stages have written rows. */
 export interface XrayFacts {
   lateSections: Section[] | null;
   finalSections: number | null;
@@ -96,15 +97,18 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
     return { id, num: s?.num ?? id.split(":").pop() ?? id, heading: s?.heading ?? "", url: s?.text_url ?? "" };
   };
 
-  /** A part of a long section (parts-v1) reads as its own provision: "4(a)(12)", its heading, the final text. */
   const scored = (s: (typeof scores)[number]): Section => {
-    const p = s.part_id ? partById.get(s.part_id) : undefined;
+    const p = s.part_id === null || s.part_id === "" ? undefined : partById.get(s.part_id);
 
     return p ? { id: p.id, num: p.num, heading: p.heading, url: p.source_url } : section(s.section_id);
   };
 
   const currentLaw = new Map(estimates.filter((e) => e.baseline === "current-law").map((e) => [e.id, e]));
-  const latest = [...currentLaw.values()].sort((a, b) => (b.published_on ?? "").localeCompare(a.published_on ?? ""))[0];
+
+  const latest = [...currentLaw.values()].toSorted((a, b) =>
+    (b.published_on ?? "").localeCompare(a.published_on ?? ""),
+  )[0];
+
   let deficit: XrayFacts["deficit"] = null;
 
   if (latest) {
@@ -112,12 +116,14 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
     const whole = own.filter((l) => l.line_kind === "whole-bill");
     const pick = whole.length ? whole : own.filter((l) => l.line_kind !== "whole-bill");
 
-    if (pick.length) {
+    const [first] = pick;
+
+    if (first) {
       const musd = whole.length
         ? whole.reduce((m, l) => (Math.abs(l.total_musd) > Math.abs(m) ? l.total_musd : m), 0)
         : pick.reduce((sum, l) => sum + l.total_musd, 0);
 
-      deficit = { musd, period: pick[0]!.period, url: latest.url, baselineLabel: latest.baseline_label };
+      deficit = { musd, period: first.period, url: latest.url, baselineLabel: latest.baseline_label };
     }
   }
 
@@ -128,7 +134,7 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
 
   return {
     lateSections: scores.length
-      ? scores.filter((s) => s.late && !s.part_id).map((s) => section(s.section_id))
+      ? scores.filter((s) => s.late && (s.part_id === null || s.part_id === "")).map((s) => section(s.section_id))
       : sections.length
         ? sections.filter((s) => s.late && s.in_final).map((s) => section(s.id))
         : null,
@@ -138,7 +144,7 @@ export async function xrayFacts(bill: BillId): Promise<XrayFacts> {
     buried: scores.length
       ? scores
           .filter((s) => s.label === "buried")
-          .sort((a, b) => (b.buried ?? 0) - (a.buried ?? 0))
+          .toSorted((a, b) => (b.buried ?? 0) - (a.buried ?? 0))
           .map((s) => ({
             ...scored(s),
             dollarsMusd: s.dollars_musd,

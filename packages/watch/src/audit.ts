@@ -1,5 +1,6 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
+import { z } from "zod";
 
 export const AUDIT_DAYS = 14;
 const MIN_FLAGGED = 10;
@@ -10,6 +11,12 @@ export interface MovedBill {
   score: number;
   flagged: boolean;
 }
+
+const DigestMoved = z.object({
+  movedBills: z
+    .array(z.object({ bill: z.string(), party: z.string(), score: z.number(), flagged: z.boolean() }))
+    .optional(),
+});
 
 export interface PartyRow {
   party: string;
@@ -23,12 +30,10 @@ export interface PartyAudit {
   days: number;
   bills: number;
   parties: PartyRow[];
-  /** Two-proportion z of the flag rate between the two biggest parties; null when either has no bills. */
   z: number | null;
   verdict: string;
 }
 
-/** A bill seen on several days counts once, at its highest score, flagged if any day flagged it. */
 export function auditParties(days: MovedBill[][]): PartyAudit {
   const bills = new Map<string, MovedBill>();
 
@@ -51,18 +56,18 @@ export function auditParties(days: MovedBill[][]): PartyAudit {
       rate: bs.filter((b) => b.flagged).length / bs.length,
       meanScore: Math.round((bs.reduce((s, b) => s + b.score, 0) / bs.length) * 10) / 10,
     }))
-    .sort((a, b) => b.moved - a.moved || a.party.localeCompare(b.party));
+    .toSorted((a, b) => b.moved - a.moved || a.party.localeCompare(b.party));
 
   const [a, b] = parties
     .filter((p) => p.party === "R" || p.party === "D")
-    .sort((x, y) => x.party.localeCompare(y.party));
+    .toSorted((x, y) => x.party.localeCompare(y.party));
 
-  let z: number | null = null;
+  let zScore: number | null = null;
 
   if (a && b) {
     const pooled = (a.flagged + b.flagged) / (a.moved + b.moved);
     const se = Math.sqrt(pooled * (1 - pooled) * (1 / a.moved + 1 / b.moved));
-    z = se === 0 ? 0 : Math.round(((a.rate - b.rate) / se) * 100) / 100;
+    zScore = se === 0 ? 0 : Math.round(((a.rate - b.rate) / se) * 100) / 100;
   }
 
   const flagged = parties.reduce((n, p) => n + p.flagged, 0);
@@ -70,30 +75,33 @@ export function auditParties(days: MovedBill[][]): PartyAudit {
   const verdict =
     flagged < MIN_FLAGGED
       ? `Only ${flagged} bills were flagged, too few to test for a gap; the rates are shown for the record.`
-      : z === null
+      : zScore === null
         ? "Only one party's bills moved, so there is nothing to compare."
-        : Math.abs(z) >= 2
-          ? `The flag rates differ more than chance would explain (z = ${z}); check the rules for a party tilt before trusting this digest.`
-          : `No flag-rate gap beyond chance (z = ${z}; |z| under 2).`;
+        : Math.abs(zScore) >= 2
+          ? `The flag rates differ more than chance would explain (z = ${zScore}); check the rules for a party tilt before trusting this digest.`
+          : `No flag-rate gap beyond chance (z = ${zScore}; |z| under 2).`;
 
-  return { days: days.length, bills: bills.size, parties, z, verdict };
+  return { days: days.length, bills: bills.size, parties, z: zScore, verdict };
 }
 
-/** Moved-bill lists from the digests of the last AUDIT_DAYS days ending at `date`, today's included. */
 export async function recentMoved(dir: string, date: string, today: MovedBill[]): Promise<MovedBill[][]> {
   const from = new Date(Date.parse(date) - (AUDIT_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
 
-  const files = (await readdir(dir).catch(() => [] as string[]))
-    .map((f) => /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1])
-    .filter((d): d is string => !!d && d >= from && d < date);
+  const names = await readdir(dir).catch((): string[] => []);
+
+  const files = names.flatMap((f) => {
+    const d = /^(\d{4}-\d{2}-\d{2})\.json$/u.exec(f)?.[1];
+
+    return d !== undefined && d >= from && d < date ? [d] : [];
+  });
 
   const out: MovedBill[][] = [];
 
-  for (const d of files.sort()) {
-    const j = (await Bun.file(join(dir, `${d}.json`)).json()) as { movedBills?: MovedBill[] };
+  for (const d of files.toSorted()) {
+    const { movedBills } = DigestMoved.parse(await Bun.file(join(dir, `${d}.json`)).json());
 
-    if (j.movedBills) {
-      out.push(j.movedBills);
+    if (movedBills) {
+      out.push(movedBills);
     }
   }
 

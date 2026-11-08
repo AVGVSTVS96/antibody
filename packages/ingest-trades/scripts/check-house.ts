@@ -1,13 +1,10 @@
 import { join } from "node:path";
 import { paths } from "@antibody/core/node";
+import { ParsedDoc } from "../src/house.ts";
 import { pool } from "../src/http.ts";
 
-/**
- * Independent check of the House e-filed parser: counts trade rows in poppler's `pdftotext -layout` output with a
- * separate regex (type letter, then two dates) and compares per document with the parsed rows.
- */
 const root = paths.raw("trades");
-const row = /\s(P|S|E|S \(partial\))\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}\/\d{2}\/\d{4}/gi;
+const row = /\s(P|S|E|S \(partial\))\s+\d{2}\/\d{2}\/\d{4}\s+\d{2}\/\d{2}\/\d{4}/giu;
 const parsed = new Map<string, { year: string; n: number }>();
 
 for (const line of (await Bun.file(join(root, "house-parsed.jsonl")).text()).split("\n")) {
@@ -15,9 +12,9 @@ for (const line of (await Bun.file(join(root, "house-parsed.jsonl")).text()).spl
     continue;
   }
 
-  const d = JSON.parse(line);
+  const d = ParsedDoc.parse(JSON.parse(line));
 
-  if (/^[89]/.test(d.doc_id)) {
+  if (/^[89]/u.test(d.doc_id)) {
     continue;
   }
 

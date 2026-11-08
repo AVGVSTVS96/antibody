@@ -1,29 +1,29 @@
 import { articlesOf, BIG_STAKES, bigStakes, billStats, headlineDeficit, isLate, REACH_WORDS } from "@antibody/core";
-import { count, day, musd, usd } from "./format.ts";
+import { count, day, usd } from "./format.ts";
 import type { BillModel, MemberView, SectionView } from "./model.ts";
 
 type Version = BillModel["versions"][number];
 
 type Roll = BillModel["b"]["votes"][number];
 
-const PASSAGE = /(on passage|and pass\b|motion to concur|conference report)/i;
-const NOT_PASSAGE = /(cloture|proceed|recommit|table|reconsider|waive|committee)/i;
+const PASSAGE = /(on passage|and pass\b|motion to concur|conference report)/iu;
+const NOT_PASSAGE = /(cloture|proceed|recommit|table|reconsider|waive|committee)/iu;
 
-const ENGROSSED: Record<string, "House" | "Senate" | undefined> = {
-  eh: "House",
-  eah: "House",
-  es: "Senate",
-  eas: "Senate",
-};
+const ENGROSSED = new Map<string, "House" | "Senate">([
+  ["eh", "House"],
+  ["eah", "House"],
+  ["es", "Senate"],
+  ["eas", "Senate"],
+]);
 
 export const isPassage = (r: Roll) =>
   PASSAGE.test(r.question) &&
   !NOT_PASSAGE.test(r.question) &&
-  /pass|agreed|concur/i.test(r.result) &&
-  !/fail|reject/i.test(r.result);
+  /pass|agreed|concur/iu.test(r.result) &&
+  !/fail|reject/iu.test(r.result);
 
 const tally = (r: Roll) =>
-  `${r.yeas} to ${r.nays}${/tie broken by the vice president/i.test(r.result) ? ", the Vice President broke the tie" : ""}`;
+  `${r.yeas} to ${r.nays}${/tie broken by the vice president/iu.test(r.result) ? ", the Vice President broke the tie" : ""}`;
 
 export interface Step {
   label: string;
@@ -33,22 +33,21 @@ export interface Step {
 
 export function timeline(m: BillModel): Step[] {
   const { b } = m;
-  const own = m.versions.filter((v) => !v.predecessor && v.date);
-  const first = own[0];
-  const rolls = b.votes.filter(isPassage).sort((x, y) => x.date.localeCompare(y.date) || x.number - y.number);
+  const first = m.versions.find((v): v is Version & { date: string } => !v.predecessor && v.date !== null);
+  const rolls = b.votes.filter(isPassage).toSorted((x, y) => x.date.localeCompare(y.date) || x.number - y.number);
   const lawOn = b.bill.lawOn;
   const lastRoll = rolls.at(-1);
 
   const fold =
-    !!lawOn &&
-    !!lastRoll &&
-    /concur/i.test(lastRoll.question) &&
+    lawOn !== null &&
+    lastRoll !== undefined &&
+    /concur/iu.test(lastRoll.question) &&
     rolls.filter((r) => r.chamber === lastRoll.chamber).length > 1;
 
   const steps: (Step & { on: string })[] = [];
 
   if (first) {
-    steps.push({ label: "First text", detail: `${day(first.date)}, ${first.name}`, signed: false, on: first.date! });
+    steps.push({ label: "First text", detail: `${day(first.date)}, ${first.name}`, signed: false, on: first.date });
   }
 
   const passedBy = new Set<string>();
@@ -56,7 +55,7 @@ export function timeline(m: BillModel): Step[] {
   for (const r of fold ? rolls.slice(0, -1) : rolls) {
     const again = passedBy.has(r.chamber);
     passedBy.add(r.chamber);
-    const own = m.versions.find((v) => v.date === r.date && /^(eas|eah)$/.test(v.code));
+    const own = m.versions.find((v) => v.date === r.date && /^(eas|eah)$/u.test(v.code));
     steps.push({
       label: again
         ? `${r.chamber} agrees to the final text`
@@ -70,9 +69,9 @@ export function timeline(m: BillModel): Step[] {
   }
 
   for (const v of m.versions) {
-    const chamber = ENGROSSED[v.code];
+    const chamber = ENGROSSED.get(v.code);
 
-    if (!chamber || !v.date || v.predecessor || passedBy.has(chamber)) {
+    if (chamber === undefined || v.date === null || v.predecessor || passedBy.has(chamber)) {
       continue;
     }
 
@@ -82,40 +81,43 @@ export function timeline(m: BillModel): Step[] {
 
   steps.sort((x, y) => x.on.localeCompare(y.on));
 
-  const enr = m.versions.find((v) => v.code === "enr");
+  const sentOn = m.versions.find((v) => v.code === "enr")?.date ?? null;
+  const latestAction = b.bill.latestAction ?? "";
 
-  if (lawOn) {
+  if (lawOn !== null) {
     steps.push({
       label: "Signed into law",
-      detail: `${day(lawOn)}${fold && lastRoll ? `, after the ${lastRoll.chamber} agreed ${tally(lastRoll)} on ${day(lastRoll.date).replace(/, \d{4}$/, "")}` : ""}`,
+      detail: `${day(lawOn)}${fold ? `, after the ${lastRoll.chamber} agreed ${tally(lastRoll)} on ${day(lastRoll.date).replace(/, \d{4}$/u, "")}` : ""}`,
       signed: true,
       on: lawOn,
     });
-  } else if (enr?.date) {
-    steps.push({ label: "Sent to the President", detail: day(enr.date), signed: false, on: enr.date });
-  } else if (b.bill.latestAction) {
-    steps.push({ label: "Latest action", detail: b.bill.latestAction, signed: false, on: "9" });
+  } else if (sentOn !== null) {
+    steps.push({ label: "Sent to the President", detail: day(sentOn), signed: false, on: sentOn });
+  } else if (latestAction !== "") {
+    steps.push({ label: "Latest action", detail: latestAction, signed: false, on: "9" });
   }
 
   return steps.map(({ on: _on, ...s }) => s);
 }
 
-const spelled = (musd: number) =>
-  usd(Math.abs(musd) * 1e6)
-    .replace(/B$/, " billion")
-    .replace(/T$/, " trillion")
-    .replace(/M$/, " million");
+const spelled = (millions: number) =>
+  usd(Math.abs(millions) * 1e6)
+    .replace(/B$/u, " billion")
+    .replace(/T$/u, " trillion")
+    .replace(/M$/u, " million");
+
+const hasRanks = (m: BillModel) => m.sections.some((v) => (v.s.attention?.pct ?? null) !== null);
 
 export function introLine(m: BillModel): string {
   const { b } = m;
   const finals = m.sections.filter((v) => v.s.inFinal).length;
-  const law = !!b.bill.law;
+  const law = (b.bill.law ?? "") !== "";
   const parts = [`${count(finals, "section")} ${law ? "became law" : "in the latest text"}.`];
   const d = headlineDeficit(b, "current-law");
 
   if (d) {
-    const years = d.period.split("-").map(Number);
-    const span = years[1] && years[0] ? years[1] - years[0] + 1 : null;
+    const [start = 0, end = 0] = d.period.split("-").map(Number);
+    const span = end && start ? end - start + 1 : 0;
     const size = spelled(d.amountMusd);
     const over = span ? ` over ${span === 10 ? "ten" : span} years` : "";
 
@@ -144,9 +146,7 @@ export function introLine(m: BillModel): string {
     parts.push("CBO has no score for it.");
   }
 
-  const ranked = m.sections.some((v) => v.s.attention?.pct != null);
-
-  if (ranked) {
+  if (hasRanks(m)) {
     const loud = m.headline.length;
     parts.push(
       `${loud ? `Most of the news covered ${loud} of those sections` : "No section stood out in the news"}${m.buried.length ? `; ${flaggedWords(m)} got almost none.` : "."}`,
@@ -170,13 +170,14 @@ export interface Answer {
 export function answers(m: BillModel): Answer[] {
   const { b } = m;
   const A = b.attention;
-  const ranked = m.sections.some((v) => v.s.attention?.pct != null);
+  const ranked = hasRanks(m);
   const loud = m.headline[0];
   const quiet = m.buried[0];
   const test = billStats(b).buriedTest;
 
   const big = m.sections.filter(
-    (v) => v.s.inFinal && v.s.score && (bigStakes(v.s.score.components) || v.s.score.components.reach.length),
+    (v) =>
+      v.s.inFinal && v.s.score !== null && (bigStakes(v.s.score.components) || v.s.score.components.reach.length > 0),
   ).length;
 
   const L = b.lobbying;
@@ -213,17 +214,19 @@ export function answers(m: BillModel): Answer[] {
   const heading = quiet ? trim(quiet.s.heading, 56) : "";
   const reachOnly = quiet?.s.score && !bigStakes(quiet.s.score.components) ? quiet.s.score.components.reach : [];
   const named = heading.endsWith("…") ? heading : `${heading}.`;
+  const firstReach = reachOnly[0];
 
   const second: Answer = quiet
     ? {
         tone: "quiet",
         label: "What slipped by",
-        big: reachOnly.length
-          ? REACH_WORDS[reachOnly[0]!].replace(/^./, (x) => x.toUpperCase())
-          : quiet.dollarsMusd == null
-            ? count(m.buried.length, "section")
-            : `${quiet.dollarsMusd < 0 ? "saves" : "costs"} ${usd(Math.abs(quiet.dollarsMusd) * 1e6)}`,
-        text: `${reachOnly.length || quiet.dollarsMusd != null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(articlesOf(quiet.s) ?? 0, "article")} matched it${isLate(quiet.s) ? ", and it was added after the first text" : ""}.`,
+        big:
+          firstReach === undefined
+            ? quiet.dollarsMusd === null
+              ? count(m.buried.length, "section")
+              : `${quiet.dollarsMusd < 0 ? "saves" : "costs"} ${usd(Math.abs(quiet.dollarsMusd) * 1e6)}`
+            : REACH_WORDS[firstReach].replace(/^./u, (x) => x.toUpperCase()),
+        text: `${reachOnly.length > 0 || quiet.dollarsMusd !== null ? `in §${quiet.s.num}, ${named}` : `quiet, with big stakes: §${quiet.s.num}, ${named}`} ${lobbied}${count(articlesOf(quiet.s) ?? 0, "article")} matched it${isLate(quiet.s) ? ", and it was added after the first text" : ""}.`,
         link: "Why it’s flagged",
         target: "news",
       }
@@ -242,7 +245,7 @@ export function answers(m: BillModel): Answer[] {
           tone: "quiet",
           label: "What slipped by",
           big: "Can’t be tested",
-          text: `${(test.why ?? "The rule can’t fire on this bill").replace(/^./, (x) => x.toUpperCase())}.`,
+          text: `${(test.why ?? "The rule can’t fire on this bill").replace(/^./u, (x) => x.toUpperCase())}.`,
           link: "How we test it",
           target: "read",
         };
@@ -268,10 +271,9 @@ export function answers(m: BillModel): Answer[] {
   return [first, second, third, fourth];
 }
 
-/** "one costly section", "3 costly sections", or, when some are flagged for their legal reach, "2 sections with big stakes". */
 function flaggedWords(m: BillModel): string {
   const n = m.buried.length;
-  const costly = m.buried.every((v) => v.s.score && bigStakes(v.s.score.components));
+  const costly = m.buried.every((v) => v.s.score !== null && bigStakes(v.s.score.components));
 
   return costly
     ? n === 1
@@ -283,7 +285,7 @@ function flaggedWords(m: BillModel): string {
 }
 
 export function trim(s: string, max: number): string {
-  const clean = s.replaceAll(/\s+/g, " ").replace(/\.$/, "");
+  const clean = s.replaceAll(/\s+/gu, " ").replace(/\.$/u, "");
   const sentence = clean.charAt(0).toUpperCase() + clean.slice(1);
 
   if (sentence.length <= max) {
@@ -303,10 +305,10 @@ export function trim(s: string, max: number): string {
   return `${lowerFirst(out)}…`;
 }
 
-const lowerFirst = (s: string) => (/^[A-Z][a-z]/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+const lowerFirst = (s: string) => (/^[A-Z][a-z]/u.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s);
 
 export const sectionName = (s: string, max = 34) => {
-  const clean = s.replaceAll(/\s+/g, " ").replace(/\.$/, "");
+  const clean = s.replaceAll(/\s+/gu, " ").replace(/\.$/u, "");
   const cap = clean.charAt(0).toUpperCase() + clean.slice(1);
 
   if (cap.length <= max) {
@@ -334,34 +336,39 @@ export interface Dot {
 }
 
 export function dots(m: BillModel): Dot[] {
-  return m.sections
-    .filter(
-      (v) => v.s.inFinal && v.dollarsMusd != null && v.figure?.split !== "even_split" && Math.abs(v.dollarsMusd) >= 100,
-    )
-    .map((v) => ({
-      v,
-      hits: articlesOf(v.s) ?? 0,
-      musd: v.dollarsMusd!,
-      kind: v.kind === "headline" || v.kind === "buried" ? v.kind : "normal",
-    }));
+  return m.sections.flatMap((v) => {
+    const musd = v.dollarsMusd;
+
+    return v.s.inFinal && musd !== null && v.figure?.split !== "even_split" && Math.abs(musd) >= 100
+      ? [
+          {
+            v,
+            hits: articlesOf(v.s) ?? 0,
+            musd,
+            kind: v.kind === "headline" || v.kind === "buried" ? v.kind : "normal",
+          },
+        ]
+      : [];
+  });
 }
 
-/** A stable offset in [-1, 1) so dots at the same count spread the same way every render. */
 export function spread(id: string, salt = 0): number {
+  // oxlint-disable-next-line no-bitwise -- FNV-1a hash: https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
   let h = 2_166_136_261 ^ salt;
 
   for (let i = 0; i < id.length; i++) {
-    h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+    // oxlint-disable-next-line no-bitwise -- FNV-1a hash
+    h = Math.imul(h ^ (id.codePointAt(i) ?? 0), 16_777_619);
   }
 
+  // oxlint-disable-next-line no-bitwise -- FNV-1a hash, read as unsigned 32-bit
   return (((h >>> 0) % 2001) - 1000) / 1000;
 }
 
 export function quietZone(m: BillModel, points: Dot[]): { hits: number; musd: number } | null {
-  const ranked = m.sections.some((v) => v.s.attention?.pct != null);
   const flagged = points.filter((p) => p.kind === "buried");
 
-  if (!ranked || !flagged.length) {
+  if (!hasRanks(m) || !flagged.length) {
     return null;
   }
 
@@ -378,7 +385,7 @@ export interface Era {
   note: string | null;
 }
 
-const chamberOf = (name: string) => (/house/i.test(name) ? "House" : /senate/i.test(name) ? "Senate" : null);
+const chamberOf = (name: string) => (/house/iu.test(name) ? "House" : /senate/iu.test(name) ? "Senate" : null);
 
 function eraTitle(v: Version, first: boolean): string {
   const chamber = chamberOf(v.name);
@@ -391,15 +398,15 @@ function eraTitle(v: Version, first: boolean): string {
     return `In the first ${chamber ? `${chamber} ` : ""}text`;
   }
 
-  if (/^(eh|es|eas|eah)$/.test(v.code) && chamber) {
+  if (/^(eh|es|eas|eah)$/u.test(v.code) && chamber) {
     return `Added when the ${chamber} rewrote it`;
   }
 
-  if (/^(rh|rs|rfh|rfs)$/.test(v.code) && chamber) {
+  if (/^(rh|rs|rfh|rfs)$/u.test(v.code) && chamber) {
     return `Added in the ${chamber} committee text`;
   }
 
-  if (/^(pcs|pch)$/.test(v.code) && chamber) {
+  if (/^(pcs|pch)$/u.test(v.code) && chamber) {
     return `Added when it reached the ${chamber} calendar`;
   }
 
@@ -418,23 +425,30 @@ export function eras(m: BillModel): Era[] {
     by.set(v.s.firstVersion, [...(by.get(v.s.firstVersion) ?? []), v]);
   }
 
-  const lastVote = m.b.votes.filter(isPassage).sort((x, y) => y.date.localeCompare(x.date))[0];
+  const lastVote = m.b.votes.filter(isPassage).toSorted((x, y) => y.date.localeCompare(x.date))[0];
   let seenFirst = false;
 
-  return m.versions
-    .filter((v) => by.has(v.code))
-    .map((v) => {
-      const sections = by.get(v.code)!;
-      const first = !seenFirst;
-      seenFirst = true;
-      const loud = sections.filter((s) => s.kind === "headline").length;
-      const flagged = sections.filter((s) => s.kind === "buried").length;
-      const late = !m.b.bill.lateUnavailable && sections.filter((s) => isLate(s.s)).length > sections.length / 2;
+  return m.versions.flatMap((v) => {
+    const sections = by.get(v.code);
 
-      const days =
-        lastVote && v.date ? Math.round((Date.parse(lastVote.date) - Date.parse(v.date)) / 86_400_000) : null;
+    if (sections === undefined) {
+      return [];
+    }
 
-      return {
+    const first = !seenFirst;
+    seenFirst = true;
+
+    const loud = sections.filter((s) => s.kind === "headline").length;
+    const flagged = sections.filter((s) => s.kind === "buried").length;
+
+    const late =
+      (m.b.bill.lateUnavailable ?? "") === "" && sections.filter((s) => isLate(s.s)).length > sections.length / 2;
+
+    const days =
+      lastVote && v.date !== null ? Math.round((Date.parse(lastVote.date) - Date.parse(v.date)) / 86_400_000) : null;
+
+    return [
+      {
         v,
         sections,
         loud,
@@ -442,17 +456,18 @@ export function eras(m: BillModel): Era[] {
         late,
         title: eraTitle(v, first),
         note:
-          late && days != null && days >= 0 && days <= 30 && lastVote
+          late && days !== null && days >= 0 && days <= 30 && lastVote
             ? `${count(days, "day")} before the final ${lastVote.chamber} vote`
             : null,
-      };
-    });
+      },
+    ];
+  });
 }
 
 export function eraLine(e: Era): string {
   const base = count(e.sections.length, "section");
 
-  if (e.note) {
+  if (e.note !== null && e.note !== "") {
     return `${base}, ${e.note}`;
   }
 
@@ -481,7 +496,7 @@ export interface Phase {
   note: string;
 }
 
-export function phases(m: BillModel): { rows: Phase[]; total: number } {
+export function phases(m: BillModel) {
   const p = m.b.lobbying.byPhase;
   const total = p.bill + p.enactmentQuarter + p.law;
   const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
@@ -492,7 +507,7 @@ export function phases(m: BillModel): { rows: Phase[]; total: number } {
       key: "enactment",
       n: p.enactmentQuarter,
       pct: pct(p.enactmentQuarter),
-      title: m.b.bill.law ? "The quarter it was signed" : "The latest quarter",
+      title: (m.b.bill.law ?? "") === "" ? "The latest quarter" : "The quarter it was signed",
       note: "",
     },
     { key: "law", n: p.law, pct: pct(p.law), title: "After it became law", note: "as agencies wrote the rules" },
@@ -511,21 +526,23 @@ export interface PacRow {
 }
 
 export function pacByParty(m: BillModel): PacRow[] {
-  return (["R", "D", "I"] as const)
-    .filter((p) => m.voters[p] > 0)
-    .map((party) => {
-      const got = m.members.filter((v) => v.node.props.party === party && beforeUsd(v) > 0);
+  return (["R", "D", "I"] as const).flatMap((party) => {
+    if (m.voters[party] <= 0) {
+      return [];
+    }
 
-      return { party, usd: got.reduce((a, v) => a + beforeUsd(v), 0), got: got.length, of: m.voters[party] };
-    });
+    const got = m.members.filter((v) => v.node.props.party === party && beforeUsd(v) > 0);
+
+    return [{ party, usd: got.reduce((a, v) => a + beforeUsd(v), 0), got: got.length, of: m.voters[party] }];
+  });
 }
 
 export const PARTY_NAME = { R: "Republicans", D: "Democrats", I: "Independents" } as const;
 
-export const memberLine = (label: string) => label.replace(/\s*\((.*)\)$/, ", $1");
+export const memberLine = (label: string) => label.replace(/\s*\((.*)\)$/u, ", $1");
 
 export function passageDate(m: BillModel): string | null {
-  const final = m.b.votes.filter(isPassage).sort((x, y) => y.date.localeCompare(x.date))[0];
+  const final = m.b.votes.filter(isPassage).toSorted((x, y) => y.date.localeCompare(x.date))[0];
 
   return final?.date ?? m.b.bill.lawOn ?? m.span?.[1] ?? null;
 }
@@ -543,15 +560,16 @@ export function traders(m: BillModel): Trader[] {
   return m.members
     .filter((v) => v.tradeCount)
     .map((v) => {
-      const own = v.vote ? m.b.votes.find((r) => r.id === v.vote!.props.rollId)?.date : null;
+      const cast = v.vote;
+      const own = cast ? m.b.votes.find((r) => r.id === cast.props.rollId)?.date : null;
       const at = own ?? cut;
       const dates = v.trades.flatMap((t) => t.props.events.map((e) => e.date));
-      const before = at ? dates.filter((d) => d <= at).length : dates.length;
+      const before = at === null ? dates.length : dates.filter((d) => d <= at).length;
       const vote = v.vote?.props.vote;
 
       return { v, before, after: dates.length - before, vote: vote === "Yea" || vote === "Nay" ? vote : null };
     })
-    .sort((a, b) => b.v.tradeCount - a.v.tradeCount || a.v.node.label.localeCompare(b.v.node.label));
+    .toSorted((a, b) => b.v.tradeCount - a.v.tradeCount || a.v.node.label.localeCompare(b.v.node.label));
 }
 
 export interface Month {
@@ -560,35 +578,48 @@ export interface Month {
   during: boolean;
 }
 
-export function monthly(m: BillModel): { months: Month[]; total: number } {
+const yearMonth = (key: string): [number, number] => {
+  const [y = Number.NaN, mo = Number.NaN] = key.split("-").map(Number);
+
+  return [y, mo];
+};
+
+export function monthly(m: BillModel) {
   const per = new Map<string, number>();
   let total = 0;
 
   for (const v of m.members) {
-    for (const t of v.trades)
+    for (const t of v.trades) {
       for (const e of t.props.events) {
         const k = e.date.slice(0, 7);
         per.set(k, (per.get(k) ?? 0) + 1);
         total++;
       }
+    }
   }
 
-  const keys = [...per.keys()].sort();
-
-  if (!keys.length) {
-    return { months: [], total: 0 };
-  }
-
+  const keys = [...per.keys()].toSorted();
   const months: Month[] = [];
-  const [y0, m0] = keys[0]!.split("-").map(Number) as [number, number];
-  const [y1, m1] = keys.at(-1)!.split("-").map(Number) as [number, number];
+  const firstKey = keys[0];
+  const lastKey = keys.at(-1);
+
+  if (firstKey === undefined || lastKey === undefined) {
+    return { months, total };
+  }
+
+  const [y0, m0] = yearMonth(firstKey);
+  const [y1, m1] = yearMonth(lastKey);
 
   for (let i = 0; i <= (y1 - y0) * 12 + (m1 - m0); i++) {
     const y = y0 + Math.floor((m0 - 1 + i) / 12);
     const mo = ((m0 - 1 + i) % 12) + 1;
     const key = `${y}-${String(mo).padStart(2, "0")}`;
     const s = m.span;
-    months.push({ key, n: per.get(key) ?? 0, during: !!s && key >= s[0].slice(0, 7) && key <= s[1].slice(0, 7) });
+    months.push({
+      key,
+      n: per.get(key) ?? 0,
+      during: s !== null && key >= s[0].slice(0, 7) && key <= s[1].slice(0, 7),
+    });
   }
 
   return { months, total };
@@ -602,7 +633,7 @@ export const niceMax = (n: number) => {
 };
 
 export const monthName = (key: string) => {
-  const [y, mo] = key.split("-").map(Number) as [number, number];
+  const [y, mo] = yearMonth(key);
 
   return new Date(Date.UTC(y, mo - 1, 1)).toLocaleDateString("en-US", {
     month: "long",
@@ -611,11 +642,10 @@ export const monthName = (key: string) => {
   });
 };
 
-export { musd };
+export { musd } from "./format.ts";
 
 const MARK_CHAR = 6.6;
 
-/** Puts each dated label on the first row where it clears the labels before it; on a phone each takes its own row. */
 export function layMarks(marks: { at: string; label: string; x: number }[], phone: boolean) {
   const taken: { row: number; x0: number; x1: number }[] = [];
 
@@ -625,8 +655,10 @@ export function layMarks(marks: { at: string; label: string; x: number }[], phon
     const x0 = end ? k.x - 5 - width : k.x + 5;
     let row = phone ? j : 0;
 
-    while (!phone && taken.some((t) => t.row === row && x0 < t.x1 + 8 && x0 + width > t.x0 - 8)) {
-      row++;
+    if (!phone) {
+      while (taken.some((t) => t.row === row && x0 < t.x1 + 8 && x0 + width > t.x0 - 8)) {
+        row++;
+      }
     }
 
     taken.push({ row, x0, x1: x0 + width });

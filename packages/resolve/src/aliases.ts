@@ -1,8 +1,3 @@
-/**
- * Companies whose SEC filer is listed under a different name than the one lobbying filings and PACs use, checked by
- * hand against SEC's ticker list. The matcher and its model reviewer missed these (a one-word SEC name, or a holding
- * company that took over the listing), so a listed company's own lobbying was not tied to its stock.
- */
 export const ALIASES: { names: string[]; cik: string; why: string }[] = [
   {
     names: ["EXXON MOBIL", "EXXONMOBIL"],

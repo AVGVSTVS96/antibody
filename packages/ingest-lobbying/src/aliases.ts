@@ -6,17 +6,11 @@ import { billNumbers, clause, congressOf, nameForms } from "./extract.ts";
 import type { Aliases, Matcher } from "./extract.ts";
 import type { LdaFiling } from "./lda.ts";
 
-/** GovInfo bulk BILLSTATUS starts with the 113th Congress. */
 const FIRST_BULK_CONGRESS = 113;
 const firstYear = (congress: number) => 1789 + 2 * (congress - 1);
 
 const lc = (s: string) => s.toLowerCase();
 
-/**
- * Builds the bill's aliases from public records only: its BILLSTATUS titles and law number, the bills in `extra`
- * (earlier numbers confirmed to carry the same short title), and the titles of bills that reused one of its numbers
- * in nearby Congresses, which mark a clause as being about something else.
- */
 export async function buildAliases(bill: BillId, extra: BillId[] = [], signal?: AbortSignal): Promise<Aliases> {
   const own = await billStatus(bill, signal);
 
@@ -51,7 +45,10 @@ export async function buildAliases(bill: BillId, extra: BillId[] = [], signal?: 
 
       for (const form of nameForms(n.title)) {
         const prev = names.get(lc(form));
-        const since = [prev?.since, n.since].filter((d): d is string => !!d).sort()[0] ?? null;
+
+        const since =
+          [prev?.since, n.since].filter((d): d is string => d !== undefined && d !== null && d !== "").toSorted()[0] ??
+          null;
 
         if (!prev || (prev.level === "medium" && level === "high")) {
           names.set(lc(form), { text: form, title: n.title, level, since, why });
@@ -63,8 +60,9 @@ export async function buildAliases(bill: BillId, extra: BillId[] = [], signal?: 
   }
 
   for (const [k, n] of names) {
-    if ([...names.keys()].some((other) => other !== k && k.startsWith(other) && names.get(other)!.level === n.level))
+    if ([...names.keys()].some((other) => other !== k && k.startsWith(other) && names.get(other)?.level === n.level)) {
       names.delete(k);
+    }
   }
 
   const rivals = new Set<string>();
@@ -84,7 +82,13 @@ export async function buildAliases(bill: BillId, extra: BillId[] = [], signal?: 
       }
 
       for (const t of billNames(r)) {
-        if (t.kind !== "portion") for (const f of nameForms(t.title)) if (!names.has(lc(f))) rivals.add(f);
+        if (t.kind !== "portion") {
+          for (const f of nameForms(t.title)) {
+            if (!names.has(lc(f))) {
+              rivals.add(f);
+            }
+          }
+        }
       }
 
       for (const law of r.laws) {
@@ -96,23 +100,25 @@ export async function buildAliases(bill: BillId, extra: BillId[] = [], signal?: 
   const support = new Set<string>();
 
   for (const t of officialTitles(own)) {
-    if (/\breconciliation\b/i.test(t)) {
+    if (/\breconciliation\b/iu.test(t)) {
       support.add("reconciliation");
     }
 
     for (const n of billNumbers(t)) {
-      if (n.type.endsWith("res")) support.add(n.text.replace(/\s+/g, ""));
+      if (n.type.endsWith("res")) {
+        support.add(n.text.replaceAll(/\s+/gu, ""));
+      }
     }
   }
 
   const introduced =
-    statuses
-      .map((s) => s.introduced)
-      .filter((d): d is string => !!d)
-      .sort()[0] ?? null;
+    statuses.flatMap((s) => (s.introduced === null || s.introduced === "" ? [] : [s.introduced])).toSorted()[0] ?? null;
 
-  const start = introduced ? Number(introduced.slice(0, 4)) : firstYear(congress);
-  const end = own.enactedOn ? Number(own.enactedOn.slice(0, 4)) + 1 : firstYear(congress) + 1;
+  const start = introduced !== null && introduced !== "" ? Number(introduced.slice(0, 4)) : firstYear(congress);
+
+  const end =
+    own.enactedOn !== null && own.enactedOn !== "" ? Number(own.enactedOn.slice(0, 4)) + 1 : firstYear(congress) + 1;
+
   const thisYear = new Date().getUTCFullYear();
   const years = Array.from({ length: Math.max(0, Math.min(end, thisYear) - start + 1) }, (_, i) => start + i);
 
@@ -134,10 +140,6 @@ export async function buildAliases(bill: BillId, extra: BillId[] = [], signal?: 
   };
 }
 
-/**
- * Bill numbers that filings cite in the same clause as the bill's name, in its Congress, by at least `min`
- * filings: candidates for earlier versions under another number (S.394 → S.1582).
- */
 export function coCited(filings: LdaFiling[], m: Matcher, min = 2): BillId[] {
   const counts = new Map<BillId, Set<string>>();
 
@@ -163,7 +165,7 @@ export function coCited(filings: LdaFiling[], m: Matcher, min = 2): BillId[] {
           text,
           n.index,
           n.index + n.text.length,
-          prev && prev.index + prev.text.length,
+          prev === undefined ? undefined : prev.index + prev.text.length,
           nums[i + 1]?.index,
         );
 
@@ -171,19 +173,16 @@ export function coCited(filings: LdaFiling[], m: Matcher, min = 2): BillId[] {
           continue;
         }
 
-        if (!counts.has(id)) {
-          counts.set(id, new Set());
-        }
-
-        counts.get(id)!.add(f.filing_uuid);
+        const filingIds = counts.get(id) ?? new Set<string>();
+        filingIds.add(f.filing_uuid);
+        counts.set(id, filingIds);
       }
     }
   }
 
-  return [...counts].filter(([, s]) => s.size >= min).map(([id]) => id);
+  return [...counts].flatMap(([id, s]) => (s.size >= min ? [id] : []));
 }
 
-/** A candidate is an alias only when its own BILLSTATUS carries one of the bill's whole-bill short titles. */
 export function sameTitle(a: Aliases, candidate: BillStatus): boolean {
   const ours = new Set(a.names.filter((n) => n.level === "high").map((n) => lc(n.text)));
 

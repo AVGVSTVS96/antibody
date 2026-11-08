@@ -14,10 +14,9 @@ const OUTLETS_URL = "https://github.com/AVGVSTVS96/antibody/blob/main/packages/i
 
 export function Cost({ m }: { m: BillModel }) {
   const points = useMemo(() => dots(m), [m]);
-  const ranked = m.sections.some((v) => v.s.attention?.pct != null);
+  const ranked = m.sections.some((v) => (v.s.attention?.pct ?? null) !== null);
   const first = points.find((p) => p.kind === "buried") ?? points.find((p) => p.kind === "headline");
   const [pick, setPick] = useState<string | null>(first?.v.s.id ?? null);
-  const loud = points.filter((p) => p.kind === "headline").length;
   const flagged = points.filter((p) => p.kind === "buried").length;
   const hollow = points.some((p) => p.musd < 0);
   const articles = m.b.attention.sample?.relevant ?? m.b.attention.articles;
@@ -77,7 +76,7 @@ export function Cost({ m }: { m: BillModel }) {
 
 function HowMeasured({ m }: { m: BillModel }) {
   const A = m.b.attention;
-  const scored = m.sections.filter((v) => v.s.attention?.pct != null).length;
+  const scored = m.sections.filter((v) => (v.s.attention?.pct ?? null) !== null).length;
 
   const via =
     A.via.map((v) => (v === "mediacloud" ? "Media Cloud" : "Google News")).join(" + ") || "no news source yet";
@@ -93,10 +92,10 @@ function HowMeasured({ m }: { m: BillModel }) {
           ? `from ${A.sample.relevant.toLocaleString("en-US")} relevant articles read, out of ${A.sample.found.toLocaleString("en-US")} found`
           : `from ${count(A.articles, "article")}`}{" "}
         via {via}
-        {A.outletListVersion && (
+        {(A.outletListVersion ?? "") !== "" && (
           <>
             ,{" "}
-            <a className="link" href={OUTLETS_URL} target="_blank" rel="noopener">
+            <a className="link" href={OUTLETS_URL} target="_blank" rel="noreferrer">
               outlet list {A.outletListVersion}
             </a>
           </>
@@ -109,7 +108,7 @@ function HowMeasured({ m }: { m: BillModel }) {
         .filter((g) => g.kind === "attention_partial")
         .map((g) => (
           <p key={g.id}>
-            {g.text} {g.claim && <Src id={g.claim} />}
+            {g.text} {g.claim !== null && <Src id={g.claim} />}
           </p>
         ))}
     </div>
@@ -129,8 +128,7 @@ function Scatter({
   onPick: (id: string) => void;
   articles: number;
 }) {
-  const box = useRef<HTMLDivElement>(null);
-  const w = useWidth(box);
+  const [box, w] = useWidth();
   const f = useMemo(() => frameFor(w), [w]);
   const s = useMemo(() => scales(points, f), [points, f]);
   const placed = useMemo(() => place(points, f, s), [points, f, s]);
@@ -139,7 +137,7 @@ function Scatter({
   const zy = zone ? s.y(zone.musd) : null;
 
   const labels = useMemo(
-    () => notes(placed, f, zx != null && zy != null ? { x: zx, y: zy } : null),
+    () => notes(placed, f, zx !== null && zy !== null ? { x: zx, y: zy } : null),
     [placed, f, zx, zy],
   );
 
@@ -172,7 +170,7 @@ function Scatter({
     });
   };
 
-  const ordered = useMemo(() => [...placed].sort((a, b) => a.cx - b.cx || a.cy - b.cy), [placed]);
+  const ordered = useMemo(() => placed.toSorted((a, b) => a.cx - b.cx || a.cy - b.cy), [placed]);
 
   const onKey = (e: KeyboardEvent) => {
     if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) {
@@ -202,23 +200,23 @@ function Scatter({
 
   return (
     <div className="scatter" ref={box}>
-      {/* biome-ignore lint/a11y/useSemanticElements: a custom chart widget, driven by the arrow keys */}
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- a custom chart widget, driven by the arrow keys */}
       <div
         className="plot"
         role="application"
-        // biome-ignore lint/a11y/noNoninteractiveTabindex: the chart is one tab stop; arrow keys move between dots
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- the chart is one tab stop; arrow keys move between dots
         tabIndex={0}
         aria-label={`Sections placed by news articles and CBO cost. Use the arrow keys to move between ${points.length} sections.`}
         onKeyDown={onKey}
       >
-        <svg width={f.w} height={f.h} viewBox={`0 0 ${f.w} ${f.h}`} role="img" aria-hidden="true">
+        <svg width={f.w} height={f.h} viewBox={`0 0 ${f.w} ${f.h}`} aria-hidden="true">
           <text x={f.l} y="14" className="ax strong">
             CBO cost or savings over ten years
           </text>
           <text x={f.l} y="30" className="ax soft">
             Each step up is ten times more money
           </text>
-          {zx != null && zy != null && (
+          {zx !== null && zy !== null && (
             <g>
               <rect x={f.l} y={f.t} width={zx - f.l} height={zy - f.t} fill="var(--flare-soft)" />
               <path
@@ -238,7 +236,7 @@ function Scatter({
               )}
             </g>
           )}
-          {phone && zx != null && (
+          {phone && zx !== null && (
             <text className="zone" x={zx + 6} y={f.t - 8}>
               Quiet and costly
             </text>
@@ -297,7 +295,6 @@ function Scatter({
                       className="ring"
                     />
                   )}
-                  {/* biome-ignore lint/a11y/noStaticElementInteractions: keyboard users move through dots with the chart's arrow keys */}
                   <circle
                     cx={p.cx}
                     cy={p.cy}
@@ -429,19 +426,23 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
   const A = m.b.attention;
   const hits = v.s.attention?.hits ?? 0;
   const checked = c?.attentionChecked ?? 0;
-  const lobbyEdge = m.b.edges.find((e) => e.kind === "lobbied" && e.dst === `section:${v.s.id}`);
+  const lobbyClaim = m.b.edges.find((e) => e.kind === "lobbied" && e.dst === `section:${v.s.id}`)?.claims[0];
   const counterpart = v.s.counterpart ? m.sectionById.get(v.s.counterpart.sectionId) : undefined;
   const earlier = counterpart && counterpart.stage < v.stage ? counterpart : undefined;
-  const payFor = v.s.score?.offsets ? m.sections.find((x) => x.s.id === v.s.score?.offsets) : undefined;
+  const offsets = v.s.score?.offsets ?? "";
+  const payFor = offsets === "" ? undefined : m.sections.find((x) => x.s.id === offsets);
   const paidBy = m.sections.find((x) => x.s.score?.offsets === v.s.id);
-  const same = !!v.figure?.byBaseline.every((b) => b.musd === v.figure!.musd);
-  const costly = v.dollarsMusd != null || (c?.lobbyingFirms ?? 0) >= BIG_STAKES.firms;
+  const { figure } = v;
+  const same = figure !== null && figure.byBaseline.every((b) => b.musd === figure.musd);
+  const figureClaim = figure?.claims[0];
+  const offTopic = c?.offTopic ?? null;
+  const costly = v.dollarsMusd !== null || (c?.lobbyingFirms ?? 0) >= BIG_STAKES.firms;
 
   const why = [
     costly ? "big" : null,
     "quiet",
     ...(costly ? [] : (c?.reach ?? []).map((k) => `its text ${REACH_WORDS[k]}`)),
-    c?.late ? "arrived late" : c?.offTopic != null && c.offTopic >= 0.5 ? "unlike the rest of the bill" : null,
+    c?.late === true ? "arrived late" : offTopic !== null && offTopic >= 0.5 ? "unlike the rest of the bill" : null,
   ].filter(Boolean);
 
   return (
@@ -461,11 +462,11 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
       <dl>
         {row(
           "Cost",
-          v.dollarsMusd == null ? (
+          v.dollarsMusd === null ? (
             "No CBO figure"
           ) : (
             <>
-              {deficitWords(v.dollarsMusd).replace(/^./, (x) => x.toUpperCase())}
+              {deficitWords(v.dollarsMusd).replace(/^./u, (x) => x.toUpperCase())}
               {v.figure && (
                 <>
                   {" "}
@@ -478,22 +479,23 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
               {v.figure?.split === "even_split" && " (an even split of a CBO group line)"}
             </>
           ),
-          v.figure && <Src id={v.figure.claims[0]!} label="CBO" />,
+          figureClaim !== undefined && <Src id={figureClaim} label="CBO" />,
         )}
-        {v.figure?.byBaseline
-          .filter((b) => !same && b.baseline !== v.figure!.baseline)
-          .map((b) => (
-            <Fragment key={b.baseline}>
-              {row(
-                "Other baseline",
-                <>
-                  {deficitWords(b.musd).replace(/^./, (x) => x.toUpperCase())} against {baselineWords(b.baseline)}. The
-                  smaller of the two counts.
-                </>,
-                <Src id={b.claims[0]!} label="CBO" />,
-              )}
-            </Fragment>
-          ))}
+        {figure !== null &&
+          figure.byBaseline
+            .filter((b) => !same && b.baseline !== figure.baseline)
+            .map((b) => (
+              <Fragment key={b.baseline}>
+                {row(
+                  "Other baseline",
+                  <>
+                    {deficitWords(b.musd).replace(/^./u, (x) => x.toUpperCase())} against {baselineWords(b.baseline)}.
+                    The smaller of the two counts.
+                  </>,
+                  b.claims[0] !== undefined && <Src id={b.claims[0]} label="CBO" />,
+                )}
+              </Fragment>
+            ))}
         {payFor &&
           row(
             "Pays for",
@@ -513,7 +515,7 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
           )}
         {row(
           "News",
-          v.s.attention?.pct != null || hits ? (
+          (v.s.attention?.pct ?? null) !== null || hits ? (
             <>
               {hits + checked} of {(A.sample?.relevant ?? A.articles).toLocaleString("en-US")} articles
               {checked ? ` (${hits} on the first read, ${checked} more on a second look)` : ""}
@@ -525,10 +527,11 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
         )}
         {row(
           "Arrived",
-          <>{version ? `${version.name}${version.date ? `, ${day(version.date)}` : ""}` : v.stageName}</>,
-          v.s.claims[0] && <Src id={v.s.claims[0]} label="GovInfo" />,
+          version ? `${version.name}${version.date === null ? "" : `, ${day(version.date)}`}` : v.stageName,
+          v.s.claims[0] !== undefined && <Src id={v.s.claims[0]} label="GovInfo" />,
         )}
         {earlier &&
+          v.s.counterpart &&
           row(
             "Earlier text",
             <>
@@ -536,14 +539,14 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
               them <Inf />
               {v.s.late && !isLate(v.s) ? ". So it is not counted as added late." : "."}
             </>,
-            <Src id={v.s.counterpart!.claim} label="Pairing" />,
+            <Src id={v.s.counterpart.claim} label="Pairing" />,
           )}
         {v.s.reach.map((r) => (
           <Fragment key={r.claim}>
             {row(
               "Reach",
               <>
-                {REACH_WORDS[r.kind].replace(/^./, (x) => x.toUpperCase())}: {quoted(r.quote)}
+                {REACH_WORDS[r.kind].replace(/^./u, (x) => x.toUpperCase())}: {quoted(r.quote)}
               </>,
               <Src id={r.claim} label="Text" />,
             )}
@@ -551,12 +554,12 @@ export function Facts({ m, v }: { m: BillModel; v: SectionView }) {
         ))}
         {row(
           "Lobbying",
-          c?.lobbyingReports
+          c !== undefined && c.lobbyingReports !== 0
             ? `${count(c.lobbyingReports, "report")} from ${count(c.lobbyingFirms, "firm")} name it`
             : v.lobbied
               ? `${count(v.lobbied, "report")} name it`
               : "No reports name it",
-          lobbyEdge?.claims[0] && <Src id={lobbyEdge.claims[0]} label="LDA" />,
+          lobbyClaim !== undefined && <Src id={lobbyClaim} label="LDA" />,
         )}
       </dl>
       {v.kind === "buried" && (

@@ -1,12 +1,12 @@
+import { must } from "@antibody/core";
 import { wordDiff } from "./diff.ts";
 import { containedIn, match } from "./match.ts";
-import type { Method } from "./match.ts";
+import type { Method, Pair } from "./match.ts";
 import type { Sec } from "./sections.ts";
 
 export interface ParsedVersion {
   code: string;
   secs: Sec[];
-  /** A predecessor bill's text shown as an earlier stage (S.394 before S.1582). */
   predecessor: boolean;
 }
 
@@ -23,19 +23,26 @@ export interface Step {
   movedFrom: string | null;
 }
 
+export type StepRef = Pick<Step, "path" | "hash">;
+
+export const isStepRef = (value: unknown): value is StepRef =>
+  typeof value === "object" &&
+  value !== null &&
+  "path" in value &&
+  "hash" in value &&
+  typeof value.path === "string" &&
+  typeof value.hash === "string";
+
 export interface Lineage {
-  /** `<billId>@<first version>:<path>` */
   id: string;
   firstVersion: string;
   changedIn: string[];
-  /** The version where this lineage ends. When `splitInto` is non-empty it was split there, not dropped. */
   removedIn: string | null;
   revivedIn: string[];
   splitFrom: { id: string; share: number } | null;
   splitInto: string[];
   mergedInto: { id: string; share: number } | null;
   history: Record<string, Step>;
-  /** The section as last seen. */
   last: Sec;
   lastVersion: string;
 }
@@ -53,31 +60,36 @@ export interface StepStats {
   removedMergedIntoNew: number;
 }
 
-/** Tracks every section across the versions, oldest first. */
-export function trace(bill: string, versions: ParsedVersion[]): { lineages: Lineage[]; steps: StepStats[] } {
+export function trace(bill: string, versions: ParsedVersion[]) {
   const lineages: Lineage[] = [];
   const taken = new Set<string>();
   const steps: StepStats[] = [];
   let current = new Map<number, number>();
+  const lineageAt = (idx: number | undefined) => must(lineages[must(idx, "a lineage index")], "a traced lineage");
 
   versions.forEach((v, vi) => {
     const secs = v.secs;
-    const prev = vi ? versions[vi - 1]!.secs : [];
-    const pairs = vi ? match(prev, secs) : new Map();
+    const prev = versions[vi - 1]?.secs ?? [];
+    const pairs = vi ? match(prev, secs) : new Map<number, Pair>();
     const leftovers = secs.map((_, j) => j).filter((j) => !pairs.has(j));
+    const secAt = (j: number) => must(secs[j], `section ${j} of ${v.code}`);
+    const prevAt = (i: number) => must(prev[i], `section ${i} before ${v.code}`);
 
-    const dormant = lineages.flatMap((l, k) => (l.removedIn ? [k] : []));
+    const dormant = lineages.flatMap((l, k) => (l.removedIn !== null && l.removedIn !== "" ? [k] : []));
     const revived = new Map<number, { lineage: number; score: number }>();
 
     if (dormant.length && leftovers.length) {
       const back = match(
-        dormant.map((k) => lineages[k]!.last),
-        leftovers.map((j) => secs[j]!),
+        dormant.map((k) => lineageAt(k).last),
+        leftovers.map((j) => secAt(j)),
         { fuzzyFloor: 0.6, headingFloor: 1.1, rewriteFloor: 1.1, citeFloor: 1.1 },
       );
 
       for (const [jj, p] of back) {
-        revived.set(leftovers[jj]!, { lineage: dormant[p.old]!, score: p.score });
+        revived.set(must(leftovers[jj], "a revived section"), {
+          lineage: must(dormant[p.old], "a dormant lineage"),
+          score: p.score,
+        });
       }
     }
 
@@ -86,10 +98,10 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
     const split = new Map(
       [
         ...containedIn(
-          fresh.map((j) => secs[j]!),
+          fresh.map((j) => secAt(j)),
           prev,
         ),
-      ].map(([k, hit]) => [fresh[k]!, hit]),
+      ].map(([k, hit]) => [must(fresh[k], "a split section"), hit]),
     );
 
     const usedPrev = new Set([...pairs.values()].map((p) => p.old));
@@ -98,10 +110,10 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
     const merged = new Map(
       [
         ...containedIn(
-          gone.map((i) => prev[i]!),
+          gone.map((i) => prevAt(i)),
           secs,
         ),
-      ].map(([k, hit]) => [gone[k]!, hit]),
+      ].map(([k, hit]) => [must(gone[k], "a merged section"), hit]),
     );
 
     const next = new Map<number, number>();
@@ -124,12 +136,12 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
       const back = revived.get(j);
 
       if (pair) {
-        idx = current.get(pair.old)!;
-        const before = prev[pair.old]!;
+        idx = must(current.get(pair.old), "the lineage of a matched section");
+        const before = prevAt(pair.old);
         Object.assign(step, { match: pair.method, similarity: pair.score });
 
         if (s.hash !== before.hash) {
-          lineages[idx]!.changedIn.push(v.code);
+          lineageAt(idx).changedIn.push(v.code);
           Object.assign(step, wordDiff(before.text, s.text));
         }
 
@@ -138,7 +150,7 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
         }
       } else if (back) {
         idx = back.lineage;
-        const l = lineages[idx]!;
+        const l = lineageAt(idx);
         l.removedIn = null;
         l.revivedIn.push(v.code);
         Object.assign(step, { match: "revived", similarity: back.score });
@@ -149,7 +161,7 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
       } else {
         idx = lineages.length;
         const from = split.get(j);
-        const parent = from ? lineages[current.get(from.whole)!]! : null;
+        const parent = from ? lineageAt(current.get(from.whole)) : null;
         const base = `${bill}@${v.code}:${s.path}`;
         let id = base;
 
@@ -174,7 +186,7 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
         parent?.splitInto.push(id);
       }
 
-      const l = lineages[idx]!;
+      const l = lineageAt(idx);
       l.history[v.code] = step;
       l.last = s;
       l.lastVersion = v.code;
@@ -184,22 +196,24 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
     const alive = new Set(next.values());
 
     for (const idx of new Set(current.values())) {
-      if (!alive.has(idx)) lineages[idx]!.removedIn = v.code;
+      if (!alive.has(idx)) {
+        lineageAt(idx).removedIn = v.code;
+      }
     }
 
     for (const [i, hit] of merged) {
-      lineages[current.get(i)!]!.mergedInto = { id: lineages[next.get(hit.whole)!]!.id, share: hit.share };
+      lineageAt(current.get(i)).mergedInto = { id: lineageAt(next.get(hit.whole)).id, share: hit.share };
     }
 
     if (vi) {
       const matched: Partial<Record<Method, number>> = {};
 
       for (const p of pairs.values()) {
-        matched[p.method as Method] = (matched[p.method as Method] ?? 0) + 1;
+        matched[p.method] = (matched[p.method] ?? 0) + 1;
       }
 
       steps.push({
-        from: versions[vi - 1]!.code,
+        from: must(versions[vi - 1], "the previous version").code,
         to: v.code,
         oldSections: prev.length,
         newSections: secs.length,
@@ -216,17 +230,14 @@ export function trace(bill: string, versions: ParsedVersion[]): { lineages: Line
   });
 
   for (const l of lineages) {
-    if (!l.removedIn) l.mergedInto = null;
+    if (l.removedIn === null || l.removedIn === "") {
+      l.mergedInto = null;
+    }
   }
 
   return { lineages, steps };
 }
 
-/**
- * A bill whose text was replaced wholesale gets no late flags: they would mark nearly every section and say nothing
- * about any one. Two cases, one rule for every bill and party: it began as a shell (its first own text is under a
- * tenth of the final words), or 80% or more of its final sections would be flagged late.
- */
 export const WHOLESALE = { shellShare: 0.1, lateShare: 0.8 };
 
 export function wholesaleReason(lineages: Lineage[], versions: ParsedVersion[]): string | null {
@@ -239,7 +250,7 @@ export function wholesaleReason(lineages: Lineage[], versions: ParsedVersion[]):
     return `The bill began as a short shell (${words(first).toLocaleString("en-US")} words, against ${finalWords.toLocaleString("en-US")} in the final text), so its real text arrived late as a whole and "added late" says nothing about any one section.`;
   }
 
-  const final = lineages.filter((l) => !l.removedIn);
+  const final = lineages.filter((l) => l.removedIn === null || l.removedIn === "");
   const late = final.filter((l) => isLate(l, versions)).length;
 
   if (final.length && late / final.length >= WHOLESALE.lateShare) {
@@ -249,16 +260,10 @@ export function wholesaleReason(lineages: Lineage[], versions: ParsedVersion[]):
   return null;
 }
 
-/** Version codes of a text a chamber has passed. */
 export const PASSED = new Set(["eh", "es", "ath", "ats", "eah", "eas", "enr", "plaw"]);
 
-/** A split keeping at least this share of its parent's wording is a move, not new text. */
 export const PURE_SPLIT = 0.9;
 
-/**
- * Late: first appears in the first chamber-passed text or after it (floor amendments, the other chamber, conference),
- * and isn't just a piece split out of an older section. Sections of the bill's first own text are never late.
- */
 export function isLate(l: Lineage, versions: ParsedVersion[]): boolean {
   const codes = versions.map((v) => v.code);
   const first = codes.indexOf(l.firstVersion);

@@ -22,14 +22,12 @@ export interface Slot {
 export interface RingLayout {
   view: RingView;
   gap: number;
-  /** Clockwise from 12 o'clock, the order arrow keys walk. */
   companies: Slot[];
   members: Slot[];
   company: Map<string, Slot>;
   member: Map<string, Slot>;
 }
 
-/** Slots go in rank order from 12 o'clock; each item's angle is where it wants to sit, evened out over the free arc. */
 export function placeByWant(wants: number[], gap: number): number[] {
   const n = wants.length;
 
@@ -38,16 +36,15 @@ export function placeByWant(wants: number[], gap: number): number[] {
   }
 
   const start = Math.PI / 2 + gap / 2;
-  const order = wants.map((w, i) => ({ w: wrapTau(w - start) + start, i })).sort((a, b) => a.w - b.w || a.i - b.i);
-  const slots = Array.from({ length: n }, (_, k) => slotAngle(k, n, gap));
+  const order = wants.map((w, i) => ({ w: wrapTau(w - start) + start, i })).toSorted((a, b) => a.w - b.w || a.i - b.i);
   let best = 0;
   let bestCost = Number.POSITIVE_INFINITY;
 
   for (let s = 0; s < n; s++) {
     let cost = 0;
 
-    for (let j = 0; j < n; j++) {
-      const d = wrapPi(slots[(j + s) % n]! - order[j]!.w);
+    for (const [j, o] of order.entries()) {
+      const d = wrapPi(slotAngle((j + s) % n, n, gap) - o.w);
       cost += d * d;
     }
 
@@ -57,10 +54,10 @@ export function placeByWant(wants: number[], gap: number): number[] {
     }
   }
 
-  const out = new Array<number>(n);
+  const out = Array.from({ length: n }, () => 0);
 
-  for (let j = 0; j < n; j++) {
-    out[order[j]!.i] = slots[(j + best) % n]!;
+  for (const [j, o] of order.entries()) {
+    out[o.i] = slotAngle((j + best) % n, n, gap);
   }
 
   return out;
@@ -93,7 +90,7 @@ export function layoutRing(data: RingData): RingLayout {
     for (const t of data.byMember.get(v.node.id) ?? []) {
       const a = coAngle.get(t.company);
 
-      if (a == null) {
+      if (a === undefined) {
         continue;
       }
 
@@ -118,14 +115,14 @@ export function layoutRing(data: RingData): RingLayout {
 
     return {
       id: v.node.id,
-      angle: angles[i]!,
+      angle: angles[i] ?? 0,
       size: Math.max(0.9, Math.min(r, memSpacing * (data.view === "trades" ? 0.45 : 0.5))),
     };
   });
 
   const byClock = (a: Slot, b: Slot) => clockwiseFromTop(a.angle) - clockwiseFromTop(b.angle);
-  const sortedCo = [...companies].sort(byClock);
-  const sortedMem = [...members].sort(byClock);
+  const sortedCo = companies.toSorted(byClock);
+  const sortedMem = members.toSorted(byClock);
 
   return {
     view: data.view,
@@ -165,7 +162,7 @@ export function sectionMarks(groups: SectionGroup[]): SectionMark[] {
   return groups.flatMap((group, gi) =>
     group.sections.map<SectionMark>((v) => {
       const level = levelOf(v);
-      const tone: Tone = v.dollarsMusd == null ? "stub" : v.dollarsMusd < 0 ? "save" : "cost";
+      const tone: Tone = v.dollarsMusd === null ? "stub" : v.dollarsMusd < 0 ? "save" : "cost";
       const estimate = tone !== "stub" && v.s.score?.components.dollarsSplit === "even_split";
 
       return {
@@ -193,7 +190,7 @@ export function layoutBars(groups: SectionGroup[], marks: SectionMark[]): BarsLa
   for (const group of groups) {
     const start = a;
 
-    for (let i = 0; i < group.sections.length; i++) {
+    for (const _ of group.sections) {
       angle.push(a + step / 2);
       a += step;
     }
@@ -220,7 +217,6 @@ export function tickAngles(n: number): number[] {
 const TICK_WIDTH: Record<Level, number> = { normal: 2.2, headline: 3.2, buried: 3.4 };
 const BAR_WIDTH: Record<Level, number> = { normal: 2.6, headline: 2.6, buried: 3.6 };
 
-/** Stroke width that keeps neighbours apart: the design's width up to the room each tick has. */
 export function strokeWidths(n: number, view: MapView): Record<Level, number> {
   const base = view === "sections" ? BAR_WIDTH : TICK_WIDTH;
 
@@ -259,7 +255,6 @@ export interface Scenes {
   bars: BarsLayout;
   tickAngle: number[];
   ring: Record<RingView, { data: RingData; layout: RingLayout }>;
-  /** Every tie of each company, drawn or not, so a card can list all of them. */
   allTies: Record<RingView, Map<string, Tie[]>>;
   targets: Record<MapView, SceneTargets>;
   finalSections: number;
@@ -276,12 +271,10 @@ function byCompany(ties: Tie[]): Map<string, Tie[]> {
   return out;
 }
 
-/** The ids arrow keys walk, in reading order: companies clockwise from the top, or titles in bill order. */
 export function itemIds(s: Scenes, view: MapView): string[] {
   return view === "sections" ? s.bars.groups.map((g) => g.group.id) : s.ring[view].layout.companies.map((c) => c.id);
 }
 
-/** Whether a pinned id has a mark in this view. */
 export function present(s: Scenes, view: MapView, id: string): boolean {
   if (id.startsWith("group:")) {
     return view === "sections" && s.bars.groups.some((g) => g.group.id === id);
@@ -289,7 +282,7 @@ export function present(s: Scenes, view: MapView, id: string): boolean {
 
   const i = s.index.get(id);
 
-  return i != null && s.targets[view].present[i] === 1;
+  return i !== undefined && s.targets[view].present[i] === 1;
 }
 
 export function buildScenes(m: BillModel, must: readonly string[] = []): Scenes {
@@ -298,13 +291,13 @@ export function buildScenes(m: BillModel, must: readonly string[] = []): Scenes 
   const bars = layoutBars(groups, sections);
   const tickAngle = tickAngles(sections.length);
 
-  const ring = Object.fromEntries(
-    (["trades", "pac"] as const).map((view) => {
-      const data = selectRing(m, view, must);
+  const ringOf = (view: RingView) => {
+    const data = selectRing(m, view, must);
 
-      return [view, { data, layout: layoutRing(data) }];
-    }),
-  ) as Scenes["ring"];
+    return { data, layout: layoutRing(data) };
+  };
+
+  const ring: Scenes["ring"] = { trades: ringOf("trades"), pac: ringOf("pac") };
 
   const marks: MarkDef[] = sections.map((s) => ({ id: s.id, kind: "section", bucket: s.bucket }));
   const seen = new Set(marks.map((x) => x.id));
@@ -338,7 +331,12 @@ export function buildScenes(m: BillModel, must: readonly string[] = []): Scenes 
   const targets = { trades: blank(), pac: blank(), sections: blank() };
 
   const put = (sc: SceneTargets, id: string, angle: number, r0: number, r1: number, size: number) => {
-    const i = index.get(id)!;
+    const i = index.get(id);
+
+    if (i === undefined) {
+      return;
+    }
+
     sc.present[i] = 1;
     const o = i * CHANNELS;
     sc.t[o + CH.angle] = angle;
@@ -350,10 +348,10 @@ export function buildScenes(m: BillModel, must: readonly string[] = []): Scenes 
 
   sections.forEach((s, i) => {
     for (const view of ["trades", "pac"] as const) {
-      put(targets[view], s.id, tickAngle[i]!, R.ticks, R.ticks + TICK_LENGTH[s.level], 0);
+      put(targets[view], s.id, tickAngle[i] ?? 0, R.ticks, R.ticks + TICK_LENGTH[s.level], 0);
     }
 
-    put(targets.sections, s.id, bars.angle[i]!, R.bars, R.bars + bars.length[i]!, 0);
+    put(targets.sections, s.id, bars.angle[i] ?? 0, R.bars, R.bars + (bars.length[i] ?? 0), 0);
   });
 
   for (const view of ["trades", "pac"] as const) {
@@ -397,7 +395,6 @@ export interface Emptiness {
   sections: string | null;
 }
 
-/** Why a view has nothing to show, in plain words, or null when it has something. */
 export function emptiness(s: Scenes): Emptiness {
   const gap = s.m.b.gaps.find((g) => g.kind === "no_section_dollars");
 

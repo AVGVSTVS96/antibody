@@ -2,10 +2,11 @@ import type { Bundle } from "@antibody/core";
 
 type Rule = Bundle["rules"][number];
 
+type RuleText = Pick<Rule, "version" | "text">;
+
 export const DOCS = "https://github.com/AVGVSTVS96/antibody/blob/main/docs/rules.md";
 
-/** Rules the bundle builder applies itself. Same text, same thresholds, for every bill and party. */
-export const RULES: Record<string, { version: string; text: string }> = {
+export const RULES = {
   "tied-stock": {
     version: "1",
     text: "A company is tied to a bill if it lobbied on the bill (an LD-2 issue line names it). A subsidiary's lobbying counts for its parent only from the date the parent owned it.",
@@ -106,21 +107,21 @@ export const RULES: Record<string, { version: string; text: string }> = {
     version: "1",
     text: "A section first seen in the text right after an agreed substitute came in with that substitute.",
   },
-};
+} satisfies Record<string, RuleText>;
 
-/** Rules whose full text is written by another stage and travels with each claim; docs/rules.md still explains them. */
+const RULE_BY_ID = new Map<string, RuleText>(Object.entries(RULES));
+
 export const CLAIM_TEXT_RULES = ["buried-v5", "attention-v2", "quiet-check-v1"];
 
-/** `"subsidiary-parent: a subsidiary's lobbying counts…"` or `"tied-stock"` → a published rule entry. */
 export function ruleFor(rule: string): Rule {
-  const [head, ...rest] = rule.split(":");
+  const [head = "", ...rest] = rule.split(":");
 
-  const id = head!
+  const id = head
     .trim()
     .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, "-");
+    .replaceAll(/[^a-z0-9]+/gu, "-");
 
-  const known = RULES[id];
+  const known = RULE_BY_ID.get(id);
 
   if (known) {
     return { id, version: known.version, text: known.text, url: `${DOCS}#${id}` };
@@ -131,11 +132,11 @@ export function ruleFor(rule: string): Rule {
   return {
     id,
     version: "1",
-    text: text.replace(/^./, (c) => c.toUpperCase()),
+    text: text.replace(/^./u, (c) => c.toUpperCase()),
     url: CLAIM_TEXT_RULES.includes(id) ? `${DOCS}#${id}` : null,
   };
 }
 
-export const CBO_HEADING_JOIN = `cbo-heading-join: ${RULES["cbo-heading-join"]!.text}`;
-export const CBO_EVEN_SPLIT = `cbo-even-split: ${RULES["cbo-even-split"]!.text}`;
-export const COUNTERPART_REF = `counterpart-ref: ${RULES["counterpart-ref"]!.text}`;
+export const CBO_HEADING_JOIN = `cbo-heading-join: ${RULES["cbo-heading-join"].text}`;
+export const CBO_EVEN_SPLIT = `cbo-even-split: ${RULES["cbo-even-split"].text}`;
+export const COUNTERPART_REF = `counterpart-ref: ${RULES["counterpart-ref"].text}`;

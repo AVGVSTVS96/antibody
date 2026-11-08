@@ -20,10 +20,12 @@ const companies: Company[] = [
   { cik: "1039828", name: "American National Group Inc.", tickers: ["ANG"], exchange: "NYSE" },
 ];
 
+const filing = (client: string, superseded = false) => ({ client_key: client, superseded, period_end: "2025-06-30" });
+
 test("bill sections own the quoted text they insert", () => {
   const s = splitSections(XML);
   expect(s.map((x) => x.num)).toEqual(["1", "2", "3"]);
-  expect(s[1]!.text).toContain("Amtrak and General Motors shall report");
+  expect(s[1]?.text).toContain("Amtrak and General Motors shall report");
 });
 
 test("names are found only as capitalized whole names, one-word names only with a legal suffix", () => {
@@ -34,10 +36,10 @@ test("names are found only as capitalized whole names, one-word names only with 
 test("lobbied: one whole-bill row per company plus one per cited section; low refs and superseded filings don't count", () => {
   const bill = "119-s-1582" as const;
 
-  const ref = (id: string, filing: string, match: Row<"lda_bill_refs">["match"], nums: string[] = []) =>
+  const ref = (id: string, filingId: string, match: Row<"lda_bill_refs">["match"], nums: string[] = []) =>
     ({
       id,
-      filing_id: filing,
+      filing_id: filingId,
       bill_id: bill,
       line: 1,
       section_nums: nums,
@@ -48,12 +50,9 @@ test("lobbied: one whole-bill row per company plus one per cited section; low re
       match,
       why: "bill number with the right Congress",
       phase: "bill",
-      source_url: `https://lda.gov/filings/public/filing/${filing}/print/`,
+      source_url: `https://lda.gov/filings/public/filing/${filingId}/print/`,
       source_locator: null,
     }) satisfies Row<"lda_bill_refs">;
-
-  const filing = (id: string, client: string, superseded = false) =>
-    ({ id, client_key: client, superseded }) as Row<"lda_filings">;
 
   const res: Row<"resolutions"> = {
     id: "client:coinbase",
@@ -66,16 +65,16 @@ test("lobbied: one whole-bill row per company plus one per cited section; low re
     evidence: { name: "COINBASE, INC." },
   };
 
-  const section = { id: "119-s-1582@s394-is:sec:4", bill_id: bill, num: "4", in_final: true } as Row<"sections">;
+  const section = { id: "119-s-1582@s394-is:sec:4", num: "4", in_final: true };
 
   const rows = lobbiedBenefits(
     bill,
     [ref("r1", "f1", "high", ["4"]), ref("r2", "f2", "medium"), ref("r3", "f3", "low"), ref("r4", "f4", "high")],
     new Map([
-      ["f1", filing("f1", "coinbase")],
-      ["f2", filing("f2", "coinbase")],
-      ["f3", filing("f3", "coinbase")],
-      ["f4", filing("f4", "coinbase", true)],
+      ["f1", filing("coinbase")],
+      ["f2", filing("coinbase")],
+      ["f3", filing("coinbase")],
+      ["f4", filing("coinbase", true)],
     ]),
     new Map([[res.id, res]]),
     [section],
@@ -85,6 +84,6 @@ test("lobbied: one whole-bill row per company plus one per cited section; low re
     ["119-s-1582:lobbied:1679788", 2],
     ["119-s-1582:lobbied:1679788:119-s-1582@s394-is:sec:4", 1],
   ]);
-  expect(rows[0]!.rests_on).toEqual(["resolutions/client:coinbase", "lda_bill_refs/r1", "lda_bill_refs/r2"]);
-  expect(rows[0]!.confidence).toBe(0.95);
+  expect(rows[0]?.rests_on).toEqual(["resolutions/client:coinbase", "lda_bill_refs/r1", "lda_bill_refs/r2"]);
+  expect(rows[0]?.confidence).toBe(0.95);
 });

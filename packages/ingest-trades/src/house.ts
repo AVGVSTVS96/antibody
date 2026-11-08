@@ -1,6 +1,7 @@
 import { exists, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { heavy, paths } from "@antibody/core/node";
+import { z } from "zod";
 import { download, pool } from "./http.ts";
 
 export const FIRST_YEAR = 2019;
@@ -13,11 +14,9 @@ export interface HouseFiling {
   last: string;
   first: string;
   suffix: string;
-  /** State + district as filed, e.g. "GA12" or "CA00" for at-large. */
   stateDst: string;
   filed: string;
   url: string;
-  /** DocIDs starting 8 or 9 are scanned paper; 2xxxxxxx are e-filed with a text layer (100% agreement on 1,384 filings). */
   scanned: boolean;
 }
 
@@ -29,7 +28,6 @@ export function years(from = FIRST_YEAR, to = new Date().getFullYear()) {
   return Array.from({ length: to - from + 1 }, (_, i) => String(from + i));
 }
 
-/** Fetches the Clerk's yearly ZIP index (always for the current year, once for past years) and returns its PTRs. */
 export async function houseIndex(ys: string[], refresh = false): Promise<HouseFiling[]> {
   const idx = join(houseRoot(), "idx");
   await mkdir(idx, { recursive: true });
@@ -58,7 +56,7 @@ export async function houseIndex(ys: string[], refresh = false): Promise<HouseFi
 export function parseIndex(text: string): HouseFiling[] {
   const rows: HouseFiling[] = [];
 
-  for (const line of text.replace(/^﻿/, "").trim().split(/\r?\n/).slice(1)) {
+  for (const line of text.replace(/^﻿/u, "").trim().split(/\r?\n/u).slice(1)) {
     const [prefix = "", last = "", first = "", suffix = "", type, stateDst = "", year = "", filed = "", rawId = ""] =
       line.split("\t");
 
@@ -78,19 +76,20 @@ export function parseIndex(text: string): HouseFiling[] {
       stateDst,
       filed,
       url: ptrUrl(year, docId),
-      scanned: /^[89]/.test(docId),
+      scanned: /^[89]/u.test(docId),
     });
   }
 
   return rows;
 }
 
-/** Downloads every filing PDF not already on disk. Returns the DocIDs that failed. */
 export async function fetchHousePdfs(filings: HouseFiling[], log: (m: string) => void): Promise<string[]> {
   const missing: HouseFiling[] = [];
 
   for (const f of filings) {
-    if (!(await exists(pdfPath(f)))) missing.push(f);
+    if (!(await exists(pdfPath(f)))) {
+      missing.push(f);
+    }
   }
 
   log(`House PDFs: ${filings.length} filings, ${missing.length} to download`);
@@ -111,46 +110,53 @@ export async function fetchHousePdfs(filings: HouseFiling[], log: (m: string) =>
   return failed;
 }
 
-export interface ParsedDoc {
-  doc_id: string;
-  year: string;
-  pages: number | null;
-  filer: string | null;
-  trades: ParsedTrade[];
-  error: string | null;
-}
+const ParsedTrade = z.looseObject({
+  page: z.number(),
+  filer: z.string().nullable(),
+  owner: z.string(),
+  asset: z.string(),
+  asset_type: z.string().nullable(),
+  ticker: z.string().nullable(),
+  type: z.string(),
+  date: z.string(),
+  notified: z.string(),
+  amount: z.string(),
+  details: z.record(z.string(), z.string()),
+});
 
-/** One row as the word-position parser reads it from an e-filed PDF; values are as filed. */
-export interface ParsedTrade {
-  page: number;
-  filer: string | null;
-  owner: string;
-  asset: string;
-  asset_type: string | null;
-  ticker: string | null;
-  type: string;
-  date: string;
-  notified: string;
-  amount: string;
-  details: Record<string, string>;
-}
+export const ParsedDoc = z.looseObject({
+  doc_id: z.string(),
+  year: z.string(),
+  pages: z.number().nullable(),
+  filer: z.string().nullable(),
+  trades: z.array(ParsedTrade),
+  error: z.string().nullable(),
+});
+
+export type ParsedDoc = z.infer<typeof ParsedDoc>;
 
 const PKG = join(import.meta.dir, "..");
 const parsedFile = () => join(houseRoot(), "house-parsed.jsonl");
 
-/** Parses every PDF not yet in data/trades/house-parsed.jsonl (pdfplumber word positions), and returns all docs. */
 export async function parseHouse(filings: HouseFiling[], refresh: boolean, log: (m: string) => void) {
   const file = Bun.file(parsedFile());
   const docs = new Map<string, ParsedDoc>();
 
   if (!refresh && (await file.exists())) {
-    for (const line of (await file.text()).split("\n")) if (line) docs.set(JSON.parse(line).doc_id, JSON.parse(line));
+    for (const line of (await file.text()).split("\n")) {
+      if (line) {
+        const doc = ParsedDoc.parse(JSON.parse(line));
+        docs.set(doc.doc_id, doc);
+      }
+    }
   }
 
   const todo = [];
 
   for (const f of filings) {
-    if (!docs.has(f.docId) && (await exists(pdfPath(f)))) todo.push(pdfPath(f));
+    if (!docs.has(f.docId) && (await exists(pdfPath(f)))) {
+      todo.push(pdfPath(f));
+    }
   }
 
   log(`House parse: ${docs.size} cached, ${todo.length} to parse`);
@@ -172,7 +178,10 @@ export async function parseHouse(filings: HouseFiling[], refresh: boolean, log: 
     ]);
 
     for (const line of out.split("\n")) {
-      if (line) docs.set(JSON.parse(line).doc_id, JSON.parse(line));
+      if (line) {
+        const doc = ParsedDoc.parse(JSON.parse(line));
+        docs.set(doc.doc_id, doc);
+      }
     }
 
     await Bun.write(parsedFile(), `${[...docs.values()].map((d) => JSON.stringify(d)).join("\n")}\n`);

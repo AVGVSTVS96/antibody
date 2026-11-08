@@ -1,11 +1,12 @@
 import { BIG_STAKES } from "@antibody/core";
 import type { BundleIndex } from "@antibody/core";
-import { use, useEffect, useState } from "react";
+import { use, useState } from "react";
+import type { ReactNode, SubmitEvent } from "react";
 import { loadIndex, prefetchBundle } from "../lib/data.ts";
 import { count, day } from "../lib/format.ts";
 import { useMedia } from "../lib/media.ts";
-import { billHref, navigate, onLink } from "../lib/router.ts";
-import { matchBills, missingBill, NotXrayed } from "../ui/Find.tsx";
+import { billHref, navigate, onLink, scrollToHash } from "../lib/router.ts";
+import { asBillId, matchBills, NotXrayed } from "../ui/Find.tsx";
 import { Fingerprint, fingerprintNote } from "../ui/Fingerprint.tsx";
 import { Search } from "../ui/icons.tsx";
 import { Footer, Top } from "../ui/Top.tsx";
@@ -18,19 +19,11 @@ const START_HERE = "119-s-1582";
 export function IndexPage() {
   const index = use(loadIndex());
   const [q, setQ] = useState("");
-  const [notice, setNotice] = useState<React.ReactNode>(null);
-
-  useEffect(() => {
-    document.title = "antibody · X-ray any bill in Congress";
-
-    if (location.hash) {
-      document.getElementById(location.hash.slice(1))?.scrollIntoView();
-    }
-  }, []);
+  const [notice, setNotice] = useState<ReactNode>(null);
 
   const curated = index.bills
     .filter((b) => b.origin !== "watcher")
-    .sort(
+    .toSorted(
       (a, b) =>
         Number(b.id === START_HERE) - Number(a.id === START_HERE) ||
         (b.latestActionOn ?? "").localeCompare(a.latestActionOn ?? ""),
@@ -38,11 +31,11 @@ export function IndexPage() {
 
   const watched = index.bills
     .filter((b) => b.origin === "watcher")
-    .sort((a, b) => (b.addedOn ?? "").localeCompare(a.addedOn ?? "") || b.id.localeCompare(a.id));
+    .toSorted((a, b) => (b.addedOn ?? "").localeCompare(a.addedOn ?? "") || b.id.localeCompare(a.id));
 
-  const key = index.bills.find((b) => b.id === "117-hr-5376" && b.stats?.fingerprint) ?? curated[0];
+  const key = index.bills.find((b) => b.id === "117-hr-5376" && (b.stats?.fingerprint ?? "") !== "") ?? curated[0];
 
-  function submit(e: React.FormEvent) {
+  function submit(e: SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     const raw = q.trim();
 
@@ -51,8 +44,8 @@ export function IndexPage() {
     }
 
     const hits = matchBills(index.bills, raw);
-    const id = missingBill(raw);
-    const exact = id ? index.bills.find((b) => b.id === id) : undefined;
+    const id = asBillId(raw);
+    const exact = id === null ? undefined : index.bills.find((b) => b.id === id);
     const hit = exact ?? (hits.length === 1 ? hits[0] : undefined);
 
     if (hit) {
@@ -67,7 +60,7 @@ export function IndexPage() {
       return;
     }
 
-    if (!id) {
+    if (id === null) {
       setNotice(<>No bill matches “{raw}”. Try a number like S.1582, H.R. 1, or a congress.gov link.</>);
 
       return;
@@ -79,12 +72,13 @@ export function IndexPage() {
   const needle = q.trim();
   const shown = needle ? new Set(matchBills(index.bills, needle).map((b) => b.id)) : null;
   const seen = (b: Entry) => !shown || shown.has(b.id);
-  const testable = curated.filter((b) => b.stats?.buriedTest.tested).length;
+  const testable = curated.filter((b) => b.stats?.buriedTest.tested === true).length;
 
   return (
     <>
+      <title>antibody · X-ray any bill in Congress</title>
       <Top />
-      <main>
+      <main ref={scrollToHash}>
         <section className="wrap hero">
           <div className="hero-copy">
             <h1>See what rides along in a bill, and who is behind it.</h1>
@@ -114,9 +108,9 @@ export function IndexPage() {
                 X-ray it
               </button>
             </form>
-            {notice && <p className="notice">{notice}</p>}
+            {notice !== null && <p className="notice">{notice}</p>}
           </div>
-          {key?.stats && <Key entry={key} />}
+          {key?.stats && <Key entry={key} s={key.stats} />}
         </section>
 
         <section className="wrap list" aria-labelledby="laws">
@@ -124,7 +118,7 @@ export function IndexPage() {
             <h2 id="laws">{count(curated.length, "law")}, x-rayed</h2>
             <p>Newest first. Sponsor party is a label, not a score.</p>
           </header>
-          <Rows bills={curated.filter(seen)} feature={needle ? undefined : START_HERE} />
+          <Rows bills={curated.filter(seen)} feature={needle === "" ? START_HERE : null} />
           {!curated.some(seen) && <p className="empty">No curated law matches that search.</p>}
           <p className="era-note">
             The bills come from different eras: all six with Democratic sponsors are from the 117th Congress, when
@@ -141,7 +135,7 @@ export function IndexPage() {
                 hand-checked.
               </p>
             </header>
-            <Rows bills={watched.filter(seen)} />
+            <Rows bills={watched.filter(seen)} feature={null} />
           </section>
         )}
 
@@ -194,7 +188,7 @@ export function IndexPage() {
         </span>
         <span>
           Source code and method on{" "}
-          <a href="https://github.com/AVGVSTVS96/antibody" target="_blank" rel="noopener">
+          <a href="https://github.com/AVGVSTVS96/antibody" target="_blank" rel="noreferrer">
             GitHub
           </a>
           . Index built {day(index.generatedAt.slice(0, 10))}.
@@ -204,9 +198,7 @@ export function IndexPage() {
   );
 }
 
-function Key({ entry }: { entry: Entry }) {
-  const s = entry.stats!;
-
+function Key({ entry, s }: { entry: Entry; s: NonNullable<Entry["stats"]> }) {
   return (
     <aside className="key" aria-label="How to read a fingerprint">
       <p className="key-t">Every bill gets a fingerprint</p>
@@ -233,7 +225,7 @@ function Key({ entry }: { entry: Entry }) {
   );
 }
 
-function Rows({ bills, feature }: { bills: Entry[]; feature?: string }) {
+function Rows({ bills, feature }: { bills: Entry[]; feature: string | null }) {
   const phone = useMedia("(max-width: 760px)");
 
   return (
@@ -258,10 +250,11 @@ function Rows({ bills, feature }: { bills: Entry[]; feature?: string }) {
 function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) {
   const s = b.stats;
   const t = s?.buriedTest;
-  const short = !!t && !t.tested && !!t.why?.startsWith("the bill has only");
-  const unranked = !!t && !t.tested && !short && !!t.why?.startsWith("too few");
-  const cannotFire = !!t && !t.tested && !short && !unranked;
-  const note = s && fingerprintNote(s.fingerprint, phone);
+  const untested = t !== undefined && !t.tested;
+  const short = untested && t.why?.startsWith("the bill has only") === true;
+  const unranked = untested && !short && t.why?.startsWith("too few") === true;
+  const cannotFire = untested && !short && !unranked;
+  const note = s ? fingerprintNote(s.fingerprint, phone) : null;
 
   return (
     <li>
@@ -278,7 +271,7 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
       >
         <span className="c-fp">
           {s && <Fingerprint kinds={s.fingerprint} label={b.display} />}
-          {note && <small>{note}</small>}
+          {note !== null && <small>{note}</small>}
         </span>
         <span className="c-law">
           <span className="law-t">
@@ -287,7 +280,7 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
             {b.origin === "watcher" && <span className="badge watch">Added by the watch</span>}
           </span>
           <span className="law-m">{signedLine(b)}</span>
-          {b.origin === "watcher" && b.note && (
+          {b.origin === "watcher" && b.note !== null && b.note !== "" && (
             <span className="law-n" title={b.note}>
               {b.note}
             </span>
@@ -308,7 +301,7 @@ function Row({ b, start, phone }: { b: Entry; start: boolean; phone: boolean }) 
                 <span
                   className="c-quiet"
                   title={
-                    t?.tested && !s.buried
+                    t?.tested === true && s.buried === 0
                       ? `Tested on the ${t.costMeasured} of ${s.sections} sections CBO gave a figure, plus any named by ${BIG_STAKES.firms} lobbying firms and any with legal reach`
                       : undefined
                   }
@@ -365,7 +358,7 @@ function Picks({ index }: { index: BundleIndex }) {
         <ul className="wpick-g">
           {picks.map((w) => {
             const [lead = "Moved this week", ...rest] = picksNote(w);
-            const xrayed = !!w.file;
+            const xrayed = (w.file ?? "") !== "";
 
             return (
               <li key={w.billId} className="wpick">
@@ -388,7 +381,7 @@ function Picks({ index }: { index: BundleIndex }) {
                     Open the x-ray
                   </a>
                 ) : (
-                  <a className="link" href={w.url} target="_blank" rel="noopener">
+                  <a className="link" href={w.url} target="_blank" rel="noreferrer">
                     Read on congress.gov
                   </a>
                 )}

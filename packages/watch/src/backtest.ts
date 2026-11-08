@@ -8,10 +8,6 @@ import { reasons } from "./digest.ts";
 import { candidate, enrich, rank } from "./watch.ts";
 import type { Candidate } from "./watch.ts";
 
-/**
- * Scores past weeks of real bills as if the watcher had run then: `bun packages/watch/src/backtest.ts`.
- * Checks the ranking on known fights from both parties with the same rules. Reads only; writes caches.
- */
 const CASES = [
   { file: "BILLSTATUS-119hr1.xml", since: "2025-06-28", until: "2025-07-04", note: "OBBBA (R), final week" },
   { file: "BILLSTATUS-117hr5376.xml", since: "2022-08-05", until: "2022-08-16", note: "IRA (D), final week" },
@@ -19,7 +15,6 @@ const CASES = [
   { file: "BILLSTATUS-119s1582.xml", since: "2025-07-14", until: "2025-07-18", note: "GENIUS (R), House week" },
 ];
 
-/** The bill as BILLSTATUS would have shown it on `until`. */
 function asOf(s: BillStatus, until: string): BillStatus {
   const actions = s.actions.filter((a) => a.date <= until);
   const presented = actions.some((a) => a.text.startsWith("Presented to President"));
@@ -27,9 +22,9 @@ function asOf(s: BillStatus, until: string): BillStatus {
   return {
     ...s,
     actions,
-    versions: s.versions.filter((v) => (v.date ? v.date <= until : presented)),
+    versions: s.versions.filter((v) => (v.date === null || v.date === "" ? presented : v.date <= until)),
     cbo: s.cbo.filter((c) => c.publishedOn <= until),
-    amendments: s.amendments.filter((a) => !a.submittedOn || a.submittedOn <= until),
+    amendments: s.amendments.filter((a) => a.submittedOn === null || a.submittedOn === "" || a.submittedOn <= until),
     laws: actions.some((a) => a.type === "BecameLaw") ? s.laws : [],
   };
 }
@@ -49,7 +44,9 @@ for (const k of CASES) {
   rows.push({ note: k.note, c, problems });
 }
 
-for (const { note, c, problems } of rank(rows.map((r) => r.c)).map((c) => rows.find((r) => r.c === c)!)) {
+for (const { note, c, problems } of rank(rows.map((r) => r.c)).flatMap((ranked) =>
+  rows.filter((r) => r.c === ranked),
+)) {
   console.log(`\n${billDisplay(c.status.id)} · ${note} · score ${c.score}`);
   console.log(
     `  ${Object.entries(c.sub)

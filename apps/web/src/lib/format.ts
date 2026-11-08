@@ -1,43 +1,42 @@
 const UPPER_FIXES: [RegExp, string][] = [
-  [/\bJpmorgan\b/g, "JPMorgan"],
-  [/\bPnc\b/g, "PNC"],
-  [/\bCme\b/g, "CME"],
-  [/\bHsbc\b/g, "HSBC"],
-  [/\bUs Bancorp\b/g, "US Bancorp"],
-  [/\bH&r\b/g, "H&R"],
-  [/\bS&p\b/g, "S&P"],
-  [/\bPwc\b/g, "PwC"],
-  [/\bDao\b/g, "DAO"],
-  [/\bPac\b/g, "PAC"],
-  [/\bUsa\b/g, "USA"],
-  [/\bLlc\b/g, "LLC"],
-  [/\bInc\b/g, "Inc"],
-  [/\bAt&t\b/g, "AT&T"],
-  [/\bAmazon Com\b/g, "Amazon.com"],
-  [/\bCsx\b/g, "CSX"],
-  [/\bUcb\b/g, "UCB"],
+  [/\bJpmorgan\b/gu, "JPMorgan"],
+  [/\bPnc\b/gu, "PNC"],
+  [/\bCme\b/gu, "CME"],
+  [/\bHsbc\b/gu, "HSBC"],
+  [/\bUs Bancorp\b/gu, "US Bancorp"],
+  [/\bH&r\b/gu, "H&R"],
+  [/\bS&p\b/gu, "S&P"],
+  [/\bPwc\b/gu, "PwC"],
+  [/\bDao\b/gu, "DAO"],
+  [/\bPac\b/gu, "PAC"],
+  [/\bUsa\b/gu, "USA"],
+  [/\bLlc\b/gu, "LLC"],
+  [/\bInc\b/gu, "Inc"],
+  [/\bAt&t\b/gu, "AT&T"],
+  [/\bAmazon Com\b/gu, "Amazon.com"],
+  [/\bCsx\b/gu, "CSX"],
+  [/\bUcb\b/gu, "UCB"],
 ];
 
-/** SEC and LDA names arrive in caps with suffixes like "/DE/"; show them the way the company writes itself. */
 export function nice(name: string): string {
   let s = name
-    .replace(/\s*\/[A-Z]{2,3}\/?$/, "")
-    .replace(/\s*\/NEW\/$/, "")
-    .replace(/ DE$/, "");
+    .replace(/\s*\/[A-Z]{2,3}\/?$/u, "")
+    .replace(/\s*\/NEW\/$/u, "")
+    .replace(/ DE$/u, "");
 
   if (s === s.toUpperCase()) {
-    s = s.toLowerCase().replace(/(^|[\s(&/-])(\w)/g, (_m, a: string, b: string) => a + b.toUpperCase());
+    s = s.toLowerCase().replaceAll(/(^|[\s(&/-])(\w)/gu, (_m, a: string, b: string) => a + b.toUpperCase());
   }
 
   for (const [re, to] of UPPER_FIXES) {
     s = s.replace(re, to);
   }
 
-  return s.replace(/ S A De C V$/, " S.A. de C.V.");
+  return s.replace(/ S A De C V$/u, " S.A. de C.V.");
 }
 
 export function usd(n: number | null | undefined): string {
-  if (n == null) {
+  if (n === null || n === undefined) {
     return "—";
   }
 
@@ -63,36 +62,31 @@ export function usd(n: number | null | undefined): string {
   return `${sign}$${Math.round(a)}`;
 }
 
-/** CBO prints $ millions; signed, with the sign spelled out so a cut never reads as spending. */
-export function musd(m: number): string {
-  const s = usd(Math.abs(m) * 1e6);
+export function musd(millions: number): string {
+  const s = usd(Math.abs(millions) * 1e6);
 
-  return m > 0 ? `+${s}` : m < 0 ? `−${s}` : s;
+  return millions > 0 ? `+${s}` : millions < 0 ? `−${s}` : s;
 }
 
-/** A 0-1 rank as 0-100: where the section stands among the bill's sections (100 = most covered). */
-export const rank = (p: number | null | undefined) => (p == null ? "—" : `${Math.round(p * 100)}`);
+export const rank = (share: number | null | undefined) =>
+  share === null || share === undefined ? "—" : `${Math.round(share * 100)}`;
 
 export const count = (n: number, one: string, many = `${one}s`) =>
   `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 export function day(iso: string | null | undefined): string {
-  if (!iso) {
+  if ((iso ?? "") === "") {
     return "—";
   }
 
-  const [y, m, d] = iso.slice(0, 10).split("-").map(Number) as [number, number, number];
-
-  return `${MONTHS[m - 1]} ${d}, ${y}`;
+  return new Date(`${iso?.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
-/** The moment something was recorded, in the reader's time zone. */
-export const stamp = (iso: string) =>
-  new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-
-/** Short name for a source chip, from the record's host. */
 export function sourceName(url: string): string {
   const u = url.toLowerCase();
 
@@ -157,47 +151,40 @@ export function sourceName(url: string): string {
   }
 
   try {
-    return new URL(url).hostname.replace(/^www\./, "").split(".")[0]!;
+    return new URL(url).hostname.replace(/^www\./u, "").split(".")[0] ?? "source";
   } catch {
     return "source";
   }
 }
 
-/** A signed CBO deficit figure ($ millions) as words: "adds $3.4T to the deficit" / "cuts $63B from the deficit". */
-export const deficitWords = (m: number) =>
-  `${m < 0 ? "cuts" : "adds"} ${usd(Math.abs(m) * 1e6)} ${m < 0 ? "from" : "to"} the deficit`;
+export const deficitWords = (millions: number) =>
+  `${millions < 0 ? "cuts" : "adds"} ${usd(Math.abs(millions) * 1e6)} ${millions < 0 ? "from" : "to"} the deficit`;
 
-/** CBO's two baselines in a reader's words. */
 export const baselineWords = (b: "current-law" | "current-policy") =>
   b === "current-policy" ? "current policy" : "current law";
 
 export const RULES_URL = "https://github.com/AVGVSTVS96/antibody/blob/main/docs/rules.md";
 
-/** Who held Congress and the White House, so a card's era is visible next to its sponsor's party. */
-export const CONGRESS_TAG: Record<number, string> = {
-  117: "117th Congress · Democratic House, Senate and President",
-  118: "118th Congress · Republican House, Democratic Senate and President",
-  119: "119th Congress · Republican House, Senate and President",
-};
-
 const TRAILING =
-  /[,\s]+(inc|incorporated|corp|corporation|co|company|llc|ltd|plc|lp|l\.p|n\.a|s\.a\.?(\s+de\s+c\.v)?|the)\.?$/i;
+  /[,\s]+(inc|incorporated|corp|corporation|co|company|llc|ltd|plc|lp|l\.p|n\.a|s\.a\.?(\s+de\s+c\.v)?|the)\.?$/iu;
 
-/** A company or client the way a reader says it: "General Motors", not "GENERAL MOTORS CO". Cut at a word past `max`. */
+function stripSuffixes(name: string): string {
+  let prev = "";
+  let s = name;
+
+  while (prev !== s) {
+    prev = s;
+    s = s
+      .replace(/[/\s]+$/u, "")
+      .replace(TRAILING, "")
+      .replace(/\s*&$/u, "");
+  }
+
+  return s;
+}
+
 export function plainName(label: string, max = 22): string {
-  const strip = (x: string) => {
-    for (let prev = ""; prev !== x;) {
-      prev = x;
-      x = x
-        .replace(/[/\s]+$/, "")
-        .replace(TRAILING, "")
-        .replace(/\s*&$/, "");
-    }
-
-    return x;
-  };
-
-  const s = strip(nice(label).replace(/^the\s+/i, ""));
+  const s = stripSuffixes(nice(label).replace(/^the\s+/iu, ""));
 
   if (s.length <= max) {
     return s;
@@ -206,15 +193,14 @@ export function plainName(label: string, max = 22): string {
   let out = "";
 
   for (const w of s.split(" ")) {
-    if (out && out.length + w.length + 1 > max) {
+    if (out !== "" && out.length + w.length + 1 > max) {
       break;
     }
 
-    out = out ? `${out} ${w}` : w;
+    out = out === "" ? w : `${out} ${w}`;
   }
 
-  return `${strip(out).slice(0, max)}…`;
+  return `${stripSuffixes(out).slice(0, max)}…`;
 }
 
-/** A quote from a bill's text in curly quotes, with an ellipsis where it was cut mid-sentence. */
-export const quoted = (q: string) => `“${q}${/[.;:”"]$/.test(q) ? "" : "…"}”`;
+export const quoted = (q: string) => `“${q}${/[.;:”"]$/u.test(q) ? "" : "…"}”`;

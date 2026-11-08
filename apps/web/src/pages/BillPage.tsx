@@ -1,6 +1,6 @@
-import type { Bundle, BundleIndex, Claim } from "@antibody/core";
-import { congressGovUrl, parseBillId } from "@antibody/core";
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import type { Bundle, BundleIndex } from "@antibody/core";
+import { congressGovUrl } from "@antibody/core";
+import { use, useCallback, useMemo } from "react";
 import { Built } from "../bill/Built.tsx";
 import { Cost } from "../bill/Cost.tsx";
 import { Answers, Hero } from "../bill/Hero.tsx";
@@ -9,23 +9,19 @@ import { Records, Rules } from "../bill/Rest.tsx";
 import { Scan } from "../bill/scan/Scan.tsx";
 import { Trades } from "../bill/Trades.tsx";
 import { XrayList } from "../bill/XrayList.tsx";
-import { loadBundle, loadClaims, loadIndex } from "../lib/data.ts";
+import { loadBundle, loadIndex, useClaimsFile } from "../lib/data.ts";
 import { day } from "../lib/format.ts";
 import { buildModel } from "../lib/model.ts";
 import { billHref, navigate, onLink } from "../lib/router.ts";
 import type { MapView, Route } from "../lib/router.ts";
 import { ClaimProvider } from "../ui/claims.tsx";
+import { asBillId } from "../ui/Find.tsx";
 import { Footer, Top } from "../ui/Top.tsx";
 
 type BillRoute = Extract<Route, { page: "bill" }>;
 
 export default function BillPage({ route }: { route: BillRoute }) {
-  let id = route.id;
-
-  try {
-    id = parseBillId(route.id);
-  } catch {}
-
+  const id = asBillId(route.id) ?? route.id;
   const bundle = use(loadBundle(id));
   const index = use(loadIndex());
 
@@ -36,27 +32,19 @@ export default function BillPage({ route }: { route: BillRoute }) {
   return <BillView b={bundle} route={route} entry={index.bills.find((x) => x.id === bundle.bill.id)} />;
 }
 
-function BillView({ b, route, entry }: { b: Bundle; route: BillRoute; entry?: BundleIndex["bills"][number] }) {
-  const [claims, setClaims] = useState<Record<string, Claim> | null>(Object.keys(b.claims).length ? b.claims : null);
-  useEffect(() => {
-    if (claims) {
-      return;
-    }
-
-    let live = true;
-    loadClaims(b.bill.id)
-      .then((c) => live && setClaims(c ?? {}))
-      .catch(() => live && setClaims({}));
-
-    return () => {
-      live = false;
-    };
-  }, [b.bill.id, claims]);
+function BillView({
+  b,
+  route,
+  entry,
+}: {
+  b: Bundle;
+  route: BillRoute;
+  entry: BundleIndex["bills"][number] | undefined;
+}) {
+  const inline = Object.keys(b.claims).length > 0 ? b.claims : null;
+  const loaded = useClaimsFile(inline ? null : b.bill.id);
+  const claims = inline ?? (loaded === undefined ? null : (loaded ?? {}));
   const m = useMemo(() => buildModel(b), [b]);
-
-  useEffect(() => {
-    document.title = `${b.bill.shortTitle ?? b.bill.title} (${b.bill.display}) · antibody`;
-  }, [b]);
 
   const setFocus = useCallback(
     (focus: string | null) => {
@@ -76,6 +64,7 @@ function BillView({ b, route, entry }: { b: Bundle; route: BillRoute; entry?: Bu
 
   return (
     <ClaimProvider claims={claims}>
+      <title>{`${name} (${b.bill.display}) · antibody`}</title>
       <Top crumb={name} find />
       <main>
         {route.list ? (
@@ -112,7 +101,7 @@ function BillView({ b, route, entry }: { b: Bundle; route: BillRoute; entry?: Bu
         <span>Public, citable data only. Every number links to its record.</span>
         <span>
           Source code and method on{" "}
-          <a href="https://github.com/AVGVSTVS96/antibody" target="_blank" rel="noopener">
+          <a href="https://github.com/AVGVSTVS96/antibody" target="_blank" rel="noreferrer">
             GitHub
           </a>
           . Built {day(b.generatedAt.slice(0, 10))}.
@@ -123,19 +112,14 @@ function BillView({ b, route, entry }: { b: Bundle; route: BillRoute; entry?: Bu
 }
 
 function NotFound({ id, index }: { id: string; index: BundleIndex }) {
-  useEffect(() => {
-    document.title = "Not x-rayed yet · antibody";
-  }, []);
-  let url: string | null = null;
-
-  try {
-    url = congressGovUrl(parseBillId(id));
-  } catch {}
+  const bill = asBillId(id);
+  const url = bill === null ? null : congressGovUrl(bill);
 
   const start = index.bills.filter((b) => ["119-s-1582", "117-hr-5376", "119-hr-1"].includes(b.id));
 
   return (
     <>
+      <title>Not x-rayed yet · antibody</title>
       <Top find />
       <main className="wrap hero nf">
         <div className="hero-copy">
@@ -143,11 +127,11 @@ function NotFound({ id, index }: { id: string; index: BundleIndex }) {
           <p className="lead">
             <code>{id}</code> isn’t one of the {index.bills.length} bills here so far. The daily watch x-rays the bills
             that move.
-            {url && (
+            {url !== null && (
               <>
                 {" "}
                 You can{" "}
-                <a className="link" href={url} target="_blank" rel="noopener">
+                <a className="link" href={url} target="_blank" rel="noreferrer">
                   read it on congress.gov
                 </a>
                 , or start with one of these.

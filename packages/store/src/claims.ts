@@ -1,42 +1,45 @@
-import { Claim, REACH_WORDS } from "@antibody/core";
-import type { ClaimId } from "@antibody/core";
+import { filled, Claim, REACH_WORDS } from "@antibody/core";
+import type { ClaimId, Row, TableName } from "@antibody/core";
+import { isText } from "./db.ts";
 import { CBO_EVEN_SPLIT, CBO_HEADING_JOIN, COUNTERPART_REF, DOCS } from "./rules.ts";
+import { count, day, lawNumber, memberLabel, musd, ordinal, PARTY, quarter, quote, stateName, usd } from "./text.ts";
+import type { MemberLike } from "./text.ts";
 
 const ATTENTION_LOCATOR = 'how attention is counted; the counted articles are under "rests on"';
 
-import { count, day, lawNumber, memberLabel, musd, ordinal, PARTY, quarter, quote, STATES, usd } from "./text.ts";
-import type { MemberLike } from "./text.ts";
+export type Term = Row<"members">["terms"][number];
 
-// biome-ignore lint/suspicious/noExplicitAny: rows come from DuckDB shaped by each table's schema, read loosely so a part's new column never breaks wording
-export type AnyRow = Record<string, any>;
+interface Joined {
+  articles: { outlet_name?: string | null };
+  lda_spend: { amounts?: number };
+  members: { term?: Term };
+}
 
-/** What a template needs to name things: the bill, members, sections, versions, entities. */
+export type CitedRow<T extends TableName> = Row<T> & (T extends keyof Joined ? Joined[T] : object);
+
+export type Member = CitedRow<"members">;
+
+export const missing = (v: string | number | null | undefined): v is null | undefined => v === null || v === undefined;
+
 export interface Names {
-  /** `S.1582 (GENIUS Act)` */
   bill: string;
-  /** `S.1582` */
   display: string;
-  member(bioguide: string | null | undefined): MemberLike | null;
-  section(id: string | null | undefined): { num: string; heading: string } | null;
-  version(code: string | null | undefined): string;
-  company(id: string): string;
-  pac(id: string): string;
-  client(key: string): string;
-  /** `Akin Gump` / `Visa U.S.A.` / `Q1 2025` for a filing id. */
-  filing(id: string): { registrant: string; client: string; when: string } | null;
-  committee(id: string): string;
-  /** A filing that names this lobbying client, for the client's own claim (lda_clients rows have no source). */
-  clientFiling(key: string): string | undefined;
-  roll(id: string): string;
-  amendment(id: string): string;
-  estimate(id: string): AnyRow | null;
-  /** Articles found for the bill, and how many of those read were judged to be about it. */
+  member: (bioguide: string | null | undefined) => MemberLike | null;
+  section: (id: string | null | undefined) => { num: string; heading: string } | null;
+  version: (code: string | null | undefined) => string;
+  company: (id: string) => string;
+  pac: (id: string) => string;
+  client: (key: string) => string;
+  filing: (id: string) => { registrant: string; client: string; when: string } | null;
+  committee: (id: string) => string;
+  clientFilingUrl: (key: string) => string | undefined;
+  roll: (id: string) => string;
+  amendment: (id: string) => string;
+  estimate: (id: string) => Row<"cbo_estimates"> | null;
   sample: { found: number; relevant: number };
-  /** Today as `YYYY-MM-DD`, to tell a term that is over from one still running. */
   today: string;
 }
 
-/** The parts of a claim a template decides; the rest comes from the row (source, rule, confidence, restsOn). */
 export interface Wording {
   text: string;
   kind?: "fact" | "inference";
@@ -48,7 +51,7 @@ export interface Wording {
   confidence?: number;
 }
 
-type Template = (row: AnyRow, facet: string | null, n: Names) => Wording;
+type Template<T extends TableName> = (row: CitedRow<T>, facet: string | null, n: Names) => Wording;
 
 const who = (n: Names, bioguide: string | null | undefined, fallback = "A member") => {
   const m = n.member(bioguide);
@@ -70,19 +73,18 @@ const lobbied = (n: Names, filingId: string) => {
     : `Lobbying filing ${filingId} reports lobbying`;
 };
 
-/** Whether a bill reference in a filing ("H.R. 29", "S. 394") is a different bill number than the bill's own. */
-export function namesAnotherBill(said: string, display: string): boolean {
-  const norm = (x: string) => x.toUpperCase().replaceAll(/[^A-Z0-9]/g, "");
-  const own = norm(display);
-  const m = /(HR|S|HJRES|SJRES)(\d+)/.exec(norm(said));
+const billNumberKey = (x: string) => x.toUpperCase().replaceAll(/[^A-Z0-9]/gu, "");
 
-  return !!m && `${m[1]}${m[2]}` !== own;
+export function namesAnotherBill(said: string, display: string): boolean {
+  const own = billNumberKey(display);
+  const m = /(HR|S|HJRES|SJRES)(\d+)/u.exec(billNumberKey(said));
+
+  return m !== null && `${m[1]}${m[2]}` !== own;
 }
 
 const secNums = (nums: string[]) =>
   nums.length === 1 ? `section ${nums[0]}` : `sections ${nums.slice(0, -1).join(", ")} and ${nums.at(-1)}`;
 
-/** CBO's sign, worded the same way whichever way it points. */
 function cboChange(measure: string, m: number): string {
   const amount = musd(m);
 
@@ -113,42 +115,66 @@ function cboChange(measure: string, m: number): string {
   }
 }
 
-const OWNER: Record<string, (label: string) => string> = {
+const OWNER: Record<Row<"trades">["owner"], (label: string) => string> = {
   self: (l) => l,
   spouse: (l) => `${l}'s spouse`,
   joint: (l) => `${l} and spouse, jointly,`,
   dependent: (l) => `${l}'s dependent child`,
 };
 
-const TRADE_VERB: Record<string, string> = {
+const TRADE_VERB: Record<Row<"trades">["type"], string> = {
   purchase: "bought",
   sale: "sold",
   sale_partial: "sold part of a holding in",
   exchange: "exchanged",
 };
 
-const AMENDMENT_STATUS: Record<string, string> = {
+const AMENDMENT_STATUS: Partial<Record<Row<"amendments">["status"], string>> = {
   agreed: "was agreed to",
   failed: "failed",
   withdrawn: "was withdrawn",
   no_action: "has no action recorded on congress.gov beyond being submitted",
 };
 
-export const TEMPLATES: Record<string, Template> = {
-  bills: (r, _f, n) => {
-    const name = `${n.display}${r.short_title ? `, the ${r.short_title},` : ""}`;
+const PARTY_NAME = new Map<string, string>(Object.entries(PARTY));
 
-    if (r.law) {
+const baseName = (b: string) => (b === "current-policy" ? "current policy" : "current law");
+
+interface BaselineDollars {
+  baseline: string;
+  musd: number;
+}
+
+const isBaselineDollars = (v: unknown): v is BaselineDollars =>
+  typeof v === "object" &&
+  v !== null &&
+  "baseline" in v &&
+  typeof v.baseline === "string" &&
+  "musd" in v &&
+  typeof v.musd === "number";
+
+const scoreEvidence = (e: Row<"section_scores">["evidence"]) => ({
+  dollarsBaseline: isText(e.dollars_baseline) ? e.dollars_baseline : null,
+  dollarsByBaseline: Array.isArray(e.dollars_by_baseline) ? e.dollars_by_baseline.filter(isBaselineDollars) : [],
+});
+
+type Templates = { [T in TableName]?: Template<T> };
+
+export const TEMPLATES = {
+  bills: (r, _f, n) => {
+    const name = `${n.display}${filled(r.short_title) ? `, the ${r.short_title},` : ""}`;
+
+    if (filled(r.law)) {
       return { text: `${name} became Public Law ${lawNumber(r.law)} on ${day(r.law_on)}.` };
     }
 
-    const intro = r.introduced_on ? ` was introduced on ${day(r.introduced_on)}` : " was introduced";
+    const intro = filled(r.introduced_on) ? ` was introduced on ${day(r.introduced_on)}` : " was introduced";
 
     return { text: `${name}${intro}; latest action: ${r.latest_action ?? "none recorded"}.` };
   },
 
   versions: (r, facet, n) => {
-    const of = r.date ? ` of ${day(r.date)}` : "";
+    const of = filled(r.date) ? ` of ${day(r.date)}` : "";
 
     if (facet === "predecessor") {
       return {
@@ -168,29 +194,29 @@ export const TEMPLATES: Record<string, Template> = {
 
   sections: (r, _f, n) => {
     const parts = [
-      `Section ${r.num} (${r.heading ? quote(r.heading, 80) : "no heading"}) first appears in the ${n.version(r.first_version)} text`,
+      `Section ${r.num} (${filled(r.heading) ? quote(r.heading, 80) : "no heading"}) first appears in the ${n.version(r.first_version)} text`,
     ];
 
-    if (r.split_from) {
+    if (filled(r.split_from)) {
       parts.push(`, split out of ${sec(n, r.split_from)}`);
     }
 
     parts.push(".");
 
-    if (r.changed_in?.length) {
-      parts.push(` Its text changes in ${r.changed_in.map(n.version).join(", ")}.`);
+    if (r.changed_in.length > 0) {
+      parts.push(` Its text changes in ${r.changed_in.map((v) => n.version(v)).join(", ")}.`);
     }
 
-    if (r.split_into?.length) {
-      parts.push(` It is split into ${r.split_into.map((s: string) => sec(n, s)).join(" and ")}.`);
-    } else if (r.merged_into) {
+    if (r.split_into.length > 0) {
+      parts.push(` It is split into ${r.split_into.map((s) => sec(n, s)).join(" and ")}.`);
+    } else if (filled(r.merged_into)) {
       parts.push(` It is merged into ${sec(n, r.merged_into)}.`);
-    } else if (r.removed_in) {
+    } else if (filled(r.removed_in)) {
       parts.push(` It is dropped in the ${n.version(r.removed_in)} text.`);
     }
 
-    if (r.revived_in?.length) {
-      parts.push(` It returns in ${r.revived_in.map(n.version).join(", ")}.`);
+    if (r.revived_in.length > 0) {
+      parts.push(` It returns in ${r.revived_in.map((v) => n.version(v)).join(", ")}.`);
     }
 
     if (r.in_final) {
@@ -209,22 +235,22 @@ export const TEMPLATES: Record<string, Template> = {
         : ` It first appears in the ${n.version(r.first_version)} text (the earliest with at least half its wording)${late}.`;
 
     return {
-      text: `Section ${r.num} (${r.heading ? quote(r.heading, 80) : r.lead_in ? "its opening words" : "no heading"}) is ${count(r.words, "word")} of ${sec(n, r.section_id)} in the ${n.version(r.version)} text.${first}`,
+      text: `Section ${r.num} (${filled(r.heading) ? quote(r.heading, 80) : r.lead_in ? "its opening words" : "no heading"}) is ${count(r.words, "word")} of ${sec(n, r.section_id)} in the ${n.version(r.version)} text.${first}`,
     };
   },
 
   sponsorships: (r, _f, n) => ({
-    text: `${who(n, r.bioguide)} ${r.role === "sponsor" ? "sponsored" : "cosponsored"} ${n.bill}${r.date ? ` on ${day(r.date)}` : ""}${r.withdrawn_on ? `, and withdrew on ${day(r.withdrawn_on)}` : ""}.`,
+    text: `${who(n, r.bioguide)} ${r.role === "sponsor" ? "sponsored" : "cosponsored"} ${n.bill}${filled(r.date) ? ` on ${day(r.date)}` : ""}${filled(r.withdrawn_on) ? `, and withdrew on ${day(r.withdrawn_on)}` : ""}.`,
   }),
 
   bill_committees: (r, _f, n) => ({
-    text: `${n.bill} was referred to the ${n.committee(r.committee_id)}${r.activity ? ` (${r.activity})` : ""}.`,
+    text: `${n.bill} was referred to the ${n.committee(r.committee_id)}${filled(r.activity) ? ` (${r.activity})` : ""}.`,
   }),
 
   amendments: (r, _f, n) => {
-    const by = r.sponsor_bioguide ? `, offered by ${who(n, r.sponsor_bioguide)},` : "";
+    const by = filled(r.sponsor_bioguide) ? `, offered by ${who(n, r.sponsor_bioguide)},` : "";
     const status = AMENDMENT_STATUS[r.status] ?? `has this latest action: ${r.latest_action ?? "none recorded"}`;
-    const on = r.latest_action_on && r.status !== "no_action" ? ` on ${day(r.latest_action_on)}` : "";
+    const on = filled(r.latest_action_on) && r.status !== "no_action" ? ` on ${day(r.latest_action_on)}` : "";
 
     return { text: `${n.amendment(r.id)}${by} ${status}${on}.` };
   },
@@ -240,7 +266,7 @@ export const TEMPLATES: Record<string, Template> = {
       };
     }
 
-    const label = /current.law|current.policy/i.test(r.baseline_label) ? "" : ` (${r.baseline_label})`;
+    const label = /current.law|current.policy/iu.test(r.baseline_label) ? "" : ` (${r.baseline_label})`;
 
     return { text: `CBO scored ${n.display} (${r.version_scored}) against its ${r.baseline} baseline${label}.` };
   },
@@ -251,9 +277,9 @@ export const TEMPLATES: Record<string, Template> = {
     const what =
       r.line_kind === "whole-bill"
         ? "the bill"
-        : `${secNums(r.section_nums)}${r.title ? ` (${quote(r.title, 80)})` : ""}`;
+        : `${secNums(r.section_nums)}${filled(r.title) ? ` (${quote(r.title, 80)})` : ""}`;
 
-    if (facet) {
+    if (filled(facet)) {
       const share = r.total_musd / Math.max(1, r.section_ids.length);
 
       return {
@@ -265,9 +291,10 @@ export const TEMPLATES: Record<string, Template> = {
       };
     }
 
-    const tied = r.section_ids.length === 1 && (r.join === "heading" || r.join === "title") ? r.section_ids[0]! : null;
+    const [only] = r.section_ids;
+    const tied = r.section_ids.length === 1 && (r.join === "heading" || r.join === "title") ? (only ?? null) : null;
 
-    if (tied) {
+    if (filled(tied)) {
       return {
         text: `CBO: ${what} ${cboChange(r.measure, r.total_musd)} over ${r.period} (${base} baseline). CBO printed no section number; the row is tied to ${sec(n, tied)} ${r.join === "heading" ? "because its label matches that section's heading" : "because it is the only section under the title the figure covers"}.`,
         kind: "inference",
@@ -281,18 +308,18 @@ export const TEMPLATES: Record<string, Template> = {
   },
 
   cbo_notes: (r, _f, n) => ({
-    text: `CBO wrote on page ${r.page}: ${quote(r.quote, 240)}${r.section_id ? `; taken to be about ${sec(n, r.section_id)}` : ""}.`,
+    text: `CBO wrote on page ${r.page}: ${quote(r.quote, 240)}${filled(r.section_id) ? `; taken to be about ${sec(n, r.section_id)}` : ""}.`,
     quote: r.quote,
   }),
 
   lda_filings: (r) => ({
-    text: `${r.registrant_name} filed ${r.form ? `an ${r.form}` : "a lobbying report"} for ${r.client_name} for ${quarter(r.period)} ${r.year}${r.amount_usd == null ? "" : `, reporting ${usd(r.amount_usd)} in ${r.amount_kind ?? "spending"}`}.`,
+    text: `${r.registrant_name} filed ${filled(r.form) ? `an ${r.form}` : "a lobbying report"} for ${r.client_name} for ${quarter(r.period)} ${r.year}${missing(r.amount_usd) ? "" : `, reporting ${usd(r.amount_usd)} in ${r.amount_kind ?? "spending"}`}.`,
   }),
 
   lda_bill_refs: (r, _f, n) => {
-    const said = r.matched ? r.matched.replaceAll(/^\W+|[\s,;:.]+$/g, "") : "";
+    const said = filled(r.matched) ? r.matched.replaceAll(/^\W+|[\s,;:.]+$/gu, "") : "";
 
-    if (said && namesAnotherBill(said, n.display)) {
+    if (said !== "" && namesAnotherBill(said, n.display)) {
       return {
         text: `${lobbied(n, r.filing_id)} on ${quote(said, 60)}, taken to be ${n.bill} (the other chamber's or an earlier version of the same bill).`,
         kind: "inference",
@@ -304,7 +331,7 @@ export const TEMPLATES: Record<string, Template> = {
     }
 
     return {
-      text: `${lobbied(n, r.filing_id)} on ${n.bill}${said ? ` (the filing says ${quote(said, 60)})` : ""}.`,
+      text: `${lobbied(n, r.filing_id)} on ${n.bill}${said === "" ? "" : ` (the filing says ${quote(said, 60)})`}.`,
       quote: r.quote,
     };
   },
@@ -317,16 +344,16 @@ export const TEMPLATES: Record<string, Template> = {
   lda_lobbyists: (r, _f, n) => {
     const f = n.filing(r.filing_id);
     const where = f ? ` for ${f.client} through ${f.registrant} in ${f.when}` : "";
-    const covered = r.covered_position ? `; covered position as filed: ${quote(r.covered_position, 200)}` : "";
+    const covered = filled(r.covered_position) ? `; covered position as filed: ${quote(r.covered_position, 200)}` : "";
 
     return { text: `${r.name} lobbied${where}${covered}.`, quote: r.covered_position };
   },
 
   lda_spend: (r, _facet, n) => {
-    const whom = r.client_key ? n.client(r.client_key) : "All clients";
+    const whom = filled(r.client_key) ? n.client(r.client_key) : "All clients";
 
     const amounts =
-      r.amounts != null && r.amounts < r.reports
+      !missing(r.amounts) && r.amounts < r.reports
         ? ` ${count(r.reports, "report")} named it and ${r.amounts} gave a dollar amount that is in this total; the other ${r.reports - r.amounts} add $0.`
         : "";
 
@@ -334,45 +361,45 @@ export const TEMPLATES: Record<string, Template> = {
       text: `${whom} reported ${usd(r.total_usd ?? 0)} in lobbying spending in the ${count(r.quarters, "quarter")} whose filings named ${n.bill}${r.topic_only ? " by topic only" : ""}. That is the filing's total for every issue it lists, not what was spent on this bill.${amounts}`,
       kind: "fact",
       rule: null,
-      restsOn: r.total_rests_on ?? [],
-      sourceLocator: r.client_key
+      restsOn: r.total_rests_on,
+      sourceLocator: filled(r.client_key)
         ? `the first of the ${count(r.reports, "filing")} this total adds; each one is cited under "rests on"`
         : `the first client's first filing; the total adds ${count(r.reports, "report")} from the clients cited under "rests on"`,
     };
   },
 
   lda_clients: (r, _f, n) => ({
-    text: `${r.name} files as a lobbying client under ${r.names.map((x: string) => quote(x, 80)).join(", ")} (LDA client ${r.lda_client_ids.length > 1 ? "ids" : "id"} ${r.lda_client_ids.join(", ")}).`,
-    sourceUrl: n.clientFiling(r.id) ?? `https://lda.gov/api/v1/filings/?client_id=${r.lda_client_ids[0]}`,
+    text: `${r.name} files as a lobbying client under ${r.names.map((x) => quote(x, 80)).join(", ")} (LDA client ${r.lda_client_ids.length > 1 ? "ids" : "id"} ${r.lda_client_ids.join(", ")}).`,
+    sourceUrl: n.clientFilingUrl(r.id) ?? `https://lda.gov/api/v1/filings/?client_id=${r.lda_client_ids[0]}`,
   }),
 
   ptr_documents: (r) => ({
-    text: `${r.filer_name} filed a periodic transaction report${r.filed_on ? ` on ${day(r.filed_on)}` : ""}${r.scanned ? " on paper" : ""}; ${r.read_status === "read" ? "it has been read" : r.read_status === "partial" ? "it has been partly read" : "it has not been read yet"}.`,
+    text: `${r.filer_name} filed a periodic transaction report${filled(r.filed_on) ? ` on ${day(r.filed_on)}` : ""}${r.scanned ? " on paper" : ""}; ${r.read_status === "read" ? "it has been read" : r.read_status === "partial" ? "it has been partly read" : "it has not been read yet"}.`,
   }),
 
   trades: (r, _f, n) => {
     const m = n.member(r.bioguide);
     const label = m ? memberLabel(m) : r.filer_name;
-    const asset = String(r.asset).replace(/\s*\[[A-Z]{2}\]\s*$/, "");
+    const asset = r.asset.replace(/\s*\[[A-Z]{2}\]\s*$/u, "");
     const by = r.read_by === "vision" ? " Read from a scanned page by a vision model." : "";
 
     return {
-      text: `${OWNER[r.owner]!(label)} ${TRADE_VERB[r.type]} ${asset}${r.ticker && !asset.includes(`(${r.ticker})`) ? ` (${r.ticker})` : ""} worth ${r.amount} on ${day(r.traded_on)}.${by}`,
-      ...(String(r.source_url).includes("efdsearch.senate.gov") && {
+      text: `${OWNER[r.owner](label)} ${TRADE_VERB[r.type]} ${asset}${filled(r.ticker) && !asset.includes(`(${r.ticker})`) ? ` (${r.ticker})` : ""} worth ${r.amount} on ${day(r.traded_on)}.${by}`,
+      ...(r.source_url.includes("efdsearch.senate.gov") && {
         sourceLocator: `${r.source_locator ?? "the report"}; the Senate site first asks you to accept its terms, then shows the report`,
       }),
     };
   },
 
   members: (r, facet, n) => {
-    const t = facet ? (r.terms as AnyRow[] | undefined)?.find((x) => x.start === facet) : null;
-    const m = t ? { party: t.party, state: t.state, district: t.district, chamber: t.chamber } : r;
-    const party = PARTY[m.party as "R"] ?? (m.party.startsWith("Democrat") ? "Democratic" : m.party);
-    const role = `${/^[AEIOUaeiou]/.test(party) ? "an" : "a"} ${party} ${m.chamber === "Senate" ? "senator" : "representative"}`;
-    const where = `${STATES[m.state] ?? m.state}${m.district ? `'s ${ordinal(m.district)} district` : ""}`;
+    const t = filled(facet) ? r.terms.find((x) => x.start === facet) : undefined;
+    const m = t ?? r;
+    const party = PARTY_NAME.get(m.party) ?? (m.party.startsWith("Democrat") ? "Democratic" : m.party);
+    const role = `${/^[AEIOUaeiou]/u.test(party) ? "an" : "a"} ${party} ${m.chamber === "Senate" ? "senator" : "representative"}`;
+    const where = `${stateName(m.state)}${missing(m.district) || m.district === 0 ? "" : `'s ${ordinal(m.district)} district`}`;
 
     if (t) {
-      const open = String(t.end) >= n.today;
+      const open = t.end >= n.today;
 
       return {
         text: `${r.name} ${open ? "serves" : "served"} as ${role} from ${where} from ${day(t.start)}${open ? `; the term ends ${day(t.end)}` : ` to ${day(t.end)}`}.`,
@@ -385,7 +412,7 @@ export const TEMPLATES: Record<string, Template> = {
   committees: (r) => ({ text: `The ${r.name} is a ${r.chamber} committee (${r.id}).` }),
 
   committee_members: (r, _f, n) => ({
-    text: `${who(n, r.bioguide)} served on the ${n.committee(r.committee_id)}${r.role ? ` as ${r.role}` : ""} in the ${ordinal(r.congress)} Congress.`,
+    text: `${who(n, r.bioguide)} served on the ${n.committee(r.committee_id)}${filled(r.role) ? ` as ${r.role}` : ""} in the ${ordinal(r.congress)} Congress.`,
   }),
 
   roll_calls: (r) => ({
@@ -395,7 +422,7 @@ export const TEMPLATES: Record<string, Template> = {
   member_votes: (r, _f, n) => ({ text: `${who(n, r.bioguide)} voted ${r.vote} on ${n.roll(r.roll_id)}.` }),
 
   pacs: (r) => ({
-    text: `${r.name} (FEC ${r.id}) is a political committee${r.connected_org ? ` connected to ${r.connected_org}` : ""}.`,
+    text: `${r.name} (FEC ${r.id}) is a political committee${filled(r.connected_org) ? ` connected to ${r.connected_org}` : ""}.`,
   }),
 
   contributions: (r, _f, n) => {
@@ -407,24 +434,27 @@ export const TEMPLATES: Record<string, Template> = {
         : `${n.pac(r.pac_id)} gave ${usd(r.amount_usd)} to ${to} on ${day(r.date)}.`;
 
     return {
-      text: text.replace(/^./, (c) => c.toUpperCase()),
+      text: text.replace(/^./u, (c) => c.toUpperCase()),
       sourceLocator: `FEC filing image, transaction ${r.id}; fec.gov turns away scripts, so open it in a browser`,
     };
   },
 
   articles: (r) => ({
-    text: `${r.outlet_name ?? new URL(r.url).hostname.replace(/^www\./, "")} published ${quote(r.title, 140)}${r.published_on ? ` on ${day(r.published_on)}` : ""}.`,
+    text: `${r.outlet_name ?? new URL(r.url).hostname.replace(/^www\./u, "")} published ${quote(r.title, 140)}${filled(r.published_on) ? ` on ${day(r.published_on)}` : ""}.`,
   }),
 
   companies: (r) => ({
-    text: r.tickers?.length
-      ? `${r.name} trades as ${r.tickers.join(", ")} (SEC CIK ${r.id}).`
-      : `${r.name} files with the SEC as CIK ${r.id}.`,
+    text:
+      r.tickers.length > 0
+        ? `${r.name} trades as ${r.tickers.join(", ")} (SEC CIK ${r.id}).`
+        : `${r.name} files with the SEC as CIK ${r.id}.`,
     sourceLocator: `SEC EDGAR page for CIK ${r.id} (tickers from SEC's company_tickers_exchange.json); sec.gov turns away scripts, so open it in a browser`,
   }),
 
   resolutions: (r, _f, n) => {
-    const [kind, key] = String(r.src).split(/:(.*)/s) as [string, string];
+    const colon = r.src.indexOf(":");
+    const kind = r.src.slice(0, colon);
+    const key = r.src.slice(colon + 1);
 
     const name =
       kind === "pac" ? `The political committee ${quote(n.pac(key))}` : `The lobbying client ${quote(n.client(key))}`;
@@ -433,14 +463,16 @@ export const TEMPLATES: Record<string, Template> = {
   },
 
   benefits: (r, _f, n) => ({
-    text: `${n.company(r.company_id)} is tied to ${r.section_id ? `${sec(n, r.section_id)} of ` : ""}${n.bill} because ${r.basis_rule === "lobbied" ? "it lobbied on it" : "the text names it"}.`,
+    text: `${n.company(r.company_id)} is tied to ${filled(r.section_id) ? `${sec(n, r.section_id)} of ` : ""}${n.bill} because ${r.basis_rule === "lobbied" ? "it lobbied on it" : "the text names it"}.`,
   }),
 
   attention: (r, _f, n) => {
-    const subject = r.section_id ? sec(n, r.part_id ?? r.section_id) : `${n.bill} as a whole`;
-    const trade = r.trade_legal_hits ? ` Trade and legal press: ${count(r.trade_legal_hits, "more article")}.` : "";
+    const subject = filled(r.section_id) ? sec(n, r.part_id ?? r.section_id) : `${n.bill} as a whole`;
 
-    if (!r.hits) {
+    const trade =
+      r.trade_legal_hits === 0 ? "" : ` Trade and legal press: ${count(r.trade_legal_hits, "more article")}.`;
+
+    if (r.hits === 0) {
       return {
         text: `None of the ${n.sample.relevant.toLocaleString("en-US")} relevant articles read (out of ${n.sample.found.toLocaleString("en-US")} found) matched ${subject}. Only a few hundred articles are read, so zero means none among those, not that nobody covered it.${trade}`,
         sourceLocator: ATTENTION_LOCATOR,
@@ -448,14 +480,13 @@ export const TEMPLATES: Record<string, Template> = {
       };
     }
 
-    const rank =
-      r.pct == null
-        ? ""
-        : r.pct >= 0.995
-          ? ", the most covered section of this bill"
-          : r.pct <= 0.005
-            ? ", among the least covered sections of this bill"
-            : `, more than ${Math.round(r.pct * 100)}% of this bill's other sections`;
+    const rank = missing(r.pct)
+      ? ""
+      : r.pct >= 0.995
+        ? ", the most covered section of this bill"
+        : r.pct <= 0.005
+          ? ", among the least covered sections of this bill"
+          : `, more than ${Math.round(r.pct * 100)}% of this bill's other sections`;
 
     return {
       text: `${r.hits.toLocaleString("en-US")} of the ${n.sample.relevant.toLocaleString("en-US")} relevant articles read (out of ${n.sample.found.toLocaleString("en-US")} found) matched ${subject}${rank}.${trade}`,
@@ -465,75 +496,67 @@ export const TEMPLATES: Record<string, Template> = {
   },
 
   attention_checks: (r, _f, n) => ({
-    text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/, "S")}: a second look put the ${r.passages} news passages closest to it to a model, which said ${r.article_ids.length ? `${count(r.article_ids.length, "article")} the section matcher had missed describe what it does` : "none beyond the articles already matched describe what it does"}. With those added, ${(r.share * 100).toFixed(1)}% of the bill's relevant articles discuss it.`,
+    text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/u, "S")}: a second look put the ${r.passages} news passages closest to it to a model, which said ${r.article_ids.length > 0 ? `${count(r.article_ids.length, "article")} the section matcher had missed describe what it does` : "none beyond the articles already matched describe what it does"}. With those added, ${(r.share * 100).toFixed(1)}% of the bill's relevant articles discuss it.`,
     sourceUrl: `${DOCS}#quiet-check-v1`,
     sourceLocator: 'how the check works; the articles it found are under "rests on"',
   }),
 
   counterparts: (r, _f, n) => ({
-    text: `${sec(n, r.removed_section_id).replace(/^s/, "S")} is taken to be rewritten as ${sec(n, r.added_section_id)}.`,
+    text: `${sec(n, r.removed_section_id).replace(/^s/u, "S")} is taken to be rewritten as ${sec(n, r.added_section_id)}.`,
   }),
 
   section_reach: (r, _f, n) => ({
-    text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/, "S")}, in the ${n.version(r.version)} text, reads: ${quote(r.quote, 600)}`,
+    text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/u, "S")}, in the ${n.version(r.version)} text, reads: ${quote(r.quote, 600)}`,
     quote: r.quote,
-    sourceLocator: `${r.source_locator}; it is tagged "${REACH_WORDS[r.kind as keyof typeof REACH_WORDS]}" by the published reach-v2 patterns`,
+    sourceLocator: `${r.source_locator}; it is tagged "${REACH_WORDS[r.kind]}" by the published reach-v2 patterns`,
   }),
 
   section_scores: (r, _f, n) => {
-    const ev = r.evidence as {
-      dollars_baseline?: string | null;
-      dollars_by_baseline?: { baseline: string; musd: number }[];
-    };
-
-    const against = ev.dollars_by_baseline ?? [];
-    const baseName = (b: string) => (b === "current-policy" ? "current policy" : "current law");
-    const others = against.filter((b) => b.baseline !== ev.dollars_baseline);
+    const ev = scoreEvidence(r.evidence);
+    const against = ev.dollarsByBaseline;
+    const others = against.filter((b) => b.baseline !== ev.dollarsBaseline);
 
     const both =
       against.length < 2
         ? ""
         : others.every((b) => b.musd === r.dollars_musd)
           ? " (the same against current law and current policy)"
-          : ` against ${baseName(ev.dollars_baseline ?? "")} (${others.map((b) => `${musd(b.musd)} against ${baseName(b.baseline)}`).join(", ")}; the smaller counts)`;
+          : ` against ${baseName(ev.dollarsBaseline ?? "")} (${others.map((b) => `${musd(b.musd)} against ${baseName(b.baseline)}`).join(", ")}; the smaller counts)`;
 
     const bits = [
-      r.dollars_musd == null
+      missing(r.dollars_musd)
         ? "no CBO dollars"
         : `CBO says it ${r.dollars_musd < 0 ? "cuts" : "adds"} ${musd(r.dollars_musd)} ${r.dollars_musd < 0 ? "from" : "to"} the deficit${both}${r.dollars_split === "even_split" ? " (even split)" : ""}`,
-      r.attention_share == null
-        ? r.attention_pct != null
-          ? `attention at the ${ordinal(Math.round(r.attention_pct * 100))} percentile`
-          : "attention unmeasured"
+      missing(r.attention_share)
+        ? missing(r.attention_pct)
+          ? "attention unmeasured"
+          : `attention at the ${ordinal(Math.round(r.attention_pct * 100))} percentile`
         : `${(r.attention_share * 100).toFixed(1)}% of the bill's relevant articles discussed it`,
       r.late
         ? "added late"
-        : r.late_cleared_by
+        : filled(r.late_cleared_by)
           ? `not added late (it rewrites ${sec(n, r.late_cleared_by)}, which was in the text before a chamber passed it)`
           : "not added late",
-      r.off_topic == null ? null : `off-topic distance ${r.off_topic.toFixed(2)}`,
-      r.lobbying_reports
-        ? `${count(r.lobbying_reports, "lobbying report")} from ${count(r.lobbying_firms, "firm")}`
-        : "no lobbying reports",
-      r.reach?.length
-        ? `its text ${r.reach.map((k: keyof typeof REACH_WORDS) => REACH_WORDS[k]).join(" and ")} (reach-v2)`
-        : null,
-    ].filter(Boolean);
+      missing(r.off_topic) ? null : `off-topic distance ${r.off_topic.toFixed(2)}`,
+      r.lobbying_reports === 0
+        ? "no lobbying reports"
+        : `${count(r.lobbying_reports, "lobbying report")} from ${count(r.lobbying_firms, "firm")}`,
+      r.reach.length > 0 ? `its text ${r.reach.map((k) => REACH_WORDS[k]).join(" and ")} (reach-v2)` : null,
+    ].filter((b) => b !== null);
 
-    const score = r.buried == null ? "" : ` (buried score ${r.buried.toFixed(2)})`;
+    const score = missing(r.buried) ? "" : ` (buried score ${r.buried.toFixed(2)})`;
 
-    const pays = r.offsets_section_id
+    const pays = filled(r.offsets_section_id)
       ? ` CBO prints exactly the opposite figure for ${sec(n, r.offsets_section_id)}, so this is read as the section's pay-for and is not flagged on its own.`
       : "";
 
     return {
-      text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/, "S")}${r.part_id ? `, a part of ${sec(n, r.section_id)} scored on its own (parts-v1),` : ""} is scored ${r.label}${score}: ${bits.join(", ")}.${pays}`,
+      text: `${sec(n, r.part_id ?? r.section_id).replace(/^s/u, "S")}${filled(r.part_id) ? `, a part of ${sec(n, r.section_id)} scored on its own (parts-v1),` : ""} is scored ${r.label}${score}: ${bits.join(", ")}.${pays}`,
     };
   },
-};
+} satisfies Templates;
 
-/** Tables whose rows are inferences (they carry rule, confidence, rests_on). */
-export const INFERENCE_TABLES = new Set([
+export const INFERENCE_TABLES = new Set<TableName>([
   "amendment_sections",
   "cbo_notes",
   "lda_topic_refs",
@@ -546,42 +569,52 @@ export const INFERENCE_TABLES = new Set([
   "section_scores",
 ]);
 
-/** The claim ids a row's claim rests on, before they're checked against the tables. */
-export function restsOnOf(table: string, row: AnyRow, facet: string | null, n: Names): ClaimId[] {
-  return template(table)(row, facet, n).restsOn ?? row.rests_on ?? [];
+interface Provenance {
+  id: string;
+  source_url?: string;
+  source_locator?: string | null;
+  archive_url?: string | null;
+  confidence?: number;
+  rule?: string;
+  rests_on?: string[];
+  evidence?: Row<"resolutions">["evidence"];
 }
 
-/**
- * Builds the claim for one row (and facet), filling source, rule and confidence from the row. `restsOn` is the
- * resolved list; an inference without a source of its own takes the source of the first claim it rests on.
- */
-export function mintClaim(
-  table: string,
-  row: AnyRow,
+export function restsOnOf<T extends TableName>(table: T, row: CitedRow<T>, facet: string | null, n: Names): ClaimId[] {
+  const p: Provenance = row;
+
+  return template(table)(row, facet, n).restsOn ?? p.rests_on ?? [];
+}
+
+export function mintClaim<T extends TableName>(
+  table: T,
+  row: CitedRow<T>,
   facet: string | null,
   n: Names,
   restsOn: ClaimId[],
   sourceOf: (ids: ClaimId[]) => string | undefined,
 ): Claim {
   const w = template(table)(row, facet, n);
+  const p: Provenance = row;
   const kind = w.kind ?? (INFERENCE_TABLES.has(table) ? "inference" : "fact");
 
   return Claim.parse({
-    id: `${table}/${row.id}${facet ? `#${facet}` : ""}`,
+    id: `${table}/${row.id}${filled(facet) ? `#${facet}` : ""}`,
     text: w.text,
     kind,
-    sourceUrl: w.sourceUrl ?? row.source_url ?? row.evidence?.source_url ?? row.evidence?.url ?? sourceOf(restsOn),
-    sourceLocator: w.sourceLocator ?? row.source_locator ?? null,
-    archiveUrl: row.archive_url ?? null,
+    sourceUrl: w.sourceUrl ?? p.source_url ?? p.evidence?.source_url ?? p.evidence?.url ?? sourceOf(restsOn),
+    sourceLocator: w.sourceLocator ?? p.source_locator ?? null,
+    archiveUrl: p.archive_url ?? null,
     quote: w.quote ?? null,
-    confidence: w.confidence ?? row.confidence ?? 1,
+    confidence: w.confidence ?? p.confidence ?? 1,
     restsOn,
-    rule: kind === "inference" ? (w.rule ?? row.rule ?? null) : null,
+    rule: kind === "inference" ? (w.rule ?? p.rule ?? null) : null,
   });
 }
 
-function template(table: string): Template {
-  const t = TEMPLATES[table];
+function template<T extends TableName>(table: T): Template<T> {
+  const all: Templates = TEMPLATES;
+  const t = all[table];
 
   if (!t) {
     throw new Error(`no claim template for ${table}`);

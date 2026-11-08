@@ -6,11 +6,12 @@ export const RAW = join(paths.raw("bills"), "raw");
 
 const HEADERS = { "User-Agent": "antibody/1 (+https://github.com/AVGVSTVS96/antibody)" };
 
-export class NotFound extends Error {}
+export class NotFoundError extends Error {
+  override name = "NotFoundError";
+}
 
 let writes = 0;
 
-/** Downloads `url` once into data/bills/raw/<file> (again with `refresh`), retrying transient GovInfo errors. */
 export async function cached(url: string, file: string, refresh = false, dir = RAW): Promise<string> {
   const path = join(dir, file);
   const local = Bun.file(path);
@@ -33,7 +34,7 @@ export async function cached(url: string, file: string, refresh = false, dir = R
     }
 
     if (res.status === 404) {
-      throw new NotFound(`${res.status} ${url}`);
+      throw new NotFoundError(`${res.status} ${url}`);
     }
 
     if (attempt >= 3) {

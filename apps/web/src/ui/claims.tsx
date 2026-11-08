@@ -1,6 +1,6 @@
 import type { Claim } from "@antibody/core";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { sourceName } from "../lib/format.ts";
 
@@ -17,28 +17,40 @@ interface Ctx {
   keep: () => void;
 }
 
-const ClaimCtx = createContext<Ctx>({ loading: false, claim: () => {}, open() {}, close() {}, keep() {} });
-export const useClaims = () => useContext(ClaimCtx);
+const ClaimCtx = createContext<Ctx | null>(null);
+
+export function useClaims(): Ctx {
+  const ctx = useContext(ClaimCtx);
+
+  if (!ctx) {
+    throw new Error("source chips render inside a ClaimProvider");
+  }
+
+  return ctx;
+}
 
 const OPEN_DELAY = 220;
 const CLOSE_GRACE = 160;
 
-/** One popover for every source chip on the page: hover or focus a chip to read the claim it stands for. */
 export function ClaimProvider({ claims, children }: { claims: Record<string, Claim> | null; children: ReactNode }) {
   const [open, setOpen] = useState<Open | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const shown = useRef(false);
-  shown.current = open !== null;
 
-  const ctx = useMemo<Ctx>(
-    () => ({
+  const ctx = useMemo<Ctx>(() => {
+    const show = (next: Open | null) => {
+      shown.current = next !== null;
+      setOpen(next);
+    };
+
+    return {
       loading: claims === null,
       claim: (id) => claims?.[id],
       open(id, el) {
         clearTimeout(timer.current);
 
         const go = () => {
-          setOpen({ id, rect: el.getBoundingClientRect() });
+          show({ id, rect: el.getBoundingClientRect() });
         };
 
         if (shown.current) {
@@ -51,79 +63,87 @@ export function ClaimProvider({ claims, children }: { claims: Record<string, Cla
         clearTimeout(timer.current);
 
         if (now) {
-          setOpen(null);
+          show(null);
         } else {
           timer.current = setTimeout(() => {
-            setOpen(null);
+            show(null);
           }, CLOSE_GRACE);
         }
       },
       keep: () => {
         clearTimeout(timer.current);
       },
-    }),
-    [claims],
-  );
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(null);
-
-    const onScroll = () => {
-      setOpen(null);
     };
+  }, [claims]);
 
-    addEventListener("keydown", onKey);
-    addEventListener("scroll", onScroll, { capture: true, passive: true });
-
-    return () => {
-      removeEventListener("keydown", onKey);
-      removeEventListener("scroll", onScroll, { capture: true });
-    };
-  }, [open]);
+  const claim = open === null ? undefined : claims?.[open.id];
 
   return (
     <ClaimCtx.Provider value={ctx}>
       {children}
-      {open && claims?.[open.id] && <ClaimPopover claim={claims[open.id]!} rect={open.rect} all={claims} />}
+      {open && claims && claim && <ClaimPopover claim={claim} rect={open.rect} all={claims} />}
     </ClaimCtx.Provider>
   );
 }
 
+interface Placed {
+  left: number;
+  top: number;
+  origin: string;
+}
+
 function ClaimPopover({ claim: c, rect, all }: { claim: Claim; rect: DOMRect; all: Record<string, Claim> }) {
   const { keep, close } = useClaims();
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number; origin: string } | null>(null);
+  const [pos, setPos] = useState<Placed | null>(null);
 
-  useEffect(() => {
-    const el = ref.current;
+  const place = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el) {
+        return;
+      }
 
-    if (!el) {
-      return;
-    }
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const below = rect.bottom + 6 + h < innerHeight - 8;
+      setPos({
+        left: Math.min(Math.max(12, rect.left), innerWidth - w - 12),
+        top: below ? rect.bottom + 6 : Math.max(8, rect.top - h - 6),
+        origin: below ? "top left" : "bottom left",
+      });
 
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    const left = Math.min(Math.max(12, rect.left), innerWidth - w - 12);
-    const below = rect.bottom + 6 + h < innerHeight - 8;
-    setPos({
-      left,
-      top: below ? rect.bottom + 6 : Math.max(8, rect.top - h - 6),
-      origin: below ? "top left" : "bottom left",
-    });
-  }, [rect]);
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          close(true);
+        }
+      };
+
+      const onScroll = () => {
+        close(true);
+      };
+
+      addEventListener("keydown", onKey);
+      addEventListener("scroll", onScroll, { capture: true, passive: true });
+
+      return () => {
+        removeEventListener("keydown", onKey);
+        removeEventListener("scroll", onScroll, { capture: true });
+      };
+    },
+    [rect, close],
+  );
+
+  const style: CSSProperties & { "--origin"?: string } = pos
+    ? { left: pos.left, top: pos.top, "--origin": pos.origin }
+    : { left: -9999, top: 0 };
 
   const rests = c.restsOn.map((id) => all[id]).filter((x): x is Claim => !!x);
 
   return createPortal(
     <div
-      ref={ref}
+      ref={place}
       className="claimpop"
       role="tooltip"
-      style={pos ? { left: pos.left, top: pos.top, ["--origin" as string]: pos.origin } : { left: -9999, top: 0 }}
+      style={style}
       onPointerEnter={keep}
       onPointerLeave={() => {
         close();
@@ -135,13 +155,15 @@ function ClaimPopover({ claim: c, rect, all }: { claim: Claim; rect: DOMRect; al
         {c.confidence < 1 && <span className="cap dim">confidence {Math.round(c.confidence * 100)}%</span>}
       </div>
       <div className="text">{c.text}</div>
-      {c.quote && <div className="quote">“{c.quote.length > 320 ? `${c.quote.slice(0, 320)}…` : c.quote}”</div>}
-      {c.sourceLocator && (
+      {c.quote !== null && c.quote !== "" && (
+        <div className="quote">“{c.quote.length > 320 ? `${c.quote.slice(0, 320)}…` : c.quote}”</div>
+      )}
+      {(c.sourceLocator ?? "") !== "" && (
         <div className="ln">
           Where: <b>{c.sourceLocator}</b>
         </div>
       )}
-      {c.rule && (
+      {(c.rule ?? "") !== "" && (
         <div className="ln">
           Rule: <b>{c.rule}</b>
         </div>
@@ -164,7 +186,7 @@ function ClaimPopover({ claim: c, rect, all }: { claim: Claim; rect: DOMRect; al
         <a className="src" href={c.sourceUrl} target="_blank" rel="noopener">
           open {sourceName(c.sourceUrl)}
         </a>
-        {c.archiveUrl && (
+        {c.archiveUrl !== null && (
           <a className="src" href={c.archiveUrl} target="_blank" rel="noopener">
             archived copy
           </a>
@@ -180,7 +202,6 @@ export const KindPill = ({ kind }: { kind: Claim["kind"] }) =>
 
 export const Inf = () => <span className="pill inf">inference</span>;
 
-/** A source chip: the record behind one claim. Dashed gold when the claim is an inference. */
 export function Src({ id, label }: { id: string; label?: string }) {
   const { claim, open, close, loading } = useClaims();
   const c = claim(id);
@@ -221,7 +242,6 @@ export function Src({ id, label }: { id: string; label?: string }) {
   );
 }
 
-/** Chips for several claims, one per distinct record, so twenty trades on one filing show one chip. */
 export function Sources({ ids, max = 3 }: { ids: (string | null | undefined)[]; max?: number }) {
   const { claim, loading } = useClaims();
 
@@ -239,7 +259,7 @@ export function Sources({ ids, max = 3 }: { ids: (string | null | undefined)[]; 
   const unique: string[] = [];
 
   for (const id of ids) {
-    const c = id ? claim(id) : undefined;
+    const c = id === null || id === undefined || id === "" ? undefined : claim(id);
 
     if (!c) {
       continue;
@@ -269,7 +289,6 @@ export function Sources({ ids, max = 3 }: { ids: (string | null | undefined)[]; 
   );
 }
 
-/** A link with the same hover popover as a source chip, for rows whose whole label is the link. */
 export function ClaimLink({
   id,
   className,
@@ -280,9 +299,9 @@ export function ClaimLink({
   children: ReactNode;
 }) {
   const { claim, open, close } = useClaims();
-  const c = id ? claim(id) : undefined;
+  const c = id === null || id === undefined || id === "" ? undefined : claim(id);
 
-  if (!c || !id) {
+  if (!c || id === null || id === undefined) {
     return <span className={className}>{children}</span>;
   }
 

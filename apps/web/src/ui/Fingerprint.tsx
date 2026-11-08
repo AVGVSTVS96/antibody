@@ -2,7 +2,6 @@ import { useMedia } from "../lib/media.ts";
 
 const MAX_ROWS = 10;
 
-/** One square per section in bill order; very large laws pack several sections per square, loudest mark wins. */
 export function fingerprintCells(kinds: string, cols: number) {
   const per = Math.max(1, Math.ceil(kinds.length / (cols * MAX_ROWS)));
   const cells: string[] = [];
@@ -45,6 +44,7 @@ export function Fingerprint({ kinds, label, big = false }: { kinds: string; labe
       width={width}
       height={h}
       viewBox={`0 0 ${width} ${h}`}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- an inline <svg> chart has no <img> source; role="img" gives it one accessible name
       role="img"
       aria-label={`${label}: ${kinds.length} sections${per > 1 ? `, one square per ${per}` : ""}`}
     >

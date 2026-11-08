@@ -9,13 +9,15 @@ const { positionals, values } = parseArgs({
   options: { refresh: { type: "boolean", default: false }, "no-llm": { type: "boolean", default: false } },
 });
 
-if (!positionals[0]) {
+const [bill = ""] = positionals;
+
+if (bill === "") {
   throw new Error("usage: bun packages/ingest-bills/src/run.ts <bill> [--refresh] [--no-llm]");
 }
 
 const t0 = performance.now();
 
-const { rows, skipped } = await ingestBill(parseBillId(positionals[0]), {
+const { rows, skipped } = await ingestBill(parseBillId(bill), {
   refresh: values.refresh,
   llm: !values["no-llm"],
   log: (m) => {

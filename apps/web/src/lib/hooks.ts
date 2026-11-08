@@ -1,58 +1,75 @@
-import { useEffect, useLayoutEffect, useState } from "react";
-import type { RefObject } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
-export function useWidth(ref: RefObject<HTMLElement | null>, fallback = 760): number {
+export function useWidth(fallback = 760) {
   const [w, setW] = useState(fallback);
-  useLayoutEffect(() => {
-    const el = ref.current;
 
-    if (!el) {
-      return;
-    }
+  const ref = useCallback(
+    (el: Element | null) => {
+      if (!el) {
+        return;
+      }
 
-    setW(Math.round(el.getBoundingClientRect().width) || fallback);
-    const ro = new ResizeObserver(([e]) => e && setW(Math.round(e.contentRect.width) || fallback));
-    ro.observe(el);
+      setW(Math.round(el.getBoundingClientRect().width) || fallback);
 
-    return () => {
-      ro.disconnect();
-    };
-  }, [ref, fallback]);
-
-  return w;
-}
-
-export function useInView(ref: RefObject<Element | null>, margin = "0px 0px -12% 0px"): boolean {
-  const [seen, setSeen] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-
-    if (!el || seen) {
-      return;
-    }
-
-    if (!("IntersectionObserver" in window)) {
-      setSeen(true);
-
-      return;
-    }
-
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (e?.isIntersecting) {
-          setSeen(true);
-          io.disconnect();
+      const ro = new ResizeObserver(([e]) => {
+        if (e) {
+          setW(Math.round(e.contentRect.width) || fallback);
         }
-      },
-      { rootMargin: margin },
-    );
+      });
 
-    io.observe(el);
+      ro.observe(el);
+
+      return () => {
+        ro.disconnect();
+      };
+    },
+    [fallback],
+  );
+
+  return [ref, w] as const;
+}
+
+export function useSeenOnce(threshold: number) {
+  const [seen, setSeen] = useState(false);
+
+  const ref = useCallback(
+    (el: Element | null) => {
+      if (!el) {
+        return;
+      }
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            setSeen(true);
+            io.disconnect();
+          }
+        },
+        { threshold },
+      );
+
+      io.observe(el);
+
+      return () => {
+        io.disconnect();
+      };
+    },
+    [threshold],
+  );
+
+  return [ref, seen] as const;
+}
+
+export function useWindowEvent<K extends keyof WindowEventMap>(type: K, listener: (e: WindowEventMap[K]) => void) {
+  const subscribe = useCallback(() => {
+    addEventListener(type, listener);
 
     return () => {
-      io.disconnect();
+      removeEventListener(type, listener);
     };
-  }, [ref, seen, margin]);
+  }, [type, listener]);
 
-  return seen;
+  useSyncExternalStore(subscribe, listening);
 }
+
+const listening = () => true;

@@ -1,9 +1,4 @@
-/**
- * The Phase 1 screenshots: index, GENIUS (Republican-led) and the Inflation Reduction Act (Democratic-led), at 1440
- * and 390 wide, dark and light. `bun apps/web/scripts/shots.ts <base url> <out dir>`
- */
 import { mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { chromium } from "playwright-core";
 
 const base = process.argv[2] ?? "http://localhost:4870";
@@ -11,10 +6,7 @@ const out = process.argv[3] ?? "docs/shots";
 
 mkdirSync(out, { recursive: true });
 
-const browser = await chromium.launch({
-  executablePath: `${homedir()}/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome`,
-  args: [],
-});
+const browser = await chromium.launch();
 
 const pages = [
   ["index", "/"],
@@ -26,7 +18,7 @@ for (const [name, path] of pages) {
   for (const [w, h, mobile] of [
     [1440, 900, false],
     [390, 844, true],
-  ] as const)
+  ] as const) {
     for (const theme of ["dark", "light"] as const) {
       const page = await browser.newPage({
         viewport: { width: w, height: h },
@@ -37,12 +29,13 @@ for (const [name, path] of pages) {
       });
 
       await page.goto(`${base}${path}?theme=${theme}`, { waitUntil: "load" });
-      await page.waitForSelector(name === "index" ? ".lawrow" : "#map", { state: "attached", timeout: 30000 });
-      await page.evaluate(async () => document.fonts.ready);
+      await page.waitForSelector(name === "index" ? ".lawrow" : "#map", { state: "attached", timeout: 30_000 });
+      await page.evaluate(async () => await document.fonts.ready);
       await page.waitForTimeout(1500);
       await page.screenshot({ path: `${out}/${name}-${w}-${theme}.png` });
       await page.close();
     }
+  }
 }
 
 await browser.close();

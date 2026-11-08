@@ -1,14 +1,16 @@
 import type { BillId, Row } from "@antibody/core";
 import { PARTS } from "@antibody/ingest-bills";
 import type { SectionPart } from "@antibody/ingest-bills";
+import { z } from "zod";
 
 export const PARTS_VERSION = PARTS.version;
 
-/** `title:VII, sec. 4, subsection (a), paragraph (12)`: where a part sits in the final text. */
+const SectionInVersion = z.object({ path: z.string() });
+
 export const partLocator = (sectionPath: string, partPath: string) =>
   [
-    ...sectionPath.split("/").map((p) => p.replace(":", " ").replace(/^sec /, "sec. ")),
-    ...(partPath ? partPath.split("/").map((p) => p.replace(/:(.*)$/, " ($1)")) : ["opening words"]),
+    ...sectionPath.split("/").map((p) => p.replace(":", " ").replace(/^sec /u, "sec. ")),
+    ...(partPath ? partPath.split("/").map((p) => p.replace(/:(.*)$/u, " ($1)")) : ["opening words"]),
   ].join(", ");
 
 export function partRows(bill: BillId, sections: Row<"sections">[], parts: SectionPart[]): Row<"section_parts">[] {
@@ -18,8 +20,14 @@ export function partRows(bill: BillId, sections: Row<"sections">[], parts: Secti
   return parts.map((p) => {
     const ord = ords.get(p.sectionId) ?? 0;
     ords.set(p.sectionId, ord + 1);
-    const s = byId.get(p.sectionId)!;
-    const finalPath = (s.history[p.version] as { path: string } | undefined)?.path ?? s.path;
+    const s = byId.get(p.sectionId);
+
+    if (s === undefined) {
+      throw new Error(`part ${p.id} sits in section ${p.sectionId}, which ${bill} has no row for`);
+    }
+
+    const inVersion = SectionInVersion.safeParse(s.history[p.version]);
+    const finalPath = inVersion.success ? inVersion.data.path : s.path;
 
     return {
       id: p.id,
@@ -43,7 +51,6 @@ export function partRows(bill: BillId, sections: Row<"sections">[], parts: Secti
   });
 }
 
-/** How a part reads where a section is expected (the matcher's menu, the quiet check): its section named alongside. */
 export function asSection(p: Row<"section_parts">, s: Row<"sections">): Row<"sections"> {
   const what = p.heading || (p.lead_in ? "opening words" : (p.trail.at(-1) ?? ""));
 
@@ -60,7 +67,6 @@ export function asSection(p: Row<"section_parts">, s: Row<"sections">): Row<"sec
   };
 }
 
-/** Parts of long sections, dropped ones included (the menu marks them), each read as a section row, in text order. */
 export function partSections(sections: Row<"sections">[], parts: Row<"section_parts">[]): Row<"sections">[] {
   const byId = new Map(sections.map((s) => [s.id, s]));
 

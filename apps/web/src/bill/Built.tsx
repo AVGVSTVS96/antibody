@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { eraLine, eras } from "../lib/derive.ts";
 import type { Era } from "../lib/derive.ts";
 import { count, day } from "../lib/format.ts";
@@ -8,7 +9,7 @@ export function Built({ m }: { m: BillModel }) {
   const groups = eras(m);
   const final = m.sections.filter((v) => v.s.inFinal);
   const dropped = m.sections.length - final.length;
-  const unknown = !!m.b.bill.lateUnavailable;
+  const unknown = (m.b.bill.lateUnavailable ?? "") !== "";
   const early = groups.filter((g) => !g.late);
   const late = groups.filter((g) => g.late);
   const lateN = late.reduce((a, g) => a + g.sections.length, 0);
@@ -22,8 +23,8 @@ export function Built({ m }: { m: BillModel }) {
     <Section id="built" title="How the law was built">
       <p className="lead narrow">
         Every square is one of the {final.length.toLocaleString("en-US")} sections that{" "}
-        {m.b.bill.law ? "became law" : "are in the latest text"}, grouped by the version of the bill where it first
-        appears.
+        {(m.b.bill.law ?? "") === "" ? "are in the latest text" : "became law"}, grouped by the version of the bill
+        where it first appears.
         {!unknown &&
           lateN > 0 &&
           ` ${lateN > final.length / 2 ? "Over half" : count(lateN, "section")} arrived after the first text.`}
@@ -81,21 +82,19 @@ export function Built({ m }: { m: BillModel }) {
 const cellFor = (n: number) => (n > 1200 ? 4 : n > 600 ? 6 : n > 240 ? 10 : 18);
 
 function EraBlock({ g }: { g: Era }) {
+  const n = g.sections.length;
+
+  const waffle: CSSProperties & { "--cell": string; "--gap": string } = {
+    "--cell": `${cellFor(n)}px`,
+    "--gap": `${n > 600 ? 2 : n > 240 ? 3 : 8}px`,
+  };
+
   return (
     <div className="era" style={g.sections.length > 240 ? { gridColumn: "1 / -1" } : undefined}>
-      <p className="era-d num">{g.v.date ? day(g.v.date) : ""}</p>
+      <p className="era-d num">{g.v.date === null ? "" : day(g.v.date)}</p>
       <h3>{g.title}</h3>
       <p className="era-n">{eraLine(g)}</p>
-      <ul
-        className="waffle"
-        aria-label={`${g.sections.length} sections`}
-        style={
-          {
-            "--cell": `${cellFor(g.sections.length)}px`,
-            "--gap": `${g.sections.length > 600 ? 2 : g.sections.length > 240 ? 3 : 8}px`,
-          } as React.CSSProperties
-        }
-      >
+      <ul className="waffle" aria-label={`${g.sections.length} sections`} style={waffle}>
         {g.sections.map((v) => (
           <li
             key={v.s.id}

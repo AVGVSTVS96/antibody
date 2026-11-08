@@ -34,7 +34,8 @@ const { positionals, values } = parseArgs({
   },
 });
 
-const [command, ...args] = positionals;
+const [command = "", ...args] = positionals;
+const [first = "", second = ""] = args;
 const all = register(PACKAGES);
 const controller = new AbortController();
 
@@ -42,7 +43,6 @@ process.on("SIGINT", () => {
   controller.abort();
 });
 
-/** Global stages that already ran in this process; `build` refreshes them once, not once per bill. */
 const ranGlobal = new Set<string>();
 
 async function run(stages: Registered[], bill: BillId | null, targets: string[] = []) {
@@ -64,7 +64,7 @@ async function run(stages: Registered[], bill: BillId | null, targets: string[] 
       }
     }
 
-    if (s.scope === "bill" && !bill) {
+    if (s.scope === "bill" && bill === null) {
       throw new Error(`stage "${s.name}" needs a bill`);
     }
 
@@ -78,7 +78,7 @@ async function run(stages: Registered[], bill: BillId | null, targets: string[] 
     };
 
     const t0 = performance.now();
-    console.log(`▸ ${s.name}${bill && s.scope === "bill" ? ` ${bill}` : ""}`);
+    console.log(`▸ ${s.name}${bill !== null && s.scope === "bill" ? ` ${bill}` : ""}`);
     await s.run(ctx);
     console.log(`✓ ${s.name} ${((performance.now() - t0) / 1000).toFixed(1)}s`);
   }
@@ -87,21 +87,21 @@ async function run(stages: Registered[], bill: BillId | null, targets: string[] 
 const billStages = () =>
   order(
     all,
-    [...all.values()].filter((s) => s.scope === "bill").map((s) => s.name),
+    [...all.values()].flatMap((s) => (s.scope === "bill" ? [s.name] : [])),
   );
 
-/** Opens the shared DuckDB file, or an in-memory one when another process holds the file's lock. */
 async function database(): Promise<Db> {
   try {
     return await openDb();
   } catch (error) {
-    console.log(`· ${paths.db} is busy (${(error as Error).message.split("\n")[0]}); loading into memory instead`);
+    console.log(
+      `· ${paths.db} is busy (${(error instanceof Error ? error.message : String(error)).split("\n")[0]}); loading into memory instead`,
+    );
 
     return await openDb(":memory:");
   }
 }
 
-/** Loads every table once, then builds, checks and writes each bill's bundle. Returns the ids that failed. */
 async function bundles(ids: BillId[], publish: boolean): Promise<BillId[]> {
   const db = await database();
   const counts = await loadTables(db);
@@ -113,7 +113,12 @@ async function bundles(ids: BillId[], publish: boolean): Promise<BillId[]> {
     try {
       const { bundle, warnings } = await buildBundle(db, id);
       const [file] = await writeBundle(bundle, { publish });
-      const size = (Bun.file(file!).size / 1024).toFixed(0);
+
+      if (file === undefined) {
+        throw new Error("writeBundle wrote no file");
+      }
+
+      const size = (Bun.file(file).size / 1024).toFixed(0);
       console.log(
         `✓ bundle ${id}: ${bundle.sections.length} sections, ${bundle.nodes.length} nodes, ${bundle.edges.length} edges, ${Object.keys(bundle.claims).length} claims, ${bundle.gaps.length} gaps, ${size} KB`,
       );
@@ -125,7 +130,7 @@ async function bundles(ids: BillId[], publish: boolean): Promise<BillId[]> {
       }
     } catch (error) {
       failed.push(id);
-      console.log(`✗ bundle ${id}: ${(error as Error).message}`);
+      console.log(`✗ bundle ${id}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -141,7 +146,6 @@ async function bundles(ids: BillId[], publish: boolean): Promise<BillId[]> {
   return failed;
 }
 
-/** Runs the bill stages for each bill; a failing stage stops that bill only. Returns the ids that failed. */
 async function xray(ids: BillId[]): Promise<BillId[]> {
   const failed: BillId[] = [];
   const stages = billStages();
@@ -154,9 +158,12 @@ async function xray(ids: BillId[]): Promise<BillId[]> {
     try {
       await run(stages, id);
     } catch (error) {
-      if (controller.signal.aborted) throw error;
+      if (controller.signal.aborted) {
+        throw error;
+      }
+
       failed.push(id);
-      console.log(`✗ ${id}: ${(error as Error).stack ?? error}`);
+      console.log(`✗ ${id}: ${error instanceof Error ? (error.stack ?? String(error)) : String(error)}`);
     }
   }
 
@@ -174,11 +181,11 @@ function finish(failed: BillId[]) {
 
 switch (command) {
   case "xray": {
-    if (!args[0]) {
+    if (first === "") {
       throw new Error("usage: antibody xray <bill>");
     }
 
-    const bill = parseBillId(args[0]);
+    const bill = parseBillId(first);
     const failed = await xray([bill]);
     finish([...new Set([...failed, ...(await bundles([bill], values.publish))])]);
     break;
@@ -206,34 +213,46 @@ switch (command) {
   }
 
   case "run": {
-    if (!args[0]) {
+    if (first === "") {
       throw new Error("usage: antibody run <stage> [<bill>]");
     }
 
-    const stages = values.only ? [all.get(args[0])!].filter(Boolean) : order(all, [args[0]]);
-    await run(stages, args[1] ? parseBillId(args[1]) : null, [args[0]]);
+    const only = all.get(first);
+    const stages = values.only ? (only ? [only] : []) : order(all, [first]);
+    await run(stages, second === "" ? null : parseBillId(second), [first]);
     break;
   }
 
   case "watch": {
-    if (values["no-deploy"]) process.env.ANTIBODY_WATCH_DEPLOY = "0";
+    if (values["no-deploy"]) {
+      process.env.ANTIBODY_WATCH_DEPLOY = "0";
+    }
+
     await run(order(all, ["watch"]), null, ["watch"]);
     break;
   }
 
   case "sweep": {
-    if (values["no-deploy"]) process.env.ANTIBODY_WATCH_DEPLOY = "0";
+    if (values["no-deploy"]) {
+      process.env.ANTIBODY_WATCH_DEPLOY = "0";
+    }
 
-    if (args[0]) process.env.ANTIBODY_SWEEP_CONGRESS = String(Number.parseInt(args[0], 10));
+    if (first !== "") {
+      // oxlint-disable-next-line unicorn/prefer-number-coercion -- parseInt reads "119th" as 119, Number would give NaN
+      process.env.ANTIBODY_SWEEP_CONGRESS = String(Number.parseInt(first, 10));
+    }
+
     await run(order(all, ["sweep"]), null, ["sweep"]);
     break;
   }
 
   case "stages": {
-    for (const [pkg, stages] of Object.entries(PACKAGES))
+    for (const [pkg, stages] of Object.entries(PACKAGES)) {
       console.log(
         `${pkg}\n${stages.map((s) => `  ${s.name} (${s.scope}) → ${s.writes.join(", ")}`).join("\n") || "  —"}`,
       );
+    }
+
     break;
   }
 

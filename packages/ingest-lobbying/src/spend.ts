@@ -1,6 +1,5 @@
 import type { BillId, Row } from "@antibody/core";
 
-/** Published rules this package's inferences apply; store copies them into bundle.rules. */
 export const RULES = [
   {
     id: "lda-bill-share",
@@ -37,19 +36,18 @@ interface Line {
   section_nums: string[];
 }
 
-/**
- * Spend per client for one bill, and for the whole bill. Only LD-2 reports that are not superseded count.
- * `#total` (always minted; a null amount reads "no amount reported") is a fact summed from the reports;
- * `#share` (minted when share_usd is set) is the lda-bill-share inference.
- * `topicOnly` builds the same rows from topic-only lines (share left out: it would be an estimate on an inference).
- */
+interface Counted {
+  report: Row<"lda_filings">;
+  lines: Line[];
+}
+
 export function spendRows(
   bill: BillId,
   filings: Map<string, Row<"lda_filings">>,
   lines: Line[],
   topicOnly = false,
 ): Row<"lda_spend">[] {
-  const linesByFiling = new Map<string, Line[]>();
+  const byFiling = new Map<string, Counted>();
 
   for (const l of lines) {
     const f = filings.get(l.filing_id);
@@ -58,44 +56,45 @@ export function spendRows(
       continue;
     }
 
-    linesByFiling.set(l.filing_id, [...(linesByFiling.get(l.filing_id) ?? []), l]);
+    const entry = byFiling.get(l.filing_id);
+    byFiling.set(l.filing_id, { report: f, lines: [...(entry?.lines ?? []), l] });
   }
 
-  const byClient = new Map<string, Row<"lda_filings">[]>();
+  const byClient = new Map<string, Counted[]>();
 
-  for (const id of linesByFiling.keys()) {
-    const f = filings.get(id)!;
-    byClient.set(f.client_key, [...(byClient.get(f.client_key) ?? []), f]);
+  for (const c of byFiling.values()) {
+    byClient.set(c.report.client_key, [...(byClient.get(c.report.client_key) ?? []), c]);
   }
 
   const suffix = topicOnly ? ":topic" : "";
   const rows: Row<"lda_spend">[] = [];
 
   for (const [client, reports] of byClient) {
-    const quarters = new Map<string, Row<"lda_filings">[]>();
+    const quarters = new Map<string, Counted[]>();
 
-    for (const f of reports) {
-      quarters.set(`${f.year}|${f.period}`, [...(quarters.get(`${f.year}|${f.period}`) ?? []), f]);
+    for (const c of reports) {
+      const q = `${c.report.year}|${c.report.period}`;
+      quarters.set(q, [...(quarters.get(q) ?? []), c]);
     }
 
     let total = 0;
     let share = 0;
     let anyAmount = false;
-    const counted: Row<"lda_filings">[] = [];
+    const counted: Counted[] = [];
 
     for (const q of quarters.values()) {
-      const inHouse = q.filter((f) => f.amount_kind === "expenses");
+      const inHouse = q.filter((c) => c.report.amount_kind === "expenses");
 
-      for (const f of inHouse.length ? inHouse : q.filter((f) => f.amount_kind === "income")) {
+      for (const c of inHouse.length ? inHouse : q.filter((x) => x.report.amount_kind === "income")) {
         anyAmount = true;
-        counted.push(f);
-        total += f.amount_usd ?? 0;
-        share += ((f.amount_usd ?? 0) * linesByFiling.get(f.id)!.length) / Math.max(1, f.issue_lines);
+        counted.push(c);
+        total += c.report.amount_usd ?? 0;
+        share += ((c.report.amount_usd ?? 0) * c.lines.length) / Math.max(1, c.report.issue_lines);
       }
     }
 
-    const clientLines = reports.flatMap((f) => linesByFiling.get(f.id)!);
-    const phases = count(reports.map((f) => linesByFiling.get(f.id)![0]!.phase));
+    const clientLines = reports.flatMap((c) => c.lines);
+    const phases = count(reports.flatMap((c) => c.lines.slice(0, 1)));
     const specific = clientLines.find((l) => l.section_nums.length) ?? latest(clientLines, filings);
     const id = `${bill}:${client}${suffix}`;
     rows.push({
@@ -110,23 +109,23 @@ export function spendRows(
       reports_law: phases.law,
       total_usd: anyAmount ? total : null,
       share_usd: anyAmount && !topicOnly ? Math.round(share) : null,
-      total_rests_on: counted.map((f) => claim.filing(f.id)),
+      total_rests_on: counted.map((c) => claim.filing(c.report.id)),
       issue_quote: specific?.quote ?? null,
       section_nums: [...new Set(clientLines.flatMap((l) => l.section_nums))],
       rule: topicOnly ? "lda-topic-only" : "lda-bill-share",
       confidence: 0.5,
       rests_on: [
-        ...counted.map((f) => claim.filing(f.id)),
+        ...counted.map((c) => claim.filing(c.report.id)),
         ...clientLines.map((l) => (topicOnly ? claim.topic(l.id) : claim.ref(l.id))),
       ],
       evidence: {
         method: topicOnly ? "topic-only lines" : "amount × lines naming the bill ÷ all lines",
-        counted: counted.map((f) => ({
-          filing: f.id,
-          amount_usd: f.amount_usd,
-          kind: f.amount_kind,
-          lines: linesByFiling.get(f.id)!.length,
-          of: f.issue_lines,
+        counted: counted.map((c) => ({
+          filing: c.report.id,
+          amount_usd: c.report.amount_usd,
+          kind: c.report.amount_kind,
+          lines: c.lines.length,
+          of: c.report.issue_lines,
         })),
       },
     });
@@ -136,9 +135,9 @@ export function spendRows(
     return rows;
   }
 
-  const reports = [...linesByFiling.keys()].map((id) => filings.get(id)!);
-  const phases = count(reports.map((f) => linesByFiling.get(f.id)![0]!.phase));
-  const withAmount = rows.filter((r) => r.total_usd != null);
+  const reports = [...byFiling.values()];
+  const phases = count(reports.flatMap((c) => c.lines.slice(0, 1)));
+  const withAmount = rows.filter((r) => r.total_usd !== null);
   const whole = `${bill}:*${suffix}`;
   rows.push({
     id: whole,
@@ -146,40 +145,36 @@ export function spendRows(
     client_key: null,
     topic_only: topicOnly,
     reports: reports.length,
-    quarters: new Set(reports.map((f) => `${f.year}|${f.period}`)).size,
+    quarters: new Set(reports.map((c) => `${c.report.year}|${c.report.period}`)).size,
     reports_bill: phases.bill,
     reports_enactment_quarter: phases["enactment-quarter"],
     reports_law: phases.law,
-    total_usd: withAmount.length ? withAmount.reduce((s, r) => s + r.total_usd!, 0) : null,
-    share_usd: withAmount.length && !topicOnly ? withAmount.reduce((s, r) => s + r.share_usd!, 0) : null,
+    total_usd: withAmount.length ? withAmount.reduce((sum, r) => sum + (r.total_usd ?? 0), 0) : null,
+    share_usd: withAmount.length && !topicOnly ? withAmount.reduce((sum, r) => sum + (r.share_usd ?? 0), 0) : null,
     total_rests_on: withAmount.map((r) => claim.spend(r.id, "total")),
     issue_quote: null,
     section_nums: [],
     rule: topicOnly ? "lda-topic-only" : "lda-bill-share",
     confidence: 0.5,
-    rests_on: rows.map((r) => claim.spend(r.id, r.share_usd == null ? "total" : "share")),
+    rests_on: rows.map((r) => claim.spend(r.id, r.share_usd === null ? "total" : "share")),
     evidence: { method: "sum of the per-client rows", clients: rows.length },
   });
 
   return rows;
 }
 
-function count(phases: Line["phase"][]) {
+function count(firstLines: Line[]) {
   const c = { bill: 0, "enactment-quarter": 0, law: 0 };
 
-  for (const p of phases) {
-    c[p]++;
+  for (const l of firstLines) {
+    c[l.phase]++;
   }
 
   return c;
 }
 
 function latest(lines: Line[], filings: Map<string, Row<"lda_filings">>): Line | undefined {
-  const at = (l: Line) => {
-    const f = filings.get(l.filing_id)!;
+  const at = (l: Line) => filings.get(l.filing_id)?.period_end ?? "";
 
-    return f.period_end;
-  };
-
-  return lines.reduce<Line | undefined>((b, l) => (!b || at(l) > at(b) ? l : b), undefined);
+  return lines.reduce<Line | undefined>((b, l) => (b === undefined || at(l) > at(b) ? l : b), undefined);
 }

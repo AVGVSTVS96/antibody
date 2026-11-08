@@ -1,32 +1,32 @@
 import { join } from "node:path";
 import type { BillId, Row } from "@antibody/core";
 import { paths } from "@antibody/core/node";
-import { billstatus, recordedVotes, xml } from "./billstatus.ts";
+import { billstatus, recordedVotes } from "./billstatus.ts";
 import type { RecordedVote } from "./billstatus.ts";
 import { cached } from "./fetch.ts";
 import type { Lookup } from "./legislators.ts";
+import { all, element, isElement, parseXml, text } from "./xml.ts";
+import type { XmlElement } from "./xml.ts";
 
 type Vote = Row<"member_votes">["vote"];
 
-const VOTE: Record<string, Vote> = {
-  Yea: "Yea",
-  Aye: "Yea",
-  Nay: "Nay",
-  No: "Nay",
-  Present: "Present",
-  "Not Voting": "Not Voting",
-};
+const VOTE = new Map<string, Vote>([
+  ["Yea", "Yea"],
+  ["Aye", "Yea"],
+  ["Nay", "Nay"],
+  ["No", "Nay"],
+  ["Present", "Present"],
+  ["Not Voting", "Not Voting"],
+]);
 
-/** Roll call id, the same one amendments.roll_id and bundle.votes use: `senate-119-1-318`, `house-119-1-200`. */
 export const rollId = (chamber: "House" | "Senate", congress: number, session: number, number: number) =>
   `${chamber.toLowerCase()}-${congress}-${session}-${number}`;
 
-/** "17-Jul-2025" (House) or "June 17, 2025,  05:11 PM" (Senate) → 2025-06-17, read as written (no time zone shift). */
-export function voteDate(text: string): string {
-  const d = new Date(`${text.replace(/,\s+\d{1,2}:\d{2}\s*[AP]M$/i, "").replaceAll("-", " ")} 12:00 UTC`);
+export function voteDate(written: string): string {
+  const d = new Date(`${written.replace(/,\s+\d{1,2}:\d{2}\s*[AP]M$/iu, "").replaceAll("-", " ")} 12:00 UTC`);
 
   if (Number.isNaN(d.getTime())) {
-    throw new Error(`unreadable vote date: ${text}`);
+    throw new RangeError(`unreadable vote date: ${written}`);
   }
 
   return d.toISOString().slice(0, 10);
@@ -38,21 +38,21 @@ export interface ParsedRoll {
   unmatched: string[];
 }
 
-const str = (v: unknown) =>
-  v == null ? "" : typeof v === "object" ? String((v as { "#text"?: unknown })["#text"] ?? "") : String(v);
+const int = (node: XmlElement, tag: string) =>
+  // oxlint-disable-next-line unicorn/prefer-number-coercion -- reads the leading digits of a session like "1st"
+  Number.parseInt(text(node, tag) || "0", 10);
 
-const int = (v: unknown) => Number.parseInt(str(v) || "0", 10);
-
-export function parseHouseRoll(text: string, url: string, bill: BillId | null, lookup: Lookup): ParsedRoll {
-  const r = xml.parse(text)["rollcall-vote"];
-  const m = r["vote-metadata"];
-  const congress = int(m.congress);
-  const session = int(m.session);
-  const number = int(m["rollcall-num"]);
+export function parseHouseRoll(body: string, url: string, bill: BillId | null, lookup: Lookup): ParsedRoll {
+  const r = element(parseXml(body), "rollcall-vote");
+  const m = element(r, "vote-metadata");
+  const congress = int(m, "congress");
+  const session = int(m, "session");
+  const number = int(m, "rollcall-num");
   const id = rollId("House", congress, session, number);
-  const totals = m["vote-totals"]["totals-by-vote"];
-  const amendment = str(m["amendment-num"]) && `amendment ${str(m["amendment-num"])} by ${str(m["amendment-author"])}`;
-  const what = [str(m["legis-num"]), amendment].filter(Boolean).join(", ");
+  const totals = element(element(m, "vote-totals"), "totals-by-vote");
+  const amendmentNum = text(m, "amendment-num");
+  const amendment = amendmentNum && `amendment ${amendmentNum} by ${text(m, "amendment-author")}`;
+  const what = [text(m, "legis-num"), amendment].filter(Boolean).join(", ");
 
   const roll: Row<"roll_calls"> = {
     id,
@@ -61,11 +61,11 @@ export function parseHouseRoll(text: string, url: string, bill: BillId | null, l
     congress,
     session,
     number,
-    date: voteDate(str(m["action-date"])),
-    question: what ? `${str(m["vote-question"])} (${what})` : str(m["vote-question"]),
-    result: str(m["vote-result"]),
-    yeas: int(totals["yea-total"]),
-    nays: int(totals["nay-total"]),
+    date: voteDate(text(m, "action-date")),
+    question: what ? `${text(m, "vote-question")} (${what})` : text(m, "vote-question"),
+    result: text(m, "vote-result"),
+    yeas: int(totals, "yea-total"),
+    nays: int(totals, "nay-total"),
     url,
     source_url: url,
     source_locator: "vote-metadata",
@@ -74,12 +74,13 @@ export function parseHouseRoll(text: string, url: string, bill: BillId | null, l
   const votes: Row<"member_votes">[] = [];
   const unmatched: string[] = [];
 
-  for (const rv of [r["vote-data"]["recorded-vote"]].flat()) {
-    const bioguide = rv.legislator["@name-id"] as string;
-    const vote = VOTE[str(rv.vote)];
+  for (const rv of all(element(r, "vote-data"), "recorded-vote")) {
+    const bioguide = text(element(rv, "legislator"), "@name-id");
+    const cast = text(rv, "vote");
+    const vote = VOTE.get(cast);
 
-    if (!vote || !lookup.byBioguide.has(bioguide)) {
-      unmatched.push(`${bioguide}:${str(rv.vote)}`);
+    if (vote === undefined || !lookup.byBioguide.has(bioguide)) {
+      unmatched.push(`${bioguide}:${cast}`);
       continue;
     }
 
@@ -96,14 +97,16 @@ export function parseHouseRoll(text: string, url: string, bill: BillId | null, l
   return { roll, votes, unmatched };
 }
 
-export function parseSenateRoll(text: string, url: string, bill: BillId | null, lookup: Lookup): ParsedRoll {
-  const r = xml.parse(text).roll_call_vote;
-  const congress = int(r.congress);
-  const session = int(r.session);
-  const number = int(r.vote_number);
+export function parseSenateRoll(body: string, url: string, bill: BillId | null, lookup: Lookup): ParsedRoll {
+  const r = element(parseXml(body), "roll_call_vote");
+  const congress = int(r, "congress");
+  const session = int(r, "session");
+  const number = int(r, "vote_number");
   const id = rollId("Senate", congress, session, number);
-  const tie = r.tie_breaker ?? {};
-  const tieBroken = str(tie.by_whom) && `tie broken by the ${str(tie.by_whom)}, voting ${str(tie.tie_breaker_vote)}`;
+  const count = element(r, "count");
+  const tie = isElement(r.tie_breaker) ? r.tie_breaker : {};
+  const byWhom = text(tie, "by_whom");
+  const tieBroken = byWhom && `tie broken by the ${byWhom}, voting ${text(tie, "tie_breaker_vote")}`;
 
   const roll: Row<"roll_calls"> = {
     id,
@@ -112,11 +115,11 @@ export function parseSenateRoll(text: string, url: string, bill: BillId | null, 
     congress,
     session,
     number,
-    date: voteDate(str(r.vote_date)),
-    question: str(r.vote_question_text),
-    result: tieBroken ? `${str(r.vote_result)} (${tieBroken})` : str(r.vote_result),
-    yeas: int(r.count.yeas),
-    nays: int(r.count.nays),
+    date: voteDate(text(r, "vote_date")),
+    question: text(r, "vote_question_text"),
+    result: tieBroken ? `${text(r, "vote_result")} (${tieBroken})` : text(r, "vote_result"),
+    yeas: int(count, "yeas"),
+    nays: int(count, "nays"),
     url,
     source_url: url,
     source_locator: "roll_call_vote",
@@ -125,13 +128,14 @@ export function parseSenateRoll(text: string, url: string, bill: BillId | null, 
   const votes: Row<"member_votes">[] = [];
   const unmatched: string[] = [];
 
-  for (const m of [r.members.member].flat()) {
-    const lis = str(m.lis_member_id);
+  for (const m of all(element(r, "members"), "member")) {
+    const lis = text(m, "lis_member_id");
     const bioguide = lookup.byLis.get(lis);
-    const vote = VOTE[str(m.vote_cast)];
+    const cast = text(m, "vote_cast");
+    const vote = VOTE.get(cast);
 
-    if (!vote || !bioguide) {
-      unmatched.push(`${lis}:${str(m.vote_cast)}`);
+    if (vote === undefined || bioguide === undefined || bioguide === "") {
+      unmatched.push(`${lis}:${cast}`);
       continue;
     }
 
@@ -141,7 +145,7 @@ export function parseSenateRoll(text: string, url: string, bill: BillId | null, 
       bioguide,
       vote,
       source_url: url,
-      source_locator: `member lis_member_id ${lis} (${str(m.member_full)})`,
+      source_locator: `member lis_member_id ${lis} (${text(m, "member_full")})`,
     });
   }
 
@@ -150,16 +154,15 @@ export function parseSenateRoll(text: string, url: string, bill: BillId | null, 
 
 async function readRoll(v: RecordedVote, bill: BillId, lookup: Lookup): Promise<ParsedRoll> {
   const id = rollId(v.chamber, +v.congress, +v.sessionNumber, +v.rollNumber);
-  const text = await cached(v.url, join(paths.raw("members"), "votes", `${id}.xml`));
+  const body = await cached(v.url, join(paths.raw("members"), "votes", `${id}.xml`));
 
-  return v.chamber === "House" ? parseHouseRoll(text, v.url, bill, lookup) : parseSenateRoll(text, v.url, bill, lookup);
+  return v.chamber === "House" ? parseHouseRoll(body, v.url, bill, lookup) : parseSenateRoll(body, v.url, bill, lookup);
 }
 
-/** Roll calls on the bill and its amendments, as BILLSTATUS lists them, read from the House Clerk and senate.gov XML. */
 export async function billRolls(bill: BillId, lookup: Lookup, refresh: boolean): Promise<ParsedRoll[] | null> {
   const status = await billstatus(bill, refresh);
 
-  if (!status) {
+  if (status === null) {
     return null;
   }
 
@@ -170,5 +173,5 @@ export async function billRolls(bill: BillId, lookup: Lookup, refresh: boolean):
     out.push(await readRoll(v, bill, lookup));
   }
 
-  return out.sort((a, b) => a.roll.date.localeCompare(b.roll.date) || a.roll.number - b.roll.number);
+  return out.toSorted((a, b) => a.roll.date.localeCompare(b.roll.date) || a.roll.number - b.roll.number);
 }

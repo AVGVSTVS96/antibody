@@ -1,5 +1,5 @@
 import type { Row } from "@antibody/core";
-import { fecDate, imageUrl, rows } from "./bulk.ts";
+import { column, fecDate, imageUrl, rows } from "./bulk.ts";
 
 const LEGAL = new Set([
   "INC",
@@ -20,29 +20,24 @@ const LEGAL = new Set([
   "PLC",
 ]);
 
-/** Answers that name no organization: retired, self-employed, unemployed, students, homemakers, "information requested". */
 const NOT_AN_EMPLOYER =
-  /^(NONE|N ?A|RETIRED|SELF|SELF EMPLOYED|SELFEMPLOYED|NOT EMPLOYED|UNEMPLOYED|HOMEMAKER|STUDENT|DISABLED|REFUSED|REQUESTED|INFO(RMATION)? REQUESTED.*|BEST EFFORTS.*|NOT APPLICABLE|NULL|UNKNOWN|EMPLOYED|NO EMPLOYER|NOT EMPLOYED.*|RETIRED.*)$/;
+  /^(NONE|N ?A|RETIRED|SELF|SELF EMPLOYED|SELFEMPLOYED|NOT EMPLOYED|UNEMPLOYED|HOMEMAKER|STUDENT|DISABLED|REFUSED|REQUESTED|INFO(RMATION)? REQUESTED.*|BEST EFFORTS.*|NOT APPLICABLE|NULL|UNKNOWN|EMPLOYED|NO EMPLOYER|NOT EMPLOYED.*|RETIRED.*)$/u;
 
-/**
- * Groups spellings of one employer: upper case, "&" as AND, punctuation dropped, a leading THE and trailing legal
- * suffixes removed ("Google LLC", "GOOGLE, INC." → "GOOGLE"). Null when the answer names no organization.
- */
 export function employerKey(raw: string): string | null {
   const words = raw
     .toUpperCase()
     .replaceAll("&", " AND ")
-    .replaceAll(/[.']/g, "")
-    .replaceAll(/[^A-Z0-9 ]+/g, " ")
+    .replaceAll(/[.']/gu, "")
+    .replaceAll(/[^A-Z0-9 ]+/gu, " ")
     .trim()
-    .split(/\s+/)
+    .split(/\s+/u)
     .filter(Boolean);
 
   if (words[0] === "THE") {
     words.shift();
   }
 
-  while (words.length > 1 && LEGAL.has(words.at(-1)!)) {
+  while (words.length > 1 && LEGAL.has(words.at(-1) ?? "")) {
     words.pop();
   }
 
@@ -51,10 +46,9 @@ export function employerKey(raw: string): string | null {
   return key && !NOT_AN_EMPLOYER.test(key) ? key : null;
 }
 
-/** The published floor: an employer's itemized total to one member in one cycle must reach this to be written. */
 export const EMPLOYER_MIN_USD = 1000;
 
-/** itcont.txt columns, from https://www.fec.gov/campaign-finance-data/contributions-individuals-file-description/ */
+// https://www.fec.gov/campaign-finance-data/contributions-individuals-file-description/
 const I = {
   CMTE_ID: 0,
   IMAGE_NUM: 4,
@@ -65,7 +59,6 @@ const I = {
   MEMO_CD: 18,
 } as const;
 
-/** Individual contributions a campaign itemizes: direct (15), earmarked through ActBlue/WinRed (15E), via joint fundraisers (15J). */
 export const INDIVIDUAL_TYPES = new Set(["15", "15E", "15J"]);
 
 interface Group {
@@ -81,7 +74,6 @@ interface Group {
   committees: Set<string>;
 }
 
-/** Candidate committees (principal and authorized) of members, for one cycle, from ccl + cn's principal committee. */
 export async function memberCommittees(
   cycle: number,
   byFec: Map<string, string>,
@@ -90,18 +82,20 @@ export async function memberCommittees(
   const out = new Map<string, string>();
 
   for await (const f of rows("ccl", cycle, { dir })) {
-    const bioguide = byFec.get(f[0]!);
+    const bioguide = byFec.get(f[0] ?? "");
+    const principalOrAuthorized = f[5] === "P" || f[5] === "A";
 
-    if (bioguide && (f[5] === "P" || f[5] === "A")) {
-      out.set(f[3]!, bioguide);
+    if (bioguide !== undefined && bioguide !== "" && principalOrAuthorized) {
+      out.set(column(f, 3), bioguide);
     }
   }
 
   for await (const f of rows("cn", cycle, { dir })) {
-    const bioguide = byFec.get(f[0]!);
+    const bioguide = byFec.get(f[0] ?? "");
+    const principalCommittee = f[9];
 
-    if (bioguide && f[9]) {
-      out.set(f[9], bioguide);
+    if (bioguide !== undefined && bioguide !== "" && principalCommittee !== undefined && principalCommittee !== "") {
+      out.set(principalCommittee, bioguide);
     }
   }
 
@@ -113,10 +107,6 @@ export interface EmployerResult {
   stats: { kept: number; noEmployer: number; noEmployerUsd: number; groups: number; belowMin: number };
 }
 
-/**
- * Streams one cycle's itemized individual contributions (2-6 GB zipped), keeps those to members' campaign committees,
- * and sums them per member and employer. Groups under `minUsd` are counted, not written.
- */
 export async function aggregateEmployers(
   cycle: number,
   committees: Map<string, string>,
@@ -127,14 +117,14 @@ export async function aggregateEmployers(
   const stats = { kept: 0, noEmployer: 0, noEmployerUsd: 0, groups: 0, belowMin: 0 };
 
   for await (const f of rows("indiv", cycle, { firstField: new Set(committees.keys()), dir })) {
-    if (!INDIVIDUAL_TYPES.has(f[I.TRANSACTION_TP]!) || f[I.MEMO_CD] === "X") {
+    if (!INDIVIDUAL_TYPES.has(f[I.TRANSACTION_TP] ?? "") || f[I.MEMO_CD] === "X") {
       continue;
     }
 
     const date = fecDate(f[I.TRANSACTION_DT]);
     const amount = Number(f[I.TRANSACTION_AMT]);
 
-    if (!date || !Number.isFinite(amount)) {
+    if (date === null || !Number.isFinite(amount)) {
       continue;
     }
 
@@ -142,14 +132,19 @@ export async function aggregateEmployers(
     const employer = (f[I.EMPLOYER] ?? "").trim();
     const key = employerKey(employer);
 
-    if (!key) {
+    if (key === null) {
       stats.noEmployer++;
       stats.noEmployerUsd += amount;
       continue;
     }
 
-    const committee = f[I.CMTE_ID]!;
-    const bioguide = committees.get(committee)!;
+    const committee = column(f, I.CMTE_ID);
+    const bioguide = committees.get(committee);
+
+    if (bioguide === undefined) {
+      throw new Error(`indiv${String(cycle).slice(2)} line for committee ${committee}, which no member has`);
+    }
+
     const id = `${bioguide}\t${key}`;
     let g = groups.get(id);
 
@@ -182,7 +177,7 @@ export async function aggregateEmployers(
 
     if (amount > g.largest) {
       g.largest = amount;
-      g.largestImage = f[I.IMAGE_NUM]!;
+      g.largestImage = column(f, I.IMAGE_NUM);
     }
 
     g.spellings.set(employer, (g.spellings.get(employer) ?? 0) + amount);
@@ -198,12 +193,17 @@ export async function aggregateEmployers(
       continue;
     }
 
-    const spellings = [...g.spellings].sort((a, b) => b[1] - a[1]).map(([s]) => s);
-    const committeeIds = [...g.committees].sort();
+    const spellings = [...g.spellings].toSorted((a, b) => b[1] - a[1]).map(([s]) => s);
+    const committeeIds = [...g.committees].toSorted();
+    const employer = spellings[0];
+
+    if (employer === undefined) {
+      throw new Error(`employer group ${g.key} has no spellings`);
+    }
 
     const query = new URLSearchParams([
-      ...committeeIds.map((c) => ["committee_id", c]),
-      ["contributor_employer", spellings[0]!],
+      ...committeeIds.map((c): [string, string] => ["committee_id", c]),
+      ["contributor_employer", employer],
       ["two_year_transaction_period", String(cycle)],
     ]);
 
@@ -212,7 +212,7 @@ export async function aggregateEmployers(
       bioguide: g.bioguide,
       cycle,
       committee_ids: committeeIds,
-      employer: spellings[0]!,
+      employer,
       employer_key: g.key,
       spellings: spellings.slice(0, 5),
       amount_usd: Math.round(g.amount * 100) / 100,
@@ -221,7 +221,7 @@ export async function aggregateEmployers(
       last: g.last,
       largest_usd: g.largest,
       largest_url: imageUrl(g.largestImage),
-      source_url: `https://www.fec.gov/data/receipts/individual-contributions/?${query}`,
+      source_url: `https://www.fec.gov/data/receipts/individual-contributions/?${query.toString()}`,
       source_locator: `sum of ${g.n} itemized contributions (types 15, 15E, 15J; memo lines excluded) whose employer normalizes to "${g.key}"; FEC bulk indiv${String(cycle).slice(2)}`,
     });
   }

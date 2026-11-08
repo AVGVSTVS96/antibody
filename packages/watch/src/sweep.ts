@@ -1,6 +1,5 @@
 import { mkdir, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { BillId } from "@antibody/core";
 import { paths } from "@antibody/core/node";
 import { parseBillStatus } from "./billstatus.ts";
 import type { BillStatus } from "./billstatus.ts";
@@ -13,13 +12,11 @@ import type { Site } from "./site.ts";
 import { candidate, enrich, measureSize, rank, readRiders, settings, toXray, xrayAndPublish } from "./watch.ts";
 import type { Candidate, WatchResult } from "./watch.ts";
 
-/** The first day of a Congress: the 119th met on 2025-01-03. */
 export const congressStart = (congress: number) => `${congressYears(congress)[0]}-01-03`;
 
 const bulkUrl = (congress: number, type: string) =>
   `https://www.govinfo.gov/bulkdata/BILLSTATUS/${congress}/${type}/BILLSTATUS-${congress}-${type}.zip`;
 
-/** A finished Congress's zip never changes; the current one's is fetched again once a day. */
 async function fresh(file: string, congress: number, today: string): Promise<boolean> {
   const s = await stat(file).catch(() => null);
 
@@ -27,12 +24,11 @@ async function fresh(file: string, congress: number, today: string): Promise<boo
     return false;
   }
 
-  const finished = today >= `${congressYears(congress)[1]! + 1}-01-03`;
+  const finished = today >= `${congressYears(congress)[1] + 1}-01-03`;
 
   return finished || s.mtime.toLocaleDateString("en-CA") === today;
 }
 
-/** Every BILLSTATUS of one Congress, from GovInfo's bulk zip per bill type (about 55 MB for the 119th). */
 export async function bulkStatuses(
   congress: number,
   dir: string,
@@ -78,7 +74,7 @@ export async function bulkStatuses(
         url,
         ok: false,
         items: 0,
-        error: String((error as Error).message ?? error),
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -86,16 +82,8 @@ export async function bulkStatuses(
   return { statuses, sources };
 }
 
-/** A recorded vote is contested when its losing side had at least this share of the votes. */
 export const CONTESTED_SHARE = 0.1;
 
-/**
- * The bills a sweep reads the text, news and lobbying of: the best `n` before those are known, every bill that
- * reached the President, and every bill with a contested recorded vote. The press is the biggest signal and costs a
- * rate-limited search per bill, so most bills go without; a law passed by a lopsided vote scores low before it (the
- * Epstein Files Transparency Act, 427-1, had only "became law"), and so does a fight that only reached a floor vote
- * (the KIDS Act, 267-117; the Iran war powers votes), and they would otherwise never be counted.
- */
 export function sweepShortlist(candidates: Candidate[], n: number): Candidate[] {
   const enacted = candidates.filter((c) => STEPS[c.facts.step].weight >= STEPS.enrolled.weight);
 
@@ -108,11 +96,6 @@ export function sweepShortlist(candidates: Candidate[], n: number): Candidate[] 
   return [...new Set([...rank(candidates).slice(0, n), ...enacted, ...contested])];
 }
 
-/**
- * Scores every bill of a Congress on its whole record, not one window: the per-bill view the daily watch can't give,
- * since it only sees bills that moved since its last run. Enriches the best `enrich`, then x-rays and publishes the
- * flagged bills that have no page yet, at most `xrays`.
- */
 export async function sweep(congress: number, log: (m: string) => void, signal?: AbortSignal): Promise<WatchResult> {
   const cfg = settings();
   const dir = paths.raw("watch");
@@ -122,7 +105,9 @@ export async function sweep(congress: number, log: (m: string) => void, signal?:
   const { statuses, sources } = await bulkStatuses(congress, join(dir, "cache", "bulk"), date, signal);
 
   for (const s of sources) {
-    if (!s.ok) problems.push(`${s.name}: ${s.error}`);
+    if (!s.ok) {
+      problems.push(`${s.name}: ${s.error}`);
+    }
   }
 
   if (!statuses.length) {
@@ -146,7 +131,7 @@ export async function sweep(congress: number, log: (m: string) => void, signal?:
   const site: Site = { published: [], deploy: { status: "pending" } };
 
   const picks = toXray(candidates, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY)
-    .filter((c) => !c.evidence.xray?.published)
+    .filter((c) => c.evidence.xray?.published !== true)
     .slice(0, cfg.xrays);
 
   const xrayed = await xrayAndPublish(
@@ -168,7 +153,7 @@ export async function sweep(congress: number, log: (m: string) => void, signal?:
     sources,
     candidates,
     alreadyReported: 0,
-    xrayed: xrayed,
+    xrayed,
     site,
     problems,
     sweep: congress,

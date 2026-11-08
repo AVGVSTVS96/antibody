@@ -6,14 +6,14 @@ export function Section({
   children,
   className = "",
 }: {
-  id?: string;
+  id: string;
   title: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
   return (
-    <section className={`wrap bsec ${className}`} id={id} aria-labelledby={id ? `${id}-h` : undefined}>
-      <h2 id={id ? `${id}-h` : undefined}>{title}</h2>
+    <section className={`wrap bsec ${className}`} id={id} aria-labelledby={`${id}-h`}>
+      <h2 id={`${id}-h`}>{title}</h2>
       {children}
     </section>
   );

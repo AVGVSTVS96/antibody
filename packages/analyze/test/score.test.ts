@@ -17,6 +17,18 @@ import {
   sectionReports,
   stakes,
 } from "../src/score.ts";
+import type { SectionDollars } from "../src/score.ts";
+import {
+  articleRow,
+  attentionRow,
+  billRefRow,
+  checkRow,
+  counterpartRow,
+  estimateRow,
+  must,
+  reachRow,
+  sectionRow,
+} from "./rows.ts";
 
 test("stakes put dollars and lobbying on log scales, and cuts count the same as costs", () => {
   expect(stakes({ dollarsMusd: 1000, lobbyingFirms: 0 })).toBeCloseTo(0.5, 2);
@@ -100,14 +112,14 @@ test("a bill whose sections are not ranked has no buried label and no score", ()
   expect(buried(c)).toBeNull();
 });
 
-test("the bundle's big-stakes bar is the score's costly bar", () => {
-  const edge = (musd: number | null, reports: number) =>
-    stakes({ dollarsMusd: musd, lobbyingFirms: reports }) >= SCORE.costlyMin;
+const costlyAt = (musd: number | null, firms: number) =>
+  stakes({ dollarsMusd: musd, lobbyingFirms: firms }) >= SCORE.costlyMin;
 
-  expect(edge(BIG_STAKES.dollarsMusd, 0)).toBe(true);
-  expect(edge(BIG_STAKES.dollarsMusd - 1, 0)).toBe(false);
-  expect(edge(null, BIG_STAKES.firms)).toBe(true);
-  expect(edge(null, BIG_STAKES.firms - 1)).toBe(false);
+test("the bundle's big-stakes bar is the score's costly bar", () => {
+  expect(costlyAt(BIG_STAKES.dollarsMusd, 0)).toBe(true);
+  expect(costlyAt(BIG_STAKES.dollarsMusd - 1, 0)).toBe(false);
+  expect(costlyAt(null, BIG_STAKES.firms)).toBe(true);
+  expect(costlyAt(null, BIG_STAKES.firms - 1)).toBe(false);
   expect(MIN_SECTIONS_TO_BURY).toBe(SCORE.minSections);
 });
 
@@ -124,7 +136,7 @@ test("the same sections get the same label in a bill that is 49% late and one th
   const c = { ...costlyQuiet, late: true };
   expect(label({ ...c, lateShare: 0.49 }, 0)).toBe("buried");
   expect(label({ ...c, lateShare: 0.51 }, 0)).toBe("buried");
-  const gap = Math.abs(buried({ ...c, lateShare: 0.49 })! - buried({ ...c, lateShare: 0.51 })!);
+  const gap = Math.abs(must(buried({ ...c, lateShare: 0.49 })) - must(buried({ ...c, lateShare: 0.51 })));
   expect(gap).toBeLessThan(0.01);
 });
 
@@ -152,15 +164,12 @@ test("percentile ranks every uncovered section at the bottom, ties included", ()
   expect(percentile(0, [0, 0, 0, 1])).toBe(0);
   expect(percentile(1, [0, 0, 0, 1])).toBe(1);
   expect(percentile(0, [0, 1, 2])).toBe(0);
-  // A dropped section with more press than every final one (the FY24 NDAA's x-ray stopped on a value above 1).
   expect(percentile(3, [0, 1, 2])).toBe(1);
 });
 
 test("percentile: ties at the top share it, and a bill's only section ranks at the top once discussed", () => {
-  // Two sections tied at the top of an 8-section bill (S.2 ranked both 0.857, under the headline bar).
   expect(percentile(5, [0, 1, 1, 2, 2, 3, 5, 5])).toBeCloseTo(6.5 / 7);
   expect(percentile(5, [0, 1, 1, 2, 2, 3, 5, 5])).toBeGreaterThanOrEqual(0.9);
-  // One-section bills (a CRA resolution, H.R.1834's ACA extension) used to rank 0.5.
   expect(percentile(0.94, [0.94])).toBe(1);
   expect(percentile(0, [0])).toBe(0);
 });
@@ -173,35 +182,31 @@ test("boilerplate headings get no off-topic value", () => {
   expect(BOILERPLATE.test("Drought mitigation in the Reclamation States")).toBe(false);
 });
 
-const line = (over: Partial<Row<"cbo_lines">>): Row<"cbo_lines"> =>
-  ({
-    id: "l",
-    estimate_id: "e",
-    bill_id: "119-hr-1",
-    line_kind: "section",
-    section_nums: [],
-    section_ids: ["s1"],
-    title: null,
-    measure: "outlays",
-    period: "2025-2034",
-    total_musd: 0,
-    values: {},
-    split: "exact",
-    archive_url: null,
-    rests_on: [],
-    source_url: "https://www.cbo.gov/publication/61570",
-    source_locator: null,
-    ...over,
-  }) as Row<"cbo_lines">;
+const line = (over: Partial<Row<"cbo_lines">>): Row<"cbo_lines"> => ({
+  id: "l",
+  estimate_id: "e",
+  bill_id: "119-hr-1",
+  line_kind: "section",
+  section_nums: [],
+  section_ids: ["s1"],
+  title: null,
+  measure: "outlays",
+  spending: null,
+  period: "2025-2034",
+  total_musd: 0,
+  values: {},
+  split: "exact",
+  join: null,
+  archive_url: null,
+  rests_on: [],
+  source_url: "https://www.cbo.gov/publication/61570",
+  source_locator: null,
+  ...over,
+});
+
+const est = estimateRow("e", { published_on: "2025-07-21" });
 
 test("section dollars are a signed deficit effect and remember even splits", () => {
-  const est = {
-    id: "e",
-    per_section: true,
-    baseline: "current-law",
-    published_on: "2025-07-21",
-  } as Row<"cbo_estimates">;
-
   const d = sectionDollars(
     [est],
     [
@@ -215,32 +220,26 @@ test("section dollars are a signed deficit effect and remember even splits", () 
   expect(d.bySection.get("s2")).toMatchObject({ musd: 2_193_378, split: "exact", measure: "deficit" });
 });
 
-test("a section CBO printed against two baselines counts at the smaller figure, in any bill", () => {
-  const e = (id: string, baseline: Row<"cbo_estimates">["baseline"]) =>
-    ({
-      id,
-      per_section: true,
-      baseline,
-      published_on: "2025-07-21",
-      version_scored: "Public Law 119-21 as enacted",
-    }) as Row<"cbo_estimates">;
+const enacted = (id: string, baseline: Row<"cbo_estimates">["baseline"]) =>
+  estimateRow(id, { baseline, published_on: "2025-07-21", version_scored: "Public Law 119-21 as enacted" });
 
+test("a section CBO printed against two baselines counts at the smaller figure, in any bill", () => {
   const d = sectionDollars(
-    [e("law", "current-law"), e("policy", "current-policy")],
+    [enacted("law", "current-law"), enacted("policy", "current-policy")],
     [
       line({ id: "a", estimate_id: "law", measure: "deficit", total_musd: 1_362_810 }),
       line({ id: "b", estimate_id: "policy", measure: "deficit", total_musd: -12_164 }),
     ],
   );
 
-  const s1 = d.bySection.get("s1")!;
+  const s1 = must(d.bySection.get("s1"));
   expect(s1).toMatchObject({ musd: -12_164, baseline: "current-policy", split: "exact", lineIds: ["a", "b"] });
   expect(s1.byBaseline.map((b) => b.baseline)).toEqual(["current-law", "current-policy"]);
   expect(d.estimates.map((x) => x.id)).toEqual(["law", "policy"]);
 });
 
 test("an extension that is huge only against current law is not costly once current policy is read", () => {
-  const costlyQuiet = {
+  const quietExtension = {
     attentionPct: 0,
     attentionShare: 0,
     late: false,
@@ -249,8 +248,8 @@ test("an extension that is huge only against current law is not costly once curr
     sections: 300,
   };
 
-  expect(label({ ...costlyQuiet, dollarsMusd: 1_362_810 }, 0)).toBe("buried");
-  expect(label({ ...costlyQuiet, dollarsMusd: 5961 }, 0)).toBe("normal");
+  expect(label({ ...quietExtension, dollarsMusd: 1_362_810 }, 0)).toBe("buried");
+  expect(label({ ...quietExtension, dollarsMusd: 5961 }, 0)).toBe("normal");
 });
 
 test("a short title or table of contents is never a headline, whatever articles name the bill", () => {
@@ -275,18 +274,19 @@ test("a short title or table of contents is never a headline, whatever articles 
   }
 });
 
-const dollarsOf = (figures: Record<string, [number, "exact" | "even_split"]>) =>
-  ({
-    estimates: [],
-    bySection: new Map(
-      Object.entries(figures).map(([id, [musd, split]]) => [
-        id,
-        { musd, split, baseline: "current-law", lineIds: [], measure: "deficit", estimateId: "e", byBaseline: [] },
-      ]),
-    ),
-  }) as unknown as ReturnType<typeof sectionDollars>;
+const dollarsOf = (figures: Record<string, [number, "exact" | "even_split"]>): ReturnType<typeof sectionDollars> => ({
+  estimates: [],
+  bySection: new Map(
+    Object.entries(figures).map(([id, [musd, split]]): [string, SectionDollars] => [
+      id,
+      { musd, split, baseline: "current-law", lineIds: [], measure: "deficit", estimateId: "e", byBaseline: [] },
+    ]),
+  ),
+});
 
-const at = (id: string, path: string) => ({ id, path, in_final: true }) as Row<"sections">;
+const at = (id: string, path: string) => sectionRow(id, { path });
+
+const pairOf = (a: [number, "exact" | "even_split"], b: [number, "exact" | "even_split"]) => dollarsOf({ a, b });
 
 test("a section that cuts exactly what another in the same title spends is that section's pay-for", () => {
   const spend = at("502", "division:HH/title:IV/sec:502");
@@ -297,7 +297,7 @@ test("a section that cuts exactly what another in the same title spends is that 
 
 test("a pay-for needs the same title, an exact figure to the million, a size that is costly, and a cut", () => {
   const spend = at("a", "title:I/sec:1");
-  const d = (a: [number, "exact" | "even_split"], b: [number, "exact" | "even_split"]) => dollarsOf({ a, b });
+  const d = pairOf;
   expect(payFors([spend, at("b", "title:II/sec:2")], d([23_400, "exact"], [-23_400, "exact"])).size).toBe(0);
   expect(payFors([spend, at("b", "title:I/sec:2")], d([23_400, "exact"], [-23_399, "exact"])).size).toBe(0);
   expect(payFors([spend, at("b", "title:I/sec:2")], d([23_400, "exact"], [-23_400, "even_split"])).size).toBe(0);
@@ -306,7 +306,7 @@ test("a pay-for needs the same title, an exact figure to the million, a size tha
 });
 
 test("a pay-for is not labeled buried on its own, a section that spends is", () => {
-  const costlyQuiet = {
+  const quietCut = {
     dollarsMusd: -23_400,
     attentionPct: 0,
     attentionShare: 0,
@@ -316,14 +316,35 @@ test("a pay-for is not labeled buried on its own, a section that spends is", () 
     sections: 1865,
   };
 
-  expect(label(costlyQuiet, 0)).toBe("buried");
-  expect(label({ ...costlyQuiet, offsets: "502" }, 0)).toBe("normal");
+  expect(label(quietCut, 0)).toBe("buried");
+  expect(label({ ...quietCut, offsets: "502" }, 0)).toBe("normal");
 });
 
-const section = (id: string, in_final = true) => ({ id, in_final, heading: `Section ${id}` }) as Row<"sections">;
+const section = (id: string, inFinal = true) => sectionRow(id, { in_final: inFinal });
 
-const article = (id: string, outlet: string) =>
-  ({ id, outlet_id: outlet, text_chars: 2000, via: "mediacloud" }) as Row<"articles">;
+const article = (id: string, outlet: string) => articleRow(id, { outlet_id: outlet, text_chars: 2000 });
+
+function leftAndRight(leftOutlet: string, rightOutlet: string) {
+  const arts = [
+    ...Array.from({ length: 15 }, (_, i) => article(`L${i}`, leftOutlet)),
+    ...Array.from({ length: 15 }, (_, i) => article(`R${i}`, rightOutlet)),
+  ];
+
+  const matches: MatchRun["matches"] = {};
+
+  for (const a of arts) {
+    matches[a.id] = {
+      about: "bill",
+      sections: a.id.startsWith("L") ? ["a", "b"] : ["a"],
+      whole: false,
+      outside: null,
+    };
+  }
+
+  const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
+
+  return attention("119-hr-1", [section("a"), section("b")], arts, run);
+}
 
 test("each side weighs the same, however many articles it publishes", () => {
   const arts = [
@@ -342,8 +363,8 @@ test("each side weighs the same, however many articles it publishes", () => {
 
   const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
   const res = attention("119-hr-1", [section("a"), section("b"), section("c")], arts, run);
-  expect(res.share.get("a")).toBeCloseTo(res.share.get("b")!, 6);
-  const row = (id: string) => res.rows.find((r) => r.section_id === id)!;
+  expect(res.share.get("a")).toBeCloseTo(must(res.share.get("b")), 6);
+  const row = (id: string) => must(res.rows.find((r) => r.section_id === id));
   expect(row("a").pct).toBe(row("b").pct);
   expect(row("a").hits).toBe(30);
   expect(row("b").hits).toBe(10);
@@ -369,30 +390,8 @@ test("articles too short to read are not counted, so paywalls cannot shrink one 
 });
 
 test("swapping the left and right outlets changes nothing", () => {
-  const make = (leftOutlet: string, rightOutlet: string) => {
-    const arts = [
-      ...Array.from({ length: 15 }, (_, i) => article(`L${i}`, leftOutlet)),
-      ...Array.from({ length: 15 }, (_, i) => article(`R${i}`, rightOutlet)),
-    ];
-
-    const matches: MatchRun["matches"] = {};
-
-    for (const a of arts) {
-      matches[a.id] = {
-        about: "bill",
-        sections: a.id.startsWith("L") ? ["a", "b"] : ["a"],
-        whole: false,
-        outside: null,
-      };
-    }
-
-    const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
-
-    return attention("119-hr-1", [section("a"), section("b")], arts, run);
-  };
-
-  const one = make("rawstory.com", "foxnews.com");
-  const two = make("foxnews.com", "rawstory.com");
+  const one = leftAndRight("rawstory.com", "foxnews.com");
+  const two = leftAndRight("foxnews.com", "rawstory.com");
   expect(two.share.get("b")).toBe(one.share.get("b"));
   expect(two.rows.map((r) => r.pct)).toEqual(one.rows.map((r) => r.pct));
 });
@@ -412,22 +411,14 @@ test("the share of a set of articles weighs each side equally, like a section's 
 
   const run: MatchRun = { matcher: "t", model: "t", menuHash: "t", costUsd: 0, matches };
   const res = attention("119-hr-1", [section("a"), section("b")], arts, run);
-  expect(res.shareOf(["L0"])).toBeCloseTo(res.share.get("a")!, 6);
+  expect(res.shareOf(["L0"])).toBeCloseTo(must(res.share.get("a")), 6);
   expect(res.shareOf(["L0", "R0"])).toBeCloseTo((1 / 30 + 1 / 10) / 3, 6);
   expect(res.shareOf([])).toBe(0);
   expect(res.counted.length).toBe(50);
 });
 
-const att = (section_id: string, over: Partial<Row<"attention">> = {}) =>
-  ({
-    id: `b:${section_id}`,
-    section_id,
-    hits: 0,
-    pct: 0,
-    evidence: { balanced_share: 0 },
-    rests_on: [],
-    ...over,
-  }) as Row<"attention">;
+const att = (sectionId: string, over: Partial<Row<"attention">> = {}) =>
+  attentionRow(`b:${sectionId}`, { section_id: sectionId, pct: 0, evidence: { balanced_share: 0 }, ...over });
 
 test("a section the matcher missed but a direct check found in the coverage is no longer quiet", () => {
   const sections = Array.from({ length: 12 }, (_, i) => ({
@@ -437,13 +428,6 @@ test("a section the matcher missed but a direct check found in the coverage is n
     heading: "h",
     preview: "p",
   }));
-
-  const est = {
-    id: "e",
-    per_section: true,
-    baseline: "current-law",
-    published_on: "2025-07-21",
-  } as Row<"cbo_estimates">;
 
   const dollars = sectionDollars(
     [est],
@@ -461,30 +445,24 @@ test("a section the matcher missed but a direct check found in the coverage is n
       checks,
     );
 
-  const missed = rows([]).find((r) => r.section_id === "s0")!;
+  const missed = must(rows([]).find((r) => r.section_id === "s0"));
   expect(missed.label).toBe("buried");
   expect(missed.attention_checked).toBeNull();
 
-  const check = {
-    id: "b:s0",
-    section_id: "s0",
-    article_ids: ["a1", "a2", "a3"],
-    share: 0.03,
-  } as Row<"attention_checks">;
-
-  const found = rows([check]).find((r) => r.section_id === "s0")!;
+  const check = checkRow("b:s0", { section_id: "s0", article_ids: ["a1", "a2", "a3"], share: 0.03 });
+  const found = must(rows([check]).find((r) => r.section_id === "s0"));
   expect(found.label).toBe("normal");
   expect(found.attention_checked).toBe(3);
   expect(found.attention_share).toBe(0.03);
   expect(found.rests_on).toContain("attention_checks/b:s0");
-  expect((found.evidence as { attention_hits: number }).attention_hits).toBe(3);
+  expect(found.evidence.attention_hits).toBe(3);
 });
 
-const ref = (id: string, filing_id: string, section_nums: string[], match: "high" | "medium" | "low" = "medium") =>
-  ({ id, filing_id, section_nums, match }) as Row<"lda_bill_refs">;
+const ref = (id: string, filingId: string, sectionNums: string[], match: "high" | "medium" | "low" = "medium") =>
+  billRefRow(id, { filing_id: filingId, section_nums: sectionNums, match });
 
-const filer = (registrant_id: string, superseded = false, form: "LD-1" | "LD-2" = "LD-2") => ({
-  registrant_id,
+const filer = (registrantId: string, superseded = false, form: "LD-1" | "LD-2" = "LD-2") => ({
+  registrant_id: registrantId,
   superseded,
   form,
 });
@@ -501,8 +479,8 @@ test("one firm repeating one line for many clients and quarters is one voice, no
     filings,
   );
 
-  expect(out.get("a")!.filings.length).toBe(51);
-  expect(out.get("a")!.firms.toSorted()).toEqual(["other-firm", "tax-group"]);
+  expect(out.get("a")?.filings.length).toBe(51);
+  expect(out.get("a")?.firms.toSorted()).toEqual(["other-firm", "tax-group"]);
 });
 
 test("a superseded report, a low-confidence match and a registration do not count toward a section", () => {
@@ -556,15 +534,10 @@ test("lobbying stakes count firms: 21 firms is costly, 20 is not, however many r
   ).toBe("normal");
 });
 
-const lineage = (id: string, late: boolean, in_final = true) => ({ id, late, in_final }) as Row<"sections">;
+const lineage = (id: string, late: boolean, inFinal = true) => sectionRow(id, { late, in_final: inFinal });
 
 const pair = (removed: string, added: string, confidence: number) =>
-  ({
-    id: `${removed}>${added}`,
-    removed_section_id: removed,
-    added_section_id: added,
-    confidence,
-  }) as Row<"counterparts">;
+  counterpartRow(`${removed}>${added}`, { removed_section_id: removed, added_section_id: added, confidence });
 
 test("a late section a model paired with an older, not-late section is not new text", () => {
   const sections = [
@@ -581,7 +554,7 @@ test("a late section a model paired with an older, not-late section is not new t
 test("where several pairs clear a section the most confident one is named, ties by id", () => {
   const sections = [lineage("a", false, false), lineage("b", false, false), lineage("x", true)];
   const cleared = clearedLate(sections, [pair("b", "x", 0.6), pair("a", "x", 0.9), pair("a2", "x", 0.9)]);
-  expect(cleared.get("x")!.removed_section_id).toBe("a");
+  expect(cleared.get("x")?.removed_section_id).toBe("a");
 });
 
 test("the score reads late after the pairing: no late bonus, the share of late sections drops, the pair is a source", () => {
@@ -591,7 +564,7 @@ test("the score reads late after the pairing: no late bonus, the share of late s
     path: "title:I/sec:1",
     heading: "h",
     preview: "p",
-  })) as Row<"sections">[];
+  }));
 
   const older = {
     ...lineage("old", false, false),
@@ -600,13 +573,6 @@ test("the score reads late after the pairing: no late bonus, the share of late s
     heading: "h",
     preview: "p",
   };
-
-  const est = {
-    id: "e",
-    per_section: true,
-    baseline: "current-law",
-    published_on: "2025-07-21",
-  } as Row<"cbo_estimates">;
 
   const dollars = sectionDollars(
     [est],
@@ -624,15 +590,15 @@ test("the score reads late after the pairing: no late bonus, the share of late s
     [pair("old", "s0", 0.8)],
   );
 
-  const s0 = rows.find((r) => r.section_id === "s0")!;
-  const s1 = rows.find((r) => r.section_id === "s1")!;
+  const s0 = must(rows.find((r) => r.section_id === "s0"));
+  const s1 = must(rows.find((r) => r.section_id === "s1"));
   expect(s0.late).toBe(false);
   expect(s0.late_cleared_by).toBe("old");
   expect(s0.rests_on).toContain("counterparts/old>s0");
   expect(s1.late).toBe(true);
   expect(s1.late_cleared_by).toBeNull();
-  expect((s0.evidence as { late_share: number }).late_share).toBeCloseTo(1 / 12, 3);
-  expect(s0.buried).toBeLessThan(s1.buried!);
+  expect(s0.evidence.late_share).toBeCloseTo(1 / 12, 3);
+  expect(s0.buried).toBeLessThan(must(s1.buried));
 });
 
 test("reach alone makes a quiet section's stakes big; a loud one with reach is still not buried", () => {
@@ -651,10 +617,9 @@ test("the score row carries a section's reach and rests on its tags", () => {
     path: `title:I/sec:${i}`,
     heading: "h",
     preview: "p",
-  })) as Row<"sections">[];
+  }));
 
-  const tag = {
-    id: "s0#courts",
+  const tag = reachRow("s0#courts", {
     bill_id: "118-hr-3746",
     section_id: "s0",
     kind: "courts",
@@ -663,7 +628,7 @@ test("the score row carries a section's reach and rests on its tags", () => {
     version: "plaw",
     source_url: "https://www.govinfo.gov/content/pkg/PLAW-118publ5/uslm/PLAW-118publ5.xml",
     source_locator: "sec. 324, the sentence quoted",
-  } as Row<"section_reach">;
+  });
 
   const rows = scoreRows(
     "118-hr-3746",
@@ -677,9 +642,9 @@ test("the score row carries a section's reach and rests on its tags", () => {
     [tag],
   );
 
-  const s0 = rows.find((r) => r.section_id === "s0")!;
+  const s0 = must(rows.find((r) => r.section_id === "s0"));
   expect(s0.reach).toEqual(["courts"]);
   expect(s0.label).toBe("buried");
   expect(s0.rests_on).toContain("section_reach/s0#courts");
-  expect(rows.find((r) => r.section_id === "s1")!.label).toBe("normal");
+  expect(rows.find((r) => r.section_id === "s1")?.label).toBe("normal");
 });

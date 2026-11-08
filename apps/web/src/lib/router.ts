@@ -18,9 +18,9 @@ const MAPS: MapView[] = ["trades", "pac", "sections"];
 
 export function parseRoute(path: string): Route {
   const url = new URL(path, "https://x");
-  const bill = /^\/bill\/([^/]+)\/?$/.exec(url.pathname);
+  const id = /^\/bill\/([^/]+)\/?$/u.exec(url.pathname)?.[1];
 
-  if (!bill) {
+  if (id === undefined) {
     return { page: "index" };
   }
 
@@ -28,7 +28,7 @@ export function parseRoute(path: string): Route {
 
   return {
     page: "bill",
-    id: decodeURIComponent(bill[1]!),
+    id: decodeURIComponent(id),
     list: url.searchParams.get("view") === "list",
     map: MAPS.find((m) => m === map) ?? "trades",
     focus: url.searchParams.get("focus"),
@@ -39,10 +39,20 @@ export function useRoute(): Route {
   return parseRoute(useSyncExternalStore(subscribe, href, href));
 }
 
-export function navigate(to: string, { replace = false } = {}) {
-  const [path, hash] = to.split("#");
+const scrollToId = (id: string) => {
+  document.querySelector(`#${CSS.escape(id)}`)?.scrollIntoView();
+};
 
-  if (!hash && path === href()) {
+export const scrollToHash = (el: Element | null) => {
+  if (el && location.hash.length > 1) {
+    scrollToId(location.hash.slice(1));
+  }
+};
+
+export function navigate(to: string, { replace = false } = {}) {
+  const [path, hash = ""] = to.split("#");
+
+  if (hash === "" && path === href()) {
     return;
   }
 
@@ -51,7 +61,7 @@ export function navigate(to: string, { replace = false } = {}) {
     dispatchEvent(new PopStateEvent("popstate"));
   };
 
-  if (!replace && document.startViewTransition && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (!replace && "startViewTransition" in document && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     document.startViewTransition(go);
   } else {
     go();
@@ -61,10 +71,12 @@ export function navigate(to: string, { replace = false } = {}) {
     return;
   }
 
-  if (hash) {
-    requestAnimationFrame(() => document.getElementById(hash)?.scrollIntoView());
-  } else {
+  if (hash === "") {
     scrollTo({ top: 0 });
+  } else {
+    requestAnimationFrame(() => {
+      scrollToId(hash);
+    });
   }
 }
 
@@ -85,7 +97,7 @@ export function billHref(id: string, { list = false, map = "trades", focus = nul
     q.set("map", map);
   }
 
-  if (focus) {
+  if (focus !== null && focus !== "") {
     q.set("focus", focus);
   }
 
@@ -94,7 +106,6 @@ export function billHref(id: string, { list = false, map = "trades", focus = nul
   return `/bill/${id}${s ? `?${s}` : ""}`;
 }
 
-/** In-app links: plain anchors that skip the reload, so middle-click and copy-link still work. */
 export function onLink(e: React.MouseEvent<HTMLAnchorElement>) {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
     return;

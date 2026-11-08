@@ -2,14 +2,16 @@ import { createHash } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { DATA, paths } from "@antibody/core/node";
+import { z } from "zod";
 
 export const LDA = "https://lda.gov/api/v1";
 const CACHE = join(paths.raw("lobbying"), "cache");
 
-/** The key lives in the main checkout's .env; Bun only loads .env from the working directory. */
 async function apiKey(): Promise<string | undefined> {
-  if (process.env.LDA_API_KEY) {
-    return process.env.LDA_API_KEY;
+  const fromEnv = process.env.LDA_API_KEY;
+
+  if (fromEnv !== undefined && fromEnv !== "") {
+    return fromEnv;
   }
 
   const env = Bun.file(join(dirname(DATA), ".env"));
@@ -18,13 +20,12 @@ async function apiKey(): Promise<string | undefined> {
     return undefined;
   }
 
-  return /^LDA_API_KEY=["']?([^"'\s]+)/m.exec(await env.text())?.[1];
+  return /^LDA_API_KEY=["']?([^"'\s]+)/mu.exec(await env.text())?.[1];
 }
 
 const key = await apiKey();
 
-/** 120 requests/min with a key, 15 without (lda.gov, checked Oct 13 2026). */
-const spacingMs = key ? 520 : 4100;
+const spacingMs = key !== undefined && key !== "" ? 520 : 4100;
 let next = 0;
 
 async function throttle() {
@@ -37,25 +38,27 @@ async function throttle() {
   }
 }
 
-export interface Page<T> {
-  count: number;
-  next: string | null;
-  results: T[];
+interface GetOptions {
+  fresh?: boolean;
+  signal?: AbortSignal | undefined;
 }
 
-/** GET with a URL-keyed disk cache. `fresh` skips the cache read (still writes it). */
-export async function get<T>(url: string, opts: { fresh?: boolean; signal?: AbortSignal } = {}): Promise<T> {
+export async function get<T>(url: string, schema: z.ZodType<T>, opts: GetOptions = {}): Promise<T> {
   await mkdir(CACHE, { recursive: true });
   const file = Bun.file(join(CACHE, `${createHash("sha1").update(url).digest("hex")}.json`));
 
-  if (!opts.fresh && (await file.exists())) {
-    return await file.json();
+  if (opts.fresh !== true && (await file.exists())) {
+    return schema.parse(await file.json());
   }
 
   for (let attempt = 1; ; attempt++) {
     opts.signal?.throwIfAborted();
     await throttle();
-    const res = await fetch(url, { headers: key ? { Authorization: `Token ${key}` } : {}, signal: opts.signal });
+
+    const res = await fetch(url, {
+      headers: key !== undefined && key !== "" ? { Authorization: `Token ${key}` } : {},
+      signal: opts.signal ?? null,
+    });
 
     if (res.status === 429) {
       await Bun.sleep(Number(res.headers.get("retry-after") ?? 30) * 1000);
@@ -71,37 +74,34 @@ export async function get<T>(url: string, opts: { fresh?: boolean; signal?: Abor
       throw new Error(`lda.gov ${res.status}: ${url}`);
     }
 
-    const body = await res.json();
+    const body: unknown = await res.json();
     await Bun.write(file, JSON.stringify(body));
 
-    return body as T;
+    return schema.parse(body);
   }
 }
 
-export function filingsUrl(params: Record<string, string | number>, page = 1): string {
-  const q = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
+export function filingsUrl(params: URLSearchParams, page = 1): string {
+  const q = new URLSearchParams(params);
   q.set("page_size", "25");
   q.set("page", String(page));
 
-  return `${LDA}/filings/?${q}`;
+  return `${LDA}/filings/?${q.toString()}`;
 }
 
-/**
- * Every filing matching `params`. `count` is inflated (one hit per matching issue line), so callers dedupe by
- * filing_uuid; paging itself is stable (checked across three orderings in the spike).
- */
 export async function* filings(
-  params: Record<string, string | number>,
-  opts: { fresh?: boolean; signal?: AbortSignal; concurrency?: number } = {},
+  params: URLSearchParams,
+  opts: GetOptions & { concurrency?: number } = {},
 ): AsyncGenerator<LdaFiling> {
-  const first = await get<Page<LdaFiling>>(filingsUrl(params), opts);
+  const first = await get(filingsUrl(params), FilingPage, opts);
   yield* first.results;
   const pages = Math.ceil(first.count / 25);
   const step = opts.concurrency ?? 6;
 
   for (let start = 2; start <= pages; start += step) {
-    const batch = Array.from({ length: Math.min(step, pages - start + 1) }, async (_, i) =>
-      get<Page<LdaFiling>>(filingsUrl(params, start + i), opts),
+    const batch = Array.from(
+      { length: Math.min(step, pages - start + 1) },
+      async (_, i) => await get(filingsUrl(params, start + i), FilingPage, opts),
     );
 
     for (const page of await Promise.all(batch)) {
@@ -110,42 +110,48 @@ export async function* filings(
   }
 }
 
-export interface LdaLobbyist {
-  lobbyist: {
-    id: number;
-    prefix_display: string | null;
-    first_name: string;
-    nickname: string | null;
-    middle_name: string | null;
-    last_name: string;
-    suffix_display: string | null;
-  };
-  covered_position: string | null;
-  new: boolean;
-}
+const LdaLobbyist = z.object({
+  lobbyist: z.object({
+    id: z.number(),
+    prefix_display: z.string().nullable(),
+    first_name: z.string(),
+    nickname: z.string().nullable(),
+    middle_name: z.string().nullable(),
+    last_name: z.string().nullable(),
+    suffix_display: z.string().nullable(),
+  }),
+  covered_position: z.string().nullable(),
+  new: z.boolean().nullable(),
+});
 
-export interface LdaActivity {
-  general_issue_code: string;
-  description: string | null;
-  lobbyists: LdaLobbyist[];
-}
+export type LdaLobbyist = z.infer<typeof LdaLobbyist>;
 
-export interface LdaFiling {
-  url: string;
-  filing_uuid: string;
-  filing_type: string;
-  filing_year: number;
-  filing_period: string;
-  filing_document_url: string;
-  income: string | null;
-  expenses: string | null;
-  dt_posted: string | null;
-  registrant: { id: number; name: string };
-  client: { id: number; client_id?: number; name: string; general_description: string | null };
-  lobbying_activities: LdaActivity[];
-}
+export const LdaFiling = z.object({
+  url: z.string(),
+  filing_uuid: z.string(),
+  filing_type: z.string(),
+  filing_year: z.number(),
+  filing_period: z.string(),
+  filing_document_url: z.string(),
+  income: z.string().nullable(),
+  expenses: z.string().nullable(),
+  dt_posted: z.string().nullable(),
+  registrant: z.object({ id: z.number(), name: z.string() }),
+  client: z.object({
+    id: z.number(),
+    client_id: z.number().optional(),
+    name: z.string(),
+    general_description: z.string().nullable(),
+  }),
+  lobbying_activities: z.array(
+    z.object({ general_issue_code: z.string(), description: z.string().nullable(), lobbyists: z.array(LdaLobbyist) }),
+  ),
+});
 
-/** Keeps only what the tables use: the raw cache repeats registrant and client details on every page. */
+export type LdaFiling = z.infer<typeof LdaFiling>;
+
+const FilingPage = z.object({ count: z.number(), next: z.string().nullable(), results: z.array(LdaFiling) });
+
 export function slim(f: LdaFiling): LdaFiling {
   return {
     url: f.url,

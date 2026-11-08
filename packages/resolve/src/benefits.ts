@@ -1,24 +1,19 @@
 import type { BillId, Row } from "@antibody/core";
+import { filled } from "@antibody/core";
 import type { Company } from "./edgar.ts";
 import { ownedOn, ownedSince } from "./since.ts";
 
 const REF_CONFIDENCE = { high: 0.95, medium: 0.85, low: 0 } as const;
 const MAX_RESTS_ON = 25;
 
-/**
- * Rule "lobbied" (decision tied-stock): a company is tied to the bill when a lobbying client that resolves to it
- * filed an LD-1 or LD-2 naming the bill. One whole-bill row per company, plus one per section the filings cite by
- * number. Low-confidence references (held out by ingest-lobbying), filings replaced by an amendment, and filings from before a subsidiary came under its parent don't count;
- * topic-only lines live in lda_topic_refs and never count here (decision topic-only-lobbying).
- */
 export function lobbiedBenefits(
   bill: BillId,
   refs: Row<"lda_bill_refs">[],
-  filings: Map<string, Row<"lda_filings">>,
+  filings: Map<string, Pick<Row<"lda_filings">, "client_key" | "superseded" | "period_end">>,
   resolutions: Map<string, Row<"resolutions">>,
-  sections: Row<"sections">[],
+  sections: Pick<Row<"sections">, "id" | "num" | "in_final">[],
 ): Row<"benefits">[] {
-  const byNum = new Map<string, Row<"sections">[]>();
+  const byNum = new Map<string, Pick<Row<"sections">, "id" | "in_final">[]>();
 
   for (const s of sections) {
     byNum.set(s.num, [...(byNum.get(s.num) ?? []), s]);
@@ -57,6 +52,7 @@ export function lobbiedBenefits(
 
     const res = resolutions.get(`client:${filing.client_key}`);
 
+    // SAFETY: review writes evidence.reason as the reviewer's reason string; other methods leave it out.
     if (!res || !ownedOn(ownedSince((res.evidence as { reason?: string }).reason), filing.period_end)) {
       continue;
     }
@@ -66,7 +62,7 @@ export function lobbiedBenefits(
     for (const num of ref.section_nums) {
       const id = sectionFor(num);
 
-      if (id) {
+      if (filled(id)) {
         add(res.company_id, id, ref, res);
       }
     }
@@ -78,7 +74,7 @@ export function lobbiedBenefits(
     const refIds = [...new Set(a.refs.map((r) => `lda_bill_refs/${r.id}`))];
 
     return {
-      id: `${bill}:lobbied:${a.cik}${a.section ? `:${a.section}` : ""}`,
+      id: `${bill}:lobbied:${a.cik}${filled(a.section) ? `:${a.section}` : ""}`,
       bill_id: bill,
       section_id: a.section,
       company_id: a.cik,
@@ -89,6 +85,7 @@ export function lobbiedBenefits(
       evidence: {
         clients: resolved.map((r) => ({
           client: r.src,
+          // SAFETY: toRow writes evidence.name as the mention's name string.
           name: (r.evidence as { name?: string }).name ?? null,
           method: r.method,
         })),
@@ -106,38 +103,33 @@ const round = (x: number) => Math.round(x * 1000) / 1000;
 const countBy = (xs: string[]) =>
   Object.fromEntries([...new Set(xs)].map((x) => [x, xs.filter((y) => y === x).length]));
 
-/** One bill-level section of a text version: its number and its plain text (quoted amendments included). */
 export interface TextSection {
   num: string | null;
   text: string;
 }
 
-/**
- * Splits a GovInfo bill XML (or USLM public law) into its own sections. A <section> inside a <quoted-block> is
- * text the bill inserts into existing law; its words belong to the bill section that inserts them.
- */
 export function splitSections(xml: string): TextSection[] {
   const out: TextSection[] = [];
   const stack: string[] = [];
   let cur: TextSection | null = null;
   let wantEnum = false;
-  const tag = /<(\/?)([A-Za-z][\w-]*)([^>]*?)(\/?)>|([^<]+)/g;
+  const tag = /<(\/?)([A-Za-z][\w-]*)([^>]*?)(\/?)>|([^<]+)/gu;
 
   for (let m = tag.exec(xml); m; m = tag.exec(xml)) {
-    const [, close, name, , selfClose, text] = m;
+    const [, close, name, , selfClose, chars] = m;
 
-    if (text !== undefined) {
+    if (chars !== undefined) {
       if (!cur) {
         continue;
       }
 
-      const t = decode(text);
+      const t = decode(chars);
 
       if (wantEnum && stack.at(-1) === "enum" && t.trim()) {
         cur.num = t
           .trim()
-          .replace(/^(?:sec(?:tion)?\.?\s*)/i, "")
-          .replace(/\.$/, "");
+          .replace(/^(?:sec(?:tion)?\.?\s*)/iu, "")
+          .replace(/\.$/u, "");
         wantEnum = false;
       }
 
@@ -145,13 +137,13 @@ export function splitSections(xml: string): TextSection[] {
       continue;
     }
 
-    const n = name!.toLowerCase();
-
-    if (selfClose) {
+    if (name === undefined || selfClose === "/") {
       continue;
     }
 
-    if (close) {
+    const n = name.toLowerCase();
+
+    if (close === "/") {
       const i = stack.lastIndexOf(n);
 
       if (i !== -1) {
@@ -173,7 +165,7 @@ export function splitSections(xml: string): TextSection[] {
     ) {
       cur = { num: null, text: "" };
       wantEnum = true;
-    } else if (cur && /^(?:p|paragraph|subsection|text|header|heading|enum|content|chapeau)$/.test(n)) {
+    } else if (cur && /^(?:p|paragraph|subsection|text|header|heading|enum|content|chapeau)$/u.test(n)) {
       cur.text += " ";
     }
 
@@ -183,13 +175,28 @@ export function splitSections(xml: string): TextSection[] {
   return out;
 }
 
+const ENTITIES = new Map([
+  ["amp", "&"],
+  ["lt", "<"],
+  ["gt", ">"],
+  ["quot", '"'],
+  ["apos", "'"],
+]);
+
 const decode = (s: string) =>
-  s.replaceAll(/&(?:#(\d+)|#x([0-9a-f]+)|(amp|lt|gt|quot|apos));/gi, (_, d, h, e) =>
-    d
-      ? String.fromCodePoint(+d)
-      : h
-        ? String.fromCodePoint(Number.parseInt(h, 16))
-        : ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" } as Record<string, string>)[e.toLowerCase()]!,
+  s.replaceAll(
+    /&(?:#(\d+)|#x([0-9a-f]+)|(amp|lt|gt|quot|apos));/giu,
+    (entity: string, dec?: string, hex?: string, named?: string) => {
+      if (filled(dec)) {
+        return String.fromCodePoint(Number(dec));
+      }
+
+      if (filled(hex)) {
+        return String.fromCodePoint(Number.parseInt(hex, 16));
+      }
+
+      return ENTITIES.get(named?.toLowerCase() ?? "") ?? entity;
+    },
   );
 
 export interface TextHit {
@@ -201,16 +208,10 @@ export interface TextHit {
 }
 
 const LEGAL =
-  /^,?\s*(?:Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.|LLC|L\.L\.C\.|plc|PLC|Ltd\.?|Limited|N\.A\.|Holdings?)\b/;
+  /^,?\s*(?:Inc\.?|Incorporated|Corporation|Corp\.?|Company|Co\.|LLC|L\.L\.C\.|plc|PLC|Ltd\.?|Limited|N\.A\.|Holdings?)\b/u;
 
-const WORD = /[A-Za-z0-9&.'-]+/g;
+const WORD = /[A-Za-z0-9&.'-]+/gu;
 
-/**
- * Finds SEC companies written into a bill's text, for the reviewer to confirm. A multi-word name must appear with
- * every word capitalized (bills capitalize proper nouns, so "general electric" never counts) and be the whole
- * capitalized run, so "American National" inside "American National Standards Institute" doesn't count; a one-word
- * name must be followed by a legal suffix ("Tesla, Inc."), since most one-word names are also ordinary words.
- */
 export function findNames(sections: TextSection[], companies: Company[], norm: (s: string) => string): TextHit[] {
   const multi = new Map<string, Company[]>();
   const single = new Map<string, Company[]>();
@@ -219,13 +220,13 @@ export function findNames(sections: TextSection[], companies: Company[], norm: (
     const n = norm(c.name);
     const parts = n.split(" ").filter(Boolean);
 
-    if (!parts.length || parts.every((p) => /^\d+$/.test(p))) {
+    if (!parts.length || parts.every((p) => /^\d+$/u.test(p))) {
       continue;
     }
 
     const into = parts.length > 1 ? multi : single;
 
-    if (parts.length === 1 && parts[0]!.length < 3) {
+    if (parts.length === 1 && parts.every((p) => p.length < 3)) {
       continue;
     }
 
@@ -236,26 +237,29 @@ export function findNames(sections: TextSection[], companies: Company[], norm: (
   const hits: TextHit[] = [];
 
   for (const s of sections) {
-    const words = [...s.text.matchAll(WORD)].map((m) => ({ w: m[0], at: m.index }));
-    const keys = words.map((x) => x.w.toUpperCase().replaceAll(/[^A-Z0-9]/g, ""));
-    const cap = words.map((x) => /^[A-Z0-9]/.test(x.w));
+    const words = [...s.text.matchAll(WORD)].map((m) => ({
+      w: m[0],
+      at: m.index,
+      key: m[0].toUpperCase().replaceAll(/[^A-Z0-9]/gu, ""),
+      cap: /^[A-Z0-9]/u.test(m[0]),
+    }));
 
-    for (let i = 0; i < words.length; i++) {
-      if (!cap[i]) {
+    for (const [i, first] of words.entries()) {
+      if (!first.cap) {
         continue;
       }
 
       for (let len = Math.min(maxLen, words.length - i); len >= 1; len--) {
-        if (!cap.slice(i, i + len).every(Boolean)) {
+        const run = words.slice(i, i + len);
+        const last = run.at(-1);
+
+        if (last === undefined || !run.every((x) => x.cap)) {
           continue;
         }
 
-        const key = keys
-          .slice(i, i + len)
-          .filter(Boolean)
-          .join(" ");
+        const key = run.flatMap((x) => (x.key ? [x.key] : [])).join(" ");
 
-        const end = words[i + len - 1]!.at + words[i + len - 1]!.w.length;
+        const end = last.at + last.w.length;
         const suffixed = LEGAL.test(s.text.slice(end, end + 16));
         const found = len > 1 ? multi.get(key) : suffixed ? single.get(key) : undefined;
 
@@ -263,24 +267,24 @@ export function findNames(sections: TextSection[], companies: Company[], norm: (
           continue;
         }
 
-        const runsOn = !suffixed && cap[i + len] && /^\s+$/.test(s.text.slice(end, words[i + len]!.at));
+        const next = words[i + len];
+        const prev = words[i - 1];
+        const runsOn = !suffixed && next?.cap === true && /^\s+$/u.test(s.text.slice(end, next.at));
 
         const runsIn =
-          i > 0 &&
-          cap[i - 1] &&
-          !/^the$/i.test(words[i - 1]!.w) &&
-          /^\s+$/.test(s.text.slice(words[i - 1]!.at + words[i - 1]!.w.length, words[i]!.at));
+          prev?.cap === true &&
+          !/^the$/iu.test(prev.w) &&
+          /^\s+$/u.test(s.text.slice(prev.at + prev.w.length, first.at));
 
         if (runsOn || runsIn) {
           break;
         }
 
-        const start = words[i]!.at;
-        const matched = s.text.slice(start, end);
+        const matched = s.text.slice(first.at, end);
 
         const context = s.text
-          .slice(Math.max(0, start - 220), end + 220)
-          .replaceAll(/\s+/g, " ")
+          .slice(Math.max(0, first.at - 220), end + 220)
+          .replaceAll(/\s+/gu, " ")
           .trim();
 
         for (const c of found) {

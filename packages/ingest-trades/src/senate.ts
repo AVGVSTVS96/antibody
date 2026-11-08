@@ -1,11 +1,11 @@
 import { exists, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { paths } from "@antibody/core/node";
+import { z } from "zod";
 import { download, pool } from "./http.ts";
 
 const EFD = "https://efdsearch.senate.gov";
 
-/** eFD sits behind a terms checkbox + Django CSRF; a cookie jar and a browser User-Agent get through. */
 const BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
 
 export interface SenateReport {
@@ -32,6 +32,8 @@ export interface SenateRow {
   comment: string | null;
 }
 
+const ReportPage = z.object({ recordsTotal: z.number(), data: z.array(z.array(z.string())) });
+
 export const senateRoot = () => join(paths.raw("trades"), "senate");
 export const pagePath = (id: string) => join(senateRoot(), "pages", `${id}.html`);
 export const imageDir = (id: string) => join(senateRoot(), "images", id);
@@ -40,16 +42,17 @@ class Efd {
   jar = new Map<string, string>();
 
   async get(path: string, init: RequestInit = {}) {
-    const res = await fetch(EFD + path, {
-      ...init,
-      redirect: "manual",
-      headers: {
-        "User-Agent": BROWSER_UA,
-        Referer: `${EFD}/search/`,
-        Cookie: [...this.jar].map(([k, v]) => `${k}=${v}`).join("; "),
-        ...init.headers,
-      },
+    const headers = new Headers({
+      "User-Agent": BROWSER_UA,
+      Referer: `${EFD}/search/`,
+      Cookie: [...this.jar].map(([k, v]) => `${k}=${v}`).join("; "),
     });
+
+    for (const [k, v] of new Headers(init.headers)) {
+      headers.set(k, v);
+    }
+
+    const res = await fetch(EFD + path, { ...init, redirect: "manual", headers });
 
     for (const c of res.headers.getSetCookie()) {
       const [pair = ""] = c.split(";");
@@ -62,9 +65,9 @@ class Efd {
 
   async open() {
     const home = await (await this.get("/search/home/")).text();
-    const token = /name="csrfmiddlewaretoken" value="([^"]+)"/.exec(home)?.[1];
+    const token = /name="csrfmiddlewaretoken" value="([^"]+)"/u.exec(home)?.[1];
 
-    if (!token) {
+    if (token === undefined || token === "") {
       throw new Error("eFD: no CSRF token on /search/home/");
     }
 
@@ -83,7 +86,11 @@ class Efd {
 
   async list(since: string): Promise<SenateReport[]> {
     const out: SenateReport[] = [];
-    const csrf = this.jar.get("csrftoken")!;
+    const csrf = this.jar.get("csrftoken");
+
+    if (csrf === undefined) {
+      throw new Error("eFD: no csrftoken cookie after accepting the terms");
+    }
 
     for (let start = 0; ; start += 100) {
       const res = await this.get("/search/report/data/", {
@@ -105,17 +112,22 @@ class Efd {
         }),
       });
 
-      const page = (await res.json()) as { recordsTotal: number; data: string[][] };
+      const page = ReportPage.parse(await res.json());
 
       for (const [first = "", last = "", office = "", link = "", filed = ""] of page.data) {
-        const m = /href="(\/search\/view\/(ptr|paper)\/([^/]+)\/)"[^>]*>([^<]+)</.exec(link);
+        const m = /href="(\/search\/view\/(ptr|paper)\/([^/]+)\/)"[^>]*>([^<]+)</u.exec(link);
 
         if (!m) {
           continue;
         }
 
         const [, path = "", kind, id = "", title = ""] = m;
-        out.push({ first, last, office, kind: kind as SenateReport["kind"], id, title, filed, url: EFD + path });
+
+        if (kind !== "ptr" && kind !== "paper") {
+          continue;
+        }
+
+        out.push({ first, last, office, kind, id, title, filed, url: EFD + path });
       }
 
       if (start + 100 >= page.recordsTotal) {
@@ -127,7 +139,6 @@ class Efd {
   }
 }
 
-/** Lists every Senate PTR since `since` (MM/DD/YYYY) and fetches the report pages not on disk, 250 ms apart. */
 export async function fetchSenate(since: string, log: (m: string) => void) {
   await mkdir(join(senateRoot(), "pages"), { recursive: true });
   const efd = await new Efd().open();
@@ -170,27 +181,26 @@ export async function fetchSenate(since: string, log: (m: string) => void) {
 
 const decode = (s: string) =>
   s
-    .replaceAll(/<[^>]+>/g, " ")
+    .replaceAll(/<[^>]+>/gu, " ")
     .replaceAll("&nbsp;", " ")
     .replaceAll("&amp;", "&")
     .replaceAll("&#39;", "'")
     .replaceAll("&quot;", '"')
-    .replaceAll(/\s+/g, " ")
+    .replaceAll(/\s+/gu, " ")
     .trim();
 
-/** Rows of an electronic Senate PTR: the page's one transactions table, nine columns. */
 export function parseSenatePtr(html: string): SenateRow[] {
-  const body = /<tbody>([\s\S]*?)<\/tbody>/.exec(html)?.[1];
+  const body = /<tbody>([\s\S]*?)<\/tbody>/u.exec(html)?.[1];
 
-  if (!body) {
+  if (body === undefined || body === "") {
     return [];
   }
 
   const rows: SenateRow[] = [];
 
-  for (const tr of body.match(/<tr[\s\S]*?<\/tr>/g) ?? []) {
-    const td = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) =>
-      decode((m[1] ?? "").replaceAll(/<div class="text-muted">([\s\S]*?)<\/div>/g, " | $1")),
+  for (const tr of body.match(/<tr[\s\S]*?<\/tr>/gu) ?? []) {
+    const td = [...tr.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gu)].map((m) =>
+      decode((m[1] ?? "").replaceAll(/<div class="text-muted">([\s\S]*?)<\/div>/gu, " | $1")),
     );
 
     if (td.length < 9) {
@@ -214,7 +224,7 @@ export function parseSenatePtr(html: string): SenateRow[] {
       n: Number(n),
       date,
       owner,
-      ticker: ticker === "--" ? null : ticker.replace(/\s.*$/, ""),
+      ticker: ticker === "--" ? null : ticker.replace(/\s.*$/u, ""),
       asset: assetName.trim(),
       assetDetail: detail.join(" | ").trim() || null,
       assetType,
@@ -227,9 +237,8 @@ export function parseSenatePtr(html: string): SenateRow[] {
   return rows;
 }
 
-/** The scanned page images of a paper report, in order. */
 export function paperImages(html: string): string[] {
-  return [...html.matchAll(/<img\b[^>]*class="filingImage"[^>]*?\ssrc="([^"]+)"/g)].map((m) => m[1]!);
+  return [...html.matchAll(/<img\b[^>]*class="filingImage"[^>]*?\ssrc="([^"]+)"/gu)].flatMap((m) => m[1] ?? []);
 }
 
 export async function fetchPaperImages(reports: SenateReport[]) {

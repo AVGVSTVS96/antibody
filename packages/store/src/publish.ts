@@ -1,19 +1,13 @@
 import { mkdir, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { BundleIndex, billDisplay, billStats } from "@antibody/core";
-import type { BillId, Bundle, Row } from "@antibody/core";
+import { Bundle, BundleIndex, WatchPick, billDisplay, billStats, parseBillId } from "@antibody/core";
+import type { Row } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
 
-const STAMP = /"generatedAt":"[^"]*"/;
+const STAMP = /"generatedAt":"[^"]*"/u;
 
 const claimsFile = (id: string) => `${id}.claims.json`;
 
-/**
- * Writes `data/bundles/<bill>.json`, and the published copy the site serves when `publish` is set. The published
- * copy keeps its claims in a sidecar, `<bill>.claims.json`, so the page can paint before the largest part of the
- * bundle arrives. A published file that differs only in `generatedAt` stays as it is, so a daily rebuild commits
- * only what changed.
- */
 export async function writeBundle(
   bundle: Bundle,
   { publish = false, local = paths.bundles, published = paths.published } = {},
@@ -52,16 +46,15 @@ export async function writeBundle(
   return files;
 }
 
-/** The last dated thing we know about the bill: enactment, a vote, a text version or an amendment action. */
 export function latestActionOn(b: Bundle): string | null {
   const dates = [
     b.bill.lawOn,
     ...b.votes.map((v) => v.date),
     ...b.versions.map((v) => v.date),
     ...b.amendments.map((a) => a.latestActionOn),
-  ].filter((d): d is string => !!d);
+  ].filter((d): d is string => d !== null && d !== undefined && d !== "");
 
-  return dates.sort().at(-1) ?? null;
+  return dates.toSorted().at(-1) ?? null;
 }
 
 const sponsorParty = (b: Bundle) => {
@@ -95,35 +88,33 @@ export function indexEntry(b: Bundle, provenance: Provenance = CURATED_PROVENANC
   };
 }
 
-const partyOf = (p: unknown) => (p === "R" || p === "D" || p === "I" ? p : null);
+const detailText = WatchPick.shape.reason.catch(null);
+const detailParty = WatchPick.shape.sponsorParty.catch(null);
 
-/** The watcher's latest picks (its "hot" events from the newest run), linked to a bundle when one is published. */
-async function watchPicks(bundles: Map<string, Bundle>, events: Row<"watch_events">[]): Promise<BundleIndex["watch"]> {
+function watchPicks(bundles: Map<string, Bundle>, events: Row<"watch_events">[]): BundleIndex["watch"] {
   const hot = events.filter((e) => e.kind === "hot");
 
   const latest = hot
     .map((e) => e.seen_at)
-    .sort()
+    .toSorted()
     .at(-1);
 
   return hot
     .filter((e) => e.seen_at === latest)
-    .sort((a, b) => Number(b.detail.score ?? 0) - Number(a.detail.score ?? 0))
+    .toSorted((a, b) => Number(b.detail.score ?? 0) - Number(a.detail.score ?? 0))
     .map((e) => {
       const b = bundles.get(e.bill_id);
+      const display = billDisplay(parseBillId(e.bill_id));
 
       return {
         billId: e.bill_id,
-        display: b?.bill.display ?? billDisplay(e.bill_id as BillId),
-        title:
-          b?.bill.shortTitle ??
-          b?.bill.title ??
-          (typeof e.detail.title === "string" ? e.detail.title : billDisplay(e.bill_id as BillId)),
+        display: b?.bill.display ?? display,
+        title: b?.bill.shortTitle ?? b?.bill.title ?? detailText.parse(e.detail.title) ?? display,
         kind: e.kind,
         seenAt: e.seen_at,
         url: e.url,
-        reason: typeof e.detail.reason === "string" ? e.detail.reason : null,
-        sponsorParty: b ? sponsorParty(b) : partyOf(e.detail.sponsorParty),
+        reason: detailText.parse(e.detail.reason),
+        sponsorParty: b ? sponsorParty(b) : detailParty.parse(e.detail.sponsorParty),
         file: b ? `${e.bill_id}.json` : null,
       };
     });
@@ -142,18 +133,12 @@ function watcherNote(b: Bundle): string {
 
 function watcherProvenance(b: Bundle, events: Row<"watch_events">[]): Provenance {
   const first = events
-    .filter((e) => e.bill_id === b.bill.id && e.kind === "hot")
-    .map((e) => e.seen_at.slice(0, 10))
-    .sort()[0];
+    .flatMap((e) => (e.bill_id === b.bill.id && e.kind === "hot" ? [e.seen_at.slice(0, 10)] : []))
+    .toSorted()[0];
 
   return { origin: "watcher", note: watcherNote(b), addedOn: first ?? b.generatedAt.slice(0, 10) };
 }
 
-/**
- * Rebuilds `index.json` from every bundle in `dir`: the ids in `order` first (the curated list, in that order),
- * then the watcher's bills newest added first. Every published page stays: antibody is per bill, and taking a page
- * down is a person's call. Also lists the watcher's latest picks.
- */
 export async function writeIndex(
   dir = paths.published,
   order: string[] = [],
@@ -161,14 +146,14 @@ export async function writeIndex(
 ): Promise<BundleIndex> {
   const watched = events ?? (await readRows("watch_events"));
 
-  const files = (await readdir(dir).catch(() => [] as string[])).filter(
+  const files = (await readdir(dir).catch((): string[] => [])).filter(
     (f) => f.endsWith(".json") && f !== "index.json" && !f.endsWith(".claims.json"),
   );
 
   const found: Bundle[] = [];
 
   for (const f of files) {
-    found.push((await Bun.file(join(dir, f)).json()) as Bundle);
+    found.push(Bundle.parse(await Bun.file(join(dir, f)).json()));
   }
 
   const entries = found.map((b) => ({
@@ -188,7 +173,7 @@ export async function writeIndex(
   const index = BundleIndex.parse({
     generatedAt: new Date().toISOString(),
     bills: entries.map((e) => e.entry),
-    watch: await watchPicks(new Map(entries.map((e) => [e.b.bill.id, e.b])), watched),
+    watch: watchPicks(new Map(entries.map((e) => [e.b.bill.id, e.b])), watched),
   });
 
   await mkdir(dir, { recursive: true });

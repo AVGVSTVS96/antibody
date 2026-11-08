@@ -15,7 +15,6 @@ export { RULE_TEXT, RULES_VERSION, score, subScores, WEIGHTS } from "./score.ts"
 
 export { watch } from "./watch.ts";
 
-/** Exit codes for a scheduler: 0 clean, 2 digest written but a source, lookup or x-ray failed (listed in it). */
 export const EXIT_DEGRADED = 2;
 
 async function write(file: string, body: string) {

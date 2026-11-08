@@ -10,6 +10,8 @@ export * from "./graph.ts";
 
 export * from "./ids.ts";
 
+export * from "./must.ts";
+
 export * from "./reply.ts";
 
 export type * from "./stage.ts";

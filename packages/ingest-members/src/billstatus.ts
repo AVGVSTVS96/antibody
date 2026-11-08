@@ -2,32 +2,25 @@ import { join } from "node:path";
 import { billRef, billstatusUrl } from "@antibody/core";
 import type { BillId } from "@antibody/core";
 import { paths } from "@antibody/core/node";
-import { XMLParser } from "fast-xml-parser";
 import { cached, FetchError } from "./fetch.ts";
+import { all, element, isElement, parseXml, text } from "./xml.ts";
+import type { Xml, XmlElement } from "./xml.ts";
 
-const LISTS = new Set(["item", "recordedVote", "amendment", "action"]);
-
-export const xml = new XMLParser({
-  ignoreAttributes: false,
-  attributeNamePrefix: "@",
-  parseTagValue: false,
-  isArray: (name) => LISTS.has(name),
-});
-
-/**
- * GovInfo BILLSTATUS for a bill, cached in data/bills/billstatus/ (shared with ingest-bills).
- * Null while GovInfo has not published it yet (a bill introduced today).
- */
-export async function billstatus(bill: BillId, refresh = false): Promise<BillStatus | null> {
+export async function billstatus(bill: BillId, refresh = false): Promise<XmlElement | null> {
   const { congress, type, number } = billRef(bill);
   const file = join(paths.raw("bills"), "billstatus", `BILLSTATUS-${congress}${type}${number}.xml`);
 
-  const text = await cached(billstatusUrl(bill), file, refresh).catch((error) => {
-    if (error instanceof FetchError && error.status === 404) return null;
-    throw error;
-  });
+  try {
+    const body = await cached(billstatusUrl(bill), file, refresh);
 
-  return text === null ? null : (xml.parse(text).billStatus.bill as BillStatus);
+    return element(element(parseXml(body), "billStatus"), "bill");
+  } catch (error) {
+    if (error instanceof FetchError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export interface RecordedVote {
@@ -39,35 +32,49 @@ export interface RecordedVote {
   date: string;
 }
 
-export interface Sponsor {
-  bioguideId: string;
-  fullName: string;
-  sponsorshipDate?: string;
-  sponsorshipWithdrawnDate?: string;
-  isOriginalCosponsor?: string;
+function recordedVote(node: XmlElement): RecordedVote {
+  const chamber = text(node, "chamber");
+
+  if (chamber !== "House" && chamber !== "Senate") {
+    throw new Error(`recordedVote chamber is neither House nor Senate: ${chamber}`);
+  }
+
+  return {
+    rollNumber: text(node, "rollNumber"),
+    url: text(node, "url"),
+    chamber,
+    congress: text(node, "congress"),
+    sessionNumber: text(node, "sessionNumber"),
+    date: text(node, "date"),
+  };
 }
 
-export interface BillStatus {
-  introducedDate?: string;
-  sponsors?: { item?: Sponsor[] };
-  cosponsors?: { item?: Sponsor[] };
-}
-
-/** Every roll call BILLSTATUS ties to the bill or one of its amendments, once each, wherever it sits in the tree. */
-export function recordedVotes(b: BillStatus): RecordedVote[] {
+export function recordedVotes(bill: XmlElement): RecordedVote[] {
   const found = new Map<string, RecordedVote>();
 
-  const walk = (node: unknown): void => {
+  const walk = (node: Xml | undefined): void => {
     if (Array.isArray(node)) {
       node.forEach(walk);
-    } else if (node && typeof node === "object") {
-      for (const [k, v] of Object.entries(node))
-        if (k === "recordedVote") for (const rv of v as RecordedVote[]) found.set(rv.url, rv);
-        else walk(v);
+
+      return;
+    }
+
+    if (!isElement(node)) {
+      return;
+    }
+
+    for (const [tag, child] of Object.entries(node)) {
+      if (tag === "recordedVote") {
+        for (const rv of all(node, tag).map(recordedVote)) {
+          found.set(rv.url, rv);
+        }
+      } else {
+        walk(child);
+      }
     }
   };
 
-  walk(b);
+  walk(bill);
 
   return [...found.values()];
 }

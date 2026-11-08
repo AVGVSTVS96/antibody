@@ -1,9 +1,6 @@
 import { canon } from "./text.ts";
 
-/**
- * Python difflib's SequenceMatcher over word arrays (no junk function), so word counts match the Phase 0 spike.
- * `autojunk` drops words that fill more than 1% of a long `b` from match seeding, as difflib does.
- */
+// https://docs.python.org/3/library/difflib.html#difflib.SequenceMatcher
 function matchingBlocks(a: string[], b: string[], autojunk: boolean): [number, number, number][] {
   const b2j = new Map<string, number[]>();
   b.forEach((w, j) => {
@@ -20,7 +17,9 @@ function matchingBlocks(a: string[], b: string[], autojunk: boolean): [number, n
     const ntest = Math.floor(b.length / 100) + 1;
 
     for (const [w, idx] of b2j) {
-      if (idx.length > ntest) b2j.delete(w);
+      if (idx.length > ntest) {
+        b2j.delete(w);
+      }
     }
   }
 
@@ -28,10 +27,11 @@ function matchingBlocks(a: string[], b: string[], autojunk: boolean): [number, n
     let [bi, bj, size] = [alo, blo, 0];
     let j2len = new Map<number, number>();
 
-    for (let i = alo; i < ahi; i++) {
+    for (const [offset, word] of a.slice(alo, ahi).entries()) {
+      const i = alo + offset;
       const next = new Map<number, number>();
 
-      for (const j of b2j.get(a[i]!) ?? []) {
+      for (const j of b2j.get(word) ?? []) {
         if (j < blo) {
           continue;
         }
@@ -65,8 +65,8 @@ function matchingBlocks(a: string[], b: string[], autojunk: boolean): [number, n
   const blocks: [number, number, number][] = [];
   const queue: [number, number, number, number][] = [[0, a.length, 0, b.length]];
 
-  while (queue.length) {
-    const [alo, ahi, blo, bhi] = queue.pop()!;
+  for (let range = queue.pop(); range; range = queue.pop()) {
+    const [alo, ahi, blo, bhi] = range;
     const [i, j, k] = longest(alo, ahi, blo, bhi);
 
     if (!k) {

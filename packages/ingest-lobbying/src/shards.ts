@@ -3,7 +3,6 @@ import { join } from "node:path";
 import type { Row, TableName } from "@antibody/core";
 import { paths, readRows, writeRows } from "@antibody/core/node";
 
-/** lda_filings, lda_lobbyists and lda_clients are shared by every bill, so two runs must not interleave writes. */
 async function locked<T>(fn: () => Promise<T>): Promise<T> {
   const lock = join(paths.table("lda_filings"), "..", ".lobbying.lock");
   await mkdir(join(lock, ".."), { recursive: true });
@@ -28,10 +27,6 @@ async function locked<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-/**
- * Merges rows into shared shards by id. `merge` combines an existing row with the incoming one;
- * `finish` rewrites a whole shard after the merge (e.g. recomputing which filings are superseded).
- */
 export async function upsert<T extends TableName>(
   table: T,
   rows: Row<T>[],
@@ -40,7 +35,6 @@ export async function upsert<T extends TableName>(
     merge?: (old: Row<T>, incoming: Row<T>) => Row<T>;
     prepare?: (existing: Row<T>[]) => Row<T>[];
     finish?: (rows: Row<T>[]) => Row<T>[];
-    /** Shards to rewrite even when no incoming row lands in them (so `prepare` can drop stale rows). */
     alsoShards?: string[];
   } = {},
 ): Promise<void> {
@@ -54,7 +48,7 @@ export async function upsert<T extends TableName>(
     byShard.set(shardOf(r), [...(byShard.get(shardOf(r)) ?? []), r]);
   }
 
-  return locked(async () => {
+  await locked(async () => {
     for (const [shard, incoming] of byShard) {
       const existing = (opts.prepare ?? ((x) => x))(await readRows(table, shard));
       const merged = new Map(existing.map((r) => [r.id, r]));

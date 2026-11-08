@@ -1,14 +1,14 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { billRef } from "@antibody/core";
-import type { BillId } from "@antibody/core";
+import type { BillId, BillType } from "@antibody/core";
 import { paths } from "@antibody/core/node";
+import { z } from "zod";
 import type { Aliases } from "./extract.ts";
 import { acronyms, transpositions } from "./extract.ts";
-import { filings, slim } from "./lda.ts";
-import type { LdaFiling } from "./lda.ts";
+import { LdaFiling, filings, slim } from "./lda.ts";
 
-const SPELLINGS: Record<string, string[]> = {
+const SPELLINGS = {
   hr: ["H.R. #", "H.R.#", "HR #", "HR#", "H. R. #"],
   s: ["S. #", "S.#", "S#", "S #"],
   hjres: ["H.J.Res. #", "H.J. Res. #", "H.J.Res.#", "HJRes #", "H.J.RES. #"],
@@ -17,16 +17,15 @@ const SPELLINGS: Record<string, string[]> = {
   sconres: ["S.Con.Res. #", "S. Con. Res. #", "S.Con.Res.#", "SConRes #"],
   hres: ["H.Res. #", "H. Res. #", "H.Res.#", "HRes #"],
   sres: ["S.Res. #", "S. Res. #", "S.Res.#", "SRes #"],
-};
+} satisfies Record<BillType, string[]>;
 
-/** Quoted phrases for lda.gov's issue-text search: every spelling of every number, the names, typos, the law. */
 export function searchTerms(a: Aliases): string[] {
   const terms = new Set<string>();
 
   for (const n of a.numbers) {
     const { type, number } = billRef(n.id);
 
-    for (const s of SPELLINGS[type]!) {
+    for (const s of SPELLINGS[type]) {
       terms.add(s.replace("#", String(number)));
     }
   }
@@ -38,11 +37,14 @@ export function searchTerms(a: Aliases): string[] {
       terms.add(ac);
     }
 
-    const words = n.text.split(/\s+/);
+    const words = n.text.split(/\s+/u);
 
     for (const [i, w] of words.entries()) {
-      if (/^[A-Z]{5,}$/.test(w))
-        for (const typo of transpositions(w)) terms.add([...words.slice(0, i), typo, ...words.slice(i + 1)].join(" "));
+      if (/^[A-Z]{5,}$/u.test(w)) {
+        for (const typo of transpositions(w)) {
+          terms.add([...words.slice(0, i), typo, ...words.slice(i + 1)].join(" "));
+        }
+      }
     }
   }
 
@@ -50,31 +52,31 @@ export function searchTerms(a: Aliases): string[] {
     terms.add(law);
   }
 
-  return [...new Set([...terms].map(searchable).filter((t): t is string => !!t))].map(
-    (t) => `"${t.replaceAll('"', "")}"`,
-  );
+  return [
+    ...new Set(
+      [...terms].flatMap((t) => {
+        const term = searchable(t);
+
+        return term === null || term === "" ? [] : [term];
+      }),
+    ),
+  ].map((t) => `"${t.replaceAll('"', "")}"`);
 }
 
-/**
- * lda.gov answers 403 to any query containing a word starting "Admin" (checked Oct 14 2026: "Space Administration", "Administrative",
- * "Social Security Administration" and the bare word all fail; "Space" and "Authorization" alone pass). Such a name is
- * searched by its longest stretch without the word; extraction still requires the full name in the filing text.
- */
 export function searchable(term: string): string | null {
-  if (!/\badmin\w*/i.test(term)) {
+  if (!/\badmin\w*/iu.test(term)) {
     return term;
   }
 
   const stretch = term
-    .split(/\badmin\w*/i)
+    .split(/\badmin\w*/iu)
     .map((s) => s.trim())
-    .filter((s) => s.split(/\s+/).length >= 2)
-    .sort((a, b) => b.length - a.length)[0];
+    .filter((s) => s.split(/\s+/u).length >= 2)
+    .toSorted((a, b) => b.length - a.length)[0];
 
   return stretch ?? null;
 }
 
-/** lda.gov handles long OR queries, but keep each one modest. */
 function queries(terms: string[], per = 20): string[] {
   const out: string[] = [];
 
@@ -85,10 +87,7 @@ function queries(terms: string[], per = 20): string[] {
   return out;
 }
 
-interface Manifest {
-  /** `<query>|<year>` → when it was last pulled, so a refresh asks only for filings posted since. */
-  done: Record<string, string>;
-}
+const Manifest = z.object({ done: z.record(z.string(), z.string()) });
 
 export const rawDir = (bill: BillId) => join(paths.raw("lobbying"), bill);
 
@@ -99,27 +98,18 @@ export async function readFilings(bill: BillId, name = "filings"): Promise<LdaFi
     return [];
   }
 
-  return (await file.text())
-    .split("\n")
-    .filter(Boolean)
-    .map((l) => JSON.parse(l));
+  return (await file.text()).split("\n").flatMap((l) => (l === "" ? [] : [LdaFiling.parse(JSON.parse(l))]));
 }
 
 interface PullOptions {
   refresh: boolean;
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
   log?: (m: string) => void;
 }
 
-/** Every filing that names the bill in any of its spellings, in the years it could be lobbied on. */
 export const pull = async (a: Aliases, opts: PullOptions) =>
-  pullTerms(a.bill, "filings", searchTerms(a), a.years, opts);
+  await pullTerms(a.bill, "filings", searchTerms(a), a.years, opts);
 
-/**
- * Pulls every filing whose issue text matches one of the terms, per filing year, and merges them into
- * data/lobbying/<bill>/<name>.jsonl. Queries already pulled are skipped unless `refresh`, which asks only
- * for filings posted since the last pull.
- */
 export async function pullTerms(
   bill: BillId,
   name: string,
@@ -130,7 +120,7 @@ export async function pullTerms(
   const dir = rawDir(bill);
   await mkdir(dir, { recursive: true });
   const manifestFile = Bun.file(join(dir, `${name}.manifest.json`));
-  const manifest: Manifest = (await manifestFile.exists()) ? await manifestFile.json() : { done: {} };
+  const manifest = (await manifestFile.exists()) ? Manifest.parse(await manifestFile.json()) : { done: {} };
   const byUuid = new Map((await readFilings(bill, name)).map((f) => [f.filing_uuid, f]));
   const before = byUuid.size;
 
@@ -145,14 +135,21 @@ export async function pullTerms(
       const key = `${q}|${year}`;
       const last = manifest.done[key];
 
-      if (last !== undefined && !opts.refresh) continue;
-      const params: Record<string, string | number> = { filing_specific_lobbying_issues: q, filing_year: year };
+      if (last !== undefined && !opts.refresh) {
+        continue;
+      }
 
-      if (last) params.filing_dt_posted_after = new Date(Date.parse(last) - 2 * 86_400_000).toISOString().slice(0, 10);
+      const params = new URLSearchParams({ filing_specific_lobbying_issues: q, filing_year: String(year) });
+      const since = last !== undefined && last !== "";
+
+      if (since) {
+        params.set("filing_dt_posted_after", new Date(Date.parse(last) - 2 * 86_400_000).toISOString().slice(0, 10));
+      }
+
       const pulledAt = new Date().toISOString();
       let n = 0;
 
-      for await (const f of filings(params, { fresh: !!last, signal: opts.signal })) {
+      for await (const f of filings(params, { fresh: since, signal: opts.signal })) {
         byUuid.set(f.filing_uuid, slim(f));
         n++;
       }

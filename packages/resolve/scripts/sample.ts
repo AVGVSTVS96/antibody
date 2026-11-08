@@ -1,12 +1,7 @@
-/**
- * Draws a fresh, stratified, seeded sample of resolver outcomes for hand-checking, leaving out every name the
- * Phase 0 sample already checked. Prints PSV: stratum|source|name|context|edgar name|ticker|method|confidence|reason
- *   bun packages/resolve/scripts/sample.ts > packages/resolve/eval/sample.psv
- */
 import { join } from "node:path";
-import { paths, ROOT } from "@antibody/core/node";
 import { loadEdgar } from "../src/edgar.ts";
 import type { Resolved } from "../src/resolve.ts";
+import { loadOutcomes } from "./outcomes.ts";
 
 const PER = {
   ticker: 15,
@@ -25,9 +20,7 @@ const old = new Set(
     .map((l) => l.split("|")[2]?.toUpperCase()),
 );
 
-const outcomes = (await Bun.file(
-  join(paths.raw("entities"), "resolve", "dev-outcomes.json"),
-).json()) as Resolved["outcomes"];
+const outcomes = await loadOutcomes();
 
 const edgar = new Map((await loadEdgar()).map((c) => [c.cik, c]));
 
@@ -50,18 +43,20 @@ for (const o of outcomes) {
   strata.set(k, [...(strata.get(k) ?? []), o]);
 }
 
-const clean = (s: unknown) =>
+const clean = (s: string | number | null | undefined) =>
   String(s ?? "")
-    .replaceAll(/[|\n]/g, " ")
+    .replaceAll(/[|\n]/gu, " ")
     .slice(0, 160);
 
 for (const [k, n] of Object.entries(PER)) {
-  const pick = (strata.get(k) ?? []).sort((a, b) => hash(a.mention.src) - hash(b.mention.src)).slice(0, n);
+  const pick = (strata.get(k) ?? []).toSorted((a, b) => hash(a.mention.src) - hash(b.mention.src)).slice(0, n);
 
   for (const o of pick) {
     const c = o.match ? edgar.get(o.match.cik) : undefined;
-    const e = o.match?.evidence ?? {};
-    const why = o.outcome.kind === "rejected" || o.outcome.kind === "none" ? o.outcome.why : e.reason;
+    // SAFETY: review writes evidence.reason as the reviewer's reason string.
+    const reason = (o.match?.evidence as { reason?: string } | undefined)?.reason;
+    const why = o.outcome.kind === "rejected" || o.outcome.kind === "none" ? o.outcome.why : reason;
+
     console.log(
       [
         k,

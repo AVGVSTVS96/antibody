@@ -4,7 +4,7 @@ export async function download(url: string, path: string, headers: Record<string
   for (let attempt = 1; attempt <= 3; attempt++) {
     const res = await fetch(url, { headers: { "User-Agent": UA, ...headers } }).catch(() => null);
 
-    if (res?.ok) {
+    if (res !== null && res.ok) {
       await Bun.write(path, await res.arrayBuffer());
 
       return true;

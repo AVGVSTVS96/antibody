@@ -5,7 +5,6 @@ export type RingView = "trades" | "pac";
 export interface Tie {
   company: string;
   member: string;
-  /** Trades for the stock view, PAC dollars given before the vote for the money view. */
   weight: number;
   claims: string[];
   inference: boolean;
@@ -20,7 +19,6 @@ export interface RingData {
   byMember: Map<string, Tie[]>;
   companyWeight: Map<string, number>;
   memberWeight: Map<string, number>;
-  /** Everything that could have been drawn, so the page can say how many it left out. */
   candidates: { companies: number; members: number };
 }
 
@@ -50,8 +48,9 @@ export function tradeTies(m: BillModel): Tie[] {
   const out: Tie[] = [];
 
   for (const e of m.edges) {
-    if (e.kind === "traded" && m.actorById.get(e.dst)?.kind === "company")
+    if (e.kind === "traded" && m.actorById.get(e.dst)?.kind === "company") {
       out.push({ company: e.dst, member: e.src, weight: e.weight, claims: e.claims, inference: e.inference });
+    }
   }
 
   return aggregate(out);
@@ -63,7 +62,10 @@ export function pacTies(m: BillModel): Tie[] {
 
   for (const v of m.members) {
     for (const f of v.funded) {
-      if (m.actorById.get(f.actor)?.kind !== "company" || f.edge.props.beforeUsd <= 0) continue;
+      if (m.actorById.get(f.actor)?.kind !== "company" || f.edge.props.beforeUsd <= 0) {
+        continue;
+      }
+
       const d = display.get(`funded:${f.actor}->${v.node.id}`);
       out.push({
         company: f.actor,
@@ -79,6 +81,13 @@ export function pacTies(m: BillModel): Tie[] {
 }
 
 const sum = (xs: Tie[]) => xs.reduce((s, t) => s + t.weight, 0);
+
+function byRank(groups: Map<string, Tie[]>, rank: (id: string, ties: Tie[]) => number): string[] {
+  return [...groups]
+    .map(([id, ties]) => ({ id, score: rank(id, ties) }))
+    .toSorted((a, b) => b.score - a.score || a.id.localeCompare(b.id))
+    .map((r) => r.id);
+}
 
 function group(ties: Tie[], key: "company" | "member"): Map<string, Tie[]> {
   const out = new Map<string, Tie[]>();
@@ -96,22 +105,14 @@ function group(ties: Tie[], key: "company" | "member"): Map<string, Tie[]> {
   return out;
 }
 
-/**
- * The companies and members a view draws. Companies are ranked by how many members traded their stock (trades view)
- * or by PAC dollars (money view); `must` ids are kept even when they rank below the cut, so a linked company is on
- * the ring. Members are those tied to a drawn company, biggest first, up to a cap.
- */
 export function selectRing(m: BillModel, view: RingView, must: readonly string[] = []): RingData {
   const all = view === "trades" ? tradeTies(m) : pacTies(m);
   const byCo = group(all, "company");
 
-  const rank = (id: string) => {
-    const ties = byCo.get(id)!;
+  const rank = (id: string, ties: Tie[]) =>
+    view === "trades" ? ties.length * 1e9 + sum(ties) * 1e3 + (m.actorById.get(id)?.reports ?? 0) : sum(ties);
 
-    return view === "trades" ? ties.length * 1e9 + sum(ties) * 1e3 + (m.actorById.get(id)?.reports ?? 0) : sum(ties);
-  };
-
-  const ids = [...byCo.keys()].sort((a, b) => rank(b) - rank(a) || a.localeCompare(b));
+  const ids = byRank(byCo, rank);
   const top = ids.slice(0, MAX_COMPANIES);
   const keep = new Set(top);
 
@@ -120,25 +121,39 @@ export function selectRing(m: BillModel, view: RingView, must: readonly string[]
       continue;
     }
 
-    keep.delete(top.pop()!);
+    const dropped = top.pop();
+
+    if (dropped !== undefined) {
+      keep.delete(dropped);
+    }
+
     keep.add(id);
   }
 
-  const companies = ids.filter((id) => keep.has(id)).map((id) => m.actorById.get(id)!);
+  const companies = ids.flatMap((id) => {
+    const company = keep.has(id) ? m.actorById.get(id) : undefined;
+
+    return company ? [company] : [];
+  });
 
   const inRing = all.filter((t) => keep.has(t.company));
   const byMem = group(inRing, "member");
 
-  const mrank = (id: string) =>
-    view === "trades" ? (m.memberById.get(id)?.tradeCount ?? 0) * 1e3 + byMem.get(id)!.length : sum(byMem.get(id)!);
+  const mrank = (id: string, ties: Tie[]) =>
+    view === "trades" ? (m.memberById.get(id)?.tradeCount ?? 0) * 1e3 + ties.length : sum(ties);
 
-  const memberIds = [...byMem.keys()].sort((a, b) => mrank(b) - mrank(a) || a.localeCompare(b));
+  const memberIds = byRank(byMem, mrank);
   const memberSet = new Set(memberIds.slice(0, MAX_MEMBERS[view]));
 
   const ties = inRing.filter((t) => memberSet.has(t.member));
   const byCompany = group(ties, "company");
   const byMember = group(ties, "member");
-  const members = memberIds.filter((id) => memberSet.has(id)).map((id) => m.memberById.get(id)!);
+
+  const members = memberIds.flatMap((id) => {
+    const member = memberSet.has(id) ? m.memberById.get(id) : undefined;
+
+    return member ? [member] : [];
+  });
 
   return {
     view,

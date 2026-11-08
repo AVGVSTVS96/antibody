@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import type { Row } from "@antibody/core";
 import type { Company } from "../src/edgar.ts";
 import { ratio, tokenSet, tokenSort, typoClose } from "../src/fuzzy.ts";
 import { CompanyIndex, resolveMention } from "../src/match.ts";
@@ -108,8 +107,9 @@ test("leadership PACs are never resolved (WILLIAMS ≠ Williams Companies)", () 
   ]);
 
   expect(pacs.map((p) => p.src)).toEqual(["pac:C2"]);
-  const r = resolveMention(pacs[0]!, index);
-  expect(r.kind === "match" && r.match.method).toBe("name_exact");
+  expect(pacs.map((p) => resolveMention(p, index)).map((r) => r.kind === "match" && r.match.method)).toEqual([
+    "name_exact",
+  ]);
 });
 
 test("a one-word name goes to review even when it matches exactly (Compass Group ADR ≠ Compass, Inc.)", () => {
@@ -158,19 +158,16 @@ test("only stock and option trades are resolved", () => {
 });
 
 test("donor employers merge across members; small ones skip review and keep only deterministic matches", () => {
-  const row = (id: string, employer: string, key: string, usd: number) =>
-    ({ id, employer, employer_key: key, amount_usd: usd }) as Row<"employer_contributions">;
-
-  const [big, small] = employerMentions([
-    row("a", "Occidental Petroleum Corp.", "OCCIDENTAL PETROLEUM", 20_000),
-    row("b", "OCCIDENTAL PETROLEUM CORPORATION", "OCCIDENTAL PETROLEUM", 9000),
-    row("c", "Compass", "COMPASS", 2000),
+  const employers = employerMentions([
+    { id: "a", employer: "Occidental Petroleum Corp.", employer_key: "OCCIDENTAL PETROLEUM", amount_usd: 20_000 },
+    { id: "b", employer: "OCCIDENTAL PETROLEUM CORPORATION", employer_key: "OCCIDENTAL PETROLEUM", amount_usd: 9000 },
+    { id: "c", employer: "Compass", employer_key: "COMPASS", amount_usd: 2000 },
   ]);
 
-  expect(big!.name).toBe("Occidental Petroleum Corp.");
-  expect(big!.reviewable).toBe(true);
-  expect(resolveMention(big!, index).kind).toBe("match");
-  expect(resolveMention(small!, index).kind).toBe("none");
+  expect(employers.map((e) => [e.name, e.reviewable, resolveMention(e, index).kind])).toEqual([
+    ["Occidental Petroleum Corp.", true, "match"],
+    ["Compass", false, "none"],
+  ]);
 });
 
 test("typoClose accepts spelling slips and rejects different words", () => {

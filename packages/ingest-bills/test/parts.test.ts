@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { must } from "@antibody/core";
 import { parseBillStatus } from "../src/billstatus.ts";
 import { trace } from "../src/lineage.ts";
 import { PARTS, sectionParts, splitSection } from "../src/parts.ts";
@@ -13,7 +14,7 @@ const bill = (body: string) => `<?xml version="1.0"?><bill><legis-body>${body}</
 const sub = (tag: string, en: string, head: string, inner: string) =>
   `<${tag}><enum>${en}</enum>${head ? `<header>${head}</header>` : ""}${inner}</${tag}>`;
 
-const el = (xml: string) => sectionElements(xml)[0]!.el;
+const el = (xml: string) => must(sectionElements(xml)[0], "a section element").el;
 
 describe("splitSection", () => {
   test("a short section is read whole", () => {
@@ -45,7 +46,7 @@ describe("splitSection", () => {
       ["(a)(3)", "Reserves", ["Standards"], "subsection:a/paragraph:3", false],
       ["(b)", "Rulemaking", [], "subsection:b", false],
     ]);
-    expect(parts[1]!.text).toStartWith("No issuer shall pay interest.");
+    expect(parts[1]?.text).toStartWith("No issuer shall pay interest.");
   });
 
   test("a split piece's own words of 40 or more are a part of their own; USLM num and heading read the same", () => {
@@ -56,12 +57,12 @@ describe("splitSection", () => {
       "(a)",
       "",
       `<content>${words("x", 600)}</content>`,
-    ).replace(/<enum>\(a\)<\/enum>/, '<num value="a">(a)</num><heading>First.—</heading>')}${sub(
+    ).replace(/<enum>\(a\)<\/enum>/u, '<num value="a">(a)</num><heading>First.—</heading>')}${sub(
       "subsection",
       "(b)",
       "",
       `<content>${words("y", 600)}</content>`,
-    ).replace(/<enum>\(b\)<\/enum>/, '<num value="b">(b)</num>')}</section></main></bill>`;
+    ).replace(/<enum>\(b\)<\/enum>/u, '<num value="b">(b)</num>')}</section></main></bill>`;
 
     const parts = splitSection(el(xml));
     expect(parts.map((p) => [p.enum, p.heading, p.leadIn, p.words])).toEqual([
@@ -85,45 +86,59 @@ describe("splitSection", () => {
   });
 });
 
-/** Real GovInfo texts of S.1582 (GENIUS Act) and its predecessor S.394. */
 const fixture = (name: string) =>
   new TextDecoder().decode(Bun.gunzipSync(readFileSync(join(import.meta.dir, "fixtures", `${name}.gz`))));
 
-describe("GENIUS Act, read in parts", async () => {
-  const status = parseBillStatus(fixture("BILLSTATUS-119s1582.xml"), "119-s-1582");
+const status = parseBillStatus(fixture("BILLSTATUS-119s1582.xml"), "119-s-1582");
 
-  const pred = {
-    code: "s394-is",
-    url: "https://www.govinfo.gov/content/pkg/BILLS-119s394is/xml/BILLS-119s394is.xml",
-    file: "BILLS-119s394is.xml",
-  };
+const pred = {
+  code: "s394-is",
+  url: "https://www.govinfo.gov/content/pkg/BILLS-119s394is/xml/BILLS-119s394is.xml",
+  file: "BILLS-119s394is.xml",
+};
 
-  const refs = [pred, ...textVersions(status)];
-  const versions = refs.map((r, i) => ({ code: r.code, predecessor: i === 0, secs: parseSections(fixture(r.file)) }));
-  const { lineages } = trace("119-s-1582", versions);
-  const final = versions.at(-1)!.code;
+const refs = [pred, ...textVersions(status)];
+const versions = refs.map((r, i) => ({ code: r.code, predecessor: i === 0, secs: parseSections(fixture(r.file)) }));
+const { lineages } = trace("119-s-1582", versions);
+const final = versions.at(-1)?.code;
 
-  const sections = lineages.map((l) => ({
-    id: l.id,
-    num: sectionNum(l.last.path),
-    in_final: l.lastVersion === final,
-    words: l.last.words,
-    history: l.history,
-    split_from: l.splitFrom?.id ?? null,
-    first_version: l.firstVersion,
-  }));
+const sections = lineages.map((l) => ({
+  id: l.id,
+  num: sectionNum(l.last.path),
+  in_final: l.lastVersion === final,
+  words: l.last.words,
+  history: l.history,
+  split_from: l.splitFrom?.id ?? null,
+  first_version: l.firstVersion,
+}));
 
-  const files = new Map(refs.map((r) => [r.url, r.file]));
+const files = new Map(refs.map((r) => [r.url, r.file]));
 
-  const parts = await sectionParts(
-    sections,
-    refs.map((r, i) => ({ code: r.code, url: r.url, predecessor_rule: i === 0 ? "predecessor" : null })),
-    { read: async (url) => fixture(files.get(url)!) },
+const readVersion = async (url: string) =>
+  new TextDecoder().decode(
+    Bun.gunzipSync(await Bun.file(join(import.meta.dir, "fixtures", `${must(files.get(url), url)}.gz`)).bytes()),
   );
 
-  const sec4 = lineages.find((l) => sectionNum(l.last.path) === "4")!;
-  const part = (num: string) => parts.find((p) => p.num === num)!;
+const versionRows = refs.map((r, i) => ({
+  code: r.code,
+  url: r.url,
+  predecessor_rule: i === 0 ? "predecessor" : null,
+}));
 
+const parts = await sectionParts(sections, versionRows, { read: readVersion });
+
+const sec4 = must(
+  lineages.find((l) => sectionNum(l.last.path) === "4"),
+  "section 4",
+);
+
+const part = (num: string) =>
+  must(
+    parts.find((p) => p.num === num),
+    `part ${num}`,
+  );
+
+describe("GENIUS Act, read in parts", () => {
   test("section 4 (5,811 words in the law) is one lineage, already in the predecessor bill", () => {
     expect([sec4.firstVersion, sec4.last.words]).toEqual(["s394-is", 5811]);
     expect(sec4.removedIn).toBeNull();
@@ -139,7 +154,6 @@ describe("GENIUS Act, read in parts", async () => {
   });
 
   test("the interest ban and the Big Tech ban were written into section 4 on the Senate floor", () => {
-    // Reported as the "yield loophole" fight (the ban reaches issuers only) and as the Senate's Big Tech bar.
     expect([part("4(a)(11)").heading, part("4(a)(11)").firstVersion, part("4(a)(11)").late]).toEqual([
       "Prohibition on interest",
       "es",
@@ -178,11 +192,10 @@ describe("GENIUS Act, read in parts", async () => {
   });
 
   test("late flags are withheld when the bill's are", async () => {
-    const withheld = await sectionParts(
-      sections,
-      refs.map((r, i) => ({ code: r.code, url: r.url, predecessor_rule: i === 0 ? "predecessor" : null })),
-      { read: async (url) => fixture(files.get(url)!), lateUnavailable: "rewritten wholesale" },
-    );
+    const withheld = await sectionParts(sections, versionRows, {
+      read: readVersion,
+      lateUnavailable: "rewritten wholesale",
+    });
 
     expect(withheld.some((p) => p.late)).toBe(false);
     expect(withheld.length).toBe(parts.length);

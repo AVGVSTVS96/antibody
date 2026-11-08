@@ -1,14 +1,16 @@
 import type { Row } from "@antibody/core";
+import { filled } from "@antibody/core";
 import { resolveMention } from "./match.ts";
-import type { CompanyIndex, Match, Mention, Outcome, Queued } from "./match.ts";
+import type { CompanyIndex, Evidence, Match, Mention, Outcome } from "./match.ts";
 import { dedupe, uniqueBySrc } from "./mentions.ts";
 import { review } from "./review.ts";
 import type { ReviewStats } from "./review.ts";
 import { RULE_FOR } from "./rules.ts";
 
+export type { Queued } from "./match.ts";
+
 export interface Resolved {
   rows: Row<"resolutions">[];
-  /** Every distinct mention's outcome, for reports and the hand-checked sample. */
   outcomes: {
     mention: Mention;
     outcome: Outcome | { kind: "rejected"; why: string };
@@ -30,7 +32,9 @@ export async function resolveAll(
   const byMention = new Map<Mention, Match>();
 
   for (const { m, o } of first) {
-    if (o.kind === "match") byMention.set(m, o.match);
+    if (o.kind === "match") {
+      byMention.set(m, o.match);
+    }
   }
 
   for (const x of reviewed?.matches ?? []) {
@@ -42,20 +46,32 @@ export async function resolveAll(
   const rows: Row<"resolutions">[] = [];
 
   for (const [rep, match] of byMention) {
-    for (const m of fanOut.get(rep) ?? [rep]) rows.push(toRow({ ...match, mention: m }));
+    for (const m of fanOut.get(rep) ?? [rep]) {
+      rows.push(toRow({ ...match, mention: m }));
+    }
   }
 
-  const outcomes = first.map(({ m, o }) => ({
-    mention: m,
-    outcome: rejected.has(m) ? { kind: "rejected" as const, why: rejected.get(m)! } : o,
-    match: byMention.get(m) ?? null,
-    count: fanOut.get(m)?.length ?? 1,
-  }));
+  const outcomes = first.map(({ m, o }) => {
+    const why = rejected.get(m);
+
+    return {
+      mention: m,
+      outcome: why === undefined ? o : { kind: "rejected" as const, why },
+      match: byMention.get(m) ?? null,
+      count: fanOut.get(m)?.length ?? 1,
+    };
+  });
 
   return { rows, outcomes, review: reviewed?.stats ?? null };
 }
 
 function toRow(x: Match): Row<"resolutions"> {
+  const evidence: Evidence = { name: x.mention.name };
+
+  if (filled(x.mention.ticker)) {
+    evidence.filedTicker = x.mention.ticker;
+  }
+
   return {
     id: x.mention.src,
     src: x.mention.src,
@@ -64,8 +80,6 @@ function toRow(x: Match): Row<"resolutions"> {
     rule: RULE_FOR[x.method],
     confidence: x.confidence,
     rests_on: [...x.mention.restsOn, `companies/${x.cik}`],
-    evidence: { name: x.mention.name, ...(x.mention.ticker ? { filedTicker: x.mention.ticker } : {}), ...x.evidence },
+    evidence: { ...evidence, ...x.evidence },
   };
 }
-
-export type { Queued };

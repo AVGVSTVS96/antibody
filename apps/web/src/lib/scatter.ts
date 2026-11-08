@@ -72,7 +72,7 @@ export function place(points: Dot[], f: Frame, s: Scale): Placed[] {
 
   const order = { normal: 0, headline: 1, buried: 2 } as const;
 
-  return out.sort((a, b) => order[a.kind] - order[b.kind]);
+  return out.toSorted((a, b) => order[a.kind] - order[b.kind]);
 }
 
 export interface Note {
@@ -87,7 +87,6 @@ export interface Note {
 
 const CHAR = 6.4;
 
-/** Below the chart's two title lines. */
 const TITLE_BOTTOM = 38;
 
 export function notes(placed: Placed[], f: Frame, zone: { x: number; y: number } | null): Note[] {
@@ -100,9 +99,9 @@ export function notes(placed: Placed[], f: Frame, zone: { x: number; y: number }
   };
 
   const by = (k: Dot["kind"]) => placed.filter((p) => p.kind === k);
-  const flagged = by("buried").sort((a, b) => Math.abs(b.musd) - Math.abs(a.musd));
-  const loud = by("headline").sort((a, b) => b.hits - a.hits);
-  const big = [...placed].sort((a, b) => Math.abs(b.musd) - Math.abs(a.musd));
+  const flagged = by("buried").toSorted((a, b) => Math.abs(b.musd) - Math.abs(a.musd));
+  const loud = by("headline").toSorted((a, b) => b.hits - a.hits);
+  const big = placed.toSorted((a, b) => Math.abs(b.musd) - Math.abs(a.musd));
   const phone = f.w < 560;
 
   for (const p of flagged.slice(0, phone ? 1 : 2)) {
@@ -155,17 +154,29 @@ export function notes(placed: Placed[], f: Frame, zone: { x: number; y: number }
         const y = p.cy + dy;
         const box = { x0: anchor === "start" ? x : x - w, x1: anchor === "start" ? x + w : x, y0: y - 12, y1: y + 22 };
 
-        if (box.x0 < f.l + 2 || box.x1 > f.w - 4 || box.y0 < TITLE_BOTTOM || box.y1 > f.h - f.b - 6) continue;
+        if (box.x0 < f.l + 2 || box.x1 > f.w - 4 || box.y0 < TITLE_BOTTOM || box.y1 > f.h - f.b - 6) {
+          continue;
+        }
 
-        if (zone && box.x0 < zone.x + 2 && box.y1 > f.t && box.y0 < zone.y + 6 && p.kind !== "buried") continue;
+        if (zone && box.x0 < zone.x + 2 && box.y1 > f.t && box.y0 < zone.y + 6 && p.kind !== "buried") {
+          continue;
+        }
 
-        if (hit(box, 4) || hitDot(box)) continue;
+        if (hit(box, 4) || hitDot(box)) {
+          continue;
+        }
+
         const cross = out.some((o) => segmentHitsBox(p.cx, p.cy, x, y, o.p === p ? null : boxOf(o, w)));
 
-        if (cross) continue;
+        if (cross) {
+          continue;
+        }
+
         const d = rad + (Math.abs(dx) < 4 ? 8 : 0);
 
-        if (!best || d < best.d) best = { d, x, y, anchor, box };
+        if (!best || d < best.d) {
+          best = { d, x, y, anchor, box };
+        }
       }
     }
 

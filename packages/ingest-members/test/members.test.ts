@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 import { TABLES } from "@antibody/core";
 import { recordedVotes } from "../src/billstatus.ts";
-import type { BillStatus } from "../src/billstatus.ts";
 import { committeeId, congressSpan } from "../src/committees.ts";
 import { memberRow, termOn } from "../src/legislators.ts";
 import type { Lookup } from "../src/legislators.ts";
@@ -71,7 +70,7 @@ test("House roll: Aye counts as Yea, unknown legislators are reported, not dropp
   );
 
   expect(roll).toMatchObject({ id: "house-119-1-200", question: "On Passage (S 1582)", yeas: 308, nays: 122 });
-  expect(votes).toEqual([expect.objectContaining({ id: "house-119-1-200:C001123", vote: "Nay" })]);
+  expect(votes).toMatchObject([{ id: "house-119-1-200:C001123", vote: "Nay" }]);
   expect(unmatched).toEqual(["X000000:Aye"]);
   expect(TABLES.roll_calls.schema.safeParse(roll).success).toBe(true);
 });
@@ -94,20 +93,20 @@ test("Senate roll: LIS ids map to bioguide; a Vice President's tie-break is writ
   expect(votes[0]).toMatchObject({ bioguide: "S001191", vote: "Yea" });
 });
 
-test("recorded votes are found anywhere in BILLSTATUS, once each", () => {
-  const rv = (n: number) => ({
-    rollNumber: String(n),
-    url: `https://clerk.house.gov/evs/2025/roll${n}.xml`,
-    chamber: "House",
-    congress: "119",
-    sessionNumber: "1",
-    date: "2025-05-22T00:00:00Z",
-  });
+const rv = (n: number) => ({
+  rollNumber: String(n),
+  url: `https://clerk.house.gov/evs/2025/roll${n}.xml`,
+  chamber: "House",
+  congress: "119",
+  sessionNumber: "1",
+  date: "2025-05-22T00:00:00Z",
+});
 
+test("recorded votes are found anywhere in BILLSTATUS, once each", () => {
   const found = recordedVotes({
     actions: { item: [{ recordedVotes: { recordedVote: [rv(145)] } }, { recordedVotes: { recordedVote: [rv(145)] } }] },
     amendments: { amendment: [{ actions: { actions: { item: [{ recordedVotes: { recordedVote: [rv(144)] } }] } } }] },
-  } as BillStatus);
+  });
 
-  expect(found.map((v) => v.rollNumber).sort()).toEqual(["144", "145"]);
+  expect(found.map((v) => v.rollNumber).toSorted()).toEqual(["144", "145"]);
 });

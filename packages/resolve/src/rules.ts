@@ -1,6 +1,5 @@
 import type { Method } from "./match.ts";
 
-/** The published rules behind every resolve inference. Rows carry the rule id; store puts these in bundle.rules. */
 export const RULES = [
   {
     id: "entity-ticker",

@@ -3,19 +3,16 @@ import type { BillId, Row, StageContext } from "@antibody/core";
 import { readRows, writeRows } from "@antibody/core/node";
 import { buildAliases, coCited, sameTitle } from "./aliases.ts";
 import { billStatus } from "./billstatus.ts";
-import { matcher } from "./extract.ts";
-import type { Aliases } from "./extract.ts";
+import { Aliases, matcher } from "./extract.ts";
 import { pull, rawDir } from "./pull.ts";
 import { extract, markSuperseded, mergeClient } from "./rows.ts";
 import { upsert } from "./shards.ts";
 import { spendRows } from "./spend.ts";
 import { namedMembers } from "./staff.ts";
 
-/** A bill introduced this long after ours is a different bill, even with the same short title (companions come within weeks). */
 const COMPANION_DAYS = 45;
 const addDays = (date: string, days: number) => new Date(Date.parse(date) + days * 864e5).toISOString().slice(0, 10);
 
-/** Aliases, then a pull; numbers that filings cite next to the bill's name are confirmed and pulled too. */
 export async function resolveAliases(bill: BillId, ctx: Pick<StageContext, "refresh" | "signal" | "log">) {
   let aliases = await buildAliases(bill, [], ctx.signal);
   let filings = await pull(aliases, ctx);
@@ -25,10 +22,12 @@ export async function resolveAliases(bill: BillId, ctx: Pick<StageContext, "refr
     const s = await billStatus(id, ctx.signal);
 
     if (
-      s &&
+      s !== null &&
       sameTitle(aliases, s) &&
-      s.introduced &&
-      aliases.introduced &&
+      s.introduced !== null &&
+      s.introduced !== "" &&
+      aliases.introduced !== null &&
+      aliases.introduced !== "" &&
       s.introduced <= addDays(aliases.introduced, COMPANION_DAYS)
     ) {
       confirmed.push(id);
@@ -49,13 +48,26 @@ export async function resolveAliases(bill: BillId, ctx: Pick<StageContext, "refr
 export async function readAliases(bill: BillId): Promise<Aliases | null> {
   const file = Bun.file(join(rawDir(bill), "aliases.json"));
 
-  return (await file.exists()) ? await file.json() : null;
+  return (await file.exists()) ? Aliases.parse(await file.json()) : null;
 }
 
-const yearOf = (uuid: string, filings: Map<string, Row<"lda_filings">>) => String(filings.get(uuid)!.year);
+function yearOf(uuid: string, filings: Map<string, Row<"lda_filings">>): string {
+  const filing = filings.get(uuid);
+
+  if (filing === undefined) {
+    throw new Error(`lobbyist row names filing ${uuid}, which this run did not extract`);
+  }
+
+  return String(filing.year);
+}
 
 export async function runLobbying(ctx: StageContext) {
-  const bill = ctx.bill!;
+  const bill = ctx.bill;
+
+  if (bill === null) {
+    throw new Error("the lobbying stage runs per bill");
+  }
+
   const { aliases, filings } = await resolveAliases(bill, ctx);
   const known = new Set((await readRows("sections", bill)).map((s) => s.num));
   const x = extract(bill, filings, matcher(aliases), known);
@@ -69,11 +81,12 @@ export async function runLobbying(ctx: StageContext) {
       rows
         .map((r) => ({
           ...r,
-          named_members: r.covered_position ? namedMembers(r.covered_position) : [],
+          named_members:
+            r.covered_position !== null && r.covered_position !== "" ? namedMembers(r.covered_position) : [],
           bill_ids: r.bill_ids.filter((b) => b !== bill),
         }))
         .filter((r) => r.bill_ids.length),
-    merge: (old, next) => ({ ...next, bill_ids: [...new Set([...old.bill_ids, ...next.bill_ids])].sort() }),
+    merge: (old, next) => ({ ...next, bill_ids: [...new Set([...old.bill_ids, ...next.bill_ids])].toSorted() }),
   });
   await upsert("lda_clients", x.clients, () => "all", { merge: mergeClient });
   await writeRows("lda_bill_refs", bill, x.refs);
@@ -81,7 +94,11 @@ export async function runLobbying(ctx: StageContext) {
   const stored = new Map<string, Row<"lda_filings">>();
 
   for (const y of new Set(x.filings.map((f) => String(f.year)))) {
-    for (const f of await readRows("lda_filings", y)) if (byId.has(f.id)) stored.set(f.id, f);
+    for (const f of await readRows("lda_filings", y)) {
+      if (byId.has(f.id)) {
+        stored.set(f.id, f);
+      }
+    }
   }
 
   const counted = x.refs.filter((r) => r.match !== "low");

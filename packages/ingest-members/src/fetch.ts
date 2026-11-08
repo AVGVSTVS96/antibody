@@ -3,7 +3,6 @@ import { dirname } from "node:path";
 
 const UA = "antibody/0.1 (+https://github.com/AVGVSTVS96/antibody)";
 
-/** Downloads `url` to `file` once (atomically), then reads it from disk unless `refresh`. */
 export async function cached(url: string, file: string, refresh = false): Promise<string> {
   const f = Bun.file(file);
 
@@ -27,6 +26,7 @@ export async function cached(url: string, file: string, refresh = false): Promis
 }
 
 export class FetchError extends Error {
+  override readonly name = "FetchError";
   readonly status: number;
   readonly url: string;
 

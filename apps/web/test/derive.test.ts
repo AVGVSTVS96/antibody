@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { Bundle } from "@antibody/core";
+import { Bundle, must } from "@antibody/core";
 import genius from "../fixtures/119-s-1582.bundle.json";
 import {
   answers,
@@ -21,22 +21,22 @@ const m = buildModel(Bundle.parse(genius));
 
 test("the timeline runs first text, each chamber's passage with its tally, then signing", () => {
   const steps = timeline(m);
-  expect(steps[0]!.label).toBe("First text");
+  expect(steps[0]?.label).toBe("First text");
   expect(steps.map((s) => s.label)).toEqual(["First text", "Senate passes it", "House passes it", "Signed into law"]);
-  expect(steps[1]!.detail).toBe("Jun 17, 2025, 68 to 30");
-  expect(steps.at(-1)!.signed).toBe(true);
+  expect(steps[1]?.detail).toBe("Jun 17, 2025, 68 to 30");
+  expect(steps.at(-1)?.signed).toBe(true);
 });
 
 test("the intro reads the deficit in plain words", () => {
   expect(introLine(m)).toMatch(
-    /^20 sections became law\. CBO says the law adds \$120 million to the deficit over 11 years\./,
+    /^20 sections became law\. CBO says the law adds \$120 million to the deficit over 11 years\./u,
   );
 });
 
 test("four answers, each with a jump target", () => {
   const a = answers(m);
   expect(a.map((x) => x.tone)).toEqual(["loud", "quiet", "money", "trade"]);
-  expect(a[2]!.big).toBe(`${m.b.lobbying.clients} clients`);
+  expect(a[2]?.big).toBe(`${m.b.lobbying.clients} clients`);
   expect(a.every((x) => x.target && x.link)).toBe(true);
 });
 
@@ -49,8 +49,8 @@ test("eras group final sections by the version they first appear in", () => {
 test("lobbying phases add up and traders are ranked by trades", () => {
   const { rows, total } = phases(m);
   expect(rows.reduce((n, r) => n + r.n, 0)).toBe(total);
-  const t = traders(m);
-  expect(t.every((x, i) => i === 0 || t[i - 1]!.v.tradeCount >= x.v.tradeCount)).toBe(true);
+  const counts = traders(m).map((x) => x.v.tradeCount);
+  expect(counts).toEqual(counts.toSorted((a, b) => b - a));
 });
 
 test("monthly trade counts cover every month between the first and last trade", () => {
@@ -78,23 +78,28 @@ test("dot offsets are stable and chart ticks are round", () => {
 
 const withBuriedDollars = (musd: number, heading?: string) => {
   const b = Bundle.parse(structuredClone(genius));
-  b.dollars.estimates[0]!.perSection = true;
-  const s = b.sections.find((x) => x.inFinal && x.score?.label === "buried")!;
+  const estimate = must(b.dollars.estimates[0], "a CBO estimate");
+  estimate.perSection = true;
 
-  if (heading) {
+  const s = must(
+    b.sections.find((x) => x.inFinal && x.score?.label === "buried"),
+    "a buried section",
+  );
+
+  if (heading !== undefined && heading !== "") {
     s.heading = heading;
   }
 
   s.dollars = [
     {
-      estimateId: b.dollars.estimates[0]!.id,
+      estimateId: estimate.id,
       baseline: "current-law",
       measure: "deficit",
       spending: null,
       period: "2025-2035",
       amountMusd: musd,
       split: "exact",
-      claim: Object.keys(b.claims)[0]!,
+      claim: must(Object.keys(b.claims)[0], "a claim"),
     },
   ];
 
@@ -102,19 +107,24 @@ const withBuriedDollars = (musd: number, heading?: string) => {
 };
 
 test("the flagged tile says whether the figure saves or costs", () => {
-  expect(answers(withBuriedDollars(-122_151))[1]!.big).toBe("saves $122B");
-  expect(answers(withBuriedDollars(23_400))[1]!.big).toBe("costs $23B");
+  expect(answers(withBuriedDollars(-122_151))[1]?.big).toBe("saves $122B");
+  expect(answers(withBuriedDollars(23_400))[1]?.big).toBe("costs $23B");
 });
 
 test("a long heading ends the flagged tile's sentence once, not with an ellipsis and a period", () => {
   const long = "Extension of moratorium on implementation of rule relating to the elimination of the safe harbor";
-  expect(answers(withBuriedDollars(-122_151, long))[1]!.text).toMatch(/…\s\d+ articles? matched it/);
-  expect(answers(withBuriedDollars(-122_151, "Short heading"))[1]!.text).toMatch(/§19, short heading\. \d/);
+  expect(answers(withBuriedDollars(-122_151, long))[1]?.text).toMatch(/…\s\d+ articles? matched it/u);
+  expect(answers(withBuriedDollars(-122_151, "Short heading"))[1]?.text).toMatch(/§19, short heading\. \d/u);
 });
 
 test("revenue CBO lists but does not score is said beside the scored deficit line", () => {
   const b = Bundle.parse(structuredClone(genius));
-  const d = b.dollars.wholeBill.find((w) => w.measure === "deficit")!;
+
+  const d = must(
+    b.dollars.wholeBill.find((w) => w.measure === "deficit"),
+    "the deficit line",
+  );
+
   b.dollars.wholeBill.push({ ...d, measure: "nonscorable_revenues", amountMusd: 180_388, claim: d.claim });
   expect(introLine(buildModel(b))).toContain(
     "adds $120 million to the deficit over 11 years, and expects $180 billion more in revenue that it does not score.",
@@ -127,9 +137,9 @@ test("members with unread paper filings come from the bundle, drawn in the graph
   expect(buildModel(b).unread).toEqual({ R: 1, D: 1, I: 0 });
 });
 
-test("dated labels on the month chart never share a row where they would overlap", () => {
-  const at = (label: string, x: number) => ({ at: "2025-01-01", label, x });
+const at = (label: string, x: number) => ({ at: "2025-01-01", label, x });
 
+test("dated labels on the month chart never share a row where they would overlap", () => {
   const rows = layMarks(
     [at("First text, May 20", 700), at("House passes, May 22", 708), at("Signed, Jul 4", 770)],
     false,

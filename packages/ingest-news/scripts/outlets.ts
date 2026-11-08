@@ -1,16 +1,9 @@
 #!/usr/bin/env bun
-/**
- * Builds data/outlets.json, the published outlet list. Run it again only to cut a new list version.
- *
- *   bun packages/ingest-news/scripts/outlets.ts <version>
- *
- * Inputs are public: Media Cloud's directory and its 2019 US partisanship collections.
- */
 import { join } from "node:path";
 import { paths } from "@antibody/core/node";
 import { collectionSources, countsBySource, sourceByDomain } from "../src/mediacloud.ts";
 import type { Source } from "../src/mediacloud.ts";
-import { midpoint } from "../src/outlets.ts";
+import { midpoint, PARTISAN_GROUPS } from "../src/outlets.ts";
 import type { Group, Partisan } from "../src/outlets.ts";
 
 const QUINTILES: Record<Partisan, number> = {
@@ -21,7 +14,6 @@ const QUINTILES: Record<Partisan, number> = {
   right: 200_363_049,
 };
 
-/** National outlets that cover Congress, across the spectrum. Inclusion is decided by the rules below, not by this list. */
 const NEWS = [
   "rawstory.com",
   "alternet.org",
@@ -94,7 +86,6 @@ const NEWS = [
   "thefp.com",
 ];
 
-/** Trade and legal press: shown apart from the news cycle, never counted in it. */
 const TRADE_LEGAL = [
   "law360.com",
   "jdsupra.com",
@@ -126,7 +117,6 @@ const TRADE_LEGAL = [
   "spglobal.com",
 ];
 
-/** Congress coverage windows used to check an outlet is actually collected (one before each big test bill). */
 const PROBES = [
   { start: "2022-07-01", end: "2022-09-30" },
   { start: "2025-05-01", end: "2025-07-31" },
@@ -137,7 +127,7 @@ const MIN_CONGRESS_STORIES = 20;
 if (import.meta.main) {
   const version = Bun.argv[2];
 
-  if (!version) {
+  if (version === undefined || version === "") {
     throw new Error("usage: outlets.ts <version>");
   }
 
@@ -145,8 +135,8 @@ if (import.meta.main) {
 
   const membership = new Map<number, Partisan[]>();
 
-  for (const [q, id] of Object.entries(QUINTILES) as [Partisan, number][]) {
-    for (const s of await collectionSources(id)) {
+  for (const q of PARTISAN_GROUPS) {
+    for (const s of await collectionSources(QUINTILES[q])) {
       membership.set(s.id, [...(membership.get(s.id) ?? []), q]);
     }
   }
@@ -167,10 +157,7 @@ if (import.meta.main) {
 
   await Bun.write(join(cache, `outlets-${version}-probe.json`), JSON.stringify({ PROBES, probes }, null, 1));
 
-  const outlets: object[] = [];
-  const left: object[] = [];
-
-  for (const d of [...NEWS, ...TRADE_LEGAL]) {
+  const rated = [...NEWS, ...TRADE_LEGAL].map((d) => {
     const s = found.get(d);
     const quintiles = s ? (membership.get(s.id) ?? []) : [];
     const congress = probes.map((p) => p[d] ?? 0);
@@ -178,14 +165,14 @@ if (import.meta.main) {
     const group: Group | null = trade ? "trade-legal" : midpoint(quintiles);
 
     const why = s
-      ? !trade && !group
+      ? !trade && group === null
         ? "no 2019 partisanship rating in Media Cloud"
         : !trade && Math.max(...congress) < MIN_CONGRESS_STORIES
           ? `fewer than ${MIN_CONGRESS_STORIES} Congress stories collected in each probe window`
           : null
       : "not in the Media Cloud directory";
 
-    const row = {
+    return {
       domain: d,
       name: d,
       group,
@@ -193,14 +180,12 @@ if (import.meta.main) {
       quintiles,
       media_type: s?.media_type ?? null,
       congress_stories: congress,
+      why,
     };
+  });
 
-    if (why) {
-      left.push({ ...row, why });
-    } else {
-      outlets.push(row);
-    }
-  }
+  const outlets = rated.flatMap(({ why, ...row }) => (why === null ? [row] : []));
+  const left = rated.filter((r) => r.why !== null);
 
   const list = {
     version,
@@ -224,8 +209,9 @@ if (import.meta.main) {
   await Bun.write(file, `${JSON.stringify(list, null, 1)}\n`);
   const by: Record<string, number> = {};
 
-  for (const o of outlets as { group: string }[]) {
-    by[o.group] = (by[o.group] ?? 0) + 1;
+  for (const o of outlets) {
+    const group = String(o.group);
+    by[group] = (by[group] ?? 0) + 1;
   }
 
   console.log(file, by, "left out", left.length);

@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
-import type { Row } from "@antibody/core";
+import { must } from "@antibody/core";
 import { baselineOf, companions, parseListings, versionCode } from "../src/estimates.ts";
 import { sectionMap } from "../src/sections.ts";
+import type { SectionRow } from "../src/sections.ts";
 
 const xml = `<billStatus><bill><cboCostEstimates>
   <item><pubDate>2025-07-21T18:15:00Z</pubDate>
@@ -13,21 +14,26 @@ const xml = `<billStatus><bill><cboCostEstimates>
 </cboCostEstimates></bill></billStatus>`;
 
 test("BILLSTATUS lists each CBO publication once, with the version it scored", () => {
-  const twice = xml.replace("</cboCostEstimates>", `${/<item>[\s\S]*?<\/item>/.exec(xml)![0]}</cboCostEstimates>`);
+  const item = must(/<item>[\s\S]*?<\/item>/u.exec(xml), "an item")[0];
+  const twice = xml.replace("</cboCostEstimates>", `${item}</cboCostEstimates>`);
   expect(parseListings(twice).map((l) => l.pubId)).toEqual(["61569", "61570"]);
   const [beb, clb] = parseListings(xml);
   expect(beb).toMatchObject({ pubId: "61569", description: "Public Law 119-21 as enacted on July 4, 2025" });
-  expect(clb!.title).toContain("CBO's January 2025 Baseline");
+  expect(clb?.title).toContain("CBO's January 2025 Baseline");
 });
 
 test("every estimate names its baseline", () => {
   const [beb, clb] = parseListings(xml);
-  expect(baselineOf(beb!, null)).toEqual({
+  expect(baselineOf(must(beb, "the first listing"), null)).toEqual({
     baseline: "current-policy",
     label: "Senate budget-enforcement baseline (current policy)",
   });
-  expect(baselineOf(clb!, null)).toEqual({ baseline: "current-law", label: "CBO January 2025 baseline (current law)" });
-  expect(baselineOf({ ...clb!, title: "S. 1582, GENIUS Act" }, null).label).toBe("CBO current-law baseline");
+  const january = must(clb, "the second listing");
+  expect(baselineOf(january, null)).toEqual({
+    baseline: "current-law",
+    label: "CBO January 2025 baseline (current law)",
+  });
+  expect(baselineOf({ ...january, title: "S. 1582, GENIUS Act" }, null).label).toBe("CBO current-law baseline");
 });
 
 test("CBO's description maps to a GovInfo version code", () => {
@@ -43,8 +49,10 @@ test("CBO's description maps to a GovInfo version code", () => {
   expect(versionCode("As passed by the Senate on June 17, 2025", "119-s-1582", ["is", "rs", "enr"])).toBe(null);
 });
 
-const section = (id: string, history: Record<string, { path: string; heading: string }>) =>
-  ({ id, history }) as unknown as Row<"sections">;
+const section = (id: string, history: Record<string, { path: string; heading: string }>): SectionRow => ({
+  id,
+  history,
+});
 
 const bill = [
   section("s-direct-file", {

@@ -7,26 +7,28 @@ export interface SectionGroup {
   sections: SectionView[];
 }
 
-const ROMAN: Record<string, number> = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
+const ROMAN = new Map([
+  ["I", 1],
+  ["V", 5],
+  ["X", 10],
+  ["L", 50],
+  ["C", 100],
+  ["D", 500],
+  ["M", 1000],
+]);
 
 function roman(s: string): number | null {
-  if (!/^[IVXLCDM]+$/.test(s)) {
+  if (!/^[IVXLCDM]+$/u.test(s)) {
     return null;
   }
 
-  let total = 0;
+  const values = s.split("").map((c) => ROMAN.get(c) ?? 0);
 
-  for (let i = 0; i < s.length; i++) {
-    const v = ROMAN[s[i]!]!;
-    total += v < (ROMAN[s[i + 1] ?? ""] ?? 0) ? -v : v;
-  }
-
-  return total;
+  return values.reduce((total, v, i) => total + (v < (values[i + 1] ?? 0) ? -v : v), 0);
 }
 
-const top = /^(title|division):(.+)$/;
+const top = /^(title|division):(.+)$/u;
 
-/** A bill's own divisions run A to Z then AA, BB; titles run by numeral. Anything else keeps the order it arrived in. */
 function order(a: string, b: string): number {
   const [, ka, va = ""] = top.exec(a) ?? [];
   const [, kb, vb = ""] = top.exec(b) ?? [];
@@ -38,7 +40,7 @@ function order(a: string, b: string): number {
   const ra = roman(va);
   const rb = roman(vb);
 
-  if (ka === "title" && ra != null && rb != null) {
+  if (ka === "title" && ra !== null && rb !== null) {
     return ra - rb;
   }
 
@@ -55,11 +57,7 @@ const labelOf = (key: string, only: boolean) => {
   return `${hit[1] === "title" ? "Title" : "Division"} ${hit[2]}`;
 };
 
-/**
- * The final sections grouped by the title or division of the bill they sit in (the bundle carries no committee for
- * a section). Sections with no title or division of their own form one group. Bill order is kept inside a group.
- */
-export function groupSections(m: BillModel): SectionGroup[] {
+export function groupSections(m: Pick<BillModel, "sections">): SectionGroup[] {
   const by = new Map<string, SectionView[]>();
 
   for (const v of m.sections) {
@@ -67,7 +65,8 @@ export function groupSections(m: BillModel): SectionGroup[] {
       continue;
     }
 
-    const key = top.test(v.s.path.split("/")[0]!) ? v.s.path.split("/")[0]! : "";
+    const head = v.s.path.split("/")[0] ?? "";
+    const key = top.test(head) ? head : "";
     const list = by.get(key);
 
     if (list) {
@@ -77,12 +76,12 @@ export function groupSections(m: BillModel): SectionGroup[] {
     }
   }
 
-  const keys = [...by.keys()].sort((a, b) => (a === "" ? -1 : b === "" ? 1 : order(a, b)));
+  const groups = [...by].toSorted(([a], [b]) => (a === "" ? -1 : b === "" ? 1 : order(a, b)));
 
-  return keys.map((key) => ({
+  return groups.map(([key, sections]) => ({
     id: `group:${key || "general"}`,
     key,
-    label: labelOf(key, keys.length === 1),
-    sections: by.get(key)!,
+    label: labelOf(key, groups.length === 1),
+    sections,
   }));
 }

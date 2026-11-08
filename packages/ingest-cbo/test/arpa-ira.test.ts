@@ -15,11 +15,15 @@ test.skipIf(!have("117-hr-1319"))("ARPA: every title's sections carry CBO's doll
   const lines = await readRows("cbo_lines", "117-hr-1319");
 
   const nums = new Set(
-    lines.filter((l) => l.line_kind === "section" && l.section_ids.length).map((l) => l.section_nums[0]!),
+    lines.flatMap((l) => {
+      const [num] = l.section_nums;
+
+      return l.line_kind === "section" && l.section_ids.length > 0 && num !== undefined ? [num] : [];
+    }),
   );
 
   const titles = new Set([...nums].map((n) => n.slice(0, -3)));
-  expect([...titles].sort((a, b) => Number(a) - Number(b))).toEqual([
+  expect([...titles].toSorted((a, b) => Number(a) - Number(b))).toEqual([
     "1",
     "2",
     "3",
@@ -33,7 +37,7 @@ test.skipIf(!have("117-hr-1319"))("ARPA: every title's sections carry CBO's doll
     "11",
   ]);
   const section = await deficitOf("117-hr-1319", "57056");
-  expect(Math.round(section("9704")!.total_musd)).toBe(81_235);
+  expect(Math.round(section("9704")?.total_musd ?? Number.NaN)).toBe(81_235);
   expect(section("9601")?.total_musd).toBe(412_112);
   expect(section("9901")?.total_musd).toBe(362_050);
   expect(section("9674")?.total_musd).toBe(-8403);
@@ -46,7 +50,7 @@ test.skipIf(!have("117-hr-5376"))(
     const section = await deficitOf("117-hr-5376", "58455");
 
     for (const num of ["13903", "13904"]) {
-      expect(section(num)).toMatchObject({ total_musd: -26379.5, split: "even_split", join: "number" });
+      expect(section(num)).toMatchObject({ total_musd: -26_379.5, split: "even_split", join: "number" });
     }
   },
 );

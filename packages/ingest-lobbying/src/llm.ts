@@ -3,8 +3,11 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parseJson } from "@antibody/core";
 import { paths } from "@antibody/core/node";
+import { z } from "zod";
 
 const CACHE = join(paths.raw("lobbying"), "llm");
+
+const Reply = z.object({ result: z.string().optional(), total_cost_usd: z.number().optional() });
 
 export interface Answer<T> {
   value: T;
@@ -13,29 +16,31 @@ export interface Answer<T> {
   cached: boolean;
 }
 
-/**
- * Asks Claude through the `claude` CLI (the server has no API key) and parses the JSON in its answer.
- * Answers are cached by prompt and model, so a re-run costs nothing.
- */
-export async function askJson<T>(prompt: string, model = "opus", signal?: AbortSignal): Promise<Answer<T>> {
+export async function askJson<T>(
+  prompt: string,
+  schema: z.ZodType<T>,
+  model = "opus",
+  signal?: AbortSignal,
+): Promise<Answer<T>> {
   await mkdir(CACHE, { recursive: true });
   const file = Bun.file(join(CACHE, `${createHash("sha1").update(`${model}\n${prompt}`).digest("hex")}.json`));
 
   if (await file.exists()) {
-    return { ...(await file.json()), cached: true };
+    const cached = z.object({ value: schema, costUsd: z.number(), ms: z.number() }).parse(await file.json());
+
+    return { ...cached, cached: true };
   }
 
   const t0 = performance.now();
   let costUsd = 0;
 
-  // A reply cut off mid-JSON can't be read; the model is asked again, at most 3 times in all.
   for (let attempt = 1; ; attempt++) {
     const proc = Bun.spawn(["claude", "-p", "--model", model, "--output-format", "json"], {
       env: { ...process.env, CLAUDE_CODE_ENTRYPOINT: "antibody" },
       stdin: new Blob([prompt]),
       stdout: "pipe",
       stderr: "pipe",
-      signal,
+      signal: signal ?? new AbortController().signal,
     });
 
     const out = await new Response(proc.stdout).text();
@@ -44,14 +49,17 @@ export async function askJson<T>(prompt: string, model = "opus", signal?: AbortS
       throw new Error(`claude -p failed: ${await new Response(proc.stderr).text()}`);
     }
 
-    const body = JSON.parse(out) as { result: string; total_cost_usd?: number };
+    const body = Reply.parse(JSON.parse(out));
     costUsd += body.total_cost_usd ?? 0;
     let value: T;
 
     try {
-      value = parseJson<T>(body.result);
+      value = parseJson(body.result ?? "", schema);
     } catch (error) {
-      if (attempt >= 3) throw error;
+      if (attempt >= 3) {
+        throw error;
+      }
+
       continue;
     }
 

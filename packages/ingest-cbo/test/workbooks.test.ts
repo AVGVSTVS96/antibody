@@ -1,28 +1,28 @@
 import { expect, test } from "bun:test";
 import { resolve } from "node:path";
-import { python } from "@antibody/core/node";
-import type { Parsed, ParsedRow } from "../src/parsed.ts";
+import { must } from "@antibody/core";
+import { readTables } from "../src/parsed.ts";
+import type { ParsedRow } from "../src/parsed.ts";
 
-const PKG = resolve(import.meta.dir, "..");
 const uv = Bun.which("uv") !== null;
 
-// American Rescue Plan Act, CBO publication 57056: rows excerpted from four committees' sheets of
-// Estimated_Budgetary_Effects_of_hr1319_detailed_tables.xlsx, each laid out differently
-const parsed = uv
-  ? (JSON.parse(
-      await python(PKG, "cbo.py", ["xlsx", resolve(import.meta.dir, "fixtures", "arpa-titles.xlsx")]),
-    ) as Parsed)
-  : null;
+// https://www.cbo.gov/publication/57056
+const parsed = uv ? await readTables("xlsx", resolve(import.meta.dir, "fixtures", "arpa-titles.xlsx")) : null;
+const sheets = parsed?.sheets ?? [];
 
-const sheet = (name: string) => parsed!.sheets.find((s) => s.sheet === name)!.rows;
+const sheet = (name: string) =>
+  must(
+    sheets.find((s) => s.sheet === name),
+    name,
+  ).rows;
 
 const amount = (rows: ParsedRow[], num: string, kind: string, year = "2021-2031") =>
   rows.find((r) => r.line_kind === "section" && r.sections.includes(num) && r.measure_kind === kind)?.values[year];
 
 test.skipIf(!uv)("every title sheet is read, whichever column CBO starts its numbers in", () => {
-  expect(parsed!.sheets.map((s) => s.sheet)).toEqual(["Title 1.", "Title 4.", "Title 8.", "Title 9."]);
+  expect(sheets.map((s) => s.sheet)).toEqual(["Title 1.", "Title 4.", "Title 8.", "Title 9."]);
 
-  for (const s of parsed!.sheets) {
+  for (const s of sheets) {
     expect(s.years.at(-1)).toBe("2021-2031");
   }
 });
@@ -48,7 +48,7 @@ test.skipIf(!uv)("measure labels in column A, under 'Sec. 8001  Title', belong t
 
 test.skipIf(!uv)("Finance's sheet: 'Sec.', number and title in columns C to E, and numbers from column G", () => {
   const rows = sheet("Title 9.");
-  expect(Math.round(amount(rows, "9704", "outlays")!)).toBe(83_304);
+  expect(Math.round(amount(rows, "9704", "outlays") ?? Number.NaN)).toBe(83_304);
   expect(amount(rows, "9901", "outlays")).toBe(362_050);
   expect(rows.find((r) => r.sections.includes("9704"))?.section_title).toBe("Multiemployer Pension Plans");
   expect(rows.find((r) => r.section_title === "Total Increase in Direct Spending")?.line_kind).toBe("total");

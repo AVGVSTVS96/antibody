@@ -1,7 +1,8 @@
 import { join } from "node:path";
 import { billDisplay } from "@antibody/core";
-import type { BillId, Row, StageContext } from "@antibody/core";
+import type { Row, StageContext } from "@antibody/core";
 import { readRows, writeRows } from "@antibody/core/node";
+import { z } from "zod";
 import { billStatus } from "./billstatus.ts";
 import { best, billNumbers, findRefs, matcher, period } from "./extract.ts";
 import type { Aliases } from "./extract.ts";
@@ -16,7 +17,6 @@ const MODEL = "sonnet";
 const BATCH = 40;
 const KEEP = 0.6;
 
-/** A topic-only line never reads as more certain than this, whatever the model says. */
 const CAP = 0.8;
 
 async function topicPhrases(a: Aliases, signal: AbortSignal) {
@@ -33,7 +33,7 @@ CRS summary: ${(s?.summary ?? "").slice(0, 1500)}
 
 Return only JSON: {"phrases": ["..."]}`;
 
-  return await askJson<{ phrases: string[] }>(prompt, MODEL, signal);
+  return await askJson(prompt, Phrases, MODEL, signal);
 }
 
 interface Candidate {
@@ -45,17 +45,23 @@ interface Candidate {
   phrase: string;
 }
 
-interface Verdict {
-  i: number;
-  verdict: "this-bill" | "other" | "unclear";
-  confidence: number;
-  reason: string;
-}
+const Phrases = z.object({ phrases: z.array(z.string()) });
+
+const Verdicts = z.array(
+  z.object({
+    i: z.number(),
+    verdict: z.enum(["this-bill", "other", "unclear"]),
+    confidence: z.number(),
+    reason: z.string(),
+  }),
+);
+
+type Verdict = z.infer<typeof Verdicts>[number];
 
 function classifyPrompt(a: Aliases, summary: string, batch: Candidate[]) {
   return `You label lines from federal lobbying disclosure reports (LD-2). The bill:
 ${billDisplay(a.bill)} (${a.congress}th Congress), known as ${a.names.map((n) => `"${n.text}"`).join(", ")};
-earlier numbers: ${a.numbers.map((n) => billDisplay(n.id)).join(", ")}. Introduced ${a.introduced}${a.enactedOn ? `, law on ${a.enactedOn}` : ""}.
+earlier numbers: ${a.numbers.map((n) => billDisplay(n.id)).join(", ")}. Introduced ${a.introduced}${a.enactedOn !== null && a.enactedOn !== "" ? `, law on ${a.enactedOn}` : ""}.
 Summary: ${summary.slice(0, 800)}
 
 Each line below is from a report for a quarter while the bill was pending, and names no bill number or title.
@@ -71,17 +77,16 @@ ${JSON.stringify(batch.map(({ i, quarter, text }) => ({ i, quarter, text })))}`;
 }
 
 const wordRe = (phrase: string) =>
-  new RegExp(`(?<![A-Za-z])${phrase.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&").replaceAll(/\s+/g, "\\s+")}`, "i");
+  new RegExp(`(?<![A-Za-z])${phrase.replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&").replaceAll(/\s+/gu, "\\s+")}`, "iu");
 
-/**
- * Topic-only lobbying: lines that describe the bill's subject while it was pending without naming any bill.
- * A model proposes the search phrases from CRS's summary, lda.gov finds the lines, and the model judges each one;
- * kept lines become lda-topic-only inferences (drawn dashed, off by default).
- */
 export async function runTopic(ctx: StageContext) {
-  const bill = ctx.bill as BillId;
+  const bill = ctx.bill;
 
-  if (!Bun.which("claude")) {
+  if (bill === null) {
+    throw new Error("the lobbying-topic stage runs per bill");
+  }
+
+  if (Bun.which("claude") === null) {
     ctx.log("skipped: the claude CLI is not on this machine");
 
     return;
@@ -116,7 +121,7 @@ export async function runTopic(ctx: StageContext) {
 
     const p = period(f.filing_year, f.filing_period);
 
-    if (!a.introduced || p.end < a.introduced || p.start > until) {
+    if (a.introduced === null || a.introduced === "" || p.end < a.introduced || p.start > until) {
       continue;
     }
 
@@ -133,7 +138,7 @@ export async function runTopic(ctx: StageContext) {
 
       const phrase = phrases.value.phrases.find((ph) => wordRe(ph).test(text));
 
-      if (!phrase) {
+      if (phrase === undefined || phrase === "") {
         continue;
       }
 
@@ -151,15 +156,21 @@ export async function runTopic(ctx: StageContext) {
   );
 
   for (let k = 0; k < batches.length; k += 3) {
-    await Promise.all(
-      batches.slice(k, k + 3).map(async (batch) => {
-        const ans = await askJson<Verdict[]>(classifyPrompt(a, s?.summary ?? "", batch), MODEL, ctx.signal);
-
-        if (!ans.cached) [cost, ms, calls] = [cost + ans.costUsd, ms + ans.ms, calls + 1];
-
-        for (const v of ans.value) verdicts.set(v.i, v);
-      }),
+    const answers = await Promise.all(
+      batches
+        .slice(k, k + 3)
+        .map(async (batch) => await askJson(classifyPrompt(a, s?.summary ?? "", batch), Verdicts, MODEL, ctx.signal)),
     );
+
+    for (const ans of answers) {
+      if (!ans.cached) {
+        [cost, ms, calls] = [cost + ans.costUsd, ms + ans.ms, calls + 1];
+      }
+
+      for (const v of ans.value) {
+        verdicts.set(v.i, v);
+      }
+    }
   }
 
   const byUuid = new Map(pulled.map((f) => [f.filing_uuid, f]));
@@ -172,14 +183,20 @@ export async function runTopic(ctx: StageContext) {
       continue;
     }
 
-    const f = byUuid.get(c.filing)!;
+    const f = byUuid.get(c.filing);
+    const activity = f?.lobbying_activities[c.line];
+
+    if (f === undefined || activity === undefined) {
+      throw new Error(`candidate ${c.filing}#${c.line} is not in the pulled filings`);
+    }
+
     const p = period(f.filing_year, f.filing_period);
     refs.push({
       id: `${c.filing}#${c.line}#${bill}`,
       filing_id: c.filing,
       bill_id: bill,
       line: c.line + 1,
-      issue_code: f.lobbying_activities[c.line]!.general_issue_code,
+      issue_code: activity.general_issue_code,
       quote: c.text,
       topic: c.phrase,
       phase: phaseOf(p.start, p.end, a.enactedOn),
@@ -192,7 +209,7 @@ export async function runTopic(ctx: StageContext) {
     });
   }
 
-  const kept = [...new Set(refs.map((r) => r.filing_id))].map((id) => byUuid.get(id)!);
+  const kept = [...new Set(refs.map((r) => r.filing_id))].flatMap((id) => byUuid.get(id) ?? []);
   const filings = kept.map(filingRow);
   await upsert("lda_filings", filings, (f) => String(f.year), { finish: markSuperseded });
   await upsert("lda_clients", clientRows(kept), () => "all", { merge: mergeClient });
@@ -200,7 +217,9 @@ export async function runTopic(ctx: StageContext) {
   const stored = new Map<string, Row<"lda_filings">>();
 
   for (const y of new Set(filings.map((f) => String(f.year)))) {
-    for (const f of await readRows("lda_filings", y)) stored.set(f.id, f);
+    for (const f of await readRows("lda_filings", y)) {
+      stored.set(f.id, f);
+    }
   }
 
   await writeRows(

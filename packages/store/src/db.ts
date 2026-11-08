@@ -15,11 +15,6 @@ export async function openDb(file = paths.db, { memoryLimit = "3GB" } = {}) {
 
 export type Db = Awaited<ReturnType<typeof openDb>>;
 
-/**
- * Recreates every contract table from data/out/<table>/*.jsonl. Returns row counts. One bad shard shouldn't stop
- * every bundle: a row whose id repeats is skipped, a table whose rows break its constraints stays empty, and both
- * are reported through `report`.
- */
 export async function loadTables(
   db: Db,
   outDir = (t: TableName) => paths.table(t),
@@ -33,9 +28,9 @@ export async function loadTables(
     await db.run(`DROP TABLE IF EXISTS ${table}`);
     await db.run(ddl(table));
     const dir = outDir(table);
-    const files = (await readdir(dir).catch(() => [] as string[])).filter((f) => f.endsWith(".jsonl"));
+    const files = (await readdir(dir).catch((): string[] => [])).filter((f) => f.endsWith(".jsonl"));
 
-    if (files.length) {
+    if (files.length > 0) {
       const cols = columns(table)
         .map(([n, t]) => `"${n}": '${t.replace(" NOT NULL", "")}'`)
         .join(", ");
@@ -45,38 +40,44 @@ export async function loadTables(
 
       try {
         await db.run(`INSERT OR IGNORE INTO ${table} SELECT ${selectList(table)} FROM ${source}`);
-        const dupes = await db.runAndReadAll(`SELECT id FROM ${source} GROUP BY id HAVING count(*) > 1 ORDER BY id`);
-        const ids = dupes.getRows().map((r) => String(r[0]));
+        const dupes = await query(db, `SELECT id FROM ${source} GROUP BY id HAVING count(*) > 1 ORDER BY id`);
+        const ids = dupes.map((r) => r.id).filter(isText);
 
-        if (ids.length) {
+        if (ids.length > 0) {
           report(table, `${ids.length} duplicate ids skipped, e.g. ${ids.slice(0, 3).join(", ")}`);
         }
       } catch (error) {
         await db.run(`DELETE FROM ${table}`);
-        report(table, `not loaded: ${(error as Error).message.split("\n")[0]}`);
+        report(table, `not loaded: ${(error instanceof Error ? error.message : String(error)).split("\n")[0]}`);
       }
     }
 
-    const reader = await db.runAndReadAll(`SELECT count(*)::INTEGER FROM ${table}`);
-    counts[table] = reader.getRows()[0]![0] as number;
+    counts[table] = await countOf(db, `SELECT count(*)::INTEGER AS n FROM ${table}`);
   }
 
   return counts;
 }
 
-type Plain = string | number | boolean | null | Plain[] | { [k: string]: Plain };
+export type Plain = string | number | boolean | null | Plain[] | { [k: string]: Plain };
+
+export type PlainRow = Record<string, Plain>;
 
 export type Param = string | number | boolean | null | string[] | number[];
 
-/**
- * Runs a query with `$name` params (arrays bind as typed lists) and returns plain rows shaped like the contract's
- * JSONL: DATE as `YYYY-MM-DD`, TIMESTAMPTZ as ISO, BIGINT as number, JSON columns parsed.
- */
-export async function query<T = Record<string, Plain>>(
-  db: Db,
-  sql: string,
-  params: Record<string, Param> = {},
-): Promise<T[]> {
+export const isText = <T>(v: T): v is T & string => typeof v === "string";
+
+export const isNumber = <T>(v: T): v is T & number => typeof v === "number";
+
+const isNumbers = (v: string[] | number[]): v is number[] => typeof v[0] === "number";
+
+export const isPlain = (v: unknown): v is Plain =>
+  v === null ||
+  typeof v === "string" ||
+  typeof v === "number" ||
+  typeof v === "boolean" ||
+  (Array.isArray(v) ? v.every(isPlain) : typeof v === "object" && Object.values(v).every(isPlain));
+
+export async function query(db: Db, sql: string, params: Record<string, Param> = {}): Promise<PlainRow[]> {
   const values: Record<string, DuckDBValue> = {};
   const types: Record<string, DuckDBType> = {};
 
@@ -87,17 +88,17 @@ export async function query<T = Record<string, Plain>>(
     }
 
     values[k] = listValue(v);
-    types[k] = LIST(typeof v[0] === "number" ? INTEGER : VARCHAR);
+    types[k] = LIST(isNumbers(v) ? INTEGER : VARCHAR);
   }
 
   const reader = await db.runAndReadAll(sql, values, types);
 
-  const fix = reader.columnNames().map((name, i) => {
+  const fixes = reader.columnNames().map((name, i) => {
     const t = reader.columnType(i);
     const type = t.alias ?? t.toString();
 
-    if (/^(BIGINT|HUGEINT|UBIGINT)$/.test(type)) {
-      return [name, (v: Plain) => (v == null ? v : Number(v))] as const;
+    if (/^(?:BIGINT|HUGEINT|UBIGINT)$/u.test(type)) {
+      return [name, (v: Plain) => (v === null ? v : Number(v))] as const;
     }
 
     if (type === "JSON") {
@@ -109,25 +110,58 @@ export async function query<T = Record<string, Plain>>(
     }
 
     if (type.startsWith("TIMESTAMP")) {
-      return [name, (v: Plain) => (v == null ? v : toIso(v as string))] as const;
+      return [name, (v: Plain) => (isText(v) ? toIso(v) : v)] as const;
     }
 
     return null;
   });
 
-  const rows = reader.getRowObjectsJson() as Record<string, Plain>[];
+  const rows: PlainRow[] = reader.getRowObjectsJson();
 
-  for (const f of fix) {
-    if (f) for (const r of rows) r[f[0]] = f[1](r[f[0]]!);
+  for (const fix of fixes) {
+    if (fix) {
+      const [name, apply] = fix;
+
+      for (const r of rows) {
+        const v = r[name];
+
+        if (v !== undefined) {
+          r[name] = apply(v);
+        }
+      }
+    }
   }
 
-  return rows as T[];
+  return rows;
 }
 
-const json = (v: Plain): Plain => (typeof v === "string" ? JSON.parse(v) : v);
-const toIso = (v: string) => new Date(v.replace(" ", "T").replace(/([+-]\d\d)$/, "$1:00")).toISOString();
+export async function countOf(db: Db, sql: string, params: Record<string, Param> = {}): Promise<number> {
+  const [row] = await query(db, sql, params);
+  const n = row?.n;
 
-/** Tables present in this database (so the builder keeps working while a part's new table hasn't landed). */
+  if (!isNumber(n)) {
+    throw new Error(`no count from ${sql}`);
+  }
+
+  return n;
+}
+
+function json(v: Plain): Plain {
+  if (!isText(v)) {
+    return v;
+  }
+
+  const parsed: unknown = JSON.parse(v);
+
+  if (!isPlain(parsed)) {
+    throw new Error("a JSON column held a value JSON.parse cannot return");
+  }
+
+  return parsed;
+}
+
+const toIso = (v: string) => new Date(v.replace(" ", "T").replace(/([+-]\d\d)$/u, "$1:00")).toISOString();
+
 export async function tableNames(db: Db): Promise<Set<string>> {
-  return new Set((await query<{ t: string }>(db, "SELECT table_name AS t FROM duckdb_tables()")).map((r) => r.t));
+  return new Set((await query(db, "SELECT table_name AS t FROM duckdb_tables()")).map((r) => r.t).filter(isText));
 }

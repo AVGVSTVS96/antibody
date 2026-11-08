@@ -15,5 +15,7 @@ test("the curated list is party-balanced, alternating, with canonical unique ids
   }
 
   expect(new Set(CURATED.map((p) => p.id)).size).toBe(CURATED.length);
-  expect(CURATED.map((p) => p.id)).toEqual(expect.arrayContaining(["119-s-1582", "119-hr-1", "117-hr-5376"]));
+  expect(CURATED.map((p) => p.id)).toContain("119-s-1582");
+  expect(CURATED.map((p) => p.id)).toContain("119-hr-1");
+  expect(CURATED.map((p) => p.id)).toContain("117-hr-5376");
 });

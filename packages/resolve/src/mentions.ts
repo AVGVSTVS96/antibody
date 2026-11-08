@@ -1,4 +1,5 @@
 import type { Row } from "@antibody/core";
+import { filled } from "@antibody/core";
 import type { Mention } from "./match.ts";
 
 export function clientMentions(clients: Row<"lda_clients">[]): Mention[] {
@@ -21,38 +22,36 @@ export function clientMentions(clients: Row<"lda_clients">[]): Mention[] {
   }));
 }
 
-/** Committee types that are candidates' own committees or party committees, never a company's PAC. */
-const NOT_SPONSORED = new Set(["H", "S", "P", "X", "Y", "Z"]);
+const LEADERSHIP_PAC = "D";
+const CANDIDATE_OR_PARTY_COMMITTEE = new Set(["H", "S", "P", "X", "Y", "Z"]);
 
-/**
- * PACs with a connected organization. Leadership PACs (designation D) are left out: their "connected org" is the
- * politician's surname, which matched Williams Companies and McCormick & Co in the spike.
- */
 export function pacMentions(pacs: Row<"pacs">[]): Mention[] {
-  return pacs
-    .filter((p) => p.designation !== "D" && !NOT_SPONSORED.has(p.type ?? ""))
-    .map((p) => {
-      const org = p.connected_org && !/^(NONE|N\/?A|NULL)$/i.test(p.connected_org.trim()) ? p.connected_org : null;
+  return pacs.flatMap((p) => {
+    if (p.designation === LEADERSHIP_PAC || CANDIDATE_OR_PARTY_COMMITTEE.has(p.type ?? "")) {
+      return [];
+    }
 
-      return {
+    const org =
+      filled(p.connected_org) && !/^(NONE|N\/?A|NULL)$/iu.test(p.connected_org.trim()) ? p.connected_org : null;
+
+    return [
+      {
         src: `pac:${p.id}`,
         source: "pac" as const,
         name: org ?? p.name,
         ticker: null,
-        context: org ? `PAC name: ${p.name}` : null,
+        context: org === null ? null : `PAC name: ${p.name}`,
         restsOn: [`pacs/${p.id}`],
-      };
-    });
+      },
+    ];
+  });
 }
 
-/** Employers whose donors gave at least this much in all get model review; smaller ones match deterministically only. */
 export const EMPLOYER_REVIEW_USD = 25_000;
 
-/**
- * Individual donors' employers, one mention per employer key across members and cycles, named by the spelling
- * that carried the most money.
- */
-export function employerMentions(rows: Row<"employer_contributions">[]): Mention[] {
+export function employerMentions(
+  rows: Pick<Row<"employer_contributions">, "id" | "employer" | "employer_key" | "amount_usd">[],
+): Mention[] {
   interface Employer {
     usd: number;
     spellings: Map<string, number>;
@@ -70,63 +69,61 @@ export function employerMentions(rows: Row<"employer_contributions">[]): Mention
   }
 
   return [...by].map(([key, e]) => {
-    const names = [...e.spellings].sort((a, b) => b[1] - a[1]).map(([n]) => n);
+    const [name, ...aka] = [...e.spellings].toSorted((a, b) => b[1] - a[1]).map(([n]) => n);
+
+    if (name === undefined) {
+      throw new Error(`employer ${key} has no spelling`);
+    }
 
     return {
       src: `employer:${key}`,
       source: "employer" as const,
-      name: names[0]!,
+      name,
       ticker: null,
-      context:
-        names.length > 1
-          ? `employer of individual donors, also written: ${names.slice(1, 5).join("; ")}`
-          : "employer of individual donors",
+      context: aka.length
+        ? `employer of individual donors, also written: ${aka.slice(0, 4).join("; ")}`
+        : "employer of individual donors",
       restsOn: e.ids.slice(0, 5).map((id) => `employer_contributions/${id}`),
       reviewable: e.usd >= EMPLOYER_REVIEW_USD,
     };
   });
 }
 
-/** Stock and options only; bonds, funds and notes stay out of the headline (decision weak-tier-assets). */
 export const STOCK_TYPES = new Set(["ST", "OP", "Stock", "Stock Option"]);
 
 export function tradeMentions(trades: Row<"trades">[]): Mention[] {
-  return trades
-    .filter((t) => STOCK_TYPES.has(t.asset_type ?? "") || (t.asset_type === null && t.ticker))
-    .map((t) => ({
-      src: `trade:${t.id}`,
-      source: "trade" as const,
-      name: t.asset,
-      ticker: t.ticker,
-      context: null,
-      restsOn: [`trades/${t.id}`],
-    }));
+  return trades.flatMap((t) =>
+    STOCK_TYPES.has(t.asset_type ?? "") || (t.asset_type === null && filled(t.ticker))
+      ? [
+          {
+            src: `trade:${t.id}`,
+            source: "trade" as const,
+            name: t.asset,
+            ticker: t.ticker,
+            context: null,
+            restsOn: [`trades/${t.id}`],
+          },
+        ]
+      : [],
+  );
 }
 
-/** Rows of one entity can arrive in several shards (one per bill); each src is resolved once. */
 export const uniqueBySrc = (mentions: Mention[]) => [...new Map(mentions.map((m) => [m.src, m])).values()];
 
-/**
- * Trades repeat the same asset hundreds of times; resolve each distinct (name, ticker) once and fan the answer out.
- */
-export function dedupe(mentions: Mention[]): { unique: Mention[]; fanOut: Map<Mention, Mention[]> } {
-  const groups = new Map<string, Mention[]>();
+export function dedupe(mentions: Mention[]) {
+  const firstByKey = new Map<string, Mention>();
+  const fanOut = new Map<Mention, Mention[]>();
 
   for (const m of mentions) {
     const k = `${m.source}\u0000${m.name}\u0000${m.ticker ?? ""}\u0000${m.context ?? ""}`;
-    const g = groups.get(k);
+    const first = firstByKey.get(k);
 
-    if (g) {
-      g.push(m);
+    if (first === undefined) {
+      firstByKey.set(k, m);
+      fanOut.set(m, [m]);
     } else {
-      groups.set(k, [m]);
+      fanOut.get(first)?.push(m);
     }
-  }
-
-  const fanOut = new Map<Mention, Mention[]>();
-
-  for (const g of groups.values()) {
-    fanOut.set(g[0]!, g);
   }
 
   return { unique: [...fanOut.keys()], fanOut };

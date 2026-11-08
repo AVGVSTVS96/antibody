@@ -1,18 +1,22 @@
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { z } from "zod";
 
 const emptyDir = join(homedir(), ".cache", "claude-empty");
 
 mkdirSync(emptyDir, { recursive: true });
 
-/**
- * One `claude -p` call with no tools and no user settings, returning the model's text. The server has no API key;
- * Claude Code's own login pays for it.
- */
+const ClaudeJson = z.object({
+  result: z.string(),
+  is_error: z.boolean().optional(),
+  total_cost_usd: z.number(),
+  modelUsage: z.record(z.string(), z.unknown()),
+});
+
 export async function claude(
   prompt: string,
-  opts: { system: string; model: string; signal?: AbortSignal },
+  opts: { system: string; model: string; signal?: AbortSignal | undefined },
 ): Promise<{ text: string; costUsd: number; model: string }> {
   const proc = Bun.spawn(
     [
@@ -35,7 +39,7 @@ export async function claude(
       stdout: "pipe",
       stderr: "pipe",
       cwd: emptyDir,
-      signal: opts.signal,
+      signal: opts.signal ?? new AbortController().signal,
     },
   );
 
@@ -45,28 +49,28 @@ export async function claude(
     throw new Error(`claude -p failed: ${err.slice(0, 300) || out.slice(0, 300)}`);
   }
 
-  const r = JSON.parse(out) as { result: string; is_error?: boolean; total_cost_usd: number; modelUsage: object };
+  const r = ClaudeJson.parse(JSON.parse(out));
 
-  if (r.is_error) {
+  if (r.is_error === true) {
     throw new Error(`claude -p error: ${r.result}`);
   }
 
   return { text: r.result, costUsd: r.total_cost_usd, model: Object.keys(r.modelUsage)[0] ?? opts.model };
 }
 
-/** Runs tasks with at most `n` in flight. */
-export async function pool<T, R>(items: T[], n: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
+export const messageOf = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
+
+export async function pool<T, R>(items: T[], inFlight: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  const queue = items.entries();
 
   const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i]!, i);
+    for (const [i, item] of queue) {
+      out[i] = await fn(item, i);
     }
   };
 
-  await Promise.all(Array.from({ length: Math.min(n, items.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(inFlight, items.length) }, worker));
 
   return out;
 }

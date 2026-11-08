@@ -11,7 +11,7 @@ import * as resolve from "@antibody/resolve";
 import * as store from "@antibody/store";
 import * as watch from "@antibody/watch";
 
-export const PACKAGES: Record<string, Stage[]> = {
+export const PACKAGES = {
   "@antibody/ingest-bills": bills.stages,
   "@antibody/ingest-cbo": cbo.stages,
   "@antibody/ingest-lobbying": lobbying.stages,
@@ -23,4 +23,4 @@ export const PACKAGES: Record<string, Stage[]> = {
   "@antibody/analyze": analyze.stages,
   "@antibody/store": store.stages,
   "@antibody/watch": watch.stages,
-};
+} satisfies Record<string, Stage[]>;

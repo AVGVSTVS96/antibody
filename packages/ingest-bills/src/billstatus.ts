@@ -1,4 +1,4 @@
-import { billRef } from "@antibody/core";
+import { BILL_TYPES, billId, billRef } from "@antibody/core";
 import type { BillId } from "@antibody/core";
 import { all, at, first, parseXml, textOf } from "./xml.ts";
 import type { Element } from "./xml.ts";
@@ -31,13 +31,11 @@ export interface AmendmentRecord {
   chamber: "House" | "Senate";
   sponsorBioguide: string | null;
   sponsorName: string | null;
-  /** Thomas code when a committee offered it (House Rules Committee substitutes have no member sponsor). */
   sponsorCommittee: string | null;
   purpose: string | null;
   latestAction: { date: string; text: string } | null;
   actions: Action[];
   submittedOn: string | null;
-  /** The amendment this one amends (second-degree amendments to a substitute). */
   amends: string | null;
 }
 
@@ -68,13 +66,12 @@ export interface BillStatus {
   updatedAt: string | null;
 }
 
-/** GovInfo stamps dates as UTC instants of Eastern midnight (`2025-06-17T04:00:00Z`); this is the Eastern calendar day. */
 export function easternDate(s: string | null): string | null {
-  if (!s) {
+  if (s === null || s === "") {
     return null;
   }
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(s)) {
     return s;
   }
 
@@ -105,18 +102,13 @@ function actions(e: Element, path: string): Action[] {
 function latest(e: Element): { date: string; text: string } | null {
   const text = at(e, "latestAction/text");
 
-  return text ? { date: easternDate(at(e, "latestAction/actionDate")) ?? "", text } : null;
+  return text === null ? null : { date: easternDate(at(e, "latestAction/actionDate")) ?? "", text };
 }
 
-/** Thomas code as congress-legislators writes it: `hsbu00` → `HSBU`, `ssfi12` → `SSFI12`. */
 export function thomasCode(systemCode: string): string {
-  return systemCode.toUpperCase().replace(/00$/, "");
+  return systemCode.toUpperCase().replace(/00$/u, "");
 }
 
-/**
- * A committee-offered amendment's committee: the code its actions carry, or, for older House records that only name it,
- * the Rules Committee (the one committee whose self-executing substitutes BILLSTATUS lists as amendments).
- */
 function committeeSponsor(a: Element): string | null {
   const code = first(a, "actions/actions/item/committees/item/systemCode");
 
@@ -127,14 +119,22 @@ function committeeSponsor(a: Element): string | null {
   return at(a, "sponsors/item/name") === "Rules Committee" ? "HSRU" : null;
 }
 
-/**
- * The bill's short title. When its final text has short titles only for its parts, earlier ones can name the shell
- * bill it rode on (H.R.815, the April 2024 foreign aid law, as "RELIEVE Act"), so only a popular title names it.
- */
-function shortTitle(titles: { type: string; title: string }[]): string | null {
-  const final = titles.filter((t) => /ENR \(Enrolled\)|as Enacted/i.test(t.type));
+function committee(e: Element, chamber: string): Committee {
+  return {
+    code: thomasCode(at(e, "systemCode") ?? ""),
+    name: at(e, "name") ?? "",
+    chamber,
+    activities: all(e, "activities/item").map((a) => ({
+      name: at(a, "name") ?? "",
+      date: easternDate(at(a, "date")),
+    })),
+  };
+}
 
-  if (final.length && final.every((t) => /portions/i.test(t.type))) {
+function shortTitle(titles: { type: string; title: string }[]): string | null {
+  const final = titles.filter((t) => /ENR \(Enrolled\)|as Enacted/iu.test(t.type));
+
+  if (final.length && final.every((t) => /portions/iu.test(t.type))) {
     return (
       titles.find((t) => t.type === "Override Display Title")?.title ??
       titles.find((t) => t.type === "Popular Titles")?.title ??
@@ -142,12 +142,12 @@ function shortTitle(titles: { type: string; title: string }[]): string | null {
     );
   }
 
-  const whole = titles.filter((t) => !/portions/i.test(t.type));
+  const whole = titles.filter((t) => !/portions/iu.test(t.type));
 
   return (
     titles.find((t) => t.type === "Override Display Title")?.title ??
-    whole.find((t) => /^Short Titles? .*as Enacted/i.test(t.type))?.title ??
-    whole.find((t) => /^Short Title/i.test(t.type))?.title ??
+    whole.find((t) => /^Short Titles? .*as Enacted/iu.test(t.type))?.title ??
+    whole.find((t) => /^Short Title/iu.test(t.type))?.title ??
     titles.find((t) => t.type === "Popular Titles")?.title ??
     null
   );
@@ -164,7 +164,7 @@ export function parseBillStatus(xml: string, id: BillId): BillStatus {
   const display = at(b, "title") ?? "";
   const lawNumber = at(b, "laws/item/number");
   const acts = actions(b, "actions/item");
-  const lawAction = acts.find((a) => /^Became (Public|Private) Law/.test(a.text));
+  const lawAction = acts.find((a) => /^Became (Public|Private) Law/u.test(a.text));
 
   return {
     id,
@@ -180,21 +180,11 @@ export function parseBillStatus(xml: string, id: BillId): BillStatus {
       withdrawnOn: easternDate(at(c, "sponsorshipWithdrawnDate")),
     })),
     committees: all(b, "committees/item").flatMap((c) => {
-      const own = (e: Element, chamber: string): Committee => ({
-        code: thomasCode(at(e, "systemCode") ?? ""),
-        name: at(e, "name") ?? "",
-        chamber,
-        activities: all(e, "activities/item").map((a) => ({
-          name: at(a, "name") ?? "",
-          date: easternDate(at(a, "date")),
-        })),
-      });
-
       const chamber = at(c, "chamber") ?? "";
 
-      return [own(c, chamber), ...all(c, "subcommittees/item").map((s) => own(s, chamber))];
+      return [committee(c, chamber), ...all(c, "subcommittees/item").map((s) => committee(s, chamber))];
     }),
-    law: lawNumber ? `${at(b, "laws/item/type") === "Private Law" ? "Pvt.L." : "P.L."} ${lawNumber}` : null,
+    law: lawNumber === null ? null : `${at(b, "laws/item/type") === "Private Law" ? "Pvt.L." : "P.L."} ${lawNumber}`,
     lawOn: lawAction?.date ?? null,
     latestAction: latest(b),
     actions: acts,
@@ -203,7 +193,7 @@ export function parseBillStatus(xml: string, id: BillId): BillStatus {
       date: easternDate(at(v, "date")),
       urls: all(v, "formats/item")
         .map((f) => at(f, "url"))
-        .filter((u): u is string => !!u),
+        .filter((u) => u !== null),
     })),
     amendments: all(b, "amendments/amendment").map((a) => {
       const type = at(a, "type") ?? "";
@@ -215,28 +205,29 @@ export function parseBillStatus(xml: string, id: BillId): BillStatus {
         chamber: type.startsWith("H") ? "House" : "Senate",
         sponsorBioguide: at(a, "sponsors/item/bioguideId"),
         sponsorName: at(a, "sponsors/item/fullName") ?? at(a, "sponsors/item/name"),
-        sponsorCommittee: at(a, "sponsors/item/bioguideId") ? null : committeeSponsor(a),
+        sponsorCommittee: at(a, "sponsors/item/bioguideId") === null ? committeeSponsor(a) : null,
         purpose: at(a, "purpose") ?? at(a, "description"),
         latestAction: latest(a),
         actions: actions(a, "actions/actions/item"),
         submittedOn: easternDate(at(a, "submittedDate")),
-        amends: at(a, "amendedAmendment/number")
-          ? `${at(a, "amendedAmendment/type")} ${at(a, "amendedAmendment/number")}`
-          : null,
+        amends:
+          at(a, "amendedAmendment/number") === null
+            ? null
+            : `${at(a, "amendedAmendment/type")} ${at(a, "amendedAmendment/number")}`,
       };
     }),
     related: all(b, "relatedBills/item").flatMap((r) => {
-      const type = at(r, "type")?.toLowerCase();
+      const type = BILL_TYPES.find((t) => t === at(r, "type")?.toLowerCase());
       const number = at(r, "number");
       const congress = at(r, "congress");
 
-      if (!type || !number || !congress) {
+      if (type === undefined || number === null || congress === null) {
         return [];
       }
 
       return [
         {
-          id: `${congress}-${type}-${number}` as BillId,
+          id: billId({ congress: Number(congress), type, number: Number(number) }),
           title: at(r, "title"),
           relationship: all(r, "relationshipDetails/item").map((d) => at(d, "type") ?? ""),
         },

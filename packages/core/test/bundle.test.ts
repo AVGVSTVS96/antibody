@@ -13,6 +13,14 @@ import {
 } from "../src/bundle.ts";
 import type { ReachKind } from "../src/tables.ts";
 
+function defined<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error("expected a value");
+  }
+
+  return value;
+}
+
 test("the fixture is a valid, sound bundle", () => {
   const parsed = Bundle.safeParse(fixture);
 
@@ -26,7 +34,7 @@ test("the fixture is a valid, sound bundle", () => {
 test("checkBundle catches a dangling claim and edge", () => {
   const b = Bundle.parse(fixture);
   const broken = structuredClone(b);
-  broken.edges.push({ ...b.edges[0]!, id: "x", dst: "member:NOPE", claims: ["trades/missing"] } as never);
+  broken.edges.push({ ...defined(b.edges[0]), id: "x", dst: "member:NOPE", claims: ["trades/missing"] });
   expect(checkBundle(broken)).toEqual([
     "edge x: unknown dst member:NOPE",
     ".edges[4].claims: unknown claim trades/missing",
@@ -35,7 +43,7 @@ test("checkBundle catches a dangling claim and edge", () => {
 
 test("checkBundle catches a pay-for that names a section the bundle does not have", () => {
   const b = structuredClone(Bundle.parse(fixture));
-  const [s] = b.sections;
+  const s = defined(b.sections[0]);
 
   const score = {
     label: "normal",
@@ -49,12 +57,13 @@ test("checkBundle catches a pay-for that names a section the bundle does not hav
       offTopic: null,
       lobbyingReports: 0,
     },
-    claim: Object.keys(b.claims)[0]!,
+    claim: defined(Object.keys(b.claims)[0]),
   };
 
-  s!.score = Bundle.shape.sections.element.shape.score.parse(score);
-  expect(checkBundle(b)).toEqual([`section ${s!.id}: offsets unknown section no-such-section`]);
-  s!.score!.offsets = s!.id;
+  const parsedScore = defined(Bundle.shape.sections.element.shape.score.parse(score));
+  s.score = parsedScore;
+  expect(checkBundle(b)).toEqual([`section ${s.id}: offsets unknown section no-such-section`]);
+  parsedScore.offsets = s.id;
   expect(checkBundle(b)).toEqual([]);
 });
 
@@ -76,12 +85,16 @@ test("an index without stats or watch picks still parses", () => {
   });
 
   expect(index.watch).toEqual([]);
-  expect(index.bills[0]!.stats).toBeNull();
+  expect(index.bills[0]?.stats).toBeNull();
   expect(index.bills[0]).toMatchObject({ origin: "curated", note: null, addedOn: null });
 });
 
 test("billStats counts the index card numbers", () => {
-  expect(billStats(Bundle.parse(fixture))).toEqual({
+  const { membersTradedDuring, tradeSpan, lateShare, ...stats } = billStats(Bundle.parse(fixture));
+  expect(membersTradedDuring).toBeNumber();
+  expect(tradeSpan).not.toBeNil();
+  expect(lateShare).toBeNumber();
+  expect(stats).toEqual({
     sections: 1,
     headline: 0,
     buried: 0,
@@ -91,7 +104,6 @@ test("billStats counts the index card numbers", () => {
     lobbyingReports: 757,
     companies: 0,
     membersTraded: 2,
-    membersTradedDuring: expect.any(Number),
     buriedTest: {
       tested: false,
       why: "the bill has only 1 section, too few for anything to be buried among",
@@ -102,8 +114,6 @@ test("billStats counts the index card numbers", () => {
     },
     cboPublished: true,
     deficitDirectOnly: false,
-    tradeSpan: expect.anything(),
-    lateShare: expect.any(Number),
     vehicle: false,
     deficitMusd: 120,
     fingerprint: "u",
@@ -112,8 +122,8 @@ test("billStats counts the index card numbers", () => {
 
 test("the headline deficit comes from the latest published estimate, longest period", () => {
   const b = structuredClone(Bundle.parse(fixture));
-  const base = b.dollars.wholeBill.find((d) => d.measure === "deficit")!;
-  const est = b.dollars.estimates[0]!;
+  const base = defined(b.dollars.wholeBill.find((d) => d.measure === "deficit"));
+  const est = defined(b.dollars.estimates[0]);
   b.dollars.estimates = [
     { ...est, id: "old", publishedOn: "2025-06-04" },
     { ...est, id: "new", publishedOn: "2025-07-21" },
@@ -130,13 +140,14 @@ test("the headline deficit comes from the latest published estimate, longest per
 test("checkBundle also follows *Claim props, like a lobbied edge's shareClaim", () => {
   const b = Bundle.parse(fixture);
   const broken = structuredClone(b);
+  const first = defined(b.edges[0]);
   broken.edges.push({
     id: "lobbied:x",
     kind: "lobbied",
-    src: b.edges[0]!.src,
-    dst: b.edges[0]!.dst,
+    src: first.src,
+    dst: first.dst,
     basis: "fact",
-    claims: [b.edges[0]!.claims[0]!],
+    claims: first.claims.slice(0, 1),
     props: {
       reports: 1,
       quarters: 1,
@@ -153,10 +164,10 @@ test("checkBundle also follows *Claim props, like a lobbied edge's shareClaim", 
 
 function bill(n: number, over: (i: number) => object = () => ({})) {
   const b = structuredClone(Bundle.parse(fixture));
-  const [only] = b.sections;
-  const claim = Object.keys(b.claims)[0]!;
+  const only = defined(b.sections[0]);
+  const claim = defined(Object.keys(b.claims)[0]);
   b.sections = Array.from({ length: n }, (_, i) => ({
-    ...only!,
+    ...only,
     id: `s${i}`,
     path: `title:I/sec:${i + 1}`,
     inFinal: true,
@@ -182,7 +193,7 @@ const score = (dollarsMusd: number | null, lobbyingFirms = 0, reach: ReachKind[]
     lobbyingFirms,
     reach,
   },
-  claim: Object.keys(Bundle.parse(fixture).claims)[0]!,
+  claim: defined(Object.keys(Bundle.parse(fixture).claims)[0]),
 });
 
 test("the buried test cannot fire on a bill too short to bury anything in", () => {
@@ -219,9 +230,11 @@ test("a section whose text has reach makes the buried test fire with no dollars 
 });
 
 test("a buried section says why: costly when dollars or lobbying are big, else its reach", () => {
-  expect(buriedWords(parsed(score(-BIG_STAKES.dollarsMusd, 0, ["courts"]))!)).toBe("quiet and costly");
-  expect(buriedWords(parsed(score(null, BIG_STAKES.firms))!)).toBe("quiet and costly");
-  expect(buriedWords(parsed(score(500, 0, ["courts", "states"]))!)).toBe("quiet, limits courts, overrides state law");
+  expect(buriedWords(defined(parsed(score(-BIG_STAKES.dollarsMusd, 0, ["courts"]))))).toBe("quiet and costly");
+  expect(buriedWords(defined(parsed(score(null, BIG_STAKES.firms))))).toBe("quiet and costly");
+  expect(buriedWords(defined(parsed(score(500, 0, ["courts", "states"]))))).toBe(
+    "quiet, limits courts, overrides state law",
+  );
 });
 
 test("an appropriations act's deficit is marked as direct spending and revenue only", () => {
@@ -235,10 +248,11 @@ const parsed = (x: ReturnType<typeof score>) => Bundle.shape.sections.element.sh
 
 test("a section is late as its score says, so a model-paired older section can clear the lineage flag", () => {
   const b = structuredClone(Bundle.parse(fixture));
-  const s = b.sections.find((x) => x.inFinal)!;
+  const s = defined(b.sections.find((x) => x.inFinal));
   s.late = true;
-  s.score = parsed(score(null));
-  s.score!.components.late = false;
+  const sectionScore = defined(parsed(score(null)));
+  s.score = sectionScore;
+  sectionScore.components.late = false;
   expect(isLate(s)).toBe(false);
   s.score = null;
   expect(isLate(s)).toBe(true);
@@ -246,12 +260,20 @@ test("a section is late as its score says, so a model-paired older section can c
 
 test("a section's articles are the matcher's plus a second look's, the count its score uses", () => {
   const b = structuredClone(Bundle.parse(fixture));
-  const s = b.sections.find((x) => x.inFinal)!;
-  s.attention = { hits: 3 } as never;
-  s.score = parsed(score(null));
-  s.score!.components.attentionChecked = 2;
+  const s = defined(b.sections.find((x) => x.inFinal));
+  s.attention = {
+    hits: 3,
+    pct: 0,
+    hitsByGroup: {},
+    tradeLegalHits: 0,
+    examples: [],
+    claim: defined(Object.keys(b.claims)[0]),
+  };
+  const sectionScore = defined(parsed(score(null)));
+  s.score = sectionScore;
+  sectionScore.components.attentionChecked = 2;
   expect(articlesOf(s)).toBe(5);
-  s.score!.components.attentionChecked = null;
+  sectionScore.components.attentionChecked = null;
   expect(articlesOf(s)).toBe(3);
   s.attention = null;
   expect(articlesOf(s)).toBeNull();
@@ -263,7 +285,7 @@ test("a bundle built before the unread count existed reads as nobody unread", ()
 
 test("the companies a card counts are the ones tied to the bill, not every company drawn", () => {
   const b = structuredClone(Bundle.parse(fixture));
-  const company = b.nodes.find((n) => n.kind === "company")!;
+  const company = defined(b.nodes.find((n) => n.kind === "company"));
   expect(billStats(b).companies).toBe(0);
   b.edges.push({
     id: `benefits:${company.id}`,
@@ -273,6 +295,6 @@ test("the companies a card counts are the ones tied to the bill, not every compa
     basis: "inference",
     claims: [],
     props: { rule: "lobbied" },
-  } as never);
+  });
   expect(billStats(b).companies).toBe(1);
 });

@@ -15,6 +15,7 @@ export default defineConfig({
     "eslint/no-await-in-loop": "off",
     "eslint/no-nested-ternary": "off",
     "eslint/no-plusplus": "off",
+    "eslint/no-redeclare": "off",
     "eslint/no-use-before-define": "off",
     "eslint/prefer-destructuring": "off",
     "eslint/prefer-named-capture-group": "off",
@@ -23,6 +24,7 @@ export default defineConfig({
     "typescript/consistent-return": "off",
     "unicorn/filename-case": "off",
     "unicorn/import-style": "off",
+    "unicorn/no-negated-condition": "off",
     "unicorn/no-array-for-each": "off",
     "unicorn/no-array-reduce": "off",
     "unicorn/no-await-expression-member": "off",
@@ -31,6 +33,10 @@ export default defineConfig({
     "oxc/no-accumulating-spread": "error",
   },
   overrides: [
+    {
+      files: ["packages/*/src/index.ts", "packages/core/src/node.ts"],
+      rules: { "oxc/no-barrel-file": "off" },
+    },
     {
       files: ["apps/web/src/**"],
       rules: {

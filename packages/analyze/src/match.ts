@@ -3,9 +3,9 @@ import { join } from "node:path";
 import { billDisplay, parseJson } from "@antibody/core";
 import type { BillId, Row } from "@antibody/core";
 import { paths, python } from "@antibody/core/node";
-import { claude, pool } from "./llm.ts";
+import { z } from "zod";
+import { claude, messageOf, pool } from "./llm.ts";
 
-/** Bumped whenever the prompt or the menu format changes; old matches are then re-done. */
 export const MATCHER = "section-matcher-v7";
 export const MATCH_MODEL = process.env.ANTIBODY_MATCH_MODEL ?? "sonnet";
 const BATCH = 8;
@@ -14,65 +14,76 @@ const ARTICLE_WORDS = 900;
 
 export interface ArticleIn {
   id: string;
-  /** Not shown to the matcher: it judges the text, never who published it. */
   outlet: string;
   title: string;
   text: string | null;
 }
 
-export interface Match {
-  /** bill: the bill, its provisions or the fight over it is a main subject; mention: it comes up in passing. */
-  about: "bill" | "mention" | "unrelated";
-  sections: string[];
-  whole: boolean;
-  outside: string | null;
-}
+const About = z.enum(["bill", "mention", "unrelated"]);
 
-export interface MatchRun {
-  matcher: string;
-  model: string;
-  menuHash: string;
-  costUsd: number;
-  matches: Record<string, Match>;
-}
+const MatchSchema = z.object({
+  about: About,
+  sections: z.array(z.string()),
+  whole: z.boolean(),
+  outside: z.string().nullable(),
+});
 
-const lead = (s: string, words: number) => s.split(/\s+/).slice(0, words).join(" ");
+export type Match = z.infer<typeof MatchSchema>;
 
-/** Run-in headers that say nothing about what a provision is about. */
+const MatchRunSchema = z.object({
+  matcher: z.string(),
+  model: z.string(),
+  menuHash: z.string(),
+  costUsd: z.number(),
+  matches: z.record(z.string(), MatchSchema),
+});
+
+export type MatchRun = z.infer<typeof MatchRunSchema>;
+
+const CandidatesFile = z.object({ candidates: z.record(z.string(), z.array(z.string())) });
+
+const EmbedFile = z.object({ model: z.string(), matches: z.record(z.string(), MatchSchema) });
+
+const Verdicts = z.array(
+  z.object({
+    a: z.unknown().transform(Number),
+    about: About.catch("unrelated"),
+    s: z.array(z.string().nullable().catch(null)),
+    whole: z.unknown().transform(Boolean),
+    outside: z.string().nullish(),
+  }),
+);
+
+const lead = (s: string, words: number) => s.split(/\s+/u).slice(0, words).join(" ");
+
 const GENERIC =
-  /^(?:in general|definitions?|exceptions?|exclusions?|inclusions?|applicability|prohibition|effective date|rule of construction|limitation|authority|conforming amendments?|sense of congress|purpose|findings|report|other|requirements?)$/i;
+  /^(?:in general|definitions?|exceptions?|exclusions?|inclusions?|applicability|prohibition|effective date|rule of construction|limitation|authority|conforming amendments?|sense of congress|purpose|findings|report|other|requirements?)$/iu;
 
-/**
- * What an unnamed section is about, from its text: the terms it defines, its run-in headers, the documents and
- * Acts it names. Appropriations bills leave most sections unnamed and open with a date or a cross-reference
- * ("Effective 365 days after the enactment of this Act, Section 297A … is amended"), so without this the matcher
- * never learns that the 2025 CR's sec. 781 is the hemp ban.
- */
 export function subjectOf(text: string, max = 8): string {
   const found: string[] = [];
 
   const add = (t: string | undefined) => {
-    const v = t?.replaceAll(/\s+/g, " ").trim();
+    const v = t?.replaceAll(/\s+/gu, " ").trim();
 
-    if (v && !GENERIC.test(v) && !found.some((f) => f.toLowerCase() === v.toLowerCase())) {
+    if (v !== undefined && v !== "" && !GENERIC.test(v) && !found.some((f) => f.toLowerCase() === v.toLowerCase())) {
       found.push(v);
     }
   };
 
-  for (const m of text.matchAll(/term ['‘’"“”]\s*([^'‘’"“”]{2,40}?)\s*['‘’"“”] means/g)) {
+  for (const m of text.matchAll(/term ['‘’"“”]\s*([^'‘’"“”]{2,40}?)\s*['‘’"“”] means/gu)) {
     add(m[1]);
   }
 
-  for (const m of text.matchAll(/entitled ['‘’"“”]+\s*([^'‘’"“”]{5,160}?)\s*['‘’"“”]/g)) {
+  for (const m of text.matchAll(/entitled ['‘’"“”]+\s*([^'‘’"“”]{5,160}?)\s*['‘’"“”]/gu)) {
     add(m[1]);
   }
 
-  for (const m of text.matchAll(/(?:^|\)\s|\.\s|-\s)([A-Z][A-Za-z'’ ,-]{2,40}?) \.-/g)) {
+  for (const m of text.matchAll(/(?:^|\)\s|\.\s|-\s)([A-Z][A-Za-z'’ ,-]{2,40}?) \.-/gu)) {
     add(m[1]);
   }
 
   for (const m of text.matchAll(
-    /\b((?:[A-Z][a-zA-Z]+ )(?:(?:[A-Z][a-zA-Z]+|of|and|the|for|on|to) ){0,6}Act(?: of \d{4})?)\b/g,
+    /\b((?:[A-Z][a-zA-Z]+ )(?:(?:[A-Z][a-zA-Z]+|of|and|the|for|on|to) ){0,6}Act(?: of \d{4})?)\b/gu,
   )) {
     add(m[1]);
   }
@@ -83,7 +94,6 @@ export function subjectOf(text: string, max = 8): string {
 const line = (s: Row<"sections">, key: string) =>
   `${key} | sec. ${s.num} | ${s.heading}${s.in_final ? "" : " [dropped before the final text]"} | ${lead(s.preview, 30)}`;
 
-/** A menu of the given sections: "S1 | sec. 70301 | heading | first words" lines, and the key → section id map. */
 export function menu(sections: Row<"sections">[]) {
   const ids = new Map<string, string>();
 
@@ -97,19 +107,10 @@ export function menu(sections: Row<"sections">[]) {
   return { text: lines.join("\n"), ids };
 }
 
-/** Sections shown per article. A short bill is shown whole. */
 export const SHORTLIST = 15;
-
-/** Extra sections per article added by word overlap with the section heading (py/candidates.py). */
 export const LEXICAL = 12;
-
-/** A bill with this many sections or fewer is shown whole to the matcher: no shortlist step. */
 export const WHOLE_MENU = 40;
 
-/**
- * The sections each article might be about (py/candidates.py: best embedding match between the section's heading and
- * opening words and any paragraph of the article). Cached per bill.
- */
 export async function shortlist(
   bill: BillId,
   names: string[],
@@ -135,7 +136,7 @@ export async function shortlist(
     await python(join(import.meta.dir, ".."), "candidates.py", [input, output], { memoryMax: "3G" });
   }
 
-  const r: { candidates: Record<string, string[]> } = await Bun.file(output).json();
+  const r = CandidatesFile.parse(await Bun.file(output).json());
 
   return new Map(Object.entries(r.candidates));
 }
@@ -155,12 +156,8 @@ Judge every article by the same standard, whatever its point of view. Reply with
 }
 
 const articleBlock = (a: ArticleIn, n: number) =>
-  `ARTICLE ${n}\nTitle: ${a.title}\n${a.text ? lead(a.text, ARTICLE_WORDS) : "(only the headline could be read)"}`;
+  `ARTICLE ${n}\nTitle: ${a.title}\n${a.text === null || a.text === "" ? "(only the headline could be read)" : lead(a.text, ARTICLE_WORDS)}`;
 
-/**
- * The sections and the parts of long sections (parts-v1) in bill order, each part right after its section. Whether
- * the menu is shown whole depends on the sections alone, so splitting a long section never takes a bill off it.
- */
 export function withParts(sections: Row<"sections">[], parts: (Row<"sections"> & { parent: string })[]) {
   const of = Map.groupBy(parts, (p) => p.parent);
 
@@ -178,7 +175,6 @@ export async function matchArticles(
     model?: string;
     log?: (m: string) => void;
     signal?: AbortSignal;
-    /** Parts of long sections, offered on their own (each with the id of its section). */
     parts?: (Row<"sections"> & { parent: string })[];
   } = {},
 ): Promise<MatchRun> {
@@ -195,11 +191,14 @@ export async function matchArticles(
     .slice(0, 12);
 
   const file = Bun.file(join(paths.raw("analyze"), "match", `${bill}.${model}.json`));
-  const prior: MatchRun | null = (await file.exists()) ? await file.json() : null;
-  const reuse = prior && !opts.refresh && prior.matcher === MATCHER && prior.menuHash === menuHash;
+  const prior = (await file.exists()) ? MatchRunSchema.safeParse(await file.json()).data : undefined;
+
+  const reuse =
+    prior !== undefined && opts.refresh !== true && prior.matcher === MATCHER && prior.menuHash === menuHash;
+
   const run: MatchRun = reuse ? prior : { matcher: MATCHER, model, menuHash, costUsd: 0, matches: {} };
 
-  const todo = articles.filter((a) => !run.matches[a.id]);
+  const todo = articles.filter((a) => run.matches[a.id] === undefined);
   const batches: ArticleIn[][] = [];
 
   for (let i = 0; i < todo.length; i += BATCH) {
@@ -214,7 +213,9 @@ export async function matchArticles(
   const everything = whole;
 
   const short =
-    todo.length && !everything ? await shortlist(bill, opts.names ?? [], sections, todo) : new Map<string, string[]>();
+    todo.length > 0 && !everything
+      ? await shortlist(bill, opts.names ?? [], sections, todo)
+      : new Map<string, string[]>();
 
   await pool(batches, PARALLEL, async (batch, bi) => {
     const menus: Map<string, string>[] = [];
@@ -224,7 +225,11 @@ export async function matchArticles(
         const m = menu(
           everything
             ? sections
-            : withSections(short.get(a.id) ?? [], parentOf).flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])),
+            : withSections(short.get(a.id) ?? [], parentOf).flatMap((id) => {
+                const s = byId.get(id);
+
+                return s === undefined ? [] : [s];
+              }),
         );
 
         menus.push(m.ids);
@@ -236,47 +241,55 @@ export async function matchArticles(
     for (let attempt = 0; attempt < 5; attempt++) {
       try {
         const r = await claude(prompt, { system: sys, model, signal: opts.signal });
-        let out: { a: number; about: Match["about"]; s: string[]; whole: boolean; outside: string | null }[];
+        let out: z.infer<typeof Verdicts>;
 
         try {
-          out = parseJson(r.text);
+          out = parseJson(r.text, Verdicts);
         } catch (error) {
           const kept = `${file.name}.unreadable-${bi + 1}.txt`;
           await Bun.write(kept, r.text);
-          throw new Error(`${(error as Error).message} (reply kept in ${kept})`);
+          throw new Error(`${messageOf(error)} (reply kept in ${kept})`, { cause: error });
         }
 
         for (const o of out) {
           const a = batch[o.a - 1];
           const ids = menus[o.a - 1];
 
-          if (!a || !ids) {
+          if (a === undefined || ids === undefined) {
             continue;
           }
 
           run.matches[a.id] = {
-            about: ["bill", "mention", "unrelated"].includes(o.about) ? o.about : "unrelated",
-            sections: [...new Set(o.s.flatMap((k) => (ids.has(k) ? [ids.get(k)!] : [])))],
-            whole: !!o.whole,
-            outside: o.outside?.trim() || null,
+            about: o.about,
+            sections: [
+              ...new Set(
+                o.s.flatMap((k) => {
+                  const id = k === null ? undefined : ids.get(k);
+
+                  return id === undefined ? [] : [id];
+                }),
+              ),
+            ],
+            whole: o.whole,
+            outside: (o.outside ?? "").trim() || null,
           };
         }
 
         run.model = r.model;
         run.costUsd += r.costUsd;
 
-        if (batch.every((a) => run.matches[a.id])) {
+        if (batch.every((a) => run.matches[a.id] !== undefined)) {
           break;
         }
       } catch (error) {
-        opts.log?.(`batch ${bi + 1}: ${(error as Error).message.slice(0, 160)}`);
+        opts.log?.(`batch ${bi + 1}: ${messageOf(error).slice(0, 160)}`);
       }
     }
 
     await Bun.write(file, JSON.stringify(run));
   });
   await Bun.write(file, JSON.stringify(run));
-  const missing = articles.filter((a) => !run.matches[a.id]).length;
+  const missing = articles.filter((a) => run.matches[a.id] === undefined).length;
 
   if (missing) {
     throw new Error(`${missing} of ${articles.length} articles could not be matched; re-run to finish`);
@@ -285,14 +298,13 @@ export async function matchArticles(
   return run;
 }
 
-/** A shortlisted part brings its section along (just before it), so the matcher can tell the two apart. */
 function withSections(ids: string[], parentOf: Map<string, string>): string[] {
   const out: string[] = [];
 
   for (const id of ids) {
     const parent = parentOf.get(id);
 
-    if (parent && !out.includes(parent)) {
+    if (parent !== undefined && parent !== "" && !out.includes(parent)) {
       out.push(parent);
     }
 
@@ -306,16 +318,15 @@ function withSections(ids: string[], parentOf: Map<string, string>): string[] {
 
 export const EMBED_MATCHER = "section-matcher-embed-v1";
 
-/** The matches a finished attention run left on disk (the model's, else the embedding fallback's), or null. */
 export async function cachedMatchRun(bill: BillId, model = MATCH_MODEL): Promise<MatchRun | null> {
   const dir = join(paths.raw("analyze"), "match");
   const claudeRun = Bun.file(join(dir, `${bill}.${model}.json`));
 
   if (await claudeRun.exists()) {
-    const r: MatchRun = await claudeRun.json();
+    const r = MatchRunSchema.safeParse(await claudeRun.json());
 
-    if (r.matcher === MATCHER) {
-      return r;
+    if (r.data?.matcher === MATCHER) {
+      return r.data;
     }
   }
 
@@ -325,12 +336,11 @@ export async function cachedMatchRun(bill: BillId, model = MATCH_MODEL): Promise
     return null;
   }
 
-  const r = await embed.json();
+  const r = EmbedFile.parse(await embed.json());
 
   return { matcher: EMBED_MATCHER, model: r.model, menuHash: "", costUsd: 0, matches: r.matches };
 }
 
-/** True when a tiny claude -p call goes through (no spend limit, logged in). */
 export async function claudeAvailable(model = MATCH_MODEL): Promise<boolean> {
   try {
     await claude('Reply with {"ok":true}', { system: "Reply with JSON only.", model });
@@ -341,11 +351,6 @@ export async function claudeAvailable(model = MATCH_MODEL): Promise<boolean> {
   }
 }
 
-/**
- * The fallback matcher: local embeddings (py/match_embed.py), no model calls. Weaker than the claude matcher (it
- * can't tell a passing mention from a main subject, and has no outside-the-text lane), so a bill is matched by one
- * or the other, never a mix, and the attention rows say which.
- */
 export async function matchEmbed(
   bill: BillId,
   title: string,
@@ -372,7 +377,7 @@ export async function matchEmbed(
     await python(join(import.meta.dir, ".."), "match_embed.py", [input, output], { memoryMax: "3G" });
   }
 
-  const r = await Bun.file(output).json();
+  const r = EmbedFile.parse(await Bun.file(output).json());
 
   return { matcher: EMBED_MATCHER, model: r.model, menuHash: "", costUsd: 0, matches: r.matches };
 }

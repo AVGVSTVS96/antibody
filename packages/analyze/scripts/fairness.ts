@@ -1,37 +1,57 @@
 import { join } from "node:path";
 import { parseBillId } from "@antibody/core";
-import type { BillId } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
-import { OUTLETS, sideOf } from "@antibody/ingest-news";
+import { OUTLETS, SIDES, sideOf } from "@antibody/ingest-news";
 import type { Side } from "@antibody/ingest-news";
+import { z } from "zod";
 import { MIN_TEXT_CHARS } from "../src/attention.ts";
 import { SCORE, stakes } from "../src/score.ts";
 
+const MatchesFile = z.object({
+  matches: z.record(
+    z.string(),
+    z.object({ about: z.string().optional(), sections: z.array(z.string()), whole: z.boolean().optional() }),
+  ),
+});
+
+const ScoreEvidence = z.object({ dollars_by_baseline: z.array(z.object({ musd: z.number() })).optional() });
+const AttentionEvidence = z.object({ relevant_by_side: z.record(z.string(), z.number()).optional() });
+const HitsByGroup = z.record(z.string(), z.number());
+
 const groupOf = new Map(OUTLETS.map((o) => [o.domain, o.group]));
+
+const sideOfOutlet = (outletId: string | null) => {
+  const group = outletId === null || outletId === "" ? undefined : groupOf.get(outletId);
+
+  return group === undefined ? null : sideOf(group);
+};
+
+const costlyFigure = (musd: number) =>
+  stakes({ dollarsMusd: musd, dollarsSplit: "exact", lobbyingFirms: 0 }) >= SCORE.costlyMin;
+
 const pct = (n: number, d: number) => (d ? `${((100 * n) / d).toFixed(0)}%` : "-");
 const mean = (xs: number[]) => (xs.length ? (xs.reduce((a, b) => a + b, 0) / xs.length).toFixed(2) : "-");
 
 const members = await readRows("members").catch(() => []);
-const party = new Map(members.map((m) => [m.id.replace(/^member:/, ""), m.party]));
+const party = new Map(members.map((m) => [m.id.replace(/^member:/u, ""), m.party]));
 
-const byParty: Record<string, { bills: number; sections: number; headline: number; costly: number; buried: number }> =
-  {};
+const byParty = new Map<
+  string,
+  { bills: number; sections: number; headline: number; costly: number; buried: number }
+>();
 
 for (const arg of Bun.argv.slice(2)) {
   const bill = parseBillId(arg);
   const [b] = await readRows("bills", bill);
   const sections = await readRows("sections", bill);
   const articles = await readRows("articles", bill);
-  // Sections only: parts of long sections (parts-v1) are audited with their sections, not counted twice.
-  const scores = (await readRows("section_scores", bill)).filter((s) => !s.part_id);
+  const scores = (await readRows("section_scores", bill)).filter((s) => (s.part_id ?? "") === "");
 
   const file = Bun.file(
     join(paths.raw("analyze"), "match", `${bill}.${process.env.ANTIBODY_MATCH_MODEL ?? "sonnet"}.json`),
   );
 
-  const matches: Record<string, { about: string; sections: string[]; whole: boolean }> = (await file.exists())
-    ? (await file.json()).matches
-    : {};
+  const matches = (await file.exists()) ? MatchesFile.parse(await file.json()).matches : {};
 
   console.log(
     `\n## ${bill} ${b?.short_title ?? ""} (sponsor ${b?.sponsor_bioguide ?? "?"}, party ${party.get(b?.sponsor_bioguide ?? "") ?? "?"})`,
@@ -40,23 +60,23 @@ for (const arg of Bun.argv.slice(2)) {
   console.log("\nmatcher by side (articles read):");
 
   for (const side of ["left", "center", "right"] as const) {
-    const read = articles.filter(
-      (a) =>
-        (a.text_chars ?? 0) >= MIN_TEXT_CHARS &&
-        a.outlet_id &&
-        sideOf(groupOf.get(a.outlet_id)!) === side &&
-        matches[a.id],
-    );
+    const read = articles.flatMap((a) => {
+      const m = matches[a.id];
 
-    const rel = read.filter((a) => matches[a.id]!.about !== "unrelated");
-    const main = read.filter((a) => matches[a.id]!.about === "bill");
+      return (a.text_chars ?? 0) >= MIN_TEXT_CHARS && sideOfOutlet(a.outlet_id) === side && m !== undefined
+        ? [{ ...a, m }]
+        : [];
+    });
+
+    const rel = read.filter((a) => a.m.about !== "unrelated");
+    const main = read.filter((a) => a.m.about === "bill");
     const long = rel.filter((a) => (a.text_chars ?? 0) >= 5000);
     console.log(
       `  ${side.padEnd(6)} avg chars ${mean(read.map((a) => a.text_chars ?? 0))
-        .replace(/\.\d+$/, "")
+        .replace(/\.\d+$/u, "")
         .padStart(
           5,
-        )}  sections/article if 5000+ chars ${mean(long.map((a) => matches[a.id]!.sections.length))} (n ${long.length})\n  ${" ".repeat(6)} read ${String(read.length).padStart(3)}  about-bill ${pct(main.length, read.length).padStart(4)}  sections/article ${mean(rel.map((a) => matches[a.id]!.sections.length))}  whole ${pct(rel.filter((a) => matches[a.id]!.whole).length, rel.length)}`,
+        )}  sections/article if 5000+ chars ${mean(long.map((a) => a.m.sections.length))} (n ${long.length})\n  ${" ".repeat(6)} read ${String(read.length).padStart(3)}  about-bill ${pct(main.length, read.length).padStart(4)}  sections/article ${mean(rel.map((a) => a.m.sections.length))}  whole ${pct(rel.filter((a) => a.m.whole === true).length, rel.length)}`,
     );
   }
 
@@ -73,8 +93,8 @@ for (const arg of Bun.argv.slice(2)) {
   console.log(
     `median attention pct ${mean(
       withAtt
-        .map((s) => s.attention_pct!)
-        .sort((a, b) => a - b)
+        .flatMap((s) => (s.attention_pct === null ? [] : [s.attention_pct]))
+        .toSorted((x, y) => x - y)
         .slice(Math.floor(withAtt.length / 2), Math.floor(withAtt.length / 2) + 1),
     )}; sections with dollars ${pct(scores.filter((s) => s.dollars_musd !== null).length, final)}; with lobbying ${pct(scores.filter((s) => s.lobbying_reports > 0).length, final)}`,
   );
@@ -82,7 +102,7 @@ for (const arg of Bun.argv.slice(2)) {
 
   const costly = scores.filter(
     (s) =>
-      !s.offsets_section_id &&
+      (s.offsets_section_id ?? "") === "" &&
       stakes({ dollarsMusd: s.dollars_musd, dollarsSplit: s.dollars_split, lobbyingFirms: s.lobbying_firms }) >=
         SCORE.costlyMin,
   );
@@ -90,16 +110,13 @@ for (const arg of Bun.argv.slice(2)) {
   const buriedN = count("buried");
 
   const byBaseline = (s: (typeof scores)[number]) =>
-    (s.evidence as { dollars_by_baseline?: { musd: number }[] }).dollars_by_baseline ?? [];
+    ScoreEvidence.safeParse(s.evidence).data?.dollars_by_baseline ?? [];
 
   const twoBaselines = scores.filter((s) => byBaseline(s).length > 1);
 
   if (twoBaselines.length) {
-    const bar = (musd: number) =>
-      stakes({ dollarsMusd: musd, dollarsSplit: "exact", lobbyingFirms: 0 }) >= SCORE.costlyMin;
-
     console.log(
-      `CBO printed ${twoBaselines.length} sections against two baselines: ${twoBaselines.filter((s) => byBaseline(s).some((b) => bar(b.musd))).length} are costly on at least one, ${twoBaselines.filter((s) => byBaseline(s).every((b) => bar(b.musd))).length} on every one (only those count)`,
+      `CBO printed ${twoBaselines.length} sections against two baselines: ${twoBaselines.filter((s) => byBaseline(s).some((x) => costlyFigure(x.musd))).length} are costly on at least one, ${twoBaselines.filter((s) => byBaseline(s).every((x) => costlyFigure(x.musd))).length} on every one (only those count)`,
     );
   }
 
@@ -109,23 +126,24 @@ for (const arg of Bun.argv.slice(2)) {
   );
   const att = await readRows("attention", bill);
 
-  const relevantBySide = (
-    att.find((a) => a.section_id === null)?.evidence as { relevant_by_side?: Record<string, number> } | undefined
-  )?.relevant_by_side;
+  const relevantBySide = AttentionEvidence.safeParse(att.find((a) => a.section_id === null)?.evidence).data
+    ?.relevant_by_side;
 
-  if (relevantBySide && costly.length) {
+  if (relevantBySide !== undefined && costly.length > 0) {
     const costlyIds = new Set(costly.map((s) => s.section_id));
 
     const quietOn = (side: Side) =>
-      att
-        .filter((a) => a.section_id && costlyIds.has(a.section_id))
-        .filter((a) => {
-          const hits = Object.entries(a.hits_by_group as Record<string, number>)
-            .filter(([g]) => sideOf(g as Parameters<typeof sideOf>[0]) === side)
-            .reduce((n, [, h]) => n + h, 0);
+      att.filter((a) => {
+        if (a.section_id === null || !costlyIds.has(a.section_id)) {
+          return false;
+        }
 
-          return hits / Math.max(relevantBySide[side] ?? 1, 1) < SCORE.quietShare;
-        }).length;
+        const hits = Object.entries(HitsByGroup.parse(a.hits_by_group))
+          .filter(([g]) => SIDES[side].some((x) => x === g))
+          .reduce((n, [, h]) => n + h, 0);
+
+        return hits / Math.max(relevantBySide[side] ?? 1, 1) < SCORE.quietShare;
+      }).length;
 
     console.log(
       `costly sections that would be quiet counting one side's press alone: left ${pct(quietOn("left"), costly.length)}, center ${pct(quietOn("center"), costly.length)}, right ${pct(quietOn("right"), costly.length)} (balanced: ${pct(buriedN, costly.length)})`,
@@ -135,8 +153,8 @@ for (const arg of Bun.argv.slice(2)) {
   const p = party.get(b?.sponsor_bioguide ?? "") ?? "?";
 
   if (measured && scores.some((s) => s.attention_pct !== null)) {
-    byParty[p] ??= { bills: 0, sections: 0, headline: 0, costly: 0, buried: 0 };
-    const t = byParty[p];
+    const t = byParty.get(p) ?? { bills: 0, sections: 0, headline: 0, costly: 0, buried: 0 };
+    byParty.set(p, t);
     t.bills++;
     t.sections += final;
     t.headline += count("headline");
@@ -147,7 +165,7 @@ for (const arg of Bun.argv.slice(2)) {
 
 console.log("\n## pooled by sponsor party, bills where the rule could run (news ranked and a cost measured)");
 
-for (const [p, t] of Object.entries(byParty)) {
+for (const [p, t] of byParty) {
   console.log(
     `${p}: ${t.bills} bills, ${t.sections} sections; headline ${pct(t.headline, t.sections)} of sections; costly ${pct(t.costly, t.sections)} of sections; buried ${pct(t.buried, t.costly)} of costly sections`,
   );

@@ -26,31 +26,25 @@ import type { XrayFacts, XrayRun } from "./xray.ts";
 
 export interface Evidence {
   newest: TextVersion | null;
-  /** The last text before the first chamber's floor, when the newest text came after it: what "late" is measured against. */
   before: TextVersion | null;
   newSectionSamples: string[];
   lateFrom: "x-ray" | "text-diff" | null;
   lobbyingFrom: "x-ray" | "lda-checked" | null;
-  /** Filings read and filings lda.gov's search returned, when the watcher checked them itself. */
   lobbyingChecked: { checked: number; searched: number } | null;
   lobbyingUrls: string[];
   lobbyingClients: number | null;
   closestVoteUrl: string | null;
-  /** What the closest vote was on, as the action reads ("On motion to commit Failed"). */
   closestVoteOn?: string | null;
   firstVote: BillEvent | null;
   clock: VoteClock | null;
   news: NewsCount | null;
-  /** For a House rule: its sections that do more than set up debate (null when not read). */
   riders: Rider[] | null;
   xray: XrayFacts | null;
 }
 
 export interface Candidate {
   status: BillStatus;
-  /** Every event in the bill's record, newest first. */
   events: BillEvent[];
-  /** Ids of events in the window that no earlier digest reported. */
   fresh: Set<string>;
   facts: Facts;
   evidence: Evidence;
@@ -66,13 +60,16 @@ export interface WatchResult {
   generatedAt: string;
   sources: SourceReport[];
   candidates: Candidate[];
-  /** Bills that moved but whose events were all reported in an earlier digest. */
   alreadyReported: number;
   xrayed: BillId[];
   site: Site;
   problems: string[];
-  /** Set when every bill of this Congress was scored on its whole record (`antibody sweep`), not a window. */
   sweep?: number;
+}
+
+interface BaseFacts {
+  facts: Facts;
+  evidence: Evidence;
 }
 
 export const settings = () => ({
@@ -82,36 +79,39 @@ export const settings = () => ({
   publish: process.env.ANTIBODY_WATCH_PUBLISH !== "0",
 });
 
-/** BILLSTATUS records an action a day or more after it happens, so an update in the window can carry older actions. */
 export const ACTION_LAG_DAYS = 7;
 
 const today = () => new Date().toLocaleDateString("en-CA");
 const daysBefore = (date: string, n: number) => new Date(Date.parse(date) - n * 86_400_000).toISOString().slice(0, 10);
 
-/** From the day of the last digest (events seen then are skipped by id), at most 14 days back; 3 days on a first run. */
 export async function windowStart(dir: string, date: string): Promise<string> {
-  const days = (await readdir(dir).catch(() => [] as string[]))
-    .map((f) => /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1])
-    .filter((d): d is string => !!d && d < date)
-    .sort();
+  const names = await readdir(dir).catch((): string[] => []);
 
-  const last = days.pop();
+  const days = names.flatMap((f) => {
+    const d = /^(\d{4}-\d{2}-\d{2})\.json$/u.exec(f)?.[1];
 
-  return last ? (last < daysBefore(date, 14) ? daysBefore(date, 14) : last) : daysBefore(date, 3);
+    return d !== undefined && d !== "" && d < date ? [d] : [];
+  });
+
+  const last = days.toSorted().at(-1);
+
+  if (last === undefined) {
+    return daysBefore(date, 3);
+  }
+
+  return last < daysBefore(date, 14) ? daysBefore(date, 14) : last;
 }
 
-/** Facts about the bill as a whole: its furthest step, closest vote and haste over its whole record, not one window. */
-function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: Facts; evidence: Evidence } {
-  const voted = events.filter((e) => e.tally);
-
-  const closest = voted.reduce<BillEvent | null>(
-    (best, e) => (!best || margin(e.tally!) < margin(best.tally!) ? e : best),
+function baseFacts(s: BillStatus, events: BillEvent[], since: string): BaseFacts {
+  const closest = events.reduce<{ event: BillEvent; tally: Tally } | null>(
+    (best, e) =>
+      e.tally !== null && (!best || margin(e.tally) < margin(best.tally)) ? { event: e, tally: e.tally } : best,
     null,
   );
 
   const before = beforeFloor(s);
   const clock = voteClock(s, events);
-  const firstVote = events.filter((e) => e.tally).sort((a, b) => a.date.localeCompare(b.date))[0] ?? null;
+  const firstVote = events.filter((e) => e.tally !== null).toSorted((a, b) => a.date.localeCompare(b.date))[0] ?? null;
 
   return {
     facts: {
@@ -136,8 +136,8 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
       lobbyingChecked: null,
       lobbyingUrls: [],
       lobbyingClients: null,
-      closestVoteUrl: closest?.url ?? null,
-      closestVoteOn: closest ? voteQuestion(closest.text) : null,
+      closestVoteUrl: closest?.event.url ?? null,
+      closestVoteOn: closest ? voteQuestion(closest.event.text) : null,
       firstVote,
       clock,
       news: null,
@@ -147,11 +147,6 @@ function baseFacts(s: BillStatus, events: BillEvent[], since: string): { facts: 
   };
 }
 
-/**
- * A bill with an event on or after `since` that no earlier digest reported, or null. The window only decides which
- * bills to look at: the score is the bill's own, from its whole record in BILLSTATUS (a bill that passed the House
- * 51 days ago and moves again today is scored as a bill that passed the House).
- */
 export function candidate(s: BillStatus, since: string, published?: Map<string, string>, seen = new Set<string>()) {
   const events = billEvents(s, since, published);
   const unseen = events.filter((e) => !seen.has(e.id));
@@ -160,7 +155,8 @@ export function candidate(s: BillStatus, since: string, published?: Map<string, 
     return null;
   }
 
-  const start = s.introducedOn && s.introducedOn < since ? s.introducedOn : since;
+  const introduced = s.introducedOn ?? "";
+  const start = introduced !== "" && introduced < since ? introduced : since;
   const record = billEvents(s, start, published);
   const { facts, evidence } = baseFacts(s, record, start);
   const fresh = new Set(unseen.map((e) => e.id));
@@ -181,7 +177,6 @@ export function candidate(s: BillStatus, since: string, published?: Map<string, 
   return c;
 }
 
-/** Adds the bill text (size, late sections), the press, the lobbying search and any x-ray tables. Returns what failed. */
 export async function enrich(c: Candidate, cache: string, signal?: AbortSignal): Promise<string[]> {
   const id = c.status.id;
   const problems: string[] = [];
@@ -190,12 +185,14 @@ export async function enrich(c: Candidate, cache: string, signal?: AbortSignal):
     c.evidence.news = await newsCount(c.status, today(), cache, signal);
     c.facts.newsStories = c.evidence.news.stories;
   } catch (error) {
-    problems.push(`${billDisplay(id)} news count: ${(error as Error).message}`);
+    problems.push(`${billDisplay(id)} news count: ${error instanceof Error ? error.message : String(error)}`);
   }
 
-  await textFacts(c, join(cache, "text"), signal).catch((error) =>
-    problems.push(`${billDisplay(id)} text: ${(error as Error).message}`),
-  );
+  try {
+    await textFacts(c, join(cache, "text"), signal);
+  } catch (error) {
+    problems.push(`${billDisplay(id)} text: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   try {
     const { confirmed, checked, searched, urls } = await lobbyingFilings(id, signal);
@@ -204,7 +201,7 @@ export async function enrich(c: Candidate, cache: string, signal?: AbortSignal):
     c.evidence.lobbyingChecked = { checked, searched };
     c.evidence.lobbyingUrls = urls;
   } catch (error) {
-    problems.push(`${billDisplay(id)} lobbying check: ${(error as Error).message}`);
+    problems.push(`${billDisplay(id)} lobbying check: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   applyXray(c, await xrayFacts(id));
@@ -220,12 +217,11 @@ function rescore(c: Candidate) {
   c.score = score(c.sub);
 }
 
-/** The bills worth an x-ray and a public page: the best flagged ones, at most `n`. A bill under the cutoff is not published. */
 export const toXray = (cs: Candidate[], n: number, max?: number) => flaggedOf(rank(cs), max).slice(0, n);
 
+// oxlint-disable-next-line unicorn/no-array-sort -- rank orders the caller's array in place; watch and sweep read candidates in that order afterwards
 export const rank = (cs: Candidate[]) => cs.sort((a, b) => b.score - a.score || a.status.id.localeCompare(b.status.id));
 
-/** Folds what the x-ray tables hold into the facts; table numbers replace the watcher's own estimates. */
 function applyXray(c: Candidate, x: XrayFacts) {
   c.evidence.xray = x;
 
@@ -263,7 +259,9 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   const found = await discover(since, signal);
 
   for (const s of found.sources) {
-    if (!s.ok) problems.push(`${s.name}: ${s.error}`);
+    if (!s.ok) {
+      problems.push(`${s.name}: ${s.error}`);
+    }
   }
 
   if (found.sources.every((s) => !s.ok)) {
@@ -279,14 +277,14 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   let unpublished = 0;
 
   const statuses = await pool([...found.bills], 6, async ([id, lastmod]) => {
-    const stamp = (lastmod ?? date).replaceAll(/[^0-9T]/g, "");
+    const stamp = (lastmod ?? date).replaceAll(/[^0-9T]/gu, "");
 
     try {
       return parseBillStatus(
         await cachedText(billstatusUrl(id), join(dir, "cache", "billstatus", `${id}@${stamp}.xml`), { signal }),
       );
     } catch (error) {
-      const message = (error as Error).message;
+      const message = error instanceof Error ? error.message : String(error);
 
       if (message.startsWith("404 ")) {
         unpublished++;
@@ -315,7 +313,9 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
     }
 
     for (const c of found.cbo.get(s.id) ?? []) {
-      if (!s.cbo.some((x) => x.url === c.url)) s.cbo.push(c);
+      if (!s.cbo.some((x) => x.url === c.url)) {
+        s.cbo.push(c);
+      }
     }
 
     const c = candidate(s, actionsSince, found.published, seen);
@@ -365,7 +365,6 @@ export async function watch(log: (m: string) => void, signal?: AbortSignal): Pro
   };
 }
 
-/** Reads the newest text of every House rule among the candidates for riders (rules are a few kilobytes each). */
 export async function readRiders(candidates: Candidate[], cache: string, signal?: AbortSignal) {
   await pool(
     candidates.filter((c) => isSpecialRule(c.status)),
@@ -377,38 +376,37 @@ export async function readRiders(candidates: Candidate[], cache: string, signal?
         return;
       }
 
-      try {
-        c.evidence.riders = ruleRiders(
-          await cachedText(v.xmlUrl, join(cache, `${v.xmlUrl.split("/").pop()}`), { signal }),
-        );
-      } catch {}
+      c.evidence.riders = await cachedText(v.xmlUrl, join(cache, `${v.xmlUrl.split("/").pop()}`), { signal })
+        .then(ruleRiders)
+        .catch(() => c.evidence.riders);
     },
   );
 }
 
-/** Words from each newest text's Content-Length, for every candidate (one HEAD request each). */
 export async function measureSize(candidates: Candidate[], signal?: AbortSignal) {
   await pool(candidates, 8, async (c) => {
     const url = c.evidence.newest?.xmlUrl;
 
-    if (!url || c.facts.words !== null) {
+    if (url === undefined || url === "" || c.facts.words !== null) {
       return;
     }
 
-    try {
-      const res = await get(url, { method: "HEAD", signal });
-      const bytes = Number(res.headers.get("content-length"));
+    const res = await get(url, { method: "HEAD", signal }).catch(() => null);
 
-      if (bytes) {
-        c.facts.words = wordsFromBytes(bytes);
-      }
+    if (!res) {
+      return;
+    }
 
-      rescore(c);
-    } catch {}
+    const bytes = Number(res.headers.get("content-length"));
+
+    if (bytes) {
+      c.facts.words = wordsFromBytes(bytes);
+    }
+
+    rescore(c);
   });
 }
 
-/** Runs the x-ray of each bill, publishes the bundles that check out (unless publishing is off), and folds the tables back in. */
 export async function xrayAndPublish(
   picks: Candidate[],
   logs: string,
@@ -430,19 +428,23 @@ export async function xrayAndPublish(
 
     let facts = await xrayFacts(id);
 
-    if (c.xray.ok && !facts.bundle) {
+    if (c.xray.ok && (facts.bundle ?? "") === "") {
       problems.push(`x-ray ${billDisplay(id)} finished but wrote no bundle (log ${c.xray.log})`);
     }
 
-    if (settings().publish && c.xray.ok && facts.bundle) {
-      const problem = await publishBundle(id).catch(
-        (error: Error) => `${billDisplay(id)} bundle not published: ${error.message}`,
-      );
+    if (settings().publish && c.xray.ok && (facts.bundle ?? "") !== "") {
+      let problem: string | null;
 
-      if (problem) {
-        problems.push(problem);
-      } else {
+      try {
+        problem = await publishBundle(id);
+      } catch (error) {
+        problem = `${billDisplay(id)} bundle not published: ${error instanceof Error ? error.message : String(error)}`;
+      }
+
+      if (problem === null || problem === "") {
         site.published.push(id);
+      } else {
+        problems.push(problem);
       }
 
       facts = await xrayFacts(id);
@@ -479,25 +481,23 @@ async function textFacts(c: Candidate, cache: string, signal?: AbortSignal) {
   rescore(c);
 }
 
-/** Event ids an earlier day's digest reported. Today's own shard doesn't count, so a rerun rebuilds today's digest. */
 async function reportedBefore(date: string): Promise<Set<string>> {
-  const shards = (await readdir(paths.table("watch_events")).catch(() => [] as string[]))
+  const shards = (await readdir(paths.table("watch_events")).catch((): string[] => []))
     .filter((f) => f.endsWith(".jsonl") && f !== `${date}.jsonl`)
     .map((f) => f.slice(0, -".jsonl".length));
 
-  const rows = await Promise.all(shards.map(async (s) => readRows("watch_events", s)));
+  const rows = await Promise.all(shards.map(async (s) => await readRows("watch_events", s)));
 
   return new Set(rows.flat().map((e) => e.id));
 }
 
-/** Every new event, plus one "hot" event per bill the digest flags, appended to today's shard. */
 export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
   const seenAt = r.generatedAt;
   const rows = new Map((await readRows("watch_events", r.date)).filter((e) => e.kind !== "hot").map((e) => [e.id, e]));
 
   for (const c of r.candidates) {
-    for (const e of c.events)
-      if (c.fresh.has(e.id) && !rows.has(e.id))
+    for (const e of c.events) {
+      if (c.fresh.has(e.id) && !rows.has(e.id)) {
         rows.set(e.id, {
           id: e.id,
           bill_id: e.bill,
@@ -506,9 +506,12 @@ export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
           url: e.url,
           detail: { step: e.step, date: e.date, text: e.text, tally: e.tally },
         });
+      }
+    }
   }
 
   for (const c of [...flagged, ...withRiders(r.candidates)]) {
+    const riders = c.evidence.riders ?? [];
     rows.set(`${c.status.id}/hot/${r.date}`, {
       id: `${c.status.id}/hot/${r.date}`,
       bill_id: c.status.id,
@@ -518,13 +521,14 @@ export async function recordEvents(r: WatchResult, flagged: Candidate[]) {
       detail: {
         display: billDisplay(c.status.id),
         title: c.status.shortTitle ?? c.status.title,
-        sponsorParty: c.status.sponsor?.party || null,
-        reason: c.evidence.riders?.length
-          ? `A House rule that also: ${[...new Set(c.evidence.riders.map((x) => x.label.toLowerCase()))].join("; ")}`
-          : reasons(c)
-              .slice(0, 2)
-              .map((x) => x.text)
-              .join("; "),
+        sponsorParty: (c.status.sponsor?.party ?? "") === "" ? null : (c.status.sponsor?.party ?? null),
+        reason:
+          riders.length > 0
+            ? `A House rule that also: ${[...new Set(riders.map((x) => x.label.toLowerCase()))].join("; ")}`
+            : reasons(c)
+                .slice(0, 2)
+                .map((x) => x.text)
+                .join("; "),
         score: c.score,
         sub: c.sub,
         facts: c.facts,

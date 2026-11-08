@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { Bundle } from "@antibody/core";
+import { Bundle, must } from "@antibody/core";
 import genius from "../../../fixtures/119-s-1582.bundle.json";
 import { buildModel } from "../../lib/model.ts";
 import { fit, inside, outside, textWidth, VIEW } from "./labels.ts";
@@ -25,23 +25,23 @@ test("placeByWant keeps the order of the wants and spreads evenly", () => {
   const wants = [3, 0.2, 5.5, 1.1, 2];
   const angles = placeByWant(wants, 0.3);
   expect(new Set(angles.map((a) => a.toFixed(6))).size).toBe(5);
-  const byWant = wants.map((w, i) => [w, angles[i]!] as const).sort((a, b) => a[0] - b[0]);
+  const byWant = wants.map((w, i) => [w, must(angles[i], "an angle")] as const).toSorted((a, b) => a[0] - b[0]);
   const walk = byWant.map(([, a]) => clockwiseFromTop(a));
   const rotated = walk.indexOf(Math.min(...walk));
   const inOrder = [...walk.slice(rotated), ...walk.slice(0, rotated)];
-  expect(inOrder).toEqual([...inOrder].sort((a, b) => a - b));
+  expect(inOrder).toEqual(inOrder.toSorted((a, b) => a - b));
 });
 
 test("the ring draws companies by members traded, capped, and always keeps a linked one", () => {
   const d = selectRing(m, "trades");
   expect(d.companies.length).toBeLessThanOrEqual(MAX_COMPANIES);
   const counts = d.companies.map((a) => d.byCompany.get(a.id)?.length ?? 0);
-  expect(counts).toEqual([...counts].sort((a, b) => b - a));
+  expect(counts).toEqual(counts.toSorted((a, b) => b - a));
   const all = selectRing(m, "trades").candidates.companies;
   expect(all).toBeGreaterThan(0);
   const outsider = [...scenes.allTies.trades.keys()].find((id) => !d.companies.some((a) => a.id === id));
 
-  if (outsider) {
+  if (outsider !== undefined) {
     expect(selectRing(m, "trades", [outsider]).companies.some((a) => a.id === outsider)).toBe(true);
   }
 
@@ -69,12 +69,12 @@ test("every mark of the fixture has a target, a size that fits its ring and a pl
   const t = scenes.targets.trades;
 
   for (let i = 0; i < scenes.marks.length; i++) {
-    if (!t.present[i]) {
+    if (t.present[i] !== 1) {
       continue;
     }
 
     expect(t.t[i * CHANNELS + CH.alpha]).toBe(1);
-    expect(Number.isFinite(t.t[i * CHANNELS + CH.angle]!)).toBe(true);
+    expect(Number.isFinite(t.t[i * CHANNELS + CH.angle])).toBe(true);
   }
 });
 
@@ -82,7 +82,7 @@ test("a view with nothing in it says why, and a pinned id only counts where its 
   const e = emptiness(scenes);
   expect(e.trades).toBeNull();
   expect(e.sections).toContain("no section");
-  const id = itemIds(scenes, "trades")[0]!;
+  const id = must(itemIds(scenes, "trades")[0], "a trades item");
   expect(present(scenes, "trades", id)).toBe(true);
   expect(present(scenes, "sections", id)).toBe(false);
   expect(present(scenes, "sections", "group:title:IX")).toBe(false);
@@ -91,9 +91,14 @@ test("a view with nothing in it says why, and a pinned id only counts where its 
 test("ties branch off a shared track: the farthest member rides innermost and every route ends at its member", () => {
   const d = scenes.ring.trades.data;
   const layout = scenes.ring.trades.layout;
-  const company = [...d.byCompany.entries()].sort((a, b) => b[1].length - a[1].length)[0]![0];
+
+  const [company, companyTies] = must(
+    [...d.byCompany.entries()].toSorted((a, b) => b[1].length - a[1].length)[0],
+    "a traded company",
+  );
+
   const set = tieSet(d, layout, company);
-  expect(set.ties.length).toBe(d.byCompany.get(company)!.length);
+  expect(set.ties.length).toBe(companyTies.length);
   expect(set.ties.map((t) => t.order)).toEqual(set.ties.map((_, i) => i));
 
   for (const t of set.ties) {

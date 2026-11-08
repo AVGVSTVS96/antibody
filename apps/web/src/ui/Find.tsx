@@ -1,13 +1,14 @@
-import type { BundleIndex } from "@antibody/core";
 import { billDisplay, congressGovUrl, parseBillId } from "@antibody/core";
-import type { BillId } from "@antibody/core";
-import { useEffect, useId, useRef, useState } from "react";
+import type { BillId, BundleIndex } from "@antibody/core";
+import { useCallback, useId, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { loadIndex } from "../lib/data.ts";
+import { useIndex } from "../lib/data.ts";
 import { billHref, navigate, onLink } from "../lib/router.ts";
 import { Search } from "./icons.tsx";
 
 type Entry = BundleIndex["bills"][number];
+
+const squash = (s: string) => s.toLowerCase().replaceAll(/[\s.]/gu, "");
 
 export const matchBills = (bills: Entry[], q: string) => {
   const needle = q.trim().toLowerCase();
@@ -16,8 +17,6 @@ export const matchBills = (bills: Entry[], q: string) => {
     return [];
   }
 
-  const squash = (s: string) => s.toLowerCase().replaceAll(/[\s.]/g, "");
-
   return bills.filter((b) =>
     [b.id, b.display, b.title, b.shortTitle ?? "", b.law ?? ""].some(
       (s) => s.toLowerCase().includes(needle) || squash(s).includes(squash(needle)),
@@ -25,17 +24,14 @@ export const matchBills = (bills: Entry[], q: string) => {
   );
 };
 
-export function missingBill(raw: string) {
-  let id: BillId | null = null;
-
+export function asBillId(raw: string): BillId | null {
   try {
-    id = parseBillId(raw.trim());
-  } catch {}
-
-  return id;
+    return parseBillId(raw.trim());
+  } catch {
+    return null;
+  }
 }
 
-/** What a reader gets for a bill that isn't on the site: where to read it, not a command to run. */
 export function NotXrayed({ id }: { id: BillId }) {
   return (
     <>
@@ -49,26 +45,23 @@ export function NotXrayed({ id }: { id: BillId }) {
 }
 
 export function Find() {
-  const [index, setIndex] = useState<BundleIndex | null>(null);
+  const index = useIndex();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [at, setAt] = useState(0);
   const [phone, setPhone] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const root = useRef<HTMLDivElement>(null);
   const list = useId();
 
-  useEffect(() => {
-    loadIndex()
-      .then(setIndex)
-      .catch(() => {});
-  }, []);
+  const root = useCallback((el: HTMLDivElement | null) => {
+    if (!el) {
+      return;
+    }
 
-  useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
-      const el = e.target as HTMLElement;
+      const typing = e.target instanceof Element && e.target.closest("input,textarea,[contenteditable]") !== null;
 
-      if (e.key !== "/" || e.metaKey || e.ctrlKey || el.closest("input,textarea,[contenteditable]")) {
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || typing) {
         return;
       }
 
@@ -78,7 +71,7 @@ export function Find() {
     };
 
     const onDown = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) {
+      if (!(e.target instanceof Node && el.contains(e.target))) {
         setOpen(false);
         setPhone(false);
       }
@@ -94,7 +87,7 @@ export function Find() {
   }, []);
 
   const hits = index ? matchBills(index.bills, q).slice(0, 6) : [];
-  const unknown = q.trim() && !hits.length ? missingBill(q) : null;
+  const unknown = q.trim() && !hits.length ? asBillId(q) : null;
 
   const go = (id: string) => {
     setOpen(false);
@@ -169,11 +162,13 @@ export function Find() {
         <kbd>/</kbd>
       </search>
       {open && q.trim() && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a combobox's popup of links: <select> and <datalist> can't hold links or be styled
         <div className="find-menu" id={list} role="listbox">
           {hits.map((b, i) => (
             <a
               key={b.id}
               href={billHref(b.id)}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- each option is a real link, which an <option> can't be
               role="option"
               aria-selected={i === at}
               onClick={(e) => {
@@ -187,16 +182,16 @@ export function Find() {
               <b>{b.shortTitle ?? b.title}</b>
               <span>
                 {b.display}
-                {b.law ? `, ${b.law}` : ""}
+                {(b.law ?? "") === "" ? "" : `, ${b.law}`}
               </span>
             </a>
           ))}
           {!hits.length && (
             <div className="find-none">
-              {unknown ? (
-                <NotXrayed id={unknown} />
-              ) : (
+              {unknown === null ? (
                 <>No bill matches “{q.trim()}”. Try a number like S.1582 or H.R. 1.</>
+              ) : (
+                <NotXrayed id={unknown} />
               )}
             </div>
           )}

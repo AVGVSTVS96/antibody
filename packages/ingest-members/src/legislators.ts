@@ -1,40 +1,50 @@
 import { join } from "node:path";
 import type { Row } from "@antibody/core";
 import { paths, readRows } from "@antibody/core/node";
+import { z } from "zod";
 import { cached } from "./fetch.ts";
 
 const MIRROR = "https://unitedstates.github.io/congress-legislators";
 const FILES = ["legislators-current", "legislators-historical"] as const;
 
-/** GovInfo BILLSTATUS starts with the 108th Congress; keep everyone who served from the 103rd on. */
-const SINCE = "1993-01-03";
+const SINCE_103RD_CONGRESS = "1993-01-03";
 
-interface Term {
-  type: "rep" | "sen";
-  start: string;
-  end: string;
-  state: string;
-  district?: number;
-  party?: string;
-  caucus?: string;
-  party_affiliations?: { start: string; end: string; party: string; caucus?: string }[];
-}
+const TermSchema = z.object({
+  type: z.enum(["rep", "sen"]),
+  start: z.string(),
+  end: z.string(),
+  state: z.string(),
+  district: z.number().optional(),
+  party: z.string().optional(),
+  caucus: z.string().optional(),
+  party_affiliations: z
+    .array(z.object({ start: z.string(), end: z.string(), party: z.string(), caucus: z.string().optional() }))
+    .optional(),
+});
 
-interface Person {
-  id: { bioguide: string; lis?: string; fec?: string[] };
-  name: { first: string; last: string; official_full?: string; nickname?: string };
-  terms: Term[];
-}
+type Term = z.infer<typeof TermSchema>;
+
+const PersonSchema = z.object({
+  id: z.object({ bioguide: z.string(), lis: z.string().optional(), fec: z.array(z.string()).optional() }),
+  name: z.object({
+    first: z.string(),
+    last: z.string(),
+    official_full: z.string().optional(),
+    nickname: z.string().optional(),
+  }),
+  terms: z.array(TermSchema).min(1),
+});
+
+type Person = z.infer<typeof PersonSchema>;
 
 export type MemberRow = Row<"members">;
 
 type MemberTerm = MemberRow["terms"][number];
 
-const PARTY: Record<string, "R" | "D"> = { Republican: "R", Democrat: "D" };
-export const partyLetter = (party: string): "R" | "D" | "I" => PARTY[party] ?? "I";
+export const partyLetter = (party: string): "R" | "D" | "I" =>
+  party === "Republican" ? "R" : party === "Democrat" ? "D" : "I";
 
-/** Splits terms at mid-term party switches (Sinema, Manchin, Van Drew) so each row has one party. */
-function expandTerms(terms: Term[]): MemberTerm[] {
+function splitAtPartySwitches(terms: Term[]): MemberTerm[] {
   return terms.flatMap((t) => {
     const base = {
       chamber: t.type === "sen" ? ("Senate" as const) : ("House" as const),
@@ -49,8 +59,12 @@ function expandTerms(terms: Term[]): MemberTerm[] {
 }
 
 export function memberRow(p: Person, file: string): MemberRow {
-  const terms = expandTerms(p.terms);
-  const last = terms.at(-1)!;
+  const terms = splitAtPartySwitches(p.terms);
+  const last = terms.at(-1);
+
+  if (last === undefined) {
+    throw new Error(`${p.id.bioguide} has no terms`);
+  }
 
   return {
     id: p.id.bioguide,
@@ -67,24 +81,34 @@ export function memberRow(p: Person, file: string): MemberRow {
   };
 }
 
-/** Everyone who served since 1993, from the unitedstates/congress-legislators data (bioguide ↔ FEC ↔ LIS ids, terms). */
 export async function fetchMembers(refresh: boolean): Promise<MemberRow[]> {
   const rows = new Map<string, MemberRow>();
 
   for (const file of FILES) {
     const text = await cached(`${MIRROR}/${file}.json`, join(paths.raw("members"), `${file}.json`), refresh);
 
-    for (const p of JSON.parse(text) as Person[]) {
-      if (p.terms.at(-1)!.end >= SINCE && !rows.has(p.id.bioguide)) rows.set(p.id.bioguide, memberRow(p, file));
+    const people = z.array(PersonSchema).parse(JSON.parse(text));
+
+    for (const p of people) {
+      const servedSince103rd = (p.terms.at(-1)?.end ?? "") >= SINCE_103RD_CONGRESS;
+
+      if (servedSince103rd && !rows.has(p.id.bioguide)) {
+        rows.set(p.id.bioguide, memberRow(p, file));
+      }
     }
   }
 
   return [...rows.values()];
 }
 
-/** The term a member held on a date (a bill's vote or introduction), or their last one before it. */
 export function termOn(member: Pick<MemberRow, "terms">, date: string): MemberTerm {
-  return member.terms.findLast((t) => t.start <= date) ?? member.terms[0]!;
+  const term = member.terms.findLast((t) => t.start <= date) ?? member.terms[0];
+
+  if (term === undefined) {
+    throw new Error("member has no terms");
+  }
+
+  return term;
 }
 
 export interface Lookup {
@@ -102,7 +126,7 @@ export async function memberLookup(): Promise<Lookup> {
 
   return {
     byBioguide: new Map(members.map((m) => [m.id, m])),
-    byLis: new Map(members.flatMap((m) => (m.lis_id ? [[m.lis_id, m.id] as const] : []))),
+    byLis: new Map(members.flatMap((m) => (m.lis_id === null || m.lis_id === "" ? [] : [[m.lis_id, m.id] as const]))),
     byFec: new Map(members.flatMap((m) => m.fec_candidate_ids.map((f) => [f, m.id] as const))),
   };
 }

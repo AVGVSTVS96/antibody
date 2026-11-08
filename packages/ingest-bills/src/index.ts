@@ -2,10 +2,6 @@ import { join } from "node:path";
 import type { Stage } from "@antibody/core";
 import { heavy } from "@antibody/core/node";
 
-/**
- * `bills`: BILLSTATUS + every text version from GovInfo → sections and their lineage, sponsors, committees,
- * amendments with who offered them, and LLM counterparts for rewritten sections. Runs in its own memory-capped process.
- */
 export const stages: Stage[] = [
   {
     name: "bills",
@@ -21,8 +17,12 @@ export const stages: Stage[] = [
       "amendment_sections",
       "counterparts",
     ],
-    async run(ctx) {
-      await heavy(["bun", join(import.meta.dir, "run.ts"), ctx.bill!, ...(ctx.refresh ? ["--refresh"] : [])]);
+    async run({ bill, refresh }) {
+      if (bill === null) {
+        throw new Error("the bills stage runs for one bill");
+      }
+
+      await heavy(["bun", join(import.meta.dir, "run.ts"), bill, ...(refresh ? ["--refresh"] : [])]);
     },
   },
 ];

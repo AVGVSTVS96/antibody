@@ -7,7 +7,6 @@ import { paths } from "@antibody/core/node";
 export interface BillTitle {
   type: string;
   title: string;
-  /** The text version the title comes from ("Engrossed in House"), when CRS says. */
   version: string | null;
 }
 
@@ -16,13 +15,10 @@ export interface BillStatus {
   url: string;
   introduced: string | null;
   titles: BillTitle[];
-  /** Public law numbers, e.g. "119-27". */
   laws: string[];
   enactedOn: string | null;
-  /** Text versions with their dates ("Engrossed Amendment Senate", 2022-07-27). */
   versions: { type: string; date: string | null }[];
   policyArea: string | null;
-  /** CRS's latest summary as plain text. */
   summary: string | null;
 }
 
@@ -32,7 +28,6 @@ const fileName = (id: BillId) => {
   return `BILLSTATUS-${congress}${type}${number}.xml`;
 };
 
-/** GovInfo bulk BILLSTATUS: reuses what the bills spike downloaded, else fetches into data/lobbying/billstatus. */
 export async function billStatus(id: BillId, signal?: AbortSignal): Promise<BillStatus | null> {
   const name = fileName(id);
   const own = join(paths.raw("lobbying"), "billstatus", name);
@@ -45,7 +40,7 @@ export async function billStatus(id: BillId, signal?: AbortSignal): Promise<Bill
     }
   }
 
-  const res = await fetch(billstatusUrl(id), { signal });
+  const res = await fetch(billstatusUrl(id), { signal: signal ?? null });
 
   if (res.status === 404) {
     return null;
@@ -68,19 +63,19 @@ const decode = (s: string) =>
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
     .replaceAll("&quot;", '"')
-    .replaceAll(/&apos;|&#39;/g, "'")
+    .replaceAll(/&apos;|&#39;/gu, "'")
     .trim();
 
-const tag = (xml: string, name: string) => new RegExp(`<${name}>([^<]*)</${name}>`).exec(xml)?.[1];
+const tag = (xml: string, name: string) => new RegExp(`<${name}>([^<]*)</${name}>`, "u").exec(xml)?.[1];
 
 function items(xml: string, block: string): string[] {
-  const inner = new RegExp(`<${block}>([\\s\\S]*?)</${block}>`).exec(xml)?.[1] ?? "";
+  const inner = new RegExp(`<${block}>([\\s\\S]*?)</${block}>`, "u").exec(xml)?.[1] ?? "";
 
-  return [...inner.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1]!);
+  return [...inner.matchAll(/<item>([\s\S]*?)<\/item>/gu)].flatMap((m) => m[1] ?? []);
 }
 
 export function parseBillStatus(id: BillId, xml: string): BillStatus {
-  const bill = /<bill>([\s\S]*)<\/bill>/.exec(xml)?.[1] ?? xml;
+  const bill = /<bill>([\s\S]*)<\/bill>/u.exec(xml)?.[1] ?? xml;
 
   const titles = items(bill, "titles").map((x) => ({
     type: decode(tag(x, "titleType") ?? ""),
@@ -88,12 +83,14 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
     version: tag(x, "billTextVersionName") ?? null,
   }));
 
-  const laws = items(bill, "laws")
-    .map((x) => tag(x, "number"))
-    .filter((n): n is string => !!n);
+  const laws = items(bill, "laws").flatMap((x) => {
+    const n = tag(x, "number");
 
-  const enacted = items(bill, "actions").find((x) => /Became (Public|Private) Law/i.test(tag(x, "text") ?? ""));
-  const summaries = [...bill.matchAll(/<summary>[\s\S]*?<text><!\[CDATA\[([\s\S]*?)\]\]><\/text>/g)];
+    return n === undefined || n === "" ? [] : [n];
+  });
+
+  const enacted = items(bill, "actions").find((x) => /Became (Public|Private) Law/iu.test(tag(x, "text") ?? ""));
+  const summaries = [...bill.matchAll(/<summary>[\s\S]*?<text><!\[CDATA\[([\s\S]*?)\]\]><\/text>/gu)];
   const summary = summaries.at(-1)?.[1];
 
   return {
@@ -102,53 +99,49 @@ export function parseBillStatus(id: BillId, xml: string): BillStatus {
     introduced: tag(bill, "introducedDate") ?? null,
     titles,
     laws,
-    enactedOn: enacted ? (tag(enacted, "actionDate") ?? null) : null,
+    enactedOn: enacted !== undefined && enacted !== "" ? (tag(enacted, "actionDate") ?? null) : null,
     versions: items(bill, "textVersions").map((x) => ({
       type: decode(tag(x, "type") ?? ""),
       date: tag(x, "date")?.slice(0, 10) ?? null,
     })),
-    policyArea: /<policyArea>\s*<name>([^<]*)<\/name>/.exec(bill)?.[1] ?? null,
-    summary: summary
-      ? decode(summary.replaceAll(/<[^>]+>/g, " ").replaceAll("&nbsp;", " ")).replaceAll(/\s+/g, " ")
-      : null,
+    policyArea: /<policyArea>\s*<name>([^<]*)<\/name>/u.exec(bill)?.[1] ?? null,
+    summary:
+      summary !== undefined && summary !== ""
+        ? decode(summary.replaceAll(/<[^>]+>/gu, " ").replaceAll("&nbsp;", " ")).replaceAll(/\s+/gu, " ")
+        : null,
   };
 }
 
-/** Display titles are sometimes the official title ("An act to provide for reconciliation …"). */
 const OFFICIAL =
-  /^(A bill|An act|To |A joint resolution|A resolution|A concurrent resolution|Joint resolution|Making)\b/i;
+  /^(A bill|An act|To |A joint resolution|A resolution|A concurrent resolution|Joint resolution|Making)\b/iu;
 
 export interface BillName {
   title: string;
-  /** current: what the bill is called at the end; earlier: a title it dropped; portion: a title for part of it. */
   kind: "current" | "earlier" | "portion";
-  /** When a filing could first have used it for this bill: the date of the text version that carried it. */
   since: string | null;
 }
 
-const PORTION = /portions? of (?:this|a) bill/i;
-const CURRENT = /display title|popular title|as enacted|enrolled/i;
+const PORTION = /portions? of (?:this|a) bill/iu;
+const CURRENT = /display title|popular title|as enacted|enrolled/iu;
 
-/**
- * Names the bill went by. For a law, its display, popular and enacted titles are current and the rest are
- * earlier names (a vehicle like CHIPS began as the Legislative Branch Appropriations Act, 2022). Portion titles
- * count only from the latest dated text version when CRS doesn't say which version carried them.
- */
 export function billNames(s: BillStatus): BillName[] {
-  const dated = s.versions.map((v) => v.date).filter((d): d is string => !!d && d <= (s.enactedOn ?? "9999"));
+  const dated = s.versions
+    .map((v) => v.date)
+    .filter((d): d is string => d !== null && d !== "" && d <= (s.enactedOn ?? "9999"));
+
   const versionDate = (name: string | null) => s.versions.find((v) => v.type === name)?.date ?? null;
-  const latest = dated.sort().at(-1) ?? s.introduced;
+  const latest = dated.toSorted().at(-1) ?? s.introduced;
   const out = new Map<string, BillName>();
   const rank = { current: 2, earlier: 1, portion: 0 };
 
   for (const t of s.titles) {
-    if (!t.title || /official/i.test(t.type) || OFFICIAL.test(t.title)) {
+    if (t.title === "" || /official/iu.test(t.type) || OFFICIAL.test(t.title)) {
       continue;
     }
 
     const kind: BillName["kind"] = PORTION.test(t.type)
       ? "portion"
-      : !s.enactedOn || CURRENT.test(t.type) || /enrolled/i.test(t.version ?? "")
+      : s.enactedOn === null || s.enactedOn === "" || CURRENT.test(t.type) || /enrolled/iu.test(t.version ?? "")
         ? "current"
         : "earlier";
 
@@ -157,7 +150,12 @@ export function billNames(s: BillStatus): BillName[] {
 
     if (!prev || rank[kind] > rank[prev.kind]) {
       out.set(t.title, { title: t.title, kind, since });
-    } else if (rank[kind] === rank[prev.kind] && since && (!prev.since || since < prev.since)) {
+    } else if (
+      rank[kind] === rank[prev.kind] &&
+      since !== null &&
+      since !== "" &&
+      (prev.since === null || prev.since === "" || since < prev.since)
+    ) {
       prev.since = since;
     }
   }
@@ -166,4 +164,4 @@ export function billNames(s: BillStatus): BillName[] {
 }
 
 export const officialTitles = (s: BillStatus) =>
-  s.titles.filter((t) => /official title/i.test(t.type)).map((t) => t.title);
+  s.titles.filter((t) => /official title/iu.test(t.type)).map((t) => t.title);

@@ -7,15 +7,24 @@ export interface GetOptions {
   accept?: string;
   headers?: Record<string, string>;
   method?: "GET" | "HEAD";
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
 }
 
-/** fetch with a named User-Agent, retrying 429 and 5xx with backoff. Throws on any other non-2xx. */
 export async function get(url: string, opts: GetOptions = {}): Promise<Response> {
+  const headers = new Headers({ "User-Agent": UA });
+
+  if (opts.accept !== undefined && opts.accept !== "") {
+    headers.set("Accept", opts.accept);
+  }
+
+  for (const [name, value] of Object.entries(opts.headers ?? {})) {
+    headers.set(name, value);
+  }
+
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(url, {
       method: opts.method ?? "GET",
-      headers: { "User-Agent": UA, ...(opts.accept ? { Accept: opts.accept } : {}), ...opts.headers },
+      headers,
       signal: opts.signal ? AbortSignal.any([opts.signal, AbortSignal.timeout(120_000)]) : AbortSignal.timeout(120_000),
     });
 
@@ -37,7 +46,6 @@ export async function get(url: string, opts: GetOptions = {}): Promise<Response>
 
 export const getText = async (url: string, opts?: GetOptions) => await (await get(url, opts)).text();
 
-/** Returns the file's text, downloading it first when it isn't on disk. For immutable URLs or versioned names. */
 export async function cachedText(url: string, file: string, opts?: GetOptions): Promise<string> {
   const f = Bun.file(file);
 
@@ -53,15 +61,13 @@ export async function cachedText(url: string, file: string, opts?: GetOptions): 
   return body;
 }
 
-/** Maps `items` through `fn` with at most `n` in flight; keeps order. */
 export async function pool<T, R>(items: T[], n: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out = new Array<R>(items.length);
-  let next = 0;
+  const out: R[] = [];
+  const queue = items.entries();
 
   const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i]!);
+    for (const [i, item] of queue) {
+      out[i] = await fn(item);
     }
   };
 

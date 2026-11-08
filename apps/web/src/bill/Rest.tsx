@@ -14,8 +14,7 @@ const MEASURE: Record<Dollar["measure"], string> = {
 };
 
 export function Rules({ m }: { m: BillModel }) {
-  const seen = new Set<string>();
-  const gaps = m.b.gaps.filter((g) => !seen.has(g.text) && seen.add(g.text));
+  const gaps = m.b.gaps.filter((g, i, all) => all.findIndex((x) => x.text === g.text) === i);
 
   return (
     <section className="rules" id="read" aria-label="What’s missing and how to read this page">
@@ -25,7 +24,7 @@ export function Rules({ m }: { m: BillModel }) {
           <ul>
             {gaps.map((g) => (
               <li key={g.id}>
-                {g.text} {g.claim && <Src id={g.claim} />}
+                {g.text} {g.claim !== null && <Src id={g.claim} />}
               </li>
             ))}
             {!gaps.length && <li>Nothing we know of is held out of this page.</li>}
@@ -50,7 +49,7 @@ export function Rules({ m }: { m: BillModel }) {
               <p>Thresholds, colors and wording are identical for every bill, party and member.</p>
             </li>
           </ul>
-          <a className="link iris" href={RULES_URL} target="_blank" rel="noopener">
+          <a className="link iris" href={RULES_URL} target="_blank" rel="noreferrer">
             Read all {m.b.rules.length || 18} rules
           </a>
         </div>
@@ -66,8 +65,13 @@ export function Records({ m }: { m: BillModel }) {
   const est = b.dollars.estimates.find((e) => e.id === lawDeficit?.estimateId) ?? b.dollars.estimates[0];
   const amend = b.amendments;
   const byStatus = (s: string) => amend.filter((a) => a.status === s).length;
-  const tied = m.actors.filter((a) => a.benefits).sort((x, y) => nice(x.label).localeCompare(nice(y.label)));
-  const withPositions = m.lobbyists.filter((l) => l.props.coveredPositions.length);
+  const tied = m.actors.filter((a) => a.benefits).toSorted((x, y) => nice(x.label).localeCompare(nice(y.label)));
+
+  const withPositions = m.lobbyists.flatMap((l) => {
+    const [first] = l.props.coveredPositions;
+
+    return first ? [{ l, first }] : [];
+  });
 
   return (
     <section className="wrap records" id="records" aria-labelledby="records-h">
@@ -103,7 +107,7 @@ export function Records({ m }: { m: BillModel }) {
                     {MEASURE[d.measure]} {musd(d.amountMusd)} <Src id={d.claim} label="CBO" />{" "}
                   </span>
                 ))}
-              {est.mandates?.privateSector.startsWith("Yes") && (
+              {est.mandates?.privateSector.startsWith("Yes") === true && (
                 <>
                   CBO says it adds private-sector mandates above the legal threshold{" "}
                   <Src id={est.mandates.claim} label="CBO" />.
@@ -116,8 +120,8 @@ export function Records({ m }: { m: BillModel }) {
           <details>
             <summary>Roll call votes ({b.votes.length})</summary>
             <ul className="recl">
-              {[...b.votes]
-                .sort((x, y) => x.date.localeCompare(y.date))
+              {b.votes
+                .toSorted((x, y) => x.date.localeCompare(y.date))
                 .map((v) => (
                   <li key={v.id}>
                     <span>
@@ -163,19 +167,19 @@ export function Records({ m }: { m: BillModel }) {
             </p>
             <ul className="recl">
               {amend.slice(0, 30).map((a) => {
-                const sponsor = a.sponsor ? m.memberById.get(a.sponsor)?.node : null;
+                const sponsor = a.sponsor === null ? null : m.memberById.get(a.sponsor)?.node;
 
                 return (
                   <li key={a.id}>
                     <span>
                       <b>
                         {a.number}
-                        {a.purpose ? `, ${a.purpose}` : ""}
+                        {(a.purpose ?? "") === "" ? "" : `, ${a.purpose}`}
                       </b>
                       <i>
                         {sponsor ? `${sponsor.label}, ` : ""}
                         {a.status.replace("_", " ")}
-                        {a.latestActionOn ? `, ${day(a.latestActionOn)}` : ""}
+                        {a.latestActionOn === null ? "" : `, ${day(a.latestActionOn)}`}
                       </i>
                     </span>
                     <span />
@@ -221,7 +225,7 @@ export function Records({ m }: { m: BillModel }) {
             <summary>Lobbyists who list a covered position ({withPositions.length})</summary>
             <p>Quoted as each filing wrote it; the position is the filer’s claim and is not checked.</p>
             <ul className="recl">
-              {withPositions.map((l) => (
+              {withPositions.map(({ l, first }) => (
                 <li key={l.id}>
                   <span>
                     <b>{l.label}</b>
@@ -230,7 +234,7 @@ export function Records({ m }: { m: BillModel }) {
                     ))}
                   </span>
                   <span />
-                  <Src id={l.props.coveredPositions[0]!.claim} label="LDA" />
+                  <Src id={first.claim} label="LDA" />
                 </li>
               ))}
             </ul>
@@ -246,12 +250,12 @@ export function Records({ m }: { m: BillModel }) {
                   <i>{r.text}</i>
                 </span>
                 <span className="num">v{r.version}</span>
-                {r.url ? (
+                {r.url === null ? (
+                  <span />
+                ) : (
                   <a className="src" href={r.url} target="_blank" rel="noopener">
                     method
                   </a>
-                ) : (
-                  <span />
                 )}
               </li>
             ))}

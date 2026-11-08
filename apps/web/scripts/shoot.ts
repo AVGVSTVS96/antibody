@@ -1,9 +1,4 @@
-/**
- * Screenshots the site in the shapes people use it (desktop and phone, light and dark, each view) and reports
- * horizontal overflow, page errors and the tab title. `bun apps/web/scripts/shoot.ts <base url> <out dir> [only]`
- */
 import { mkdirSync } from "node:fs";
-import { homedir } from "node:os";
 import { chromium } from "playwright-core";
 
 const base = process.argv[2] ?? "http://localhost:4870";
@@ -12,14 +7,21 @@ const only = process.argv[4];
 
 mkdirSync(out, { recursive: true });
 
-const browser = await chromium.launch({
-  executablePath: `${homedir()}/.cache/ms-playwright/chromium-1248/chrome-linux64/chrome`,
-  args: [],
-});
+const browser = await chromium.launch();
 
 const bill = "/bill/119-s-1582";
 
-const shots = [
+interface Shot {
+  name: string;
+  path: string;
+  w: number;
+  h: number;
+  theme: "dark" | "light";
+  mobile?: boolean;
+  full?: boolean;
+}
+
+const shots: Shot[] = [
   { name: "index-dark", path: "/", w: 1440, h: 900, theme: "dark", full: true },
   { name: "index-light-phone", path: "/", w: 390, h: 844, theme: "light", mobile: true, full: true },
   { name: "bill-dark", path: bill, w: 1440, h: 900, theme: "dark" },
@@ -36,16 +38,18 @@ const shots = [
 ];
 
 for (const s of shots) {
-  if (only && !s.name.includes(only)) {
+  if (only !== undefined && !s.name.includes(only)) {
     continue;
   }
 
+  const mobile = s.mobile ?? false;
+
   const page = await browser.newPage({
     viewport: { width: s.w, height: s.h },
-    deviceScaleFactor: s.mobile ? 2 : 1,
-    isMobile: !!s.mobile,
-    hasTouch: !!s.mobile,
-    colorScheme: s.theme as "dark" | "light",
+    deviceScaleFactor: mobile ? 2 : 1,
+    isMobile: mobile,
+    hasTouch: mobile,
+    colorScheme: s.theme,
   });
 
   const errors: string[] = [];
@@ -55,14 +59,14 @@ for (const s of shots) {
   await page.goto(`${base}${s.path}${s.path.includes("?") ? "&" : "?"}theme=${s.theme}`, { waitUntil: "networkidle" });
 
   if (s.path.startsWith("/bill")) {
-    await page.waitForSelector("#map", { state: "attached", timeout: 15000 }).catch(() => {});
+    await page.waitForSelector("#map", { state: "attached", timeout: 15_000 }).catch(() => null);
   }
 
-  await page.evaluate(async () => document.fonts.ready);
+  await page.evaluate(async () => await document.fonts.ready);
   await page.waitForTimeout(500);
   const ready = Date.now() - t0;
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  await page.screenshot({ path: `${out}/${s.name}.png`, fullPage: !!s.full });
+  await page.screenshot({ path: `${out}/${s.name}.png`, fullPage: s.full ?? false });
   console.log(s.name, JSON.stringify({ ready, overflow, errors, title: await page.title() }));
   await page.close();
 }

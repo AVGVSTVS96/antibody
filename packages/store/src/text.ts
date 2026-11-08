@@ -1,5 +1,3 @@
-/** Wording helpers for claim text. One template per fact, the same for every party and member. */
-
 const MONTHS = [
   "January",
   "February",
@@ -15,18 +13,16 @@ const MONTHS = [
   "December",
 ];
 
-/** `2025-07-18` → `July 18, 2025` */
 export function day(iso: string | null | undefined): string {
-  if (!iso) {
+  if (iso === null || iso === undefined || iso === "") {
     return "an unknown date";
   }
 
-  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const [y, m = Number.NaN, d] = iso.slice(0, 10).split("-").map(Number);
 
-  return `${MONTHS[m! - 1]} ${d}, ${y}`;
+  return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
-/** $ millions as CBO prints them → `$120 million`, `$1.2 billion`, `$944 billion`. Unsigned; callers word the sign. */
 export function musd(m: number): string {
   const a = Math.abs(m);
 
@@ -35,7 +31,7 @@ export function musd(m: number): string {
   }
 
   if (a >= 1000) {
-    return `$${trim(a / 1_000)} billion`;
+    return `$${trim(a / 1000)} billion`;
   }
 
   if (a >= 1) {
@@ -45,7 +41,6 @@ export function musd(m: number): string {
   return `$${Math.round(a * 1_000_000).toLocaleString("en-US")}`;
 }
 
-/** Dollars → `$5,000`, `$18.7 million`. */
 export function usd(n: number): string {
   const a = Math.abs(n);
 
@@ -69,64 +64,68 @@ export function ordinal(n: number): string {
 
 export const PARTY = { R: "Republican", D: "Democratic", I: "independent" } as const;
 
-export const STATES: Record<string, string> = {
-  AL: "Alabama",
-  AK: "Alaska",
-  AZ: "Arizona",
-  AR: "Arkansas",
-  CA: "California",
-  CO: "Colorado",
-  CT: "Connecticut",
-  DE: "Delaware",
-  FL: "Florida",
-  GA: "Georgia",
-  HI: "Hawaii",
-  ID: "Idaho",
-  IL: "Illinois",
-  IN: "Indiana",
-  IA: "Iowa",
-  KS: "Kansas",
-  KY: "Kentucky",
-  LA: "Louisiana",
-  ME: "Maine",
-  MD: "Maryland",
-  MA: "Massachusetts",
-  MI: "Michigan",
-  MN: "Minnesota",
-  MS: "Mississippi",
-  MO: "Missouri",
-  MT: "Montana",
-  NE: "Nebraska",
-  NV: "Nevada",
-  NH: "New Hampshire",
-  NJ: "New Jersey",
-  NM: "New Mexico",
-  NY: "New York",
-  NC: "North Carolina",
-  ND: "North Dakota",
-  OH: "Ohio",
-  OK: "Oklahoma",
-  OR: "Oregon",
-  PA: "Pennsylvania",
-  RI: "Rhode Island",
-  SC: "South Carolina",
-  SD: "South Dakota",
-  TN: "Tennessee",
-  TX: "Texas",
-  UT: "Utah",
-  VT: "Vermont",
-  VA: "Virginia",
-  WA: "Washington",
-  WV: "West Virginia",
-  WI: "Wisconsin",
-  WY: "Wyoming",
-  DC: "the District of Columbia",
-  PR: "Puerto Rico",
-  GU: "Guam",
-  VI: "the U.S. Virgin Islands",
-  AS: "American Samoa",
-  MP: "the Northern Mariana Islands",
-};
+const STATES = new Map(
+  Object.entries({
+    AL: "Alabama",
+    AK: "Alaska",
+    AZ: "Arizona",
+    AR: "Arkansas",
+    CA: "California",
+    CO: "Colorado",
+    CT: "Connecticut",
+    DE: "Delaware",
+    FL: "Florida",
+    GA: "Georgia",
+    HI: "Hawaii",
+    ID: "Idaho",
+    IL: "Illinois",
+    IN: "Indiana",
+    IA: "Iowa",
+    KS: "Kansas",
+    KY: "Kentucky",
+    LA: "Louisiana",
+    ME: "Maine",
+    MD: "Maryland",
+    MA: "Massachusetts",
+    MI: "Michigan",
+    MN: "Minnesota",
+    MS: "Mississippi",
+    MO: "Missouri",
+    MT: "Montana",
+    NE: "Nebraska",
+    NV: "Nevada",
+    NH: "New Hampshire",
+    NJ: "New Jersey",
+    NM: "New Mexico",
+    NY: "New York",
+    NC: "North Carolina",
+    ND: "North Dakota",
+    OH: "Ohio",
+    OK: "Oklahoma",
+    OR: "Oregon",
+    PA: "Pennsylvania",
+    RI: "Rhode Island",
+    SC: "South Carolina",
+    SD: "South Dakota",
+    TN: "Tennessee",
+    TX: "Texas",
+    UT: "Utah",
+    VT: "Vermont",
+    VA: "Virginia",
+    WA: "Washington",
+    WV: "West Virginia",
+    WI: "Wisconsin",
+    WY: "Wyoming",
+    DC: "the District of Columbia",
+    PR: "Puerto Rico",
+    GU: "Guam",
+    VI: "the U.S. Virgin Islands",
+    AS: "American Samoa",
+    MP: "the Northern Mariana Islands",
+  }),
+);
+
+export const stateName = (code: string) => STATES.get(code) ?? code;
 
 export interface MemberLike {
   name: string;
@@ -135,11 +134,9 @@ export interface MemberLike {
   chamber: "House" | "Senate";
 }
 
-/** `Sen. Bill Hagerty (R-TN)`, `Rep. Gil Cisneros (D-CA)` */
 export const memberLabel = (m: MemberLike) =>
   `${m.chamber === "Senate" ? "Sen." : "Rep."} ${m.name} (${m.party}-${m.state})`;
 
-/** LDA period codes → `Q1`, `mid-year`… */
 export function quarter(period: string): string {
   const p = period.toLowerCase();
   const q = ["first", "second", "third", "fourth"].findIndex((w) => p.startsWith(w));
@@ -159,7 +156,6 @@ export function quarter(period: string): string {
   return period;
 }
 
-/** `P.L. 119-27`, `119-27`, `Public Law 119-27` → `119-27` */
-export const lawNumber = (law: string) => law.replace(/^(?:P\.?\s*L\.?|Public\s+Law)\s*(?:No\.?:?)?\s*/i, "").trim();
+export const lawNumber = (law: string) => law.replace(/^(?:P\.?\s*L\.?|Public\s+Law)\s*(?:No\.?:?)?\s*/iu, "").trim();
 
 export const quote = (s: string, max = 160) => `"${s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s}"`;

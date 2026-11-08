@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { createContext, useCallback, useContext, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useMedia } from "../../lib/media.ts";
@@ -8,7 +8,7 @@ interface Props {
   titleId: string;
   onClose: () => void;
   onSwipe: (dir: 1 | -1) => void;
-  children: (close: () => void) => ReactNode;
+  children: ReactNode;
 }
 
 const OVERSHOOT_PAD = 56;
@@ -16,11 +16,45 @@ const SLOP = 8;
 const height = () => Math.max(360, Math.round(window.innerHeight * 0.82));
 const FOCUSABLE = 'a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"]),input,select,textarea';
 
-/**
- * A bottom sheet that behaves like a physical one: it follows the finger 1:1, a flick lands on the detent it is heading
- * for (position plus projected momentum), pulling past the top resists, and letting go carries the finger's velocity
- * into a spring. Sideways drags are handed to `onSwipe` instead.
- */
+const CloseSheet = createContext<(() => void) | null>(null);
+
+export function SheetClose({ label }: { label: string }) {
+  const close = useContext(CloseSheet);
+
+  if (!close) {
+    throw new Error("SheetClose renders inside a Sheet");
+  }
+
+  return (
+    <button type="button" className="sheet-close" aria-label={label} onClick={close} data-nodrag>
+      <svg viewBox="0 0 12 12" aria-hidden="true">
+        <path d="M2.5 2.5l7 7M9.5 2.5l-7 7" />
+      </svg>
+    </button>
+  );
+}
+
+function trapTab(e: KeyboardEvent, sheet: HTMLElement) {
+  const items = [...sheet.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => x.offsetParent !== null);
+  const first = items[0];
+  const last = items.at(-1);
+
+  if (!first || !last) {
+    return;
+  }
+
+  const at = document.activeElement;
+  const outside = !sheet.contains(at);
+
+  if (e.shiftKey && (at === first || outside)) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && (at === last || outside)) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
   const reduced = useMedia("(prefers-reduced-motion: reduce)");
   const sheet = useRef<HTMLDivElement>(null);
@@ -37,7 +71,6 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
     moved: boolean;
   } | null>(null);
 
-  const opener = useRef<Element | null>(null);
   const suppress = useRef(false);
 
   const write = useCallback((y: number) => {
@@ -108,95 +141,75 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
     settle(s.h, 0, onClose);
   }, [settle, onClose]);
 
-  useLayoutEffect(() => {
-    const s = state.current;
-    s.h = height();
-
-    if (sheet.current) {
-      sheet.current.style.height = `${s.h + OVERSHOOT_PAD}px`;
-    }
-
-    write(s.h);
-    opener.current = document.activeElement;
-    settle(0, 0);
-
-    return () => {
-      cancelAnimationFrame(s.raf);
-    };
-  }, [settle, write]);
-
-  useEffect(() => {
-    const app = document.querySelector("#root");
-    const html = document.documentElement;
-    const prev = html.style.overflow;
-    html.style.overflow = "hidden";
-
-    if (app) {
-      app.inert = true;
-    }
-
-    sheet.current?.focus({ preventScroll: true });
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !e.defaultPrevented) {
-        e.preventDefault();
-        close();
-      } else if (e.key === "Tab" && sheet.current) {
-        const items = [...sheet.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
-          (x) => x.offsetParent !== null,
-        );
-
-        if (!items.length) {
-          return;
-        }
-
-        const first = items[0]!;
-        const last = items.at(-1)!;
-        const at = document.activeElement;
-        const outside = !sheet.current.contains(at);
-
-        if (e.shiftKey && (at === first || outside)) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && (at === last || outside)) {
-          e.preventDefault();
-          first.focus();
-        }
+  const attach = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el) {
+        return;
       }
-    };
 
-    const onResize = () => {
+      sheet.current = el;
       const s = state.current;
-      s.h = height();
 
-      if (sheet.current) {
-        sheet.current.style.height = `${s.h + OVERSHOOT_PAD}px`;
+      const fit = () => {
+        s.h = height();
+        el.style.height = `${s.h + OVERSHOOT_PAD}px`;
+      };
+
+      fit();
+      write(s.h);
+      const back = document.activeElement;
+      settle(0, 0);
+
+      const app = document.querySelector("#root");
+      const html = document.documentElement;
+      const prev = html.style.overflow;
+      html.style.overflow = "hidden";
+
+      if (app instanceof HTMLElement) {
+        app.inert = true;
       }
 
-      write(Math.min(s.y, s.h));
-    };
+      el.focus({ preventScroll: true });
 
-    addEventListener("keydown", onKey);
-    addEventListener("resize", onResize);
-    const back = opener.current;
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape" && !e.defaultPrevented) {
+          e.preventDefault();
+          close();
+        } else if (e.key === "Tab") {
+          trapTab(e, el);
+        }
+      };
 
-    return () => {
-      removeEventListener("keydown", onKey);
-      removeEventListener("resize", onResize);
-      html.style.overflow = prev;
+      const onResize = () => {
+        fit();
+        write(Math.min(s.y, s.h));
+      };
 
-      if (app) {
-        app.inert = false;
-      }
+      addEventListener("keydown", onKey);
+      addEventListener("resize", onResize);
 
-      if (back instanceof HTMLElement) {
-        back.focus({ preventScroll: true });
-      }
-    };
-  }, [close, write]);
+      return () => {
+        cancelAnimationFrame(s.raf);
+        removeEventListener("keydown", onKey);
+        removeEventListener("resize", onResize);
+        html.style.overflow = prev;
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0 || (e.target as HTMLElement).closest("[data-nodrag]")) {
+        if (app instanceof HTMLElement) {
+          app.inert = false;
+        }
+
+        if (back instanceof HTMLElement) {
+          back.focus({ preventScroll: true });
+        }
+
+        sheet.current = null;
+      };
+    },
+    [settle, write, close],
+  );
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0 || (e.target instanceof Element && e.target.closest("[data-nodrag]") !== null)) {
       return;
     }
 
@@ -212,7 +225,7 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
     };
   };
 
-  const onPointerMove = (e: React.PointerEvent) => {
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
 
     if (!d || d.id !== e.pointerId) {
@@ -229,7 +242,7 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
 
       d.lock = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
       d.moved = true;
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      e.currentTarget.setPointerCapture(e.pointerId);
     }
 
     d.samples.push({ t: e.timeStamp, x: e.clientX, y: e.clientY });
@@ -244,7 +257,7 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
     }
   };
 
-  const onPointerUp = (e: React.PointerEvent) => {
+  const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = drag.current;
 
     if (!d || d.id !== e.pointerId) {
@@ -261,8 +274,13 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
     setTimeout(() => {
       suppress.current = false;
     }, 60);
-    const a = d.samples[0]!;
-    const b = d.samples.at(-1)!;
+    const [a] = d.samples;
+    const b = d.samples.at(-1);
+
+    if (!a || !b) {
+      return;
+    }
+
     const dt = Math.max(b.t - a.t, 1);
     const vy = ((b.y - a.y) / dt) * 1000;
     const vx = ((b.x - a.x) / dt) * 1000;
@@ -300,8 +318,9 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
     <div className="sheet-root">
       <div ref={scrim} className="sheet-scrim" onClick={close} aria-hidden="true" />
       <div
-        ref={sheet}
+        ref={attach}
         className="sheet"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a hand-dragged sheet with its own spring, focus trap and Escape; <dialog>'s top layer and cancel handling would fight them
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -312,7 +331,7 @@ export function Sheet({ titleId, onClose, onSwipe, children }: Props) {
         onPointerCancel={onPointerUp}
         onClickCapture={swallow}
       >
-        {children(close)}
+        <CloseSheet value={close}>{children}</CloseSheet>
       </div>
     </div>,
     document.body,

@@ -1,38 +1,36 @@
-import { resolve } from "node:path";
 import { billDisplay } from "@antibody/core";
 import type { BillId, Row, StageContext } from "@antibody/core";
-import { python, readRows, writeRows } from "@antibody/core/node";
+import { readRows, writeRows } from "@antibody/core/node";
 import { baselineOf, companions, parseListings, versionCode } from "./estimates.ts";
 import type { Listing } from "./estimates.ts";
 import { billstatus, publicationFiles } from "./fetch.ts";
 import type { Fetched } from "./fetch.ts";
 import { baseNum, buildLines } from "./lines.ts";
+import { readGlance, readTables } from "./parsed.ts";
 import type { Glance, Parsed } from "./parsed.ts";
 import { scopeRows } from "./scope.ts";
 import { closestVersion, sectionIndex } from "./sections.ts";
 import type { Labelled } from "./sections.ts";
 
-const PKG = resolve(import.meta.dir, "..");
-
-/** The rows a per-section table is read for: sections, and rows CBO labelled by a whole title or by a provision name. */
 const ITEMS = new Set(["section", "title", "program"]);
 
-export async function parse<T>(command: "xlsx" | "pdf" | "table1" | "glance", file: string): Promise<T | null> {
+export async function orNull<T>(pending: Promise<T>): Promise<T | null> {
   try {
-    return JSON.parse(await python(PKG, "cbo.py", [command, file])) as T;
+    return await pending;
   } catch {
     return null;
   }
 }
 
-/** One-section rows of CBO's tables with their printed labels: the evidence for which numbering CBO used. */
 function labelled(main: Parsed | null): Labelled[] {
   return (main?.sheets ?? []).flatMap((s) =>
-    s.rows.flatMap((r) =>
-      r.line_kind === "section" && r.sections.length === 1
-        ? [{ num: baseNum(r.sections[0]!), title: r.section_title, division: r.division ?? null }]
-        : [],
-    ),
+    s.rows.flatMap((r) => {
+      const [num] = r.sections;
+
+      return r.line_kind === "section" && r.sections.length === 1 && num !== undefined
+        ? [{ num: baseNum(num), title: r.section_title, division: r.division ?? null }]
+        : [];
+    }),
   );
 }
 
@@ -44,60 +42,57 @@ interface Read {
   glance: Glance | null;
 }
 
-/**
- * Picks the richest table a publication has: per-title Excel (one file or one per committee, merged), then
- * per-section PDF tables, then a small bill's table1.xlsx. The PDF is read for its At a Glance box, mandate
- * answers and baseline wording either way.
- */
+const tagged = (p: Parsed, f: Fetched): Parsed => {
+  const file = { url: f.url, archiveUrl: f.archiveUrl };
+
+  return {
+    ...p,
+    sheets: p.sheets.map((s) => ({ ...s, file })),
+    summary: p.summary ? { ...p.summary, file } : null,
+  };
+};
+
+const hasSummaryRows = (p: Parsed | null) => (p?.summary?.rows.length ?? 0) > 0;
+
 async function read(files: Fetched[], bill: BillId): Promise<Read> {
   const token = bill.split("-").slice(1).join("");
-  const pdfs = files.filter((f) => /\.pdf$/i.test(f.url));
-  const pdf = pdfs.find((f) => f.url.toLowerCase().replaceAll(/[-_]/g, "").includes(token)) ?? pdfs[0] ?? null;
-  const glance = pdf ? await parse<Glance>("glance", pdf.file) : null;
-
-  const tagged = (p: Parsed, f: Fetched): Parsed => {
-    const file = { url: f.url, archiveUrl: f.archiveUrl };
-
-    return {
-      ...p,
-      sheets: p.sheets.map((s) => ({ ...s, file })),
-      summary: p.summary ? { ...p.summary, file } : null,
-    };
-  };
-
-  const sheets = files.filter((f) => /\.xlsx?$/i.test(f.url));
+  const pdfs = files.filter((f) => /\.pdf$/iu.test(f.url));
+  const pdf = pdfs.find((f) => f.url.toLowerCase().replaceAll(/[-_]/gu, "").includes(token)) ?? pdfs[0] ?? null;
+  const glance = pdf ? await orNull(readGlance(pdf.file)) : null;
+  const sheets = files.filter((f) => /\.xlsx?$/iu.test(f.url));
   const workbooks: { p: Parsed; f: Fetched }[] = [];
 
-  for (const f of sheets.filter((f) => !/table1/i.test(f.url))) {
-    const p = await parse<Parsed>("xlsx", f.file);
+  for (const f of sheets.filter((x) => !/table1/iu.test(x.url))) {
+    const p = await orNull(readTables("xlsx", f.file));
 
-    if (p && (p.sheets.length || p.summary?.rows.length)) {
+    if (p && (p.sheets.length > 0 || hasSummaryRows(p))) {
       workbooks.push({ p: tagged(p, f), f });
     }
   }
 
-  if (workbooks.some((w) => w.p.sheets.length)) {
-    const lead = workbooks.find((w) => w.p.summary?.rows.length) ?? workbooks[0]!;
+  const lead = workbooks.find((w) => hasSummaryRows(w.p)) ?? workbooks[0];
+
+  if (lead && workbooks.some((w) => w.p.sheets.length)) {
     const main = { format: "xlsx" as const, sheets: workbooks.flatMap((w) => w.p.sheets), summary: lead.p.summary };
 
     return { main: { ...main, from: lead.f }, pdf, glance };
   }
 
-  const tables = pdf ? await parse<Parsed>("pdf", pdf.file) : null;
+  const tables = pdf ? await orNull(readTables("pdf", pdf.file)) : null;
 
-  if (pdf && tables?.sheets.some((s) => s.rows.some((r) => ITEMS.has(r.line_kind)))) {
+  if (pdf && tables?.sheets.some((s) => s.rows.some((r) => ITEMS.has(r.line_kind))) === true) {
     return { main: { ...tagged(tables, pdf), from: pdf }, pdf, glance };
   }
 
-  for (const f of sheets.filter((f) => /table1/i.test(f.url))) {
-    const p = await parse<Parsed>("table1", f.file);
+  for (const f of sheets.filter((x) => /table1/iu.test(x.url))) {
+    const p = await orNull(readTables("table1", f.file));
 
-    if (p?.summary?.rows.length) {
+    if (p && hasSummaryRows(p)) {
       return { main: { ...tagged(p, f), from: f }, pdf, glance };
     }
   }
 
-  if (pdf && tables?.summary?.rows.length) {
+  if (pdf && tables && hasSummaryRows(tables)) {
     return { main: { ...tagged({ ...tables, sheets: [] }, pdf), from: pdf }, pdf, glance };
   }
 
@@ -105,7 +100,12 @@ async function read(files: Fetched[], bill: BillId): Promise<Read> {
 }
 
 export async function xray(ctx: StageContext) {
-  const bill = ctx.bill!;
+  const bill = ctx.bill;
+
+  if (bill === null) {
+    throw new Error("the cbo stage runs for one bill");
+  }
+
   const opts = { refresh: ctx.refresh, signal: ctx.signal };
   const status = await billstatus(bill, opts);
   const listings = parseListings(status);
@@ -115,7 +115,11 @@ export async function xray(ctx: StageContext) {
       const theirs = await billstatus(other, opts).catch(() => null);
       const seen = new Set(listings.map((l) => l.pubId));
 
-      for (const l of theirs ? parseListings(theirs) : []) if (!seen.has(l.pubId)) listings.push({ ...l, via: other });
+      for (const l of theirs === null ? [] : parseListings(theirs)) {
+        if (!seen.has(l.pubId)) {
+          listings.push({ ...l, via: other });
+        }
+      }
     }
   }
 
@@ -139,7 +143,7 @@ export async function xray(ctx: StageContext) {
       scopeRows(main.sheets, glance.pages);
     }
 
-    const code = l.via ? null : versionCode(l.description, bill, known);
+    const code = l.via === undefined ? versionCode(l.description, bill, known) : null;
 
     const { baseline, label } = baselineOf(
       l,
@@ -148,13 +152,14 @@ export async function xray(ctx: StageContext) {
 
     const source = main?.from ?? pdf;
 
-    const close = code
-      ? null
-      : closestVersion(
-          sections,
-          (main?.sheets ?? []).flatMap((s) => s.rows.flatMap((r) => r.sections.map(baseNum))),
-          known,
-        );
+    const close =
+      code === null
+        ? closestVersion(
+            sections,
+            (main?.sheets ?? []).flatMap((s) => s.rows.flatMap((r) => r.sections.map(baseNum))),
+            known,
+          )
+        : null;
 
     const index = sectionIndex(sections, code ?? close?.code ?? null, labelled(main));
 
@@ -166,12 +171,14 @@ export async function xray(ctx: StageContext) {
         archiveUrl: source?.archiveUrl ?? null,
         pdfUrl: pdf?.url ?? null,
         pdfArchiveUrl: pdf?.archiveUrl ?? null,
-        numbering: close
-          ? `CBO scored text GovInfo does not publish (${l.description}); its section numbers are joined to the ${close.code} text, which numbers ${close.covered} of them the same way`
-          : undefined,
-        carried: l.via
-          ? `CBO's estimate is of ${billDisplay(l.via)}, which BILLSTATUS relates to this bill as carrying the same text`
-          : undefined,
+        numbering:
+          close === null
+            ? null
+            : `CBO scored text GovInfo does not publish (${l.description}); its section numbers are joined to the ${close.code} text, which numbers ${close.covered} of them the same way`,
+        carried:
+          l.via === undefined
+            ? null
+            : `CBO's estimate is of ${billDisplay(l.via)}, which BILLSTATUS relates to this bill as carrying the same text`,
       },
       main,
       glance,
@@ -188,7 +195,8 @@ export async function xray(ctx: StageContext) {
       archive_url: source?.archiveUrl ?? null,
       published_on: l.pubDate.slice(0, 10) || null,
       version_code: code,
-      version_scored: l.via ? `${billDisplay(l.via)}: ${l.description || l.title}` : l.description || l.title,
+      version_scored:
+        l.via === undefined ? l.description || l.title : `${billDisplay(l.via)}: ${l.description || l.title}`,
       baseline,
       baseline_label: label,
       per_section: built.lines.some((x) => x.line_kind === "section"),

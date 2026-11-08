@@ -1,16 +1,10 @@
 import { expect, test } from "bun:test";
 import type { Row } from "@antibody/core";
 import { menu } from "../src/match.ts";
+import { sectionRow } from "./rows.ts";
 
 const section = (n: number, over: Partial<Row<"sections">> = {}) =>
-  ({
-    id: `119-s-1@a:${n}`,
-    num: String(n),
-    heading: `Heading ${n}`,
-    preview: "one two three",
-    in_final: true,
-    ...over,
-  }) as Row<"sections">;
+  sectionRow(`119-s-1@a:${n}`, { num: String(n), heading: `Heading ${n}`, preview: "one two three", ...over });
 
 test("a menu keys each section S1..Sn and maps the keys back to section ids", () => {
   const m = menu([section(1), section(2, { in_final: false })]);
@@ -30,7 +24,6 @@ test("a shortlist menu keys its own sections from S1, so a key means one section
 test("an unnamed section's subject comes from the terms it defines, the documents and Acts it names", async () => {
   const { subjectOf } = await import("../src/match.ts");
 
-  // H.R.5371 (P.L. 119-37) Div. B sec. 781, the hemp redefinition, as GovInfo's XML reads once tags are stripped.
   const hemp =
     "Effective 365 days after the enactment of this Act, Section 297A of the Agricultural Marketing Act of 1946 ( 7 U.S.C. 1639o ) is amended - (1) by redesignating paragraphs (2) through (6) as paragraphs (4) through (8), respectively; and (2) by striking paragraph (1) and inserting the following: (1) Hemp .- (A) In general .- The term ' hemp ' means the plant Cannabis sativa L.";
 

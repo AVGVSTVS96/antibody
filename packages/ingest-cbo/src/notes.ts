@@ -1,9 +1,12 @@
 import { join } from "node:path";
-import { parseJson } from "@antibody/core";
+import { parseJson, filled } from "@antibody/core";
 import type { Row, StageContext } from "@antibody/core";
 import { paths, readRows, writeRows } from "@antibody/core/node";
+import { z } from "zod";
 import { localFile } from "./fetch.ts";
-import { parse } from "./xray.ts";
+import { readGlance } from "./parsed.ts";
+import { hasHeading, hasPath } from "./sections.ts";
+import { orNull } from "./xray.ts";
 
 export const MODEL = "claude-sonnet-5-5";
 const LEGACY_MODEL = "claude-opus-5-5";
@@ -11,16 +14,17 @@ const LEGACY_MODEL = "claude-opus-5-5";
 export const RULE =
   "cbo-prose-to-section: a model (named in the evidence) linked this sentence of CBO's estimate to the bill section whose provision it describes; the quote is checked word for word against the cited PDF page";
 
-/** Below this the model itself is unsure the sentence is about that section; such links are dropped, not shown. */
 export const MIN_CONFIDENCE = 0.5;
 
-export interface Link {
-  section: string;
-  page: number;
-  quote: string;
-  why: string;
-  confidence: number;
-}
+const Link = z.object({
+  section: z.union([z.string(), z.number()]).transform(String),
+  page: z.number(),
+  quote: z.string(),
+  why: z.string(),
+  confidence: z.number(),
+});
+
+export type Link = z.output<typeof Link>;
 
 interface Section {
   num: string;
@@ -28,33 +32,39 @@ interface Section {
   id: string;
 }
 
-/** Folds the differences between a model's copy and pdfplumber's text: whitespace, curly quotes, dashes, ligatures. */
+const Links = z.object({ links: z.array(Link) });
+
+const Answer = Links.extend({ costUsd: z.number(), model: z.string().optional() });
+
+type Answer = z.output<typeof Answer>;
+
+const Reply = z.object({ result: z.string(), total_cost_usd: z.number().optional() });
+
 export function norm(s: string): string {
   return s
     .normalize("NFKC")
-    .replaceAll(/[‘’]/g, "'")
-    .replaceAll(/[“”]/g, '"')
-    .replaceAll(/[‐-―−]/g, "-")
-    .replaceAll(/-\s+/g, "-")
-    .replaceAll(/\s+/g, " ")
+    .replaceAll(/[‘’]/gu, "'")
+    .replaceAll(/[“”]/gu, '"')
+    .replaceAll(/[‐-―−]/gu, "-")
+    .replaceAll(/-\s+/gu, "-")
+    .replaceAll(/\s+/gu, " ")
     .trim()
     .toLowerCase();
 }
 
-/** Keeps a link only when its section exists in the scored version, its quote is on the page it names, and the model is fairly sure. */
 export function verify(links: Link[], pages: string[], sections: Section[]): (Link & { sectionId: string })[] {
   const byNum = new Map(sections.map((s) => [s.num, s]));
   const pageText = pages.map(norm);
   const seen = new Set<string>();
 
   return links.flatMap((l) => {
-    const s = byNum.get(String(l.section).replace(/^sec(tion)?\.?\s*/i, ""));
+    const s = byNum.get(l.section.replace(/^sec(tion)?\.?\s*/iu, ""));
     const text = pageText[l.page - 1];
     const key = `${s?.id}|${norm(l.quote)}`;
 
     if (
       !s ||
-      !text ||
+      !filled(text) ||
       l.confidence < MIN_CONFIDENCE ||
       norm(l.quote).length < 20 ||
       !text.includes(norm(l.quote)) ||
@@ -84,17 +94,11 @@ CBO ESTIMATE
 ${pages.map((p, i) => `=== page ${i + 1} ===\n${p}`).join("\n\n")}`;
 }
 
-interface Answer {
-  links: Link[];
-  costUsd: number;
-  model?: string;
-}
-
 async function ask(text: string, cacheFile: string, refresh: boolean): Promise<Answer> {
   const cache = Bun.file(cacheFile);
 
   if (!refresh && (await cache.exists())) {
-    return await cache.json();
+    return Answer.parse(await cache.json());
   }
 
   const proc = Bun.spawn(["claude", "-p", "--model", "sonnet", "--output-format", "json"], {
@@ -110,10 +114,10 @@ async function ask(text: string, cacheFile: string, refresh: boolean): Promise<A
     throw new Error(`claude -p failed: ${await new Response(proc.stderr).text()}`);
   }
 
-  const reply = JSON.parse(out) as { result: string; total_cost_usd?: number };
+  const reply = Reply.parse(JSON.parse(out));
 
   const result = {
-    links: parseJson<{ links: Link[] }>(reply.result).links,
+    links: parseJson(reply.result, Links).links,
     costUsd: reply.total_cost_usd ?? 0,
     model: MODEL,
   };
@@ -124,28 +128,35 @@ async function ask(text: string, cacheFile: string, refresh: boolean): Promise<A
 }
 
 function scoredSections(rows: Row<"sections">[], code: string | null): Section[] {
-  if (!code) {
+  if (!filled(code)) {
     return [];
   }
 
   return rows.flatMap((s) => {
-    const step = s.history[code] as { path?: string; heading?: string } | undefined;
-    const num = step?.path?.split("/").at(-1)?.replace(/^sec:/, "");
+    const step = s.history[code];
+    const num = hasPath(step) ? step.path.split("/").at(-1)?.replace(/^sec:/u, "") : undefined;
 
-    return num ? [{ num, heading: step?.heading ?? s.heading, id: s.id }] : [];
+    return filled(num) ? [{ num, heading: hasHeading(step) ? step.heading : s.heading, id: s.id }] : [];
   });
 }
 
-/**
- * Small bills get whole-bill numbers only. Where CBO's prose names what drives them ("administrative costs for
- * federal financial agencies"), a model links the sentence to a section; each link is a labeled inference.
- */
 export async function notes(ctx: StageContext) {
-  const bill = ctx.bill!;
+  const bill = ctx.bill;
+
+  if (bill === null) {
+    throw new Error("the cbo-notes stage runs for one bill");
+  }
+
   const [estimates, sections] = await Promise.all([readRows("cbo_estimates", bill), readRows("sections", bill)]);
   const rows: Row<"cbo_notes">[] = [];
 
-  for (const e of estimates.filter((e) => !e.per_section && e.pdf_url)) {
+  for (const e of estimates) {
+    const pdfUrl = e.pdf_url;
+
+    if (e.per_section || !filled(pdfUrl)) {
+      continue;
+    }
+
     const scored = scoredSections(sections, e.version_code);
 
     if (!scored.length) {
@@ -153,7 +164,7 @@ export async function notes(ctx: StageContext) {
       continue;
     }
 
-    const glance = await parse<{ pages: string[] }>("glance", localFile(e.pdf_url!));
+    const glance = await orNull(readGlance(localFile(pdfUrl)));
 
     if (!glance) {
       continue;

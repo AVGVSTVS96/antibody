@@ -7,7 +7,9 @@ import { loadTables, openDb, query } from "../src/db.ts";
 
 const dir = await mkdtemp(join(tmpdir(), "antibody-store-"));
 
-afterAll(async () => rm(dir, { recursive: true, force: true }));
+afterAll(async () => {
+  await rm(dir, { recursive: true, force: true });
+});
 
 test("every contract table creates in DuckDB and loads JSONL shards", async () => {
   const trade = {
@@ -61,7 +63,11 @@ test("a repeated id is skipped and a table that breaks its constraints stays emp
   await Bun.write(join(dir, "pacs", "a.jsonl"), `${JSON.stringify(row)}\n${JSON.stringify(row)}\n`);
   const seen: string[] = [];
   const db = await openDb(":memory:");
-  const report = (t: string, problem: string) => seen.push(`${t}: ${problem}`);
+
+  const report = (t: string, problem: string) => {
+    seen.push(`${t}: ${problem}`);
+  };
+
   expect((await loadTables(db, (t) => join(dir, t), report)).pacs).toBe(1);
   expect(seen).toEqual(["pacs: 1 duplicate ids skipped, e.g. C00364778"]);
 

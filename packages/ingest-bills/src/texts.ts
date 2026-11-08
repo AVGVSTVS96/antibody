@@ -1,33 +1,30 @@
 import type { Row } from "@antibody/core";
 import { cached } from "./fetch.ts";
+import { isStepRef } from "./lineage.ts";
 import { parseSections } from "./sections.ts";
 import type { Sec } from "./sections.ts";
 import { versionFile } from "./versions.ts";
 
 export interface SectionText {
   text: string;
-  /** The version the text is from: the final one, or the last one a removed section was in. */
   version: string;
   url: string;
   path: string;
 }
 
-/**
- * Each section's full text as last seen, read again from the version XML the bills stage downloaded (the sections
- * rows keep only a preview). A section is found in its last version by the hash its history recorded, else its path.
- */
+const lastVersionOf = (s: Row<"sections">) => Object.keys(s.history).at(-1);
+
 export async function sectionTexts(
   sections: Row<"sections">[],
   versions: Row<"versions">[],
 ): Promise<Map<string, SectionText>> {
   const urlOf = new Map(versions.map((v) => [v.code, v.url]));
-  const lastOf = (s: Row<"sections">) => Object.keys(s.history).at(-1)!;
   const out = new Map<string, SectionText>();
 
-  for (const code of new Set(sections.map(lastOf))) {
-    const url = urlOf.get(code);
+  for (const code of new Set(sections.map(lastVersionOf))) {
+    const url = code === undefined ? undefined : urlOf.get(code);
 
-    if (!url) {
+    if (code === undefined || url === undefined || url === "") {
       continue;
     }
 
@@ -45,8 +42,13 @@ export async function sectionTexts(
       }
     }
 
-    for (const s of sections.filter((x) => lastOf(x) === code)) {
-      const step = s.history[code] as { path: string; hash: string };
+    for (const s of sections.filter((x) => lastVersionOf(x) === code)) {
+      const step = s.history[code];
+
+      if (!isStepRef(step)) {
+        throw new Error(`${s.id} has no step in ${code}`);
+      }
+
       const sec = byHash.get(step.hash) ?? byPath.get(step.path);
 
       if (sec) {

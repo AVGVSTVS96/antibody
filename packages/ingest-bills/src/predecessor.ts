@@ -1,6 +1,6 @@
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { billDisplay, billRef, billstatusUrl } from "@antibody/core";
+import { billDisplay, billId, billRef, billstatusUrl } from "@antibody/core";
 import type { BillId } from "@antibody/core";
 import { heavy, paths } from "@antibody/core/node";
 import { parseBillStatus } from "./billstatus.ts";
@@ -14,25 +14,29 @@ import type { VersionRef } from "./versions.ts";
 const INDEX = join(paths.raw("bills"), "index");
 const INTRODUCED = new Set(["ih", "is"]);
 
-/** "GENIUS Act of 2025" and "GENIUS Act" are one name. */
 export const titleKey = (t: string) =>
   t
     .toLowerCase()
-    .replace(/\s+of \d{4}$/, "")
-    .replaceAll(/[^a-z0-9]+/g, " ")
+    .replace(/\s+of \d{4}$/u, "")
+    .replaceAll(/[^a-z0-9]+/gu, " ")
     .trim();
 
 type TitleIndex = Record<string, { number: number; introducedOn: string | null }[]>;
 
-/**
- * Short title → bills, for one Congress and bill type, built once from GovInfo's BILLSTATUS bulk zip
- * (13 MB for Senate bills, 33 MB for House bills) and cached as data/bills/index/<congress>-<type>.json.
- */
+const isTitleIndex = (value: unknown): value is TitleIndex =>
+  typeof value === "object" && value !== null && Object.values(value).every((bills) => Array.isArray(bills));
+
 async function titleIndex(congress: number, type: string, refresh: boolean): Promise<TitleIndex> {
   const file = join(INDEX, `${congress}-${type}.json`);
 
   if (!refresh && (await Bun.file(file).exists())) {
-    return await Bun.file(file).json();
+    const saved: unknown = await Bun.file(file).json();
+
+    if (!isTitleIndex(saved)) {
+      throw new Error(`${file} is not a title index; rerun with --refresh`);
+    }
+
+    return saved;
   }
 
   await mkdir(INDEX, { recursive: true });
@@ -54,11 +58,11 @@ async function titleIndex(congress: number, type: string, refresh: boolean): Pro
     }
 
     const doc = await Bun.file(join(dir, name)).text();
-    const number = Number(/<bill>[\s\S]*?<number>(\d+)<\/number>/.exec(doc)?.[1]);
-    const introducedOn = /<introducedDate>([\d-]+)<\/introducedDate>/.exec(doc)?.[1] ?? null;
-    const titles = [...doc.matchAll(/<titleType>Short Title[^<]*<\/titleType>[\s\S]*?<title>([^<]+)<\/title>/g)];
+    const number = Number(/<bill>[\s\S]*?<number>(\d+)<\/number>/u.exec(doc)?.[1]);
+    const introducedOn = /<introducedDate>([\d-]+)<\/introducedDate>/u.exec(doc)?.[1] ?? null;
+    const titles = [...doc.matchAll(/<titleType>Short Title[^<]*<\/titleType>[\s\S]*?<title>([^<]+)<\/title>/gu)];
 
-    for (const key of new Set(titles.map((m) => titleKey(m[1]!)))) {
+    for (const key of new Set(titles.map(([, title = ""]) => titleKey(title)))) {
       index[key] = [...(index[key] ?? []), { number, introducedOn }];
     }
   }
@@ -76,46 +80,47 @@ export interface Predecessor {
   rule: string;
 }
 
-/**
- * An original bill reported straight from committee (no introduced text) is often the rewrite of an earlier bill with
- * the same short title: S.1582 (GENIUS) was drafted from S.394. That earlier text is shown as a stage before the bill,
- * labeled inference: same short title, introduced earlier in the same Congress, and most of its sections carry over.
- */
 export async function findPredecessor(
   status: BillStatus,
   first: { ref: VersionRef; secs: Sec[] },
   load: (ref: VersionRef) => Promise<Sec[]>,
   refresh: boolean,
 ): Promise<Predecessor | null> {
-  if (INTRODUCED.has(first.ref.code) || !first.ref.date) {
+  const firstDate = first.ref.date;
+
+  if (INTRODUCED.has(first.ref.code) || firstDate === null || firstDate === "") {
     return null;
   }
 
   const { congress, type, number } = billRef(status.id);
 
   const names = new Set(
-    [status.shortTitle, ...[status.title].filter((t) => t.length < 80)].filter((t): t is string => !!t).map(titleKey),
+    [status.shortTitle, ...[status.title].filter((t) => t.length < 80)].flatMap((t) =>
+      t === null || t === "" ? [] : [titleKey(t)],
+    ),
   );
 
   const index = await titleIndex(congress, type, refresh);
 
   const candidates = [...names]
     .flatMap((n) => index[n] ?? [])
-    .filter((c) => c.number !== number && c.introducedOn && c.introducedOn < first.ref.date!);
+    .filter(
+      (c) => c.number !== number && c.introducedOn !== null && c.introducedOn !== "" && c.introducedOn < firstDate,
+    );
 
   for (const c of candidates) {
-    const id = `${congress}-${type}-${c.number}`;
+    const id = billId({ congress, type, number: c.number });
 
     const other = parseBillStatus(
       await cached(billstatusUrl(id), `BILLSTATUS-${congress}${type}${c.number}.xml`, refresh),
       id,
     );
 
-    const ref = textVersions(other)
-      .filter((v) => v.date && v.date < first.ref.date! && v.code !== "plaw")
-      .at(-1);
+    const ref = textVersions(other).findLast(
+      (v) => v.date !== null && v.date !== "" && v.date < firstDate && v.code !== "plaw",
+    );
 
-    if (!ref) {
+    if (ref === undefined) {
       continue;
     }
 
@@ -123,7 +128,7 @@ export async function findPredecessor(
     const pairs = match(secs, first.secs);
     const byText = [...pairs.values()].filter((p) => ["identical", "xml-id", "fuzzy"].includes(p.method)).length;
 
-    if (!secs.length || pairs.size / secs.length < 0.6 || byText / secs.length < 0.4) {
+    if (secs.length === 0 || pairs.size / secs.length < 0.6 || byText / secs.length < 0.4) {
       continue;
     }
 

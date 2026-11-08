@@ -16,7 +16,7 @@ test("a multi-quintile outlet takes the midpoint, rounded toward center, the sam
 });
 
 test("the published list has every side, and trade/legal press is never on a side", () => {
-  for (const side of Object.keys(SIDES) as (keyof typeof SIDES)[]) {
+  for (const side of Object.keys(SIDES)) {
     expect(COUNTED.filter((o) => sideOf(o.group) === side).length).toBeGreaterThan(0);
   }
 
@@ -49,11 +49,11 @@ test("Google News RSS items parse with their source outlet", () => {
 test("the sample is a fixed number per side, picked by hash, so re-runs read the same articles", () => {
   const items = Array.from({ length: 1000 }, (_, i) => ({
     id: `a${i}`,
-    stratum: (["left", "center", "right", "trade-legal"] as const)[i % 4]!,
+    stratum: (["left", "center", "right", "trade-legal"] as const)[i % 4] ?? null,
   }));
 
   const a = sample(items).map((x) => x.id);
-  const b = sample([...items].reverse()).map((x) => x.id);
+  const b = sample(items.toReversed()).map((x) => x.id);
   expect(new Set(a)).toEqual(new Set(b));
   expect(a.length).toBe(150 * 3 + 60);
 });

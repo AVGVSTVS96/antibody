@@ -1,13 +1,19 @@
 import {
   Bundle as BundleSchema,
+  Edge as EdgeSchema,
   billDisplay,
   billRef,
   billstatusUrl,
   checkBundle,
   congressGovUrl,
+  NodeId as NodeIdSchema,
   nodeId,
   OutletGroup,
   ReachKind,
+  SectionStep,
+  TABLE_NAMES,
+  TABLES,
+  filled,
 } from "@antibody/core";
 import type {
   BillId,
@@ -21,14 +27,16 @@ import type {
   Node,
   NodeId,
   Part,
+  Row,
   Section,
+  TableName,
 } from "@antibody/core";
 import { norm, ownedOn, ownedSince, tokens } from "@antibody/resolve";
-import { mintClaim, restsOnOf } from "./claims.ts";
-import type { AnyRow, Names } from "./claims.ts";
+import { missing, mintClaim, restsOnOf } from "./claims.ts";
+import type { CitedRow, Member, Names } from "./claims.ts";
 import { CURATED } from "./curated.ts";
-import { query, tableNames } from "./db.ts";
-import type { Db, Param } from "./db.ts";
+import { countOf, isNumber, isPlain, isText, query, tableNames } from "./db.ts";
+import type { Db, Param, Plain, PlainRow } from "./db.ts";
 import { limitGraph } from "./limit.ts";
 import { ruleFor } from "./rules.ts";
 import { count, day, lawNumber, memberLabel, quarter } from "./text.ts";
@@ -37,44 +45,75 @@ import { trimEvidence } from "./trim.ts";
 
 export interface BuildResult {
   bundle: Bundle;
-  /** Rows the builder had to leave out, with why (an unknown member, a claim that failed validation…). */
   warnings: string[];
 }
 
-const DESCRIPTION = /^(?:an act|a bill|to )\b/i;
+const DESCRIPTION = /^(?:an act|a bill|to )\b/iu;
 
-/** What filers type in the covered-position box when they have none. */
-const NO_POSITION = /^(?:n\/?a|none|no|yes|nil|see form ld-?1.*|[-.\s]*)\.?$/i;
-
-export class BuildError extends Error {}
+const NO_POSITION = /^(?:n\/?a|none|no|yes|nil|see form ld-?1.*|[-.\s]*)\.?$/iu;
 
 const YEAR = 365 * 24 * 3600 * 1000;
 
-/** A section the bill leaves unnamed is listed by its opening words, so no row reads as an empty heading. */
 export const firstWords = (text: string | null | undefined) => {
   const words = (text ?? "")
-    .replace(/^\s*(?:SEC(?:TION)?\.?\s*\d+[A-Za-z]?\.?\s*)/i, "")
-    .replace(/^(?:\s*\((?:[a-z]{1,2}|\d+)\))+\s*(?=[A-Z])/, "")
-    .split(/\s+/)
-    .filter(Boolean);
+    .replace(/^\s*(?:SEC(?:TION)?\.?\s*\d+[A-Za-z]?\.?\s*)/iu, "")
+    .replace(/^(?:\s*\((?:[a-z]{1,2}|\d+)\))+\s*(?=[A-Z])/u, "")
+    .split(/\s+/u)
+    .filter((w) => w !== "");
 
-  return words.length ? `${words.slice(0, 10).join(" ")}${words.length > 10 ? "…" : ""}` : "(no heading)";
+  return words.length > 0 ? `${words.slice(0, 10).join(" ")}${words.length > 10 ? "…" : ""}` : "(no heading)";
 };
 
-/** PACs of the company itself; any other PAC counts only when a subsidiary of the same name lobbied on the bill. */
 const OWN_PAC = new Set(["ticker", "name_exact", "fuzzy", "llm_same"]);
 const headOf = (name: string) => tokens(norm(name))[0] ?? "";
 const isoDay = (t: number) => new Date(t).toISOString().slice(0, 10);
-const PASSAGE = /pass|concur|conference report|veto/i;
+const PASSAGE = /pass|concur|conference report|veto/iu;
 
-/** Thomas committee ids: BILLSTATUS writes `ssbk00`, congress-legislators `SSBK`; subcommittees keep their suffix. */
-const committeeKey = (id: string) => id.toUpperCase().replace(/^([A-Z]{4})00$/, "$1");
+const committeeKey = (id: string) => id.toUpperCase().replace(/^([A-Z]{4})00$/u, "$1");
 
-/**
- * Builds one bill's Bundle from the contract tables loaded in `db` (see `loadTables`). Every statement in the
- * bundle points at a claim minted from the row that states it, with one wording template per table, so the
- * text is the same for every party. Missing tables or rows become `gaps`, never invented data.
- */
+const isTableName = (t: string): t is TableName => TABLE_NAMES.some((name) => name === t);
+
+function parseRow<T extends TableName>(table: T, row: PlainRow): Row<T> {
+  const schemas: { [K in TableName]: { schema: { parse: (r: PlainRow) => Row<K> } } } = TABLES;
+
+  return schemas[table].schema.parse(row);
+}
+
+const ArticleWithOutlet = TABLES.articles.schema.extend({
+  outlet_name: TABLES.outlets.schema.shape.name.nullable(),
+  outlet_group: TABLES.outlets.schema.shape.group.nullable(),
+  list_version: TABLES.outlets.schema.shape.list_version.nullable(),
+});
+
+const ScoredPart = TABLES.section_scores.schema.pick({ section_id: true, part_id: true, label: true, late: true });
+
+const ReachedPart = TABLES.section_reach.schema.pick({ part_id: true });
+
+interface Fields {
+  [k: string]: Plain | undefined;
+}
+
+const isFields = (v: unknown): v is Fields =>
+  typeof v === "object" && v !== null && !Array.isArray(v) && Object.values(v).every(isPlain);
+
+const isCounts = (v: unknown): v is { [k: string]: number } => isFields(v) && Object.values(v).every(isNumber);
+
+const sumOf = (counts: { [k: string]: number }) => Object.values(counts).reduce((a, n) => a + n, 0);
+
+const cycle = (t: number) => {
+  const y = new Date(t).getUTCFullYear();
+
+  return y % 2 === 1 ? y + 1 : y;
+};
+
+const counted = (s: Row<"lda_spend">) => {
+  const list = s.evidence.counted;
+
+  return Array.isArray(list) ? list.length : 0;
+};
+
+type BillRef = Row<"lda_bill_refs"> | Row<"lda_topic_refs">;
+
 export async function buildBundle(
   db: Db,
   bill: BillId,
@@ -83,24 +122,23 @@ export async function buildBundle(
   return await new Builder(db, bill, now, names[bill] ?? null).build();
 }
 
-/** A curated bill goes by the name its curated entry gives it, not the long official title. */
 const curatedNames = Object.fromEntries(CURATED.map((c) => [c.id, c.name]));
 
 class Builder {
   private readonly claims = new Map<ClaimId, Claim>();
-  private readonly rows = new Map<string, AnyRow>();
+  private readonly pending = new Set<ClaimId>();
+  private readonly rows = new Map<string, CitedRow<TableName>>();
   private readonly nodes = new Map<NodeId, Node>();
   private readonly edges = new Map<string, Edge>();
   private readonly warnings: string[] = [];
   private tables = new Set<string>();
   private readonly cols = new Map<string, Set<string>>();
-  private readonly members = new Map<string, AnyRow>();
+  private readonly members = new Map<string, Member>();
   private readonly memberIds = new Set<string>();
   private readonly sections = new Map<string, Section>();
-  /** Parts of long sections by id (parts-v1); each also sits in its section's `parts`. */
   private readonly parts = new Map<string, Part>();
   private readonly versionNames = new Map<string, string>();
-  private readonly filings = new Map<string, AnyRow>();
+  private readonly filings = new Map<string, Row<"lda_filings">>();
   private readonly labels = {
     company: new Map<string, string>(),
     pac: new Map<string, string>(),
@@ -108,14 +146,12 @@ class Builder {
     committee: new Map<string, string>(),
     roll: new Map<string, string>(),
     amendment: new Map<string, string>(),
-    estimate: new Map<string, AnyRow>(),
+    estimate: new Map<string, Row<"cbo_estimates">>(),
   };
   private readonly rulesUsed = new Set<string>();
-  /** The date of each member's first recorded passage vote (not "Not Voting"). */
   private readonly votedOn = new Map<string, string>();
   private lateUnavailable: string | null = null;
   private heldOutEarlier = 0;
-  /** Trades in a tied company's options, bonds and other securities: listed in the gaps, not counted as stock trades. */
   private readonly nonStock = { option: 0, bond: 0, other: 0 };
   private readonly display: string;
   private readonly db: Db;
@@ -135,12 +171,12 @@ class Builder {
     bill: "",
     display: "",
     member: (b) => {
-      const m = b ? this.members.get(b) : undefined;
+      const m = filled(b) ? this.members.get(b) : undefined;
 
       return m ? { name: m.name, party: m.party, state: m.state, chamber: m.chamber } : null;
     },
-    section: (id) => (id ? (this.sections.get(id) ?? this.parts.get(id) ?? null) : null),
-    version: (code) => (code ? (this.versionNames.get(code) ?? code) : "unknown"),
+    section: (id) => (filled(id) ? (this.sections.get(id) ?? this.parts.get(id) ?? null) : null),
+    version: (code) => (filled(code) ? (this.versionNames.get(code) ?? code) : "unknown"),
     company: (id) => this.labels.company.get(id) ?? `the company with SEC CIK ${id}`,
     pac: (id) => this.labels.pac.get(id) ?? `FEC committee ${id}`,
     client: (key) => this.labels.client.get(key) ?? key,
@@ -151,7 +187,7 @@ class Builder {
         ? { registrant: f.registrant_name, client: f.client_name, when: `${quarter(f.period)} ${f.year}` }
         : null;
     },
-    clientFiling: (key) => [...this.filings.values()].find((f) => f.client_key === key)?.url,
+    clientFilingUrl: (key) => [...this.filings.values()].find((f) => f.client_key === key)?.url,
     committee: (id) => this.labels.committee.get(committeeKey(id)) ?? `committee ${id}`,
     roll: (id) => this.labels.roll.get(id) ?? `roll call ${id}`,
     amendment: (id) => this.labels.amendment.get(id) ?? `Amendment ${id}`,
@@ -160,21 +196,19 @@ class Builder {
     today: "",
   };
 
-  // ── rows and claims ──
-
-  /** Rows come back in a total order (`order`, then id) because DuckDB's own order is unspecified and bundles must rebuild byte for byte. */
-  private async select(
-    table: string,
+  private async select<T extends TableName>(
+    table: T,
     where = "true",
     params?: Record<string, Param>,
     order?: string,
-  ): Promise<AnyRow[]> {
+  ): Promise<Row<T>[]> {
     if (!this.tables.has(table)) {
       return [];
     }
 
-    const by = order ? `${order}, id` : "id";
-    const rows = await query<AnyRow>(this.db, `SELECT * FROM ${table} WHERE ${where} ORDER BY ${by}`, params);
+    const by = filled(order) ? `${order}, id` : "id";
+    const found = await query(this.db, `SELECT * FROM ${table} WHERE ${where} ORDER BY ${by}`, params);
+    const rows = found.map((r) => parseRow(table, r));
 
     for (const r of rows) {
       this.rows.set(`${table}/${r.id}`, r);
@@ -187,25 +221,32 @@ class Builder {
     return this.cols.get(table)?.has(column) ?? false;
   }
 
-  /** Mints the claim for a row (once) and returns its id, or null when the row can't back a claim. */
-  private async cite(table: string, row: AnyRow, facet: string | null = null): Promise<ClaimId | null> {
-    const id = `${table}/${row.id}${facet ? `#${facet}` : ""}`;
+  private known(id: ClaimId) {
+    return this.claims.has(id) || this.pending.has(id);
+  }
 
-    if (this.claims.has(id)) {
+  private async cite<T extends TableName>(
+    table: T,
+    row: CitedRow<T>,
+    facet: string | null = null,
+  ): Promise<ClaimId | null> {
+    const id = `${table}/${row.id}${filled(facet) ? `#${facet}` : ""}`;
+
+    if (this.known(id)) {
       return id;
     }
 
     this.rows.set(`${table}/${row.id}`, row);
+    this.pending.add(id);
 
     try {
-      this.claims.set(id, PENDING);
       const restsOn = await this.resolve(restsOnOf(table, row, facet, this.names), id);
 
       const claim = mintClaim(table, row, facet, this.names, restsOn, (ids) =>
-        ids.map((x) => this.claims.get(x)?.sourceUrl).find(Boolean),
+        ids.map((x) => this.claims.get(x)?.sourceUrl).find(filled),
       );
 
-      if (claim.kind === "inference" && claim.rule) {
+      if (claim.kind === "inference" && filled(claim.rule)) {
         this.rulesUsed.add(claim.rule);
       }
 
@@ -213,14 +254,15 @@ class Builder {
 
       return id;
     } catch (error) {
-      this.claims.delete(id);
-      this.warnings.push(`claim ${id}: ${(error as Error).message.replaceAll(/\s+/g, " ").slice(0, 300)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      this.warnings.push(`claim ${id}: ${message.replaceAll(/\s+/gu, " ").slice(0, 300)}`);
 
       return null;
+    } finally {
+      this.pending.delete(id);
     }
   }
 
-  /** Keeps the restsOn ids that resolve to a row (minting their claims), drops and reports the rest. */
   private async resolve(ids: ClaimId[], from: ClaimId): Promise<ClaimId[]> {
     const out: ClaimId[] = [];
 
@@ -229,7 +271,7 @@ class Builder {
         continue;
       }
 
-      if (this.claims.has(id) || (await this.ensure(id))) {
+      if (this.known(id) || (await this.ensure(id))) {
         out.push(id);
       } else {
         this.warnings.push(`claim ${from}: rests on ${id}, which isn't in the tables`);
@@ -239,12 +281,16 @@ class Builder {
     return out;
   }
 
-  /** Finds the row behind a claim id `<table>/<row id>[#facet]` (row ids may themselves contain `#`). */
   private async ensure(id: ClaimId): Promise<boolean> {
     const slash = id.indexOf("/");
     const table = id.slice(0, slash);
     const rest = id.slice(slash + 1);
-    const cuts = [rest.length, ...[...rest.matchAll(/#/g)].map((m) => m.index).reverse()];
+
+    if (!isTableName(table)) {
+      return false;
+    }
+
+    const cuts = [rest.length, ...[...rest.matchAll(/#/gu)].map((m) => m.index).toReversed()];
 
     for (const cut of cuts) {
       const rowId = rest.slice(0, cut);
@@ -259,13 +305,17 @@ class Builder {
     return false;
   }
 
-  private async cites(table: string, rows: AnyRow[], facet: string | null = null): Promise<ClaimId[]> {
+  private async cites<T extends TableName>(
+    table: T,
+    rows: CitedRow<T>[],
+    facet: string | null = null,
+  ): Promise<ClaimId[]> {
     const ids: ClaimId[] = [];
 
     for (const r of rows) {
       const id = await this.cite(table, r, facet);
 
-      if (id) {
+      if (filled(id)) {
         ids.push(id);
       }
     }
@@ -283,19 +333,21 @@ class Builder {
   ) {
     const ok = claims.filter((c) => this.claims.has(c));
 
-    if (!ok.length) {
+    if (ok.length === 0) {
       this.warnings.push(`edge ${id}: no claim backs it, left out`);
 
       return;
     }
 
-    const basis = ok.some((c) => this.claims.get(c)!.kind === "inference") ? "inference" : "fact";
+    const basis = ok.some((c) => this.claims.get(c)?.kind === "inference") ? "inference" : "fact";
 
     for (const end of [src, dst]) {
-      if (end.startsWith("member:")) this.memberIds.add(end.slice(7));
+      if (end.startsWith("member:")) {
+        this.memberIds.add(end.slice(7));
+      }
     }
 
-    this.edges.set(id, { id, kind, src, dst, basis, claims: [...new Set(ok)], props } as Edge);
+    this.edges.set(id, EdgeSchema.parse({ id, kind, src, dst, basis, claims: [...new Set(ok)], props }));
   }
 
   private node(n: Node) {
@@ -304,28 +356,25 @@ class Builder {
     }
   }
 
-  // ── the build ──
-
   async build(): Promise<BuildResult> {
     this.tables = await tableNames(this.db);
 
-    for (const r of await query<{ t: string; c: string }>(
-      this.db,
-      "SELECT table_name AS t, column_name AS c FROM duckdb_columns()",
-    )) {
-      (this.cols.get(r.t) ?? this.cols.set(r.t, new Set()).get(r.t)!).add(r.c);
+    for (const r of await query(this.db, "SELECT table_name AS t, column_name AS c FROM duckdb_columns()")) {
+      if (isText(r.t) && isText(r.c)) {
+        getOrSet(this.cols, r.t, () => new Set()).add(r.c);
+      }
     }
 
     const [bill] = await this.select("bills", "id = $id", { id: this.bill });
 
     if (!bill) {
-      throw new BuildError(`no bills row for ${this.bill}: run the bills stage first`);
+      throw new Error(`no bills row for ${this.bill}: run the bills stage first`);
     }
 
     this.lateUnavailable = bill.late_unavailable ?? null;
     bill.short_title = this.curatedName ?? (await this.shortTitle(bill));
     this.names.display = this.display;
-    this.names.bill = `${this.display}${bill.short_title ? ` (${bill.short_title})` : ""}`;
+    this.names.bill = `${this.display}${filled(bill.short_title) ? ` (${bill.short_title})` : ""}`;
     this.names.sample = await this.attentionSample();
     this.names.today = isoDay(this.now.getTime());
 
@@ -335,7 +384,9 @@ class Builder {
     const congress = billRef(this.bill).congress;
 
     for (const m of await this.select("members")) {
-      if (servedIn(m, congress)) this.members.set(m.id, asOf(m, bill.law_on ?? window.end));
+      if (servedIn(m, congress)) {
+        this.members.set(m.id, asOf(m, bill.law_on ?? window.end));
+      }
     }
 
     const dollars = await this.buildDollars();
@@ -361,8 +412,8 @@ class Builder {
       congress: billRef(this.bill).congress,
       title: bill.title,
       shortTitle: bill.short_title,
-      sponsor: sponsorId && this.nodes.has(`member:${sponsorId}`) ? nodeId("member", sponsorId) : null,
-      law: bill.law ? `P.L. ${lawNumber(bill.law)}` : null,
+      sponsor: filled(sponsorId) && this.nodes.has(`member:${sponsorId}`) ? nodeId("member", sponsorId) : null,
+      law: filled(bill.law) ? `P.L. ${lawNumber(bill.law)}` : null,
       lawOn: bill.law_on,
       latestAction: bill.latest_action,
       lateUnavailable: bill.late_unavailable ?? null,
@@ -370,7 +421,7 @@ class Builder {
         bill.late_unavailable ?? null,
         versions,
         [...this.sections.values()],
-        sponsorId ? this.members.get(sponsorId) : undefined,
+        filled(sponsorId) ? this.members.get(sponsorId) : undefined,
       ),
       url: bill.url ?? congressGovUrl(this.bill),
       billstatusUrl: billstatusUrl(this.bill),
@@ -401,18 +452,25 @@ class Builder {
     bundle.claims = Object.fromEntries(this.claims);
     limitGraph(bundle);
     trimEvidence(bundle);
-    bundle.rules = [...this.rulesUsed].map(ruleFor).filter((r, i, a) => a.findIndex((x) => x.id === r.id) === i);
+    const rules = new Map<string, Bundle["rules"][number]>();
+
+    for (const used of this.rulesUsed) {
+      const rule = ruleFor(used);
+      getOrSet(rules, rule.id, () => rule);
+    }
+
+    bundle.rules = [...rules.values()];
 
     const parsed = BundleSchema.safeParse(bundle);
 
     if (!parsed.success) {
-      throw new BuildError(`${this.bill}: bundle fails the schema: ${parsed.error.message.slice(0, 2000)}`);
+      throw new Error(`${this.bill}: bundle fails the schema: ${parsed.error.message.slice(0, 2000)}`);
     }
 
     const problems = checkBundle(parsed.data);
 
-    if (problems.length) {
-      throw new BuildError(`${this.bill}: ${problems.length} dangling refs, e.g. ${problems.slice(0, 5).join("; ")}`);
+    if (problems.length > 0) {
+      throw new Error(`${this.bill}: ${problems.length} dangling refs, e.g. ${problems.slice(0, 5).join("; ")}`);
     }
 
     return { bundle: parsed.data, warnings: this.warnings };
@@ -425,13 +483,13 @@ class Builder {
     for (const v of rows) {
       this.versionNames.set(v.code, `"${v.name}"`);
       const fact = await this.cite("versions", v);
-      const claim = v.predecessor_rule ? await this.cite("versions", v, "predecessor") : fact;
+      const claim = filled(v.predecessor_rule) ? await this.cite("versions", v, "predecessor") : fact;
 
-      if (!claim) {
+      if (!filled(claim)) {
         continue;
       }
 
-      if (v.predecessor_rule) {
+      if (filled(v.predecessor_rule)) {
         this.rulesUsed.add(v.predecessor_rule);
       }
 
@@ -442,7 +500,7 @@ class Builder {
         url: v.url,
         sections: v.sections,
         words: v.words,
-        predecessor: !!v.predecessor_rule,
+        predecessor: filled(v.predecessor_rule),
         claim,
       });
     }
@@ -457,7 +515,7 @@ class Builder {
       this.sections.set(s.id, {
         id: s.id,
         num: s.num,
-        heading: s.heading?.trim() || firstWords(s.preview),
+        heading: orElse(s.heading.trim(), () => firstWords(s.preview)),
         path: s.path,
         firstVersion: s.first_version,
         inFinal: s.in_final,
@@ -472,7 +530,7 @@ class Builder {
         words: s.words,
         textUrl: s.text_url,
         preview: s.preview,
-        history: Object.fromEntries(Object.entries(s.history ?? {}).map(([code, h]) => [code, step(h as AnyRow)])),
+        history: Object.fromEntries(Object.entries(s.history).map(([code, h]) => [code, step(isFields(h) ? h : {})])),
         dollars: [],
         attention: null,
         score: null,
@@ -485,8 +543,8 @@ class Builder {
     for (const s of rows) {
       const id = await this.cite("sections", s);
 
-      if (id) {
-        this.sections.get(s.id)!.claims.push(id);
+      if (filled(id)) {
+        this.sections.get(s.id)?.claims.push(id);
       }
     }
 
@@ -495,7 +553,7 @@ class Builder {
       const removed = this.sections.get(c.removed_section_id);
       const added = this.sections.get(c.added_section_id);
 
-      if (!claim || !removed || !added) {
+      if (!filled(claim) || !removed || !added) {
         continue;
       }
 
@@ -506,7 +564,7 @@ class Builder {
     for (const n of await this.select("cbo_notes", "bill_id = $b AND section_id IS NOT NULL", { b: this.bill })) {
       const claim = await this.cite("cbo_notes", n);
 
-      if (claim) {
+      if (filled(claim) && filled(n.section_id)) {
         this.sections.get(n.section_id)?.claims.push(claim);
       }
     }
@@ -523,8 +581,8 @@ class Builder {
       const part: Part = {
         id: p.id,
         num: p.num,
-        heading: p.heading?.trim() || (p.lead_in ? "Opening words" : firstWords(p.preview)),
-        trail: p.trail ?? [],
+        heading: orElse(p.heading.trim(), () => (p.lead_in ? "Opening words" : firstWords(p.preview))),
+        trail: p.trail,
         leadIn: p.lead_in,
         words: p.words,
         preview: p.preview,
@@ -542,7 +600,7 @@ class Builder {
       section.parts.push(part);
       const claim = await this.cite("section_parts", p);
 
-      if (claim) {
+      if (filled(claim)) {
         part.claims.push(claim);
       }
     }
@@ -550,59 +608,61 @@ class Builder {
     const kinds = ReachKind.options;
     const tags = await this.select("section_reach", "bill_id = $b", { b: this.bill });
 
-    for (const r of tags.sort((x, y) => kinds.indexOf(x.kind) - kinds.indexOf(y.kind))) {
-      const owner = r.part_id ? this.parts.get(r.part_id) : this.sections.get(r.section_id);
-      const claim = owner && (await this.cite("section_reach", r));
+    for (const r of tags.toSorted((x, y) => kinds.indexOf(x.kind) - kinds.indexOf(y.kind))) {
+      const owner = filled(r.part_id) ? this.parts.get(r.part_id) : this.sections.get(r.section_id);
+      const claim = owner ? await this.cite("section_reach", r) : null;
 
-      if (claim) {
+      if (owner && filled(claim)) {
         owner.reach.push({ kind: r.kind, quote: r.quote, claim });
       }
     }
   }
 
-  /**
-   * The parts of long sections (parts-v1) worth a row of their own on the page: labeled headline or buried, added late
-   * into a section that was not, or with reach of their own. The rest stay in the tables and are not shipped, so a
-   * big bill's bundle does not carry thousands of ordinary paragraphs.
-   */
-  private async notableParts(sections: AnyRow[]): Promise<Set<string>> {
+  private async notableParts(sections: Row<"sections">[]): Promise<Set<string>> {
     const b = { b: this.bill };
-    const sectionLate = new Map(sections.map((s) => [s.id, !!s.late]));
+    const sectionLate = new Map(sections.map((s) => [s.id, s.late]));
 
-    const scores = await query<AnyRow>(
-      this.db,
-      "SELECT section_id, part_id, label, late FROM section_scores WHERE bill_id = $b ORDER BY id",
-      b,
-    ).catch(() => [] as AnyRow[]);
+    const scores = (
+      await query(
+        this.db,
+        "SELECT section_id, part_id, label, late FROM section_scores WHERE bill_id = $b ORDER BY id",
+        b,
+      ).catch((): PlainRow[] => [])
+    ).map((r) => ScoredPart.parse(r));
 
     for (const s of scores) {
-      if (!s.part_id) sectionLate.set(s.section_id, !!s.late);
+      if (!filled(s.part_id)) {
+        sectionLate.set(s.section_id, s.late);
+      }
     }
 
     const keep = new Set<string>();
 
     for (const s of scores) {
-      if (s.part_id && (s.label !== "normal" || (s.late && !sectionLate.get(s.section_id)))) keep.add(s.part_id);
+      if (filled(s.part_id) && (s.label !== "normal" || (s.late && sectionLate.get(s.section_id) !== true))) {
+        keep.add(s.part_id);
+      }
     }
 
-    for (const r of await query<AnyRow>(
+    const reached = await query(
       this.db,
       "SELECT part_id FROM section_reach WHERE bill_id = $b AND part_id IS NOT NULL ORDER BY id",
       b,
-    ).catch(() => [] as AnyRow[])) {
-      keep.add(r.part_id);
+    ).catch((): PlainRow[] => []);
+
+    for (const r of reached) {
+      const { part_id: part } = ReachedPart.parse(r);
+
+      if (filled(part)) {
+        keep.add(part);
+      }
     }
 
     return keep;
   }
 
-  /**
-   * BILLSTATUS sometimes lists only a description ("An act to provide for reconciliation…") where the bill names itself
-   * in its first section. Only a top-level short title names the whole bill: one inside a division names that division
-   * (H.R.815's "FEND Off Fentanyl Act").
-   */
-  private async shortTitle(bill: AnyRow): Promise<string | null> {
-    if (bill.short_title && !DESCRIPTION.test(bill.short_title)) {
+  private async shortTitle(bill: Row<"bills">): Promise<string | null> {
+    if (filled(bill.short_title) && !DESCRIPTION.test(bill.short_title)) {
       return bill.short_title;
     }
 
@@ -613,22 +673,16 @@ class Builder {
       "in_final DESC, id",
     );
 
-    const cited = first?.preview?.match(/may be cited as the (.+?)\s*\.?\s*$/i)?.[1];
+    const cited = /may be cited as the (.+?)\s*\.?\s*$/iu.exec(first?.preview ?? "")?.[1];
+    const name = cited?.replaceAll(/\s+/gu, " ").replaceAll(/[“”"]/gu, "").trim();
 
-    return cited?.replaceAll(/\s+/g, " ").replaceAll(/[“”"]/g, "").trim() || bill.short_title;
+    return filled(name) ? name : bill.short_title;
   }
 
-  /** The bill's active span: introduction (or first text) through enactment (or the last dated record). */
-  private window(bill: AnyRow, versions: Bundle["versions"]) {
-    const dates = [bill.introduced_on, bill.law_on, ...versions.map((v) => v.date)].filter(Boolean) as string[];
-    const start = Date.parse(bill.introduced_on ?? dates.sort()[0] ?? isoDay(this.now.getTime()));
-    const end = Date.parse(bill.law_on ?? dates.sort().at(-1) ?? isoDay(this.now.getTime()));
-
-    const cycle = (t: number) => {
-      const y = new Date(t).getUTCFullYear();
-
-      return y % 2 ? y + 1 : y;
-    };
+  private window(bill: Row<"bills">, versions: Bundle["versions"]) {
+    const dates = [bill.introduced_on, bill.law_on, ...versions.map((v) => v.date)].filter(filled).toSorted();
+    const start = Date.parse(bill.introduced_on ?? dates[0] ?? isoDay(this.now.getTime()));
+    const end = Date.parse(bill.law_on ?? dates.at(-1) ?? isoDay(this.now.getTime()));
 
     const cycles: number[] = [];
 
@@ -652,11 +706,11 @@ class Builder {
       this.labels.estimate.set(e.id, e);
       const claim = await this.cite("cbo_estimates", e);
 
-      if (!claim) {
+      if (!filled(claim)) {
         continue;
       }
 
-      const hasMandates = e.mandate_private != null || e.mandate_intergovernmental != null;
+      const hasMandates = !missing(e.mandate_private) || !missing(e.mandate_intergovernmental);
       const mandatesClaim = hasMandates ? await this.cite("cbo_estimates", e, "mandates") : null;
       estimates.push({
         id: e.id,
@@ -669,7 +723,7 @@ class Builder {
         baseline: e.baseline,
         baselineLabel: e.baseline_label,
         perSection: e.per_section,
-        mandates: mandatesClaim
+        mandates: filled(mandatesClaim)
           ? {
               privateSector: e.mandate_private ?? "not stated",
               intergovernmental: e.mandate_intergovernmental ?? "not stated",
@@ -695,13 +749,13 @@ class Builder {
         baseline: est.baseline,
         measure: l.measure,
         period: l.period,
-        ...(l.spending !== undefined && { spending: l.spending }),
+        spending: l.spending,
       };
 
       if (l.line_kind === "whole-bill") {
         const claim = await this.cite("cbo_lines", l);
 
-        if (claim) {
+        if (filled(claim)) {
           wholeBill.push({ ...base, amountMusd: l.total_musd, split: "exact", claim });
         }
 
@@ -712,32 +766,31 @@ class Builder {
         continue;
       }
 
-      const targets = (l.section_ids as string[]).filter((s) => this.sections.has(s));
+      const targets = l.section_ids.filter((s) => this.sections.has(s));
+      const [only] = targets;
 
-      if (!targets.length) {
+      if (only === undefined) {
         continue;
       }
 
       const fact = await this.cite("cbo_lines", l);
 
-      if (!fact) {
+      if (!filled(fact)) {
         continue;
       }
 
       if (targets.length === 1 && l.section_ids.length === 1 && l.split === "exact") {
-        this.sections
-          .get(targets[0]!)!
-          .dollars.push({ ...base, amountMusd: l.total_musd, split: "exact", claim: fact });
+        this.sections.get(only)?.dollars.push({ ...base, amountMusd: l.total_musd, split: "exact", claim: fact });
         continue;
       }
 
       for (const s of targets) {
         const claim = await this.cite("cbo_lines", l, s);
 
-        if (claim) {
+        if (filled(claim)) {
           this.sections
-            .get(s)!
-            .dollars.push({ ...base, amountMusd: l.total_musd / l.section_ids.length, split: "even_split", claim });
+            .get(s)
+            ?.dollars.push({ ...base, amountMusd: l.total_musd / l.section_ids.length, split: "even_split", claim });
         }
       }
     }
@@ -753,7 +806,7 @@ class Builder {
       this.labels.roll.set(r.id, `${r.chamber} roll call ${r.number} of ${day(r.date)}`);
       const claim = await this.cite("roll_calls", r);
 
-      if (claim) {
+      if (filled(claim)) {
         votes.push({
           id: r.id,
           chamber: r.chamber,
@@ -770,9 +823,9 @@ class Builder {
     }
 
     const passage = rolls.filter((r) => PASSAGE.test(r.question)).map((r) => r.id);
-    const rollDate = new Map(rolls.map((r) => [r.id, r.date as string]));
+    const rollDate = new Map(rolls.map((r) => [r.id, r.date]));
 
-    if (passage.length) {
+    if (passage.length > 0) {
       this.rulesUsed.add("member-votes");
     }
 
@@ -781,15 +834,15 @@ class Builder {
         continue;
       }
 
-      const on = rollDate.get(v.roll_id)!;
+      const on = rollDate.get(v.roll_id);
 
-      if (v.vote !== "Not Voting" && on < (this.votedOn.get(v.bioguide) ?? "9")) {
+      if (on !== undefined && v.vote !== "Not Voting" && on < (this.votedOn.get(v.bioguide) ?? "9")) {
         this.votedOn.set(v.bioguide, on);
       }
 
       const claim = await this.cite("member_votes", v);
 
-      if (claim) {
+      if (filled(claim)) {
         this.edge(
           "voted",
           `voted:${v.roll_id}:${v.bioguide}`,
@@ -813,7 +866,7 @@ class Builder {
 
       const claim = await this.cite("sponsorships", s);
 
-      if (claim) {
+      if (filled(claim)) {
         this.edge(
           "sponsored",
           `sponsored:${s.id.slice(this.bill.length + 1)}`,
@@ -830,7 +883,6 @@ class Builder {
     }
   }
 
-  /** The committee's node (added on first use), or null when the committees table doesn't know it. */
   private async committee(id: string): Promise<NodeId | null> {
     const key = committeeKey(id);
     const nid = nodeId("committee", key);
@@ -851,7 +903,7 @@ class Builder {
       id: nid,
       kind: "committee",
       label: c.name,
-      claims: claim ? [claim] : [],
+      claims: filled(claim) ? [claim] : [],
       props: { chamber: c.chamber },
     });
 
@@ -861,7 +913,7 @@ class Builder {
   private async buildCommittees() {
     const referred = await this.select("bill_committees", "bill_id = $b", { b: this.bill });
 
-    if (!referred.length) {
+    if (referred.length === 0) {
       return;
     }
 
@@ -881,7 +933,7 @@ class Builder {
 
       const claim = await this.cite("bill_committees", r);
 
-      if (claim) {
+      if (filled(claim)) {
         this.edge("referred", `referred:${key}`, nodeId("bill", this.bill), nodeId("committee", key), [claim], {
           activity: r.activity,
         });
@@ -902,7 +954,7 @@ class Builder {
       const key = committeeKey(m.committee_id);
       const claim = await this.cite("committee_members", m);
 
-      if (claim) {
+      if (filled(claim)) {
         this.edge(
           "member_of",
           `member_of:${m.bioguide}:${key}`,
@@ -919,8 +971,8 @@ class Builder {
     const rows = await this.select("amendments", "bill_id = $b", { b: this.bill });
 
     for (const a of rows) {
-      const n = String(a.number);
-      this.labels.amendment.set(a.id, /^\d+$/.test(n) ? `${a.chamber === "Senate" ? "S.Amdt." : "H.Amdt."} ${n}` : n);
+      const n = a.number;
+      this.labels.amendment.set(a.id, /^\d+$/u.test(n) ? `${a.chamber === "Senate" ? "S.Amdt." : "H.Amdt."} ${n}` : n);
     }
 
     const links = await this.select("amendment_sections", "list_contains($ids, amendment_id)", {
@@ -932,31 +984,32 @@ class Builder {
     for (const a of rows) {
       const claim = await this.cite("amendments", a);
 
-      if (!claim) {
+      if (!filled(claim)) {
         continue;
       }
 
       const mine = links.filter((l) => l.amendment_id === a.id && this.sections.has(l.section_id));
-      const sponsorKnown = a.sponsor_bioguide && this.members.has(a.sponsor_bioguide);
+      const sponsor = filled(a.sponsor_bioguide) && this.members.has(a.sponsor_bioguide) ? a.sponsor_bioguide : null;
 
-      if (sponsorKnown) {
-        this.memberIds.add(a.sponsor_bioguide);
+      if (sponsor !== null) {
+        this.memberIds.add(sponsor);
       }
 
-      const byCommittee = !sponsorKnown && a.sponsor_committee ? await this.committee(a.sponsor_committee) : null;
+      const byCommittee =
+        sponsor === null && filled(a.sponsor_committee) ? await this.committee(a.sponsor_committee) : null;
 
       for (const l of mine) {
         const link = await this.cite("amendment_sections", l);
 
-        if (link) {
-          this.sections.get(l.section_id)!.claims.push(link);
+        if (filled(link)) {
+          this.sections.get(l.section_id)?.claims.push(link);
         }
 
-        if (link && sponsorKnown && a.status === "agreed" && (l.effect ?? "inserted") === "inserted") {
+        if (filled(link) && sponsor !== null && a.status === "agreed" && l.effect === "inserted") {
           this.edge(
             "inserted",
             `inserted:${a.id}:${l.section_id}`,
-            nodeId("member", a.sponsor_bioguide),
+            nodeId("member", sponsor),
             nodeId("section", l.section_id),
             [link, claim],
             {
@@ -969,9 +1022,9 @@ class Builder {
 
       out.push({
         id: a.id,
-        number: this.labels.amendment.get(a.id)!,
+        number: this.names.amendment(a.id),
         chamber: a.chamber,
-        sponsor: sponsorKnown ? nodeId("member", a.sponsor_bioguide) : byCommittee,
+        sponsor: sponsor === null ? byCommittee : nodeId("member", sponsor),
         purpose: a.purpose,
         status: a.status,
         latestAction: a.latest_action,
@@ -994,12 +1047,14 @@ class Builder {
     ].join(" AND ");
 
     const refs = this.tables.has("lda_bill_refs")
-      ? await query<AnyRow>(
-          this.db,
-          `SELECT r.* FROM lda_bill_refs r JOIN lda_filings f ON f.id = r.filing_id
+      ? (
+          await query(
+            this.db,
+            `SELECT r.* FROM lda_bill_refs r JOIN lda_filings f ON f.id = r.filing_id
            WHERE r.bill_id = $b AND r.match IN ('high', 'medium') AND ${live} ORDER BY r.id`,
-          { b: this.bill },
-        )
+            { b: this.bill },
+          )
+        ).map((r) => parseRow("lda_bill_refs", r))
       : [];
 
     for (const r of refs) {
@@ -1007,13 +1062,11 @@ class Builder {
     }
 
     if (this.tables.has("lda_bill_refs")) {
-      this.heldOutEarlier = (
-        await query<{ n: number }>(
-          this.db,
-          "SELECT count(*)::INTEGER AS n FROM lda_bill_refs WHERE bill_id = $b AND match = 'low' AND why LIKE 'Held out: %'",
-          { b: this.bill },
-        )
-      )[0]!.n;
+      this.heldOutEarlier = await countOf(
+        this.db,
+        "SELECT count(*)::INTEGER AS n FROM lda_bill_refs WHERE bill_id = $b AND match = 'low' AND why LIKE 'Held out: %'",
+        { b: this.bill },
+      );
     }
 
     const topicRefs = await this.select("lda_topic_refs", "bill_id = $b", { b: this.bill });
@@ -1023,14 +1076,21 @@ class Builder {
       this.filings.set(f.id, f);
     }
 
-    const clientKeys = [...new Set([...this.filings.values()].map((f) => f.client_key))];
+    const firstFiling = new Map<string, Row<"lda_filings">>();
+
+    for (const f of this.filings.values()) {
+      if (!firstFiling.has(f.client_key)) {
+        firstFiling.set(f.client_key, f);
+      }
+    }
+
+    const clientKeys = [...firstFiling.keys()];
 
     const clientRows = new Map(
       (await this.select("lda_clients", "list_contains($k, id)", { k: clientKeys })).map((c) => [c.id, c]),
     );
 
-    for (const key of clientKeys) {
-      const any = [...this.filings.values()].find((f) => f.client_key === key)!;
+    for (const [key, any] of firstFiling) {
       const c = clientRows.get(key);
       this.labels.client.set(key, c?.name ?? any.client_name);
       const claim = c ? await this.cite("lda_clients", c) : null;
@@ -1038,7 +1098,7 @@ class Builder {
         id: nodeId("client", key),
         kind: "client",
         label: c?.name ?? any.client_name,
-        claims: claim ? [claim] : [],
+        claims: filled(claim) ? [claim] : [],
         props: {
           names: c?.names ?? [any.client_name],
           ldaClientIds: c?.lda_client_ids ?? [any.lda_client_id],
@@ -1048,33 +1108,32 @@ class Builder {
     }
 
     const spendRows = await this.select("lda_spend", "bill_id = $b", { b: this.bill });
-    const counted = (s: AnyRow) => (s.evidence?.counted as unknown[] | undefined)?.length ?? 0;
 
-    const spend = spendRows.map((s): AnyRow => ({
+    const spend = spendRows.map((s): CitedRow<"lda_spend"> => ({
       ...s,
       share_usd: null,
-      amounts: s.client_key
+      amounts: filled(s.client_key)
         ? counted(s)
         : spendRows
-            .filter((x) => x.client_key && !!x.topic_only === !!s.topic_only)
+            .filter((x) => filled(x.client_key) && x.topic_only === s.topic_only)
             .reduce((n, x) => n + counted(x), 0),
     }));
 
-    const spendClaims = async (s: AnyRow | undefined) => ({
-      total: s?.total_usd == null ? null : await this.cite("lda_spend", s, "total"),
-      share: s?.share_usd == null ? null : await this.cite("lda_spend", s, "share"),
+    const spendClaims = async (s: CitedRow<"lda_spend"> | undefined) => ({
+      total: s === undefined || missing(s.total_usd) ? null : await this.cite("lda_spend", s, "total"),
+      share: s === undefined || missing(s.share_usd) ? null : await this.cite("lda_spend", s, "share"),
     });
 
     const spendOf = (key: string | null, topic: boolean) =>
-      spend.find((s) => s.client_key === key && !!s.topic_only === topic);
+      spend.find((s) => s.client_key === key && s.topic_only === topic);
 
-    const byClient = groupBy(refs, (r) => this.filings.get(r.filing_id)!.client_key);
+    const byClient = groupBy(refs, (r) => this.filing(r.filing_id).client_key);
 
     for (const [key, rs] of byClient) {
       const s = spendOf(key, false);
       const { total, share } = await spendClaims(s);
-      const claims = [total, ...(await this.cites("lda_bill_refs", rs))].filter((c): c is ClaimId => !!c);
-      const sectionNums = new Set(rs.flatMap((r) => r.section_nums as string[]));
+      const claims = [total, ...(await this.cites("lda_bill_refs", rs))].filter(filled);
+      const sectionNums = new Set(rs.flatMap((r) => r.section_nums));
       this.edge(
         "lobbied",
         `lobbied:${key}`,
@@ -1087,7 +1146,7 @@ class Builder {
       for (const num of sectionNums) {
         const target = this.sectionByNum(num);
 
-        if (!target) {
+        if (target === undefined) {
           continue;
         }
 
@@ -1104,13 +1163,13 @@ class Builder {
     }
 
     for (const [key, rs] of groupBy(topicRefs, (r) => this.filings.get(r.filing_id)?.client_key ?? "")) {
-      if (!key) {
+      if (key === "") {
         continue;
       }
 
       const s = spendOf(key, true);
       const { total, share } = await spendClaims(s);
-      const claims = [total, ...(await this.cites("lda_topic_refs", rs))].filter((c): c is ClaimId => !!c);
+      const claims = [total, ...(await this.cites("lda_topic_refs", rs))].filter(filled);
       this.edge(
         "lobbied",
         `lobbied:topic:${key}`,
@@ -1121,14 +1180,14 @@ class Builder {
       );
     }
 
-    const namedFilings = [...new Set(refs.map((r) => r.filing_id))].map((id) => this.filings.get(id)!);
+    const namedFilings = [...new Set(refs.map((r) => r.filing_id))].map((id) => this.filing(id));
 
-    for (const [pair, fs] of groupBy(namedFilings, (f) => `${f.client_key}|${f.registrant_id}`)) {
-      const [key, reg] = pair.split("|") as [string, string];
+    for (const fs of groupBy(namedFilings, (f) => `${f.client_key}|${f.registrant_id}`).values()) {
+      const [{ client_key: key, registrant_id: reg, registrant_name: label }] = fs;
       this.node({
         id: nodeId("registrant", reg),
         kind: "registrant",
-        label: fs[0]!.registrant_name,
+        label,
         claims: [],
         props: { ldaId: reg },
       });
@@ -1148,12 +1207,12 @@ class Builder {
 
     const covered = lobbyists.filter(
       (l) =>
-        l.covered_position &&
+        filled(l.covered_position) &&
         !NO_POSITION.test(l.covered_position.trim()) &&
-        (!l.bill_ids?.length || l.bill_ids.includes(this.bill)),
+        (l.bill_ids.length === 0 || l.bill_ids.includes(this.bill)),
     );
 
-    if (covered.length) {
+    if (covered.length > 0) {
       this.rulesUsed.add("lobbyist-nodes");
     }
 
@@ -1162,21 +1221,22 @@ class Builder {
 
       for (const l of ls) {
         const claim = await this.cite("lda_lobbyists", l);
+        const position = l.covered_position ?? "";
 
-        if (claim && !positions.has(l.covered_position)) {
-          positions.set(l.covered_position, claim);
+        if (filled(claim) && !positions.has(position)) {
+          positions.set(position, claim);
         }
       }
 
       this.node({
         id: nodeId("lobbyist", lid),
         kind: "lobbyist",
-        label: ls[0]!.name,
+        label: ls[0].name,
         claims: [],
         props: { ldaId: lid, coveredPositions: [...positions].map(([quote, claim]) => ({ quote, claim })) },
       });
 
-      for (const [reg, rs] of groupBy(ls, (l) => this.filings.get(l.filing_id)!.registrant_id)) {
+      for (const [reg, rs] of groupBy(ls, (l) => this.filing(l.filing_id).registrant_id)) {
         this.edge(
           "employs",
           `employs:${reg}:${lid}`,
@@ -1190,7 +1250,7 @@ class Builder {
 
     const whole = spendOf(null, false);
     const phases = { bill: 0, enactmentQuarter: 0, law: 0 };
-    const phaseOf = new Map(refs.map((r) => [r.filing_id, r.phase as string]));
+    const phaseOf = new Map(refs.map((r) => [r.filing_id, r.phase]));
 
     for (const p of phaseOf.values()) {
       phases[p === "law" ? "law" : p === "enactment-quarter" ? "enactmentQuarter" : "bill"]++;
@@ -1204,8 +1264,18 @@ class Builder {
       byPhase: phases,
       spendTotalUsd: whole?.total_usd ?? null,
       shareEstimateUsd: whole?.share_usd ?? null,
-      claims: Object.values(await spendClaims(whole)).filter((c): c is ClaimId => !!c),
+      claims: Object.values(await spendClaims(whole)).filter(filled),
     };
+  }
+
+  private filing(id: string): Row<"lda_filings"> {
+    const f = this.filings.get(id);
+
+    if (!f) {
+      throw new Error(`${this.bill}: lobbying filing ${id} is named but not loaded`);
+    }
+
+    return f;
   }
 
   private sectionByNum(num: string): string | undefined {
@@ -1214,12 +1284,10 @@ class Builder {
     return (all.find((s) => s.inFinal) ?? all[0])?.id;
   }
 
-  private refProps(rs: AnyRow[], topicOnly: boolean): EdgeOf<"lobbied">["props"] {
-    const filings = [...new Set(rs.map((r) => r.filing_id))]
-      .map((id) => this.filings.get(id))
-      .filter(Boolean) as AnyRow[];
+  private refProps(rs: BillRef[], topicOnly: boolean): EdgeOf<"lobbied">["props"] {
+    const filings = [...new Set(rs.map((r) => r.filing_id))].flatMap((id) => this.filings.get(id) ?? []);
 
-    const phase = (p: string) => new Set(rs.filter((r) => r.phase === p).map((r) => r.filing_id)).size;
+    const phase = (p: string) => new Set(rs.flatMap((r) => (r.phase === p ? [r.filing_id] : []))).size;
 
     return {
       reports: filings.length,
@@ -1227,12 +1295,11 @@ class Builder {
       phases: { bill: phase("bill"), enactmentQuarter: phase("enactment-quarter"), law: phase("law") },
       spendTotalUsd: null,
       shareEstimateUsd: null,
-      issueQuote: (rs.find((r) => r.section_nums?.length) ?? rs[0])?.quote ?? null,
+      issueQuote: (rs.find((r) => "section_nums" in r && r.section_nums.length > 0) ?? rs[0])?.quote ?? null,
       topicOnly,
     };
   }
 
-  /** Companies tied to the bill (the tied-stock rule), and every lobbying client or PAC that resolves to one. */
   private async buildCompanies(): Promise<Map<string, string>> {
     const benefits = await this.select("benefits", "bill_id = $b", { b: this.bill });
     const clientSrcs = [...this.nodes.keys()].filter((k) => k.startsWith("client:"));
@@ -1249,11 +1316,12 @@ class Builder {
       }
 
       const claim = await this.cite("resolutions", r);
+      const src = NodeIdSchema.safeParse(r.src);
 
-      if (claim) {
-        this.edge("resolves_to", `resolves_to:${r.src}`, r.src as NodeId, nodeId("company", r.company_id), [claim], {
+      if (filled(claim) && src.success) {
+        this.edge("resolves_to", `resolves_to:${r.src}`, src.data, nodeId("company", r.company_id), [claim], {
           method: r.method,
-          reason: r.evidence?.reason ?? null,
+          reason: reasonOf(r),
         });
       }
     }
@@ -1266,32 +1334,33 @@ class Builder {
       }
 
       const src =
-        b.section_id && this.sections.has(b.section_id) ? nodeId("section", b.section_id) : nodeId("bill", this.bill);
+        filled(b.section_id) && this.sections.has(b.section_id)
+          ? nodeId("section", b.section_id)
+          : nodeId("bill", this.bill);
 
       const claim = await this.cite("benefits", b);
 
-      if (!claim) {
+      if (!filled(claim)) {
         continue;
       }
 
       this.edge("benefits", `benefits:${src}:${b.company_id}`, src, nodeId("company", b.company_id), [claim], {
         rule: b.basis_rule,
       });
-      const company = this.nodes.get(`company:${b.company_id}`) as Extract<Node, { kind: "company" }>;
+      const company = this.nodes.get(`company:${b.company_id}`);
 
-      for (const t of company.props.tickers) {
+      for (const t of company?.kind === "company" ? company.props.tickers : []) {
         tied.set(t.toUpperCase(), b.company_id);
       }
     }
 
-    if (benefits.length) {
+    if (benefits.length > 0) {
       this.rulesUsed.add("tied-stock");
     }
 
     return tied;
   }
 
-  /** For each tied company, the first words of the subsidiaries that lobbied on this bill and resolve to it. */
   private lobbyingHeads(): Map<string, Set<string>> {
     const heads = new Map<string, Set<string>>();
 
@@ -1301,10 +1370,10 @@ class Builder {
       }
 
       const company = e.dst.slice(8);
-      const set = heads.get(company) ?? heads.set(company, new Set()).get(company)!;
+      const set = getOrSet(heads, company, () => new Set<string>());
       const head = headOf(this.labels.client.get(e.src.slice(7)) ?? "");
 
-      if (head) {
+      if (head !== "") {
         set.add(head);
       }
     }
@@ -1312,15 +1381,14 @@ class Builder {
     return heads;
   }
 
-  /** A client resolves to its parent only if one of its filings on this bill came after the parent owned it. */
-  private ownedWhenFiled(r: AnyRow): boolean {
-    const since = ownedSince(r.evidence?.reason);
+  private ownedWhenFiled(r: Row<"resolutions">): boolean {
+    const since = ownedSince(reasonOf(r));
 
-    if (!since || !String(r.src).startsWith("client:")) {
+    if (!filled(since) || !r.src.startsWith("client:")) {
       return true;
     }
 
-    const key = String(r.src).slice(7);
+    const key = r.src.slice(7);
 
     return [...this.filings.values()].some((f) => f.client_key === key && ownedOn(since, f.period_end));
   }
@@ -1329,19 +1397,21 @@ class Builder {
     const want = [...new Set(ids)].filter((id) => !this.nodes.has(`company:${id}`));
 
     for (const c of await this.select("companies", "list_contains($ids, id)", { ids: want })) {
-      this.labels.company.set(c.id, c.tickers?.length ? `${c.name} (${c.tickers.join(", ")})` : c.name);
+      this.labels.company.set(c.id, c.tickers.length > 0 ? `${c.name} (${c.tickers.join(", ")})` : c.name);
       const claim = await this.cite("companies", c);
       this.node({
         id: nodeId("company", c.id),
         kind: "company",
         label: c.name,
-        claims: claim ? [claim] : [],
-        props: { cik: c.id, tickers: c.tickers ?? [], secUrl: c.source_url },
+        claims: filled(claim) ? [claim] : [],
+        props: { cik: c.id, tickers: c.tickers, secUrl: c.source_url },
       });
     }
 
     for (const id of want) {
-      if (!this.nodes.has(`company:${id}`)) this.warnings.push(`company ${id}: no companies row`);
+      if (!this.nodes.has(`company:${id}`)) {
+        this.warnings.push(`company ${id}: no companies row`);
+      }
     }
   }
 
@@ -1381,20 +1451,20 @@ class Builder {
       }
     }
 
-    const known = fits.filter((t) => t.bioguide && this.members.has(t.bioguide));
+    const known = fits.filter((t) => filled(t.bioguide) && this.members.has(t.bioguide));
 
     if (known.length < fits.length) {
       this.warnings.push(`${fits.length - known.length} trades in tied stocks are from filers not matched to a member`);
     }
 
-    for (const [pair, ts] of groupBy(known, (t) => `${t.bioguide}|${tied.get(t.ticker.toUpperCase())}`)) {
-      const [bioguide, company] = pair.split("|") as [string, string];
+    for (const [pair, ts] of groupBy(known, (t) => `${t.bioguide}|${tied.get((t.ticker ?? "").toUpperCase())}`)) {
+      const [bioguide = "", company = ""] = pair.split("|");
       const events: EdgeOf<"traded">["props"]["events"] = [];
 
       for (const t of ts) {
         const claim = await this.cite("trades", t);
 
-        if (claim) {
+        if (filled(claim) && filled(t.traded_on)) {
           events.push({
             date: t.traded_on,
             type: t.type,
@@ -1409,7 +1479,7 @@ class Builder {
         }
       }
 
-      if (events.length) {
+      if (events.length > 0) {
         this.edge(
           "traded",
           `traded:${bioguide}:${company}`,
@@ -1422,11 +1492,10 @@ class Builder {
     }
   }
 
-  /** PACs that resolve to a tied company, and what they gave members in the bill's FEC cycles. */
   private async buildMoney(tied: Map<string, string>, w: { cycles: number[]; end: string }) {
     const companies = [...new Set(tied.values())];
 
-    if (!companies.length) {
+    if (companies.length === 0) {
       return;
     }
 
@@ -1438,7 +1507,7 @@ class Builder {
       ids: [...new Set(found.map((r) => r.src.slice(4)))],
     });
 
-    const pacName = new Map(allPacs.map((p) => [p.id, p.name as string]));
+    const pacName = new Map(allPacs.map((p) => [p.id, p.name]));
     const lobbyingHeads = this.lobbyingHeads();
 
     const res = found.filter((r) => {
@@ -1448,11 +1517,11 @@ class Builder {
 
       const head = headOf(pacName.get(r.src.slice(4)) ?? "");
 
-      return !!head && (lobbyingHeads.get(r.company_id)?.has(head) ?? false);
+      return head !== "" && (lobbyingHeads.get(r.company_id)?.has(head) ?? false);
     });
 
     const subsidiaryOf = new Map(res.filter((r) => !OWN_PAC.has(r.method)).map((r) => [r.src.slice(4), r.company_id]));
-    const since = new Map(res.map((r) => [r.src.slice(4), ownedSince(r.evidence?.reason)]));
+    const since = new Map(res.map((r) => [r.src.slice(4), ownedSince(reasonOf(r))]));
     const pacs = allPacs.filter((p) => res.some((r) => r.src === `pac:${p.id}`));
 
     for (const p of pacs) {
@@ -1462,27 +1531,29 @@ class Builder {
         id: nodeId("pac", p.id),
         kind: "pac",
         label: p.name,
-        claims: claim ? [claim] : [],
+        claims: filled(claim) ? [claim] : [],
         props: { fecId: p.id, connectedOrg: p.connected_org, subsidiaryOf: subsidiaryOf.get(p.id) ?? null },
       });
     }
 
     for (const r of res) {
-      if (!this.nodes.has(r.src)) {
+      const src = NodeIdSchema.safeParse(r.src);
+
+      if (!src.success || !this.nodes.has(src.data)) {
         continue;
       }
 
       const claim = await this.cite("resolutions", r);
 
-      if (claim) {
-        this.edge("resolves_to", `resolves_to:${r.src}`, r.src as NodeId, nodeId("company", r.company_id), [claim], {
+      if (filled(claim)) {
+        this.edge("resolves_to", `resolves_to:${r.src}`, src.data, nodeId("company", r.company_id), [claim], {
           method: r.method,
-          reason: r.evidence?.reason ?? null,
+          reason: reasonOf(r),
         });
       }
     }
 
-    if (!pacs.length) {
+    if (pacs.length === 0) {
       return;
     }
 
@@ -1500,16 +1571,17 @@ class Builder {
     );
 
     for (const [pair, gs] of groupBy(
-      gifts.filter((g) => this.members.has(g.bioguide) && ownedOn(since.get(g.pac_id) ?? null, g.date)),
+      gifts.filter(
+        (g) => filled(g.bioguide) && this.members.has(g.bioguide) && ownedOn(since.get(g.pac_id) ?? null, g.date),
+      ),
       (g) => `${g.pac_id}|${g.bioguide}`,
     )) {
-      const [pac, bioguide] = pair.split("|") as [string, string];
+      const [pac = "", bioguide = ""] = pair.split("|");
       const periods = w.cycles.map((c) => `&two_year_transaction_period=${c}`).join("");
-      const recipients = [...new Set(gs.map((g) => g.recipient_committee_id).filter(Boolean))];
+      const recipients = [...new Set(gs.map((g) => g.recipient_committee_id).filter(filled))];
       const to = recipients.length === 1 ? `&recipient_committee_id=${recipients[0]}` : "";
       const cutoff = this.votedOn.get(bioguide) ?? w.end;
       const before = gs.filter((g) => g.date <= cutoff);
-      const sum = (list: AnyRow[]) => list.reduce((a, g) => a + g.amount_usd, 0);
       this.edge(
         "funded",
         `funded:${pac}:${bioguide}`,
@@ -1523,56 +1595,59 @@ class Builder {
           afterUsd: sum(gs) - sum(before),
           amountUsd: sum(gs),
           contributions: gs.length,
-          first: gs[0]!.date,
-          last: gs.at(-1)!.date,
+          first: gs[0].date,
+          last: (gs.at(-1) ?? gs[0]).date,
           allTxnsUrl: `https://www.fec.gov/data/disbursements/?data_type=processed&committee_id=${pac}${to}${periods}`,
         },
       );
     }
   }
 
-  /** From the attention rows' evidence: articles found per side, and those read and judged to be about the bill. */
   private async attentionSample(): Promise<{ found: number; relevant: number }> {
     const [row] = await this.select("attention", "bill_id = $b AND evidence IS NOT NULL", { b: this.bill });
-    const sum = (o: Record<string, number> | undefined) => Object.values(o ?? {}).reduce((a, n) => a + n, 0);
 
-    return { found: sum(row?.evidence?.found_by_side), relevant: sum(row?.evidence?.relevant_by_side) };
+    const found = row?.evidence.found_by_side;
+    const relevant = row?.evidence.relevant_by_side;
+
+    return { found: isCounts(found) ? sumOf(found) : 0, relevant: isCounts(relevant) ? sumOf(relevant) : 0 };
   }
 
   private async buildAttention(): Promise<Bundle["attention"]> {
     const rows = await this.select("attention", "bill_id = $b", { b: this.bill });
 
     const articles = this.tables.has("articles")
-      ? await query<AnyRow>(
-          this.db,
-          `SELECT a.*, o.name AS outlet_name, o."group" AS outlet_group, o.list_version
+      ? (
+          await query(
+            this.db,
+            `SELECT a.*, o.name AS outlet_name, o."group" AS outlet_group, o.list_version
            FROM articles a LEFT JOIN outlets o ON o.id = a.outlet_id WHERE a.bill_id = $b ORDER BY a.id`,
-          { b: this.bill },
-        )
+            { b: this.bill },
+          )
+        ).map((r) => ArticleWithOutlet.parse(r))
       : [];
 
     const byId = new Map(articles.map((a) => [a.id, a]));
 
-    const shape = async (r: AnyRow): Promise<Section["attention"]> => {
+    const shape = async (r: Row<"attention">): Promise<Section["attention"]> => {
       const claim = await this.cite("attention", r);
 
-      if (!claim) {
+      if (!filled(claim)) {
         return null;
       }
 
-      const examples = [];
+      const examples: NonNullable<Section["attention"]>["examples"] = [];
 
-      for (const id of r.example_article_ids as string[]) {
+      for (const id of r.example_article_ids) {
         const a = byId.get(id);
 
         if (!a) {
           continue;
         }
 
-        const { outlet_name, outlet_group, list_version, ...row } = a;
+        const { outlet_name, outlet_group, list_version: _listVersion, ...row } = a;
         const c = await this.cite("articles", { ...row, outlet_name });
 
-        if (c) {
+        if (filled(c)) {
           examples.push({
             url: a.url,
             outlet: outlet_name ?? new URL(a.url).hostname,
@@ -1585,8 +1660,10 @@ class Builder {
       }
 
       const groups = Object.fromEntries(
-        Object.entries(r.hits_by_group ?? {}).filter(([g]) => OutletGroup.safeParse(g).success),
-      ) as Record<string, number>;
+        Object.entries(r.hits_by_group).filter(
+          (e): e is [string, number] => OutletGroup.safeParse(e[0]).success && isNumber(e[1]),
+        ),
+      );
 
       return { hits: r.hits, pct: r.pct, hitsByGroup: groups, tradeLegalHits: r.trade_legal_hits, examples, claim };
     };
@@ -1594,40 +1671,45 @@ class Builder {
     let general: Section["attention"] = null;
 
     for (const r of rows) {
-      if (r.section_id == null) {
+      const section = filled(r.section_id) ? this.sections.get(r.section_id) : undefined;
+
+      if (missing(r.section_id)) {
         general = await shape(r);
-      } else if (r.part_id) {
+      } else if (filled(r.part_id)) {
         const part = this.parts.get(r.part_id);
 
         if (part) {
           part.attention = await shape(r);
         }
-      } else if (this.sections.has(r.section_id)) {
-        this.sections.get(r.section_id)!.attention = await shape(r);
+      } else if (section) {
+        section.attention = await shape(r);
       }
     }
 
     const dates = articles
       .map((a) => a.published_on)
-      .filter(Boolean)
-      .sort();
+      .filter(filled)
+      .toSorted();
+
+    const [firstDate] = dates;
+    const lastDate = dates.at(-1);
 
     return {
-      via: [...new Set(articles.map((a) => a.via))].sort() as Bundle["attention"]["via"],
-      outletListVersion: articles.find((a) => a.list_version)?.list_version ?? null,
-      window: dates.length ? [dates[0], dates.at(-1)] : null,
+      via: [...new Set(articles.map((a) => a.via))].toSorted(),
+      outletListVersion: articles.find((a) => filled(a.list_version))?.list_version ?? null,
+      window: firstDate !== undefined && lastDate !== undefined ? [firstDate, lastDate] : null,
       articles: articles.length,
-      sample: this.names.sample.relevant ? this.names.sample : null,
+      sample: this.names.sample.relevant === 0 ? null : this.names.sample,
       general,
     };
   }
 
   private async buildScores() {
     for (const s of await this.select("section_scores", "bill_id = $b", { b: this.bill })) {
-      const section = s.part_id ? this.parts.get(s.part_id) : this.sections.get(s.section_id);
-      const claim = section && (await this.cite("section_scores", s));
+      const section = filled(s.part_id) ? this.parts.get(s.part_id) : this.sections.get(s.section_id);
+      const claim = section ? await this.cite("section_scores", s) : null;
 
-      if (!section || !claim) {
+      if (!section || !filled(claim)) {
         continue;
       }
 
@@ -1646,14 +1728,13 @@ class Builder {
           offTopic: s.off_topic,
           lobbyingReports: s.lobbying_reports,
           lobbyingFirms: s.lobbying_firms,
-          reach: s.reach ?? [],
+          reach: s.reach,
         },
         claim,
       };
     }
   }
 
-  /** Member nodes for everyone an edge names; flags members whose paper filings in the trade window aren't read. */
   private async buildMembers(w: { tradeFrom: string; tradeTo: string }) {
     const unread = await this.select(
       "ptr_documents",
@@ -1661,16 +1742,21 @@ class Builder {
       { from: w.tradeFrom, to: w.tradeTo },
     );
 
-    const unreadIds = new Set(unread.map((d) => d.bioguide));
+    const unreadIds = new Set(unread.map((d) => d.bioguide).filter(filled));
 
     for (const id of this.memberIds) {
-      const m = this.members.get(id)!;
+      const m = this.members.get(id);
+
+      if (!m) {
+        throw new Error(`${this.bill}: an edge names member ${id}, who has no members row`);
+      }
+
       const claim = await this.cite("members", m, m.term?.start ?? null);
       this.node({
         id: nodeId("member", id),
         kind: "member",
-        label: memberLabel(this.names.member(id)!),
-        claims: claim ? [claim] : [],
+        label: memberLabel(m),
+        claims: filled(claim) ? [claim] : [],
         props: {
           bioguide: id,
           party: m.party,
@@ -1682,7 +1768,7 @@ class Builder {
       });
     }
 
-    const members = [...unreadIds].map((id) => this.members.get(id)).filter(Boolean) as AnyRow[];
+    const members = [...unreadIds].flatMap((id) => this.members.get(id) ?? []);
     const by = (party: string) => members.filter((m) => m.party === party).length;
 
     return {
@@ -1693,14 +1779,14 @@ class Builder {
   }
 
   private async count(table: string) {
-    return (await query<{ n: number }>(this.db, `SELECT count(*)::INTEGER AS n FROM ${table}`))[0]!.n;
+    return await countOf(this.db, `SELECT count(*)::INTEGER AS n FROM ${table}`);
   }
 
   private async buildGaps(x: {
     dollars: Bundle["dollars"];
     attention: Bundle["attention"];
     lobbying: Bundle["lobbying"];
-    unread: { members: AnyRow[]; byParty: Record<"R" | "D" | "I", number>; loaded: boolean };
+    unread: { members: Member[]; byParty: Record<"R" | "D" | "I", number>; loaded: boolean };
     sections: Section[];
   }): Promise<Bundle["gaps"]> {
     const gaps: Bundle["gaps"] = [];
@@ -1713,13 +1799,13 @@ class Builder {
       claim: ClaimId | null = null,
     ) => gaps.push({ id, kind, text, nodes, claim });
 
-    if (this.lateUnavailable) {
+    if (filled(this.lateUnavailable)) {
       gap("late-unavailable", "late_unavailable", `Late flag unavailable: ${this.lateUnavailable}`);
     }
 
     if (!x.unread.loaded) {
       gap("trades-not-loaded", "other", "Member trade filings aren't loaded yet, so no trades show here.");
-    } else if (x.unread.members.length) {
+    } else if (x.unread.members.length > 0) {
       const by = (p: string) => x.unread.members.filter((m) => m.party === p).length;
       gap(
         "paper-ptrs",
@@ -1730,8 +1816,9 @@ class Builder {
     }
 
     const { estimates } = x.dollars;
+    const [firstEstimate] = estimates;
 
-    if (!estimates.length) {
+    if (firstEstimate === undefined) {
       gap(
         "no-cbo",
         "no_section_dollars",
@@ -1743,11 +1830,11 @@ class Builder {
         "no_section_dollars",
         "CBO published whole-bill numbers only for this bill, so no section has its own dollar figure.",
         [],
-        estimates[0]!.claim,
+        firstEstimate.claim,
       );
     }
 
-    if (!x.attention.articles) {
+    if (x.attention.articles === 0) {
       gap("no-attention", "attention_partial", "News attention isn't measured for this bill yet.");
     } else if (!x.attention.via.includes("mediacloud")) {
       gap(
@@ -1757,9 +1844,9 @@ class Builder {
       );
     }
 
-    if (!this.tables.has("lda_bill_refs") || !(await this.count("lda_bill_refs"))) {
+    if (!this.tables.has("lda_bill_refs") || (await this.count("lda_bill_refs")) === 0) {
       gap("no-lobbying", "other", "Lobbying filings aren't loaded yet, so no lobbying shows here.");
-    } else if (x.lobbying.clients) {
+    } else if (x.lobbying.clients !== 0) {
       const clients = [...this.nodes.keys()].filter(
         (k) => k.startsWith("client:") && this.edges.has(`lobbied:${k.slice(7)}`),
       );
@@ -1774,7 +1861,7 @@ class Builder {
 
       const loose = clients
         .filter((c) => !this.edges.has(`resolves_to:${c}`))
-        .sort((a, b) => reports(b) - reports(a) || a.localeCompare(b))
+        .toSorted((a, b) => reports(b) - reports(a) || a.localeCompare(b))
         .slice(0, 12)
         .map((c) => `${this.labels.client.get(c.slice(7)) ?? c.slice(7)} (${reports(c)})`);
 
@@ -1787,7 +1874,7 @@ class Builder {
 
     const optionsAndBonds = this.nonStock.option + this.nonStock.bond + this.nonStock.other;
 
-    if (optionsAndBonds) {
+    if (optionsAndBonds !== 0) {
       gap(
         "non-stock-trades",
         "other",
@@ -1795,7 +1882,7 @@ class Builder {
       );
     }
 
-    if (this.heldOutEarlier) {
+    if (this.heldOutEarlier !== 0) {
       gap(
         "earlier-bill",
         "other",
@@ -1805,7 +1892,7 @@ class Builder {
 
     const removed = this.warnings.filter((w) => w.includes("not matched to a member"));
 
-    if (removed.length) {
+    if (removed.length > 0) {
       gap("unmatched-filers", "entity_recall", removed.join("; "));
     }
 
@@ -1813,74 +1900,67 @@ class Builder {
   }
 }
 
-/** Whether a member held a seat at any point in a Congress (it runs from January 3 of its first year to January 2 of the next odd year). */
-export function servedIn(m: AnyRow, congress: number): boolean {
+export function servedIn(m: Member, congress: number): boolean {
   const from = `${1789 + 2 * (congress - 1)}-01-03`;
   const to = `${1789 + 2 * congress}-01-02`;
-  const terms = (m.terms ?? []) as AnyRow[];
 
-  return !terms.length || terms.some((t) => t.start <= to && t.end >= from);
+  return m.terms.length === 0 || m.terms.some((t) => t.start <= to && t.end >= from);
 }
 
-const PARTY_LETTER: Record<string, "R" | "D" | "I"> = { Republican: "R", Democrat: "D", Democratic: "D" };
+const PARTY_LETTER = new Map<string, "R" | "D" | "I">([
+  ["Republican", "R"],
+  ["Democrat", "D"],
+  ["Democratic", "D"],
+]);
 
-/**
- * A member as they were on `day`: the party, state, district and chamber of the term that covers it (or the last
- * term before it), so a bill shows who a member was then. Rows without terms keep their own fields.
- */
-export function asOf(m: AnyRow, day: string): AnyRow {
-  const terms = (m.terms ?? []) as AnyRow[];
-  const term = terms.find((t) => t.start <= day && day <= t.end) ?? terms.filter((t) => t.start <= day).at(-1);
+export function asOf(m: Member, on: string): Member {
+  const { terms } = m;
+  const term = terms.find((t) => t.start <= on && on <= t.end) ?? terms.findLast((t) => t.start <= on);
 
   if (!term) {
     return m;
   }
 
-  const party = PARTY_LETTER[term.party] ?? "I";
+  const party = PARTY_LETTER.get(term.party) ?? "I";
 
-  return { ...m, party, state: term.state, district: term.district ?? null, chamber: term.chamber, term };
+  return { ...m, party, state: term.state, district: term.district, chamber: term.chamber, term };
 }
 
-function step(h: AnyRow): Section["history"][string] {
-  return {
-    path: h.path ?? "",
-    heading: h.heading ?? "",
-    words: h.words ?? 0,
-    match: h.match ?? null,
-    similarity: h.similarity ?? null,
-    wordsAdded: h.wordsAdded ?? h.words_added ?? null,
-    wordsRemoved: h.wordsRemoved ?? h.words_removed ?? null,
-    largestInserts: h.largestInserts ?? h.largest_inserts ?? [],
-  };
+function step(f: Fields): Section["history"][string] {
+  return SectionStep.parse({
+    path: f.path ?? "",
+    heading: f.heading ?? "",
+    words: f.words ?? 0,
+    match: f.match ?? null,
+    similarity: f.similarity ?? null,
+    wordsAdded: f.wordsAdded ?? f.words_added ?? null,
+    wordsRemoved: f.wordsRemoved ?? f.words_removed ?? null,
+    largestInserts: f.largestInserts ?? f.largest_inserts ?? [],
+  });
 }
 
-/**
- * The sponsor line reads as a vehicle when the law's text did not come from the sponsor's own bill: the bill began as
- * a shell or was rewritten wholesale, or fewer than half of the final sections were in its first text (a predecessor
- * bill with the same sponsor and title means the sponsor did write it).
- */
 export function vehicleNote(
   lateUnavailable: string | null,
   versions: Bundle["versions"],
   sections: Section[],
-  sponsor: AnyRow | undefined,
+  sponsor: Pick<Member, "name"> | undefined,
 ): string | null {
   if (!sponsor || versions.some((v) => v.predecessor)) {
     return null;
   }
 
-  const first = versions.find((v) => v.date)?.code ?? versions[0]?.code;
+  const first = versions.find((v) => filled(v.date))?.code ?? versions[0]?.code;
   const final = sections.filter((s) => s.inFinal);
-  const carried = final.length ? final.filter((s) => s.firstVersion === first).length / final.length : 1;
+  const carried = final.length > 0 ? final.filter((s) => s.firstVersion === first).length / final.length : 1;
 
-  if (!lateUnavailable && carried >= 0.5) {
+  if (!filled(lateUnavailable) && carried >= 0.5) {
     return null;
   }
 
   return `${Math.round((1 - carried) * 100)}% of the law's sections were not in the bill ${sponsor.name} introduced. It was a vehicle: the law's text came from later versions, so this sponsor did not write the law.`;
 }
 
-function spendProps(s: AnyRow, topicOnly: boolean): EdgeOf<"lobbied">["props"] {
+function spendProps(s: CitedRow<"lda_spend">, topicOnly: boolean): EdgeOf<"lobbied">["props"] {
   return {
     reports: s.reports,
     quarters: s.quarters,
@@ -1892,16 +1972,38 @@ function spendProps(s: AnyRow, topicOnly: boolean): EdgeOf<"lobbied">["props"] {
   };
 }
 
-function groupBy<T>(xs: T[], key: (x: T) => string): Map<string, T[]> {
-  const m = new Map<string, T[]>();
+function groupBy<T>(xs: T[], key: (x: T) => string): Map<string, [T, ...T[]]> {
+  const groups = new Map<string, [T, ...T[]]>();
 
   for (const x of xs) {
     const k = key(x);
-    (m.get(k) ?? m.set(k, []).get(k)!).push(x);
+    const group = groups.get(k);
+
+    if (group) {
+      group.push(x);
+    } else {
+      groups.set(k, [x]);
+    }
   }
 
-  return m;
+  return groups;
 }
 
-/** Placeholder while a claim's restsOn resolve, so a cycle stops instead of recursing. */
-const PENDING = { kind: "fact" } as Claim;
+function getOrSet<K, V>(map: Map<K, V>, key: K, make: () => V): V {
+  const found = map.get(key);
+
+  if (found !== undefined) {
+    return found;
+  }
+
+  const made = make();
+  map.set(key, made);
+
+  return made;
+}
+
+const orElse = (text: string, fallback: () => string) => (text === "" ? fallback() : text);
+
+const sum = (list: Row<"contributions">[]) => list.reduce((a, g) => a + g.amount_usd, 0);
+
+const reasonOf = (r: Row<"resolutions">) => (isText(r.evidence.reason) ? r.evidence.reason : null);
