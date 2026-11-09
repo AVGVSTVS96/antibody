@@ -63,13 +63,15 @@ export function searchTerms(a: Aliases): string[] {
   ].map((t) => `"${t.replaceAll('"', "")}"`);
 }
 
+const REFUSED = /\badmin\w*|\S*root\S*/iu;
+
 export function searchable(term: string): string | null {
-  if (!/\badmin\w*/iu.test(term)) {
+  if (!REFUSED.test(term)) {
     return term;
   }
 
   const stretch = term
-    .split(/\badmin\w*/iu)
+    .split(new RegExp(REFUSED, "giu"))
     .map((s) => s.trim())
     .filter((s) => s.split(/\s+/u).length >= 2)
     .toSorted((a, b) => b.length - a.length)[0];

@@ -10,3 +10,9 @@ test("a name with a word starting 'Admin' is searched by its longest stretch wit
   expect(searchable("Administration")).toBeNull();
   expect(searchable("Fiscal Responsibility Act")).toBe("Fiscal Responsibility Act");
 });
+
+test("a word containing 'root' is dropped the same way (lda.gov answers 403 to it anywhere in a word)", () => {
+  expect(searchable("ROOTR Act")).toBeNull();
+  expect(searchable("Grassroots Rural Broadband Act")).toBe("Rural Broadband Act");
+  expect(searchable("ROTOR Act")).toBe("ROTOR Act");
+});
